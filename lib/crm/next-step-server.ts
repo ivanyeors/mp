@@ -3,13 +3,6 @@ import { readAftercareSettings } from "@/lib/aftercare/card-server";
 import { marketingEmailState } from "@/lib/marketing-consent/state";
 import type { NextStepFacts } from "./next-step";
 
-/**
- * What `nextStep` reads for one Customer (PRD-crm-retention-loop slice 05):
- * their overview row, the aftercare settings, a re-adjustment still to come,
- * and their earliest overdue Follow-up. Server only, with the service role,
- * after the page's `customers` check. Null when the Customer is not in the
- * overview.
- */
 export async function readNextStepFacts(admin: SupabaseClient, customerId: string, now: Date = new Date()): Promise<NextStepFacts | null> {
   const today = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [overview, settings, booked, followUp] = await Promise.all([

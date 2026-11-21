@@ -3,12 +3,6 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The website chat polls the open chat for staff replies, and polls at once
- * when the tab comes back into view. Coming back while a poll is still
- * waiting must not start a second poll loop beside the first.
- */
-
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("./support-chat-root", () => ({ STORAGE_KEY: "mp.supportChat" }));
@@ -16,7 +10,6 @@ const { useSupportChat } = await import("./use-support-chat");
 
 const chat = { id: "c1", ref: "R1", status: "open", name: null, email: "", hasAccount: false, createdAt: "2026-11-01T00:00:00Z", endedAt: null };
 
-/** Polls wait until the test answers them; everything else answers at once. */
 let polls: Array<() => void> = [];
 const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
 beforeEach(() => {
@@ -71,7 +64,6 @@ describe("useSupportChat polling", () => {
     await act(async () => document.dispatchEvent(new Event("visibilitychange")));
     await answerPolls();
 
-    // One loop: one poll per interval from here on.
     await advance(3_000);
     expect(polls).toHaveLength(1);
     await answerPolls();
@@ -91,7 +83,6 @@ describe("useSupportChat polling", () => {
     await act(async () => document.dispatchEvent(new Event("visibilitychange")));
     expect(polls).toHaveLength(1);
     await answerPolls();
-    // The pending timer was replaced, not doubled.
     await advance(3_000);
     expect(polls).toHaveLength(1);
   });

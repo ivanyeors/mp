@@ -18,14 +18,6 @@ import {
 
 export const runtime = 'nodejs'
 
-/**
- * Soft cut settings (ADR 0025): the knobs Staff tune in Settings → Inventory →
- * Configure → Soft body, stored as one JSON site setting. No row = the
- * defaults in lib/spatial-fillings/soft-body-settings.ts; Reset deletes the
- * row. Every x-ray host reads the stored value through `loadDimensionOverrides`,
- * so what is saved here is what every surface draws the cut with.
- */
-
 type SettingRow = { value: string; updated_at: string | null }
 
 const payloadFor = (row: SettingRow | null): SoftBodyPayload => ({
@@ -45,7 +37,6 @@ async function loadPayload(admin: SupabaseClient): Promise<SoftBodyPayload> {
   return payloadFor((data as SettingRow | null) ?? null)
 }
 
-/** The audit snapshot: the stored settings, or null when no row (the defaults). */
 const snapshot = (p: SoftBodyPayload) => (p.stored ? p.settings : null)
 
 const errorResponse = (err: unknown) =>
@@ -61,16 +52,10 @@ export async function GET() {
   }
 }
 
-// Each number's bounds come from the sliders' ranges; storing snaps it to the slider's step.
 const numbers = Object.fromEntries(
   Object.entries(SOFT_BODY_RANGES).map(([key, { min, max }]) => [key, z.number().min(min).max(max)]),
 ) as Record<keyof typeof SOFT_BODY_RANGES, z.ZodNumber>
 
-/**
- * Knobs added after the tab first shipped (the Ear Comfort Pad's, 4-11-2026).
- * A page loaded before them saves without them, and they keep their stored
- * value rather than falling back to the defaults.
- */
 const LATER_KEYS = { earFirmness: true, earWellPct: true, earWellDepthPct: true } as const
 type LaterKey = keyof typeof LATER_KEYS
 
@@ -122,7 +107,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Reset to the defaults by deleting the row. */
 export async function DELETE() {
   const denied = await requireAdmin('configure')
   if (denied) return denied

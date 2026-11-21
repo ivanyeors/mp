@@ -3,13 +3,6 @@ import { DRIVE_SLOTS, type DriveSlot } from "./google-form-csv";
 import { toOwnFittingView } from "./own-view";
 import type { FittingAnswersView, FittingFileView, FittingRecordView } from "./view";
 
-/**
- * Reading Fitting records (ADR 0042), server-only. `customer_fittings` is the
- * service role's alone; the Customer page and the timeline call these after
- * checking `customers`, and the Profile calls `listOwnFittings` with the
- * session's own Customer.
- */
-
 const COLUMNS =
   "id, customer_id, fitted_at, imported_at, created_customer, matched_by, name_on_form, email_on_form, mobile_on_form, shoulder_length_in, neck_to_back_in, head_to_back_in, neck_length_in, recommended_size, configuration_type, profile_side, sleeper_type, sleep_symptoms, blood_pressure, acid_reflux, ear_discomfort_side_sleep, bed_firmness, uses_bolster, age_group, gender, discovery_source, referred_by, serviced_by, serviced_by_staff_id, notes, drive_files, other_answers";
 
@@ -50,7 +43,6 @@ export type FittingRow = {
 
 const SLOTS: ReadonlySet<string> = new Set(Object.values(DRIVE_SLOTS));
 
-/** `drive_files` as stored, keeping each file's position: the photo route serves files by it. */
 export function driveFilesOf(value: unknown): FittingFileView[] {
   if (!Array.isArray(value)) return [];
   const out: FittingFileView[] = [];
@@ -64,7 +56,6 @@ export function driveFilesOf(value: unknown): FittingFileView[] {
   return out;
 }
 
-/** numeric comes back from PostgREST as a number or a string. */
 const num = (v: number | string | null): number | null => {
   if (v === null || v === "") return null;
   const n = Number(v);
@@ -112,10 +103,8 @@ export function toFittingView(row: FittingRow, staffNames: ReadonlyMap<string, s
   };
 }
 
-/** A Customer has a handful; past this many, the oldest are not shown. */
 export const FITTINGS_SHOWN = 50;
 
-/** A Customer's Fitting records, newest first. Throws on a read error. */
 export async function listCustomerFittings(customerId: string): Promise<FittingRecordView[]> {
   const db = supabaseAdmin();
   const { data, error } = await db
@@ -135,20 +124,10 @@ export async function listCustomerFittings(customerId: string): Promise<FittingR
   return rows.map((r) => toFittingView(r, names));
 }
 
-/**
- * The signed-in customer's own Fitting records for their Profile (ADR 0042 h),
- * newest first: every answer, no Drive file. Keyed by the Customer the session
- * is linked to, never by anything the request names. Throws on a read error.
- */
 export async function listOwnFittings(customerId: string): Promise<FittingAnswersView[]> {
   return (await listCustomerFittings(customerId)).map(toOwnFittingView);
 }
 
-/**
- * The Drive id of one file of one Customer's Fitting record, or null. The
- * photo route asks for nothing else, so it can never be used to read a Drive
- * file that is not on a Fitting record of that Customer.
- */
 export async function fittingDriveFileId(customerId: string, fittingId: string, index: number): Promise<string | null> {
   const { data, error } = await supabaseAdmin()
     .from("customer_fittings")

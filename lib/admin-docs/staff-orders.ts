@@ -1,9 +1,3 @@
-/**
- * Documentation → Selling from the Customer page (ADR 0048): how Staff make a
- * Staff order, send its Payment link, and what happens when the customer pays
- * or does not. Numbers that are rules in code (the link's 7 days, Stripe's
- * minimum) are read from the code, so the guide cannot drift from them.
- */
 import { MIN_CHARGE, PAY_LINK_LIFETIME_DAYS } from "@/lib/staff-orders/shared";
 import type { DocGuide, DocSection } from "./types";
 
@@ -20,7 +14,6 @@ const ORDERS = { label: "Orders", href: "/settings/orders" };
 const COSTINGS = { label: "Costings → Service fees", href: "/settings/costings" };
 const DISCOUNTS = { label: "Discounts", href: "/settings/discounts" };
 
-/** Pure — every section of the guide. */
 export function staffOrdersGuideSections(): DocSection[] {
   return [
     {

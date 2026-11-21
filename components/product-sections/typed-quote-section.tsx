@@ -13,13 +13,11 @@ type TypedQuoteSectionProps = {
   borderTop?: boolean;
 };
 
-/** A testimonial typed out once it scrolls into view, then who said it. */
 export function TypedQuoteSection({ content, borderTop }: TypedQuoteSectionProps) {
   return (
     <ProductSlideSection borderTop={borderTop} className="space-y-2">
       <h2 className="text-sm font-semibold text-foreground">{content.title}</h2>
       <figure className="space-y-2 pt-3">
-        {/* The typed text is animated; screen readers get the whole quote at once. */}
         <blockquote className="sr-only">{content.quote}</blockquote>
         <div aria-hidden="true">
           <TextType

@@ -2,17 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-/**
- * The one code field on a customisation (ADR 0033). A discount code is checked
- * at hold and taken off the authorised total; the Result keeps the coupon's
- * terms for every later repricing. A referral code attributes and discounts
- * nothing. A code nobody recognises never blocks the hold; a discount code that
- * cannot be used on this build does, before any Checkout exists.
- * Same in-memory harness as live-shipping.test.ts, with the code resolver and
- * the coupon check stubbed: their own rules are tested in
- * app/api/checkout/code/__tests__.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),
@@ -177,7 +166,6 @@ const draft = {
   measured_by_staff_id: null,
 };
 
-/** Flat S$10, so the arithmetic is the discount's alone. Goods are stubbed at 200. */
 const FLAT = {
   id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   slug: "standard",
@@ -188,7 +176,6 @@ const FLAT = {
   countries: ["SG"],
 };
 
-/** A partner on the Schedule's S$50 pool, taking all of it, no customer discount. */
 const partnerTerms = { pool: 50, choice: null, nextChoice: null, nextChoiceFrom: null, customerDiscount: false };
 
 const coupon = (over: Record<string, unknown> = {}) => ({
@@ -270,7 +257,6 @@ describe("POST /api/results/hold — the code field", () => {
     const res = await post({ code: "save10" });
     expect(res.status).toBe(200);
     const row = h.rows.get(ID)!;
-    // Goods 200 − 10% + flat shipping 10.
     expect(row.authorized_amount).toBe(190);
     expect(h.createHoldCheckout.mock.calls[0][0].amount).toBe(190);
     expect(row).toMatchObject({

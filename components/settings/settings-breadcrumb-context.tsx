@@ -40,7 +40,6 @@ export function useSettingsBreadcrumbDetailLabel(): string | null {
   return useContext(SettingsBreadcrumbContext)?.detailLabel ?? null;
 }
 
-/** Publish the current entity name into the settings breadcrumb trail. */
 export function useSettingsBreadcrumbDetail(label: string | null | undefined) {
   const ctx = useContext(SettingsBreadcrumbContext);
 

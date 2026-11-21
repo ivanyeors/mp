@@ -7,27 +7,12 @@ import {
 } from "@/lib/crm/customer-filters";
 import { CUSTOMER_OVERVIEW_SELECT, type CustomerOverviewColumn, type CustomerOverviewRow } from "@/lib/crm/customer-overview";
 
-/**
- * Admin customer reads shared by `GET /api/shop/customers`,
- * `GET /api/shop/customers/[id]` and the RSC settings pages that render the
- * same data on the server instead of fetching it after hydration.
- *
- * Callers are responsible for authorisation (`requireAdmin("customers")` in a
- * route handler, `requireAdminPage("customers", locale)` in a page).
- */
-
 export interface AdminCustomersListPayload {
   ok: true;
   rows: CustomerOverviewRow[];
   total: number;
   page: number;
   limit: number;
-  /**
-   * With *Ships to Singapore* or *outside Singapore* (PRD-campaign-audiences
-   * slice 05): how many more match every other filter but ship to an unknown
-   * country, so the list says who it leaves out. Null otherwise, or when that
-   * count could not be read.
-   */
   shipsToUnknown: number | null;
 }
 
@@ -35,13 +20,6 @@ export type AdminCustomersListResult =
   | AdminCustomersListPayload
   | { ok: false; error: string };
 
-/**
- * One page of the Customer overview (`admin_customer_overview`, migration
- * slice 12), filtered and sorted from the list's URL parameters
- * (lib/crm/customer-filters.ts). An invalid parameter is dropped there, and
- * search is one escaped `ilike` on `search_text`, never an `.or()` (CRM
- * slice 04; ADR 0028 (d)).
- */
 export async function listAdminCustomers(
   searchParams: URLSearchParams,
 ): Promise<AdminCustomersListResult> {
@@ -52,8 +30,6 @@ export async function listAdminCustomers(
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  // Seen through the methods the mapping uses: checking Supabase's builder
-  // against the interface structurally is too deep for the compiler.
   const base = admin
     .from("admin_customer_overview")
     .select(CUSTOMER_OVERVIEW_SELECT, { count: "exact" }) as unknown as OverviewQuery;
@@ -70,7 +46,6 @@ export async function listAdminCustomers(
 
 type CountQuery = CustomerListQuery & PromiseLike<{ count: number | null; error: { message: string } | null }>;
 
-/** The same filters with *Ships to: unknown*, counted; null without a known-country filter, or on a failed read. */
 async function countShipsToUnknown(
   admin: ReturnType<typeof supabaseAdmin>,
   filters: CustomerFilters,
@@ -95,11 +70,6 @@ export interface AdminCustomerPayload {
 
 export type AdminCustomerResult = AdminCustomerPayload | { ok: false; error: string };
 
-/**
- * One Customer for the detail page, read from `customers` itself rather than
- * the overview: the Account card reads `auth_user_id`, `account_linked_at` and
- * `account_last_seen_at` from this row.
- */
 export async function getAdminCustomer(id: string): Promise<AdminCustomerResult> {
   const admin = supabaseAdmin();
 
@@ -113,11 +83,6 @@ export async function getAdminCustomer(id: string): Promise<AdminCustomerResult>
   return { ok: true, row: data };
 }
 
-/**
- * What the detail page reads for the **Lifecycle stage** (PRD-crm-retention-loop
- * slice 03): the stage and the facts it is read from. The type is this list,
- * so dropping a column the page shows fails to compile there.
- */
 export const CUSTOMER_LIFECYCLE_COLUMNS = [
   "purchases",
   "last_purchase_at",
@@ -127,19 +92,12 @@ export const CUSTOMER_LIFECYCLE_COLUMNS = [
   "lifecycle_detail",
   "lifecycle_undated",
   "marketing_email_updated_at",
-  // PRD-campaign-audiences slice 12: the sunset rule, beside the stage.
   "unengaged",
-  // ADR 0042 (m): the latest purchase is dated by a fitting.
   "last_purchase_dated_by_fitting",
 ] as const satisfies readonly CustomerOverviewColumn[];
 
-/** The Customer's **Lifecycle stage** and what it is read from. */
 export type AdminCustomerLifecycle = Pick<CustomerOverviewRow, (typeof CUSTOMER_LIFECYCLE_COLUMNS)[number]>;
 
-/**
- * One Customer's stage, from the overview, for the detail page. Null when it
- * cannot be read: the stage is a summary, never a reason to fail the page.
- */
 export async function getAdminCustomerLifecycle(id: string): Promise<AdminCustomerLifecycle | null> {
   const { data, error } = await supabaseAdmin()
     .from("admin_customer_overview")
@@ -147,6 +105,5 @@ export async function getAdminCustomerLifecycle(id: string): Promise<AdminCustom
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
-  // A joined column list is a plain string to the client's types, so the row is typed here.
   return data as unknown as AdminCustomerLifecycle;
 }

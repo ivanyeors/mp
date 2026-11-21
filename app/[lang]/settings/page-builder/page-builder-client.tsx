@@ -43,8 +43,6 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// --- Add Section Dialog ---
-
 function AddSectionDialog({
   onAdd,
   triggerClassName,
@@ -133,22 +131,12 @@ function AddSectionDialog({
   );
 }
 
-// --- Main Page Builder ---
-
-/** The `/api/landing-sections` payload the builder mounts with. */
 export type PageBuilderInitialData = {
   ok: true;
   sections: LandingSection[];
   pending?: PendingSummary;
 };
 
-/**
- * Three panes: the section tree, Preview mode, and the inspector.
- *
- * Below `lg` the panes collapse to the tree plus a full-screen preview sheet and a
- * full-screen inspector sheet — one layout, not a second inspector, and the phone still
- * gets a preview, which is the point.
- */
 export default function PageBuilderPage({
   initialData,
 }: {
@@ -162,17 +150,9 @@ export default function PageBuilderPage({
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  /**
-   * Whether the open inspector has unsaved edits. A ref, not state: it is only read at
-   * the moment selection changes, and re-rendering the shell on every keystroke would
-   * reload the preview.
-   */
   const inspectorDirty = useRef(false);
-  // Not useIsMobile(): that breaks at 768 while the grid needs 1024, so tablets
-  // (including the 834px preset) landed in neither layout.
   const narrow = useMediaQuery("(max-width: 1023px)");
 
-  // The server already loaded the sections; every later change still refetches.
   const skipFirstFetch = useRef(initialData != null);
 
   const selected = useMemo(
@@ -202,16 +182,11 @@ export default function PageBuilderPage({
     loadSections();
   }, [loadSections]);
 
-  /** Anything that changed the draft: refresh the list and re-render the preview. */
   const afterChange = useCallback(() => {
     loadSections();
     setRefreshKey((k) => k + 1);
   }, [loadSections]);
 
-  /**
-   * Changing selection remounts the inspector and discards its unsaved edits, so ask
-   * first. `beforeunload` cannot cover this — it only fires on a real document unload.
-   */
   const selectSection = useCallback((slug: string | null) => {
     if (
       inspectorDirty.current &&
@@ -223,7 +198,6 @@ export default function PageBuilderPage({
     setSelectedSlug(slug);
   }, []);
 
-  /** For changes that replace the whole draft: drop the open inspector too. */
   const resetAndRefresh = useCallback(() => {
     inspectorDirty.current = false;
     setSelectedSlug(null);
@@ -293,7 +267,6 @@ export default function PageBuilderPage({
     }
   };
 
-  /** Persist a whole order — shared by drag and the keyboard move buttons. */
   const persistOrder = useCallback(
     async (ordered: LandingSection[]) => {
       setSections(ordered);
@@ -401,16 +374,7 @@ export default function PageBuilderPage({
         </div>
       </div>
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-        {/*
-          Close the inspector first: it is keyed on section id, which a restore or discard
-          does not change, so its local edits would survive and could be saved back over
-          the very state that was just restored.
-        */}
         <PublishBar pending={pending} onPublished={afterChange} onDiscarded={resetAndRefresh} />
-        {/*
-          Phones: one row of Preview, Add section and a ⋯ menu for History and Live site,
-          instead of two rows of buttons and a full-width Preview.
-        */}
         <PublishHistory
           pending={pending}
           onRestored={resetAndRefresh}
@@ -452,7 +416,6 @@ export default function PageBuilderPage({
     </div>
   );
 
-  // --- Narrow screens: list + full-screen preview and inspector sheets ---
   if (narrow) {
     return (
       <div className="space-y-4">
@@ -482,10 +445,6 @@ export default function PageBuilderPage({
         </Sheet>
 
         <Sheet open={selected != null} onOpenChange={(open) => !open && selectSection(null)}>
-          {/*
-            Closing unmounts the editor and its unsaved edits, so it must be deliberate:
-            an outside tap is too easy to hit while typing.
-          */}
           <SheetContent
             side="bottom"
             className="h-[85vh] overflow-y-auto"
@@ -501,7 +460,6 @@ export default function PageBuilderPage({
     );
   }
 
-  // --- Three panes ---
   return (
     <div className="space-y-4">
       {header}

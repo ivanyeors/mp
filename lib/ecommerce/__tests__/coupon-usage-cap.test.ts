@@ -3,15 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * A coupon's usage_limit is checked before payment but only incremented after
- * (ADR 0033). The increment must therefore cap atomically, or two checkouts
- * that both pass the pre-payment check redeem a single-use code twice
- * (prod-hardening slice 09). The real enforcement is one SQL statement; here we
- * prove the TS wrapper reports whether it applied, and that its not-yet-migrated
- * fallback is itself capped (the old fallback was an uncapped read-modify-write).
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb, rpc: vi.fn() }));
 
 vi.mock("@/lib/supabase/server", async () => {
@@ -41,7 +32,6 @@ describe("incrementCouponUsage: capped RPC path", () => {
 
 describe("incrementCouponUsage: fallback still enforces the cap", () => {
   beforeEach(() => {
-    // Simulate the capped RPC not being migrated yet.
     h.rpc = vi.fn(async () => ({ data: null, error: { message: "function increment_coupon_usage does not exist" } }));
   });
 

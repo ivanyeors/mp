@@ -3,13 +3,6 @@ import { act, useSyncExternalStore } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The blog search box writes ?q= to the URL as you type (300 ms after you
- * stop), and browser Back takes you out of a search again.
- */
-
-// A browser history the mocked router reads and writes: push adds an entry,
-// back drops the last one, and the page re-renders on either, as Next does.
 const nav = vi.hoisted(() => {
   let entries = ["/en-US/blog"];
   const listeners = new Set<() => void>();
@@ -117,20 +110,16 @@ describe("BlogFilters", () => {
 
     act(() => nav.back());
     wait(1000);
-    // The bug: the old effect saw searchParams change, still held "neck",
-    // and pushed ?q=neck again, so Back could never leave the search.
     expect(nav.current()).toBe("/en-US/blog");
     expect(nav.push).toHaveBeenCalledTimes(1);
     expect(input().value).toBe("");
 
-    // Forward (or a link) to a search puts it back in the box.
     act(() => nav.push("/en-US/blog?q=neck"));
     expect(input().value).toBe("neck");
   });
 
   it("keeps what is typed while the URL is still catching up with the last search", () => {
     mount();
-    // The page is server-rendered by ?q=, so the URL lands a while after the push.
     const held: string[] = [];
     nav.push.mockImplementationOnce((url: string) => void held.push(url));
     type("neck");

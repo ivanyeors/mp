@@ -12,25 +12,8 @@ import { parseShopifyCustomersCsv } from "@/lib/customer-migration/shopify-csv";
 import { applyPayload, importRows, readApplyChunk } from "@/lib/customer-migration/apply";
 import { AGREEMENT_EXPORT, AGREEMENT_SEED, AGREEMENT_SPLIT, exportCsv, type SeedCustomer } from "./fixtures";
 
-/**
- * The preview and the SQL function must agree (slice 03). `planCustomerRow`
- * forecasts; `import_shopify_customers` decides. Both run the same fixture:
- *
- *  - here, the TS preview runs AGREEMENT_EXPORT against AGREEMENT_SEED, and
- *    its row-by-row outcomes are `expected` in cases.json, beside the exact
- *    rows the server would hand the SQL function, chunk by chunk;
- *  - supabase/tests/customer-import/assert-agreement.sql seeds the same
- *    Customers, sends those chunks to the SQL function, and requires the same
- *    outcomes (scripts/check-customer-import-sql.sh).
- *
- * After changing the fixture or the plan rules, regenerate cases.json with
- *   UPDATE_SQL_CASES=1 pnpm vitest run lib/customer-migration/__tests__/sql-agreement.test.ts
- * and run the SQL check.
- */
-
 const CASES_PATH = join(process.cwd(), "supabase/tests/customer-import/cases.json");
 
-/** The seed as the preview's database read would return it. */
 function lookupFromSeed(seed: readonly SeedCustomer[]): ExistingLookup {
   const customersByEmail = new Map<string, ExistingCustomer>();
   const migratedShopifyIds = new Set<string>();
@@ -53,7 +36,6 @@ async function buildCases() {
   const text = exportCsv(AGREEMENT_EXPORT);
   const { rows } = parseShopifyCustomersCsv(text);
 
-  // What the browser sends, read back the way the server reads it.
   const payload = JSON.parse(JSON.stringify(applyPayload(rows))) as unknown[];
   const chunks = [payload.slice(0, AGREEMENT_SPLIT), payload.slice(AGREEMENT_SPLIT)].map((chunk, k) => {
     const read = readApplyChunk(chunk, k === 0 ? 0 : AGREEMENT_SPLIT);
@@ -61,7 +43,6 @@ async function buildCases() {
     return importRows(read.rows);
   });
 
-  // The preview, as the page runs it, against the seed.
   const lookup = lookupFromSeed(AGREEMENT_SEED);
   const run = await runShopifyPreview(text, async (chunk) => {
     const read = readPreviewChunk(JSON.parse(JSON.stringify(chunk)));

@@ -5,10 +5,6 @@ import BlogEditorPage from "./blog-editor-client";
 
 export const runtime = "nodejs";
 
-/**
- * The post being edited is read on the server (same row `/api/blogs/[id]`
- * returns) so the editor mounts populated. `new` has nothing to load.
- */
 export default async function BlogEditorRoute({
   params,
 }: {

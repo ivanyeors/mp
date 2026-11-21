@@ -6,7 +6,7 @@ export type Messages = {
     addToCart: string;
     learnMore: string;
     learnHow: string;
-    fromPricePrefix: string; // e.g. "From"
+    fromPricePrefix: string;
     shopNow: string;
   };
   header: {
@@ -44,7 +44,7 @@ export type Messages = {
         premium: { title: string; description: string; badge: string };
       };
       buttonCustomise: string;
-      fromPricePrefix: string; // section-specific if desired
+      fromPricePrefix: string;
     };
     neckPains: {
       title: string;
@@ -83,12 +83,10 @@ export type Messages = {
       name: string;
       role: string;
     };
-    /** The Explore section: a still of the Explore scene that leads there. */
     explore: {
       title: string;
       body: string;
       cta: string;
-      /** Alt text for the default still of the scene. */
       alt: string;
     };
     stories: {
@@ -96,21 +94,16 @@ export type Messages = {
       subtitle: string;
     };
   };
-  /** TikTok videos section and the shared TikTok player (components/tiktok). */
   tiktok: {
     title: string;
     subtitle: string;
     playVideo: string;
     pauseScrolling: string;
     resumeScrolling: string;
-    /** "{current} of {total}" */
     position: string;
-    /** "TikTok video {n}" */
     untitled: string;
-    /** The floating player's spoken name. */
     player: string;
     closePlayer: string;
-    /** On the card whose video is playing. */
     nowPlaying: string;
   };
   slides: {
@@ -313,34 +306,23 @@ export type Messages = {
         bookAnother: string;
         errorSlotTaken: string;
         errorGeneric: string;
-        /** The language the guest would like their visit in; Staff read it on the calendar event. */
         languageLabel: string;
         languageEnglish: string;
         languageMandarin: string;
         languageNone: string;
         languageHint: string;
-        /**
-         * The marketing email box, ticked by default (ADR 0039): the same words
-         * as `MARKETING_BOX_LABEL` at checkout.
-         */
         marketingEmail: string;
-        /** Customisation booking: the Measurement service fees, `{premium}` / `{basic}` (ADR 0024). */
         measurementFeeNote: string;
       };
-      /** Signed-in re-adjustment booking (ADR 0024). */
       readjust: {
         signInTitle: string;
         signInBody: string;
         signInCta: string;
         pickTitle: string;
-        /** `{order}` order number, `{date}` purchase date. */
         orderLine: string;
-        /** `{date}` last day of the complimentary window. */
         badgeFree: string;
-        /** `{fee}`. */
         badgeFee: string;
         badgeFreeUsed: string;
-        /** `{fee}`, `{date}` the day the window closed. */
         badgeWindowEnded: string;
         notListed: string;
         notListedHint: string;
@@ -356,7 +338,6 @@ export type Messages = {
         switchAccount: string;
         priceLabel: string;
         complimentary: string;
-        /** `{fee}`. */
         payAndBook: string;
         redirecting: string;
         emailLocked: string;
@@ -365,7 +346,6 @@ export type Messages = {
         confirmedFree: string;
         confirmingTitle: string;
         confirmingSlow: string;
-        /** `{fee}`, `{email}`. */
         confirmedPaid: string;
         rescheduleTitle: string;
         rescheduleBody: string;
@@ -406,41 +386,39 @@ export type Messages = {
       discount: string;
       shipping: string;
       shippingAtCheckout: string;
-      freeShippingAway: string; // e.g. "{amount} away from free shipping"
+      freeShippingAway: string;
       freeShippingQualified: string;
       tax: string;
       total: string;
       coupon: string;
       applyCoupon: string;
       removeCoupon: string;
-      couponApplied: string; // e.g. 'Discount code "{code}" active'
-      referralApplied: string; // e.g. 'Referral code "{code}" active'
+      couponApplied: string;
+      referralApplied: string;
       remove: string;
       customizationAddon: string;
       closeCart: string;
     };
-    /** The delivery estimator (product page, landing section, shipping policy). */
     delivery: {
       title: string;
       subtitle: string;
       country: string;
       postalCode: string;
       postalPlaceholder: string;
-      /** Placeholder where the country has no postal codes (Hong Kong, the UAE…). */
       postalOptional: string;
       check: string;
       checking: string;
       free: string;
-      freeOver: string; // e.g. "Free shipping over {amount}"
-      via: string; // e.g. "via {courier}"
+      freeOver: string;
+      via: string;
       noOptions: string;
       error: string;
       note: string;
       noteCart: string;
       sameDay: string;
-      day: string; // e.g. "{n} business day"
-      days: string; // e.g. "{n} business days"
-      range: string; // e.g. "{min}–{max} business days"
+      day: string;
+      days: string;
+      range: string;
     };
     checkout: {
       title: string;
@@ -525,7 +503,6 @@ export type Messages = {
       apiActive: string;
     };
   };
-  /** The Payment link page of a Staff order (ADR 0048). */
   pay: {
     title: string;
     orderNumber: string;

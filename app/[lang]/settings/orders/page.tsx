@@ -6,12 +6,6 @@ import SettingsOrdersPage, { type OrdersInitialData } from "./orders-client";
 
 export const runtime = "nodejs";
 
-/**
- * Server shell for the Orders admin page. Loads the dashboard summary and the
- * first page of orders (the client's default filter state: page 1, limit 20,
- * no status/date filters) so the table paints with the HTML instead of after a
- * post-hydration fetch. Later filter/paging fetches stay on the client.
- */
 export default async function OrdersPage({
   params,
 }: {
@@ -24,13 +18,11 @@ export default async function OrdersPage({
 
   const [dashboard, list] = await Promise.all([
     loadOrdersDashboard({}),
-    // Mirrors the client's first-mount request: page 1, LIMIT 20, no filters.
     listAdminOrders({ page: "1", limit: "20" }),
   ]);
 
   const initialData: OrdersInitialData = {
     dashboard: dashboard.status === 200 ? dashboard.body : null,
-    // The lib types rows structurally; the client narrows them to Order rows.
     list: list.status === 200 ? (list.body as unknown as OrdersInitialData["list"]) : null,
   };
 

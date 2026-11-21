@@ -81,9 +81,9 @@ function pageUrl(path) {
   if (/^https?:\/\//.test(path)) return path;
   const p = path.startsWith("/") ? path : `/${path}`;
   const first = p.split("/")[1]?.split("?")[0];
-  // /api and /auth (the sign-in callback and confirm page) have no locale, as in proxy.ts.
+  // /api, /auth (the sign-in callback and confirm page) and /dev (the email preview) have no locale, as in proxy.ts.
   const localized =
-    LOCALES.includes(first) || p.startsWith("/api/") || p.startsWith("/auth/") ? p : `/en-US${p === "/" ? "" : p}`;
+    LOCALES.includes(first) || /^\/(api|auth|dev)\//.test(p) ? p : `/en-US${p === "/" ? "" : p}`;
   return appUrl + localized;
 }
 

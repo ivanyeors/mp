@@ -1,11 +1,3 @@
-/**
- * Slice 01 self-check — Affluent Pain home stack (en-US) + copy-fit bands.
- * Run: npx tsx lib/i18n/marketing-copy-slice-01.check.ts
- *
- * CMS note: prod `landing_sections.content` may still override hero title/subtitle
- * and Size Matters title/description until re-seeded; seoAnswer + pick blurbs
- * always come from i18n.
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,7 +11,6 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Wiring: empty CMS content falls back to i18n; CTAs + mobile clamp intact ---
 const heroSrc = read("components/sections/landing/hero-section.tsx");
 assert.match(heroSrc, /c\.titlePrefix \?\? m\.home\.hero\.titlePrefix/);
 assert.match(heroSrc, /c\.titleEmphasis \?\? m\.home\.hero\.titleEmphasis/);
@@ -48,7 +39,6 @@ assert.doesNotMatch(h1, /gift/i, "H1 must not lead with gift framing");
 assert.match(h1, /sleep right/i);
 assert.match(h1, /don.t sleep tight/i);
 
-// SEM intents live in the Answer lede when H1 is the brand tagline. Science of Sleep is retired.
 assert.doesNotMatch(hero.seoAnswer, /Science of Sleep/i);
 assert.match(hero.seoAnswer, /Singapore/i);
 assert.match(hero.seoAnswer, /cervical/i);
@@ -85,7 +75,6 @@ assert.match(premium, /consultative/i);
 assert.match(premium, /cervical/i);
 assert.match(premium, /FibreCool/i);
 
-// zh-CN tagline kept; lede and pick blurbs follow the en-US meaning
 assert.match(zhCN.home.hero.titlePrefix, /送上好眠/);
 assert.match(zhCN.home.hero.seoAnswer, /新加坡/);
 assert.match(zhCN.home.pickYourMpillow.products.premium.description, /海外/);

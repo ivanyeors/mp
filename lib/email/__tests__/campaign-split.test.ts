@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -11,19 +10,6 @@ import { linesOn, sideBySide, stacked } from "./column-layout";
 import { EMAIL_BLOCK_SAMPLE_IMAGES, EMAIL_BLOCK_SAMPLES, SAMPLE_CUTOUT_ASSET, SAMPLE_PHOTO_ASSET } from "../__fixtures__/samples";
 import { CONTENT_PLACEHOLDERS, emptyBlock, type CampaignContent, type EmailBlock } from "@/lib/email-campaigns/content";
 import { CAMPAIGN_PLACEHOLDERS } from "@/lib/email-campaigns/rules";
-
-/**
- * Image + text (PRD-campaign-email-editor slice 06): an image beside a
- * heading, a few lines and a button, in two columns that stack on a phone,
- * the image first whichever side it is on, by width alone, and that classic
- * Outlook keeps side by side in its ghost table. The column primitive under
- * it is the one two buttons side by side already use.
- *
- * Where the columns land is worked out from the shell's own numbers: the card
- * is 600px on a computer, and on a screen 620px wide or less it fills the
- * screen with smaller padding. The owner's inbox matrix (slice 12) checks the
- * real clients.
- */
 
 const ORIGIN = "https://custom.mpillow.com";
 const UNSUB = `${ORIGIN}/en-US/unsubscribe?u=0f8fad5b-d9cb-469f-a165-70867728950e&t=abc`;
@@ -44,23 +30,18 @@ const send = (content: CampaignContent, over: Partial<CampaignBlocksEmailData> =
 const parse = (html: string) => new DOMParser().parseFromString(html, "text/html");
 const bytes = (html: string) => new TextEncoder().encode(html).length;
 
-/** The document as classic Outlook reads it: its `[if mso]` copy shown, everything marked `[if !mso]` gone. */
 const outlook = (html: string) =>
   parse(html.replace(/<!--\[if !mso\]><!-- -->[\s\S]*?<!--<!\[endif\]-->/g, "").replace(/<!--\[if mso\]>|<!\[endif\]-->/g, ""));
 
-/** A block's row: the element that names it. */
 const row = (html: string, id: string) => parse(html).querySelector<HTMLElement>(`[data-block-id="${id}"]`)!;
 
-/** A block's row as the email sends it, byte for byte: from its opening `div` to its own close. */
 function sentRow(html: string, id: string): string {
   const at = html.indexOf(`<div data-block-id="${id}">`);
   return html.slice(at, html.indexOf("\n</div>", at) + "\n</div>".length);
 }
 
-/** A row's columns, as every reader but classic Outlook lays them out: the inline-block divs in its cell. */
 const columnsOf = (rowEl: Element) => [...rowEl.querySelectorAll<HTMLElement>(":scope > table > tbody > tr > td > div")];
 
-// The shell's <style>, for what it does on a phone.
 const SHELL_STYLE = parse(renderEmailShell({ bodyHtml: "" })).querySelector("style")!.textContent!;
 
 describe("the column primitive", () => {
@@ -71,7 +52,6 @@ describe("the column primitive", () => {
     for (const c of cols) {
       expect(c.getAttribute("style")).toBe("display:inline-block;width:100%;max-width:240px;vertical-align:top");
     }
-    // The wrapper sets no size of its own for words: font-size:0 only closes the gaps between columns.
     expect(parse(html).querySelector("td")!.getAttribute("style")).toBe("text-align:center;font-size:0");
     const ghost = outlook(html).querySelectorAll("table table td");
     expect([...ghost].map((td) => [td.getAttribute("width"), td.getAttribute("valign"), td.textContent])).toEqual([
@@ -84,7 +64,6 @@ describe("the column primitive", () => {
     const html = columns(["<p>A</p>", "<p>B</p>", "<p>C</p>"], { stackBelow: 480 });
     const cols = columnsOf(parse(html).body);
     for (const c of cols) {
-      // Each stackBelow / n wide at stackBelow and over, and the whole row below it (calc() drops to the whole row).
       expect(c.getAttribute("style")).toBe("display:inline-block;width:100%;min-width:160px;max-width:100%;vertical-align:top;width:calc((480px - 100%) * 480)");
     }
     expect(linesOn(cols, 1280)).toEqual([3]);
@@ -147,16 +126,13 @@ describe("an image + text block", () => {
     for (const id of ["left", "right"]) {
       const cols = columnsOf(row(sample.html, id));
       expect(cols).toHaveLength(2);
-      // The 600px card on a computer, and a screen 600px wide.
       expect(sideBySide(cols, 1280)).toBe(true);
       expect(sideBySide(cols, 600)).toBe(true);
-      // A phone: one column, in the row's order, so the image is on top.
       expect(stacked(cols, 375)).toBe(true);
       expect(stacked(cols, 479)).toBe(true);
       expect(cols[0].querySelector("img")).not.toBeNull();
       expect(cols[1].querySelector("h2")).not.toBeNull();
     }
-    // Side by side, the right one reads right to left: its image on the right.
     expect(row(sample.html, "left").querySelector("td")!.hasAttribute("dir")).toBe(false);
     expect(row(sample.html, "right").querySelector("td")!.getAttribute("dir")).toBe("rtl");
   });
@@ -173,7 +149,6 @@ describe("an image + text block", () => {
       expect(cells.map((td) => td.getAttribute("width"))).toEqual(["50%", "50%"]);
       expect(cells[0].querySelector("img")).not.toBeNull();
       expect(cells[1].querySelector("h2")).not.toBeNull();
-      // Its button is a button there too.
       if (id === "left") expect(cells[1].innerHTML).toContain("v:roundrect");
     }
   });
@@ -195,7 +170,6 @@ describe("an image + text block", () => {
     const beside = columnsOf(row(sample.html, "left"))[1].querySelector("p")!.getAttribute("style");
     expect(beside).toBe(body);
     expect(beside).toContain(`font-size:${TYPE.body.size}px;line-height:${TYPE.body.lh}px`);
-    // Nothing in the shell's <style> resizes words on a phone, so stacking never shrinks them.
     expect(SHELL_STYLE).not.toMatch(/font-size|line-height/);
   });
 
@@ -212,14 +186,11 @@ describe("an image + text block", () => {
       ],
     };
     expect(bytes(sentRow(send(one(goal)).html, "row"))).toBeLessThan(3 * 1024);
-    // A button adds the Outlook-safe one every email uses (its VML and its
-    // table, about 1.5 KB): the row around it stays under 3 KB (slice 06 criterion).
     const withButton = { ...goal, button: { label: "Shop the covers", target: "shop", style: "primary" } } as EmailBlock;
     const cta = button({ href: SHOP, label: "Shop the covers", align: "left", maxWidth: STACK_BELOW / 2 - LAYOUT.gutter });
     const sent = sentRow(send(one(withButton)).html, "row");
     expect(sent).toContain(cta);
     expect(bytes(sent) - bytes(cta)).toBeLessThan(3 * 1024);
-    // Six rows, each with its button, are a third of the way to the clip, the shell included.
     const six = send(one(...Array.from({ length: 6 }, (_, i) => ({ ...withButton, id: `row-${i}` }))));
     expect(bytes(six.html)).toBeLessThan(102 * 1024 * 0.4);
   });

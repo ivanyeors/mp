@@ -5,12 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { settle, until } from "@/components/block-editor/__tests__/dom";
 
-/**
- * The booking form's location picker lists the bookable Locations the server
- * read (`selectBookableLocations`, as `GET /api/locations` answers), and the
- * picker opens with them on the first open, with no request of its own.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/appointments",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -28,7 +22,6 @@ let root: Root;
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  // Answers as the route does; slots are not under test.
   fetchMock = vi.fn(async (url: string) => ({
     ok: true,
     json: async () => (String(url).startsWith("/api/locations") ? { ok: true, locations: LOCATIONS } : { ok: true, slots: [] }),
@@ -45,7 +38,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Opens the picker as a keyboard user does; resolves once its menu is open, with its items. */
 async function openPicker() {
   const trigger = document.getElementById("booking-location")!;
   await act(async () => {

@@ -1,22 +1,5 @@
 "use client";
 
-/**
- * All three cuts at once — left, center and right side by side — where a host
- * has the room (the Result detail page). Three `XrayCrossSection`s, each
- * pinned to one Section with its tabs off: every behaviour (the drawing, the
- * drag, the keys, the fit) stays in that one component, so this is a layout,
- * never a second cross-section.
- *
- * Each cut still edits. A tap on a column adds a filling there. A pouch dragged within a panel lands where it is let
- * go; dragged onto a sibling panel it moves to that Section, at home in the
- * same column — the drop a Section tab takes on the single cut. One readout
- * line serves all three, so the panels never jump as the pointer moves.
- *
- * Wide (three fit at a readable size): one row. Narrower: stacked, at the full
- * layout while there is room for it. Phones: stacked under one "Cross-sections"
- * disclosure, open by default as the single cut's is; the person can collapse it.
- */
-
 import { useCallback, useMemo, useState } from "react";
 
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -31,9 +14,7 @@ import type { SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings
 import { cn } from "@/lib/utils";
 import { CrossSectionDisclosure, XrayCrossSection, type CutReadoutValue } from "./xray-cross-section";
 
-/** Three cuts in a row from here (px of the strip): each at ~280 px, where the compact layout's type stays readable. */
 const ROW_MIN_PX = 840;
-/** Stacked below this, a cut draws the compact layout (larger type in a narrow view). */
 const FULL_LAYOUT_MIN_PX = 560;
 
 const TONE_CLASS: Record<CutReadoutValue["tone"], string> = {
@@ -60,14 +41,11 @@ export function XrayCrossSectionStrip({
   className,
 }: {
   fit: PillowFit;
-  /** The Section the host is working in (the x-ray's dive): its panel is ringed. */
   active?: Section | null;
-  /** The host's cut setter. A move into another Section hands it that Section, so the ring follows the pouch. */
   onActiveChange?: (cut: Cut) => void;
   itemSubtypes: ReadonlyMap<number, string | null>;
   itemSizes?: ReadonlyMap<number, string | null>;
   itemDims?: ReadonlyMap<number, ResolvedDims>;
-  /** With `onPlacementsChange` and `onActiveChange`, every cut is an editor; without, all three are read-only. */
   placements?: PillowPlacement[];
   onPlacementsChange?: (next: PillowPlacement[]) => void;
   items?: FillingItem[];
@@ -101,7 +79,6 @@ export function XrayCrossSectionStrip({
   );
   const dropTarget = SECTIONS.map((s) => dropInto[s]).find(Boolean) ?? null;
   const readout = SECTIONS.map((s) => readouts[s]).find(Boolean) ?? null;
-  // A tap on a column adds a filling there (each cut's own menu), once there are Items to pick from.
   const addHint = editable && items?.length ? (isMobile ? "Tap Front, Middle or Back to add a filling. " : "Click a column to add a filling. ") : "";
   const idleHint = editable
     ? isMobile
@@ -134,7 +111,6 @@ export function XrayCrossSectionStrip({
       {SECTIONS.map((section) => (
         <div
           key={section}
-          // A sibling panel is a drop target, as a Section tab is on the single cut.
           data-drop-section={section}
           data-xray-strip-panel={section}
           className={cn(

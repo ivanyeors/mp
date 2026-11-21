@@ -2,13 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * PRD-crm-retention-loop slice 10: the storefront card's answers. No contact
- * details, checked against the step's answers and the page it was asked on,
- * JSON only, limited per address, and never a way to write a decline's answer.
- */
-
-// The shared limiter's store (`rate_limit_hit`), counted here per bucket and key.
 const h = vi.hoisted(() => ({ db: {} as FakeDb, hits: new Map<string, number>() }));
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
@@ -76,7 +69,6 @@ describe("POST /api/analytics/drop-off-reason", () => {
     expect(h.db.drop_off_reasons ?? []).toHaveLength(0);
   });
 
-  // A cross-site form can post text/plain without asking first; JSON needs a preflight it never gets.
   it("takes JSON only, and nothing oversized", async () => {
     expect((await post(answer, { type: "text/plain" })).status).toBe(415);
     expect((await post({ ...answer, reason: "other", text: "x".repeat(5000) })).status).toBe(413);

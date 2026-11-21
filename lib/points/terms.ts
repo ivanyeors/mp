@@ -1,9 +1,3 @@
-/**
- * The points terms (PRD-loyalty-points slice 08; ADR 0030), as the page at
- * /[lang]/points states them. Pure, and built from the live settings, so the
- * numbers on the page are the ones the ledger, checkout and the daily job use.
- * English, like every template today. Counsel reviews this copy before launch.
- */
 import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import type { PointsSettings } from "./settings";
 import { stepEndLabel, type WelcomeStep } from "./welcome";
@@ -14,17 +8,11 @@ export interface PointsTermsSection {
   paragraphs: string[];
 }
 
-/** When the terms last changed. Changes come with 30 days' notice (the last section). */
 export const POINTS_TERMS_UPDATED = "17 November 2026";
 
 const share = (s: number) => (s === 0.5 ? "half" : `${Math.round(s * 100)}%`);
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 
-/**
- * Pure — every rule, in plain words, with the numbers from `s`. `welcome` is
- * the Welcome bonus ladder (lib/points/welcome.ts); with none, the terms say
- * nothing about it.
- */
 export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<WelcomeStep, "until" | "points" | "allocation">[] = []): PointsTermsSection[] {
   const min = formatDollarsShort(pointsToDollars(s.minRedeem));
   const bonus = s.claimBonus > 0 ? `${formatPointsCount(s.claimBonus)} (${formatDollarsShort(pointsToDollars(s.claimBonus))})` : null;
@@ -67,7 +55,6 @@ export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<We
           },
         ]
       : []),
-    // ADR 0030, amendment of 2026-11-08: Past-purchase points.
     {
       heading: "Points for past purchases",
       paragraphs: [
@@ -84,8 +71,6 @@ export function pointsTermsSections(s: PointsSettings, welcome: readonly Pick<We
           },
         ]
       : []),
-    // ADR 0030, amendment of 2026-11-17: the Welcome bonus. The Explore page's
-    // flowers are an Easter egg and are not mentioned (owner, 2026-11-17; decision 22).
     ...(welcome.length
       ? [
           {

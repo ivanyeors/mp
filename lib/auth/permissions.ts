@@ -1,16 +1,3 @@
-/**
- * Admin RBAC permission catalog and role→permission matrix (ADR 0023).
- *
- * The catalog is the set of things the code can check: one key per Admin Panel
- * page, plus each Telegram action. A guard naming a key that is not here fails
- * to compile, and the sidebar reads each page's key from here by href, so a
- * page cannot be listed under one key and guarded under another.
- *
- * Which roles hold which keys is data: `admin_roles.permissions`, edited on
- * Users & permissions → Roles and read per request by `getAdminContext`.
- * `ROLE_PERMISSIONS` below is only the seed those rows started from.
- */
-
 export type PermissionSurface = "admin-panel" | "telegram";
 
 export type PermissionGroup =
@@ -28,10 +15,8 @@ type CatalogEntry = {
   readonly key: string;
   readonly label: string;
   readonly group: PermissionGroup;
-  /** The sidebar page this key opens. Omitted for a tab of another page and for Telegram actions. */
   readonly href?: string;
   readonly surface: PermissionSurface;
-  /** Keys this page cannot work without (it calls their APIs); ticked with it. */
   readonly requires?: readonly string[];
 };
 
@@ -39,23 +24,15 @@ export const PERMISSION_CATALOG = [
   { key: "api-configs", label: "API configs", group: "General", href: "/settings/general", surface: "admin-panel" },
   { key: "appointments", label: "Appointments", group: "General", href: "/settings/appointments", surface: "admin-panel" },
   { key: "users", label: "Users & permissions", group: "General", href: "/settings/users", surface: "admin-panel" },
-  // How the platform works, in plain words: Owner and Admin, and any role the owner ticks.
   { key: "docs", label: "Documentation", group: "General", href: "/settings/docs", surface: "admin-panel" },
 
-  // The customer loop, ordered as the sidebar's CRM group (PRD-crm-retention-loop).
   { key: "customers", label: "Customers", group: "CRM", href: "/settings/customers", surface: "admin-panel" },
-  // Seeing the Customers page is `customers`; every change on it is this key (CRM slice 10).
   { key: "customers-edit", label: "Customers: make changes (Customers page)", group: "CRM", surface: "admin-panel", requires: ["customers"] },
-  // Importing is a change, so it sits on `customers-edit` (migration slice 02, CRM slice 10).
   { key: "customer-import", label: "Customer import (Customers page)", group: "CRM", surface: "admin-panel", requires: ["customers", "customers-edit"] },
   { key: "results", label: "Results", group: "CRM", href: "/settings/results", surface: "admin-panel" },
   { key: "orders", label: "Orders", group: "CRM", href: "/settings/orders", surface: "admin-panel" },
   { key: "returns", label: "Returns / RMA", group: "CRM", href: "/settings/rma", surface: "admin-panel" },
-  // Sending marketing email to the customer list (PRD-email-marketing). Its own key, held by
-  // Owner and Admin only, as `customer-import` is: Manager and Staff hold `customers`.
-  // Its image blocks choose from the Media Library's picker (campaign email editor slice 05).
   { key: "campaigns", label: "Email campaigns", group: "CRM", href: "/settings/campaigns", surface: "admin-panel", requires: ["media"] },
-  // The words of every email the platform sends (PRD-email-templates): Owner and Admin only.
   { key: "email-templates", label: "Email templates", group: "CRM", href: "/settings/email-templates", surface: "admin-panel" },
 
   { key: "inventory", label: "Inventory", group: "Inventory", href: "/settings/inventory", surface: "admin-panel" },
@@ -86,7 +63,6 @@ export const PERMISSION_CATALOG = [
 
   { key: "telegram.google-review-reply", label: "Reply to Google reviews", group: "Telegram", surface: "telegram" },
   { key: "telegram.shop-review-moderate", label: "Moderate shop reviews", group: "Telegram", surface: "telegram" },
-  // Our public reply under a shop review: speaks for the business, so not part of moderating.
   { key: "telegram.shop-review-reply", label: "Reply to shop reviews", group: "Telegram", surface: "telegram" },
   { key: "telegram.social-inbox-reply", label: "Answer customer messages", group: "Telegram", surface: "telegram" },
 ] as const satisfies readonly CatalogEntry[];
@@ -121,14 +97,6 @@ const KEY_BY_HREF = new Map<string, Permission>(
   ),
 );
 
-/**
- * The permission a sidebar page needs, or undefined for a page open to any Staff (General).
- *
- * A page's own sub-route with no catalog entry of its own (Costings → Service fees at
- * `/settings/costings/services`) is guarded by that page: the longest catalog href that
- * is a whole-segment prefix wins, so an exact entry (`/settings/inventory/configure` →
- * `configure`) always beats its parent (`/settings/inventory` → `inventory`).
- */
 export function permissionForHref(href: string): Permission | undefined {
   const exact = KEY_BY_HREF.get(href);
   if (exact) return exact;
@@ -141,17 +109,12 @@ export function permissionForHref(href: string): Permission | undefined {
   return best?.key;
 }
 
-/**
- * The page label for a `?denied=<key>` value, or null when it is not an
- * Admin Panel page key (so a crafted value renders nothing).
- */
 export function deniedPageLabel(value: string | null | undefined): string | null {
   if (!isPermission(value)) return null;
   const entry = permissionEntry(value);
   return entry.surface === "admin-panel" ? entry.label : null;
 }
 
-/** Close a set under `requires`, so ticking a page also ticks what it calls. */
 export function applyRequires(keys: Iterable<Permission>): Set<Permission> {
   const out = new Set<Permission>();
   const visit = (k: Permission) => {
@@ -169,42 +132,22 @@ export function isSubset(keys: Iterable<Permission>, of: Iterable<Permission>): 
   return true;
 }
 
-/** What a role row stores: built-in roles grant every key, custom roles list theirs. */
 export type RoleGrant = { readonly grants_all: boolean; readonly permissions: readonly string[] | null };
 
-/**
- * The keys a role row grants. `grants_all` means every catalog key, including
- * ones added after the role was saved; a stored key the catalog no longer has
- * is ignored, so retiring a page never breaks a role.
- */
 export function permissionsForRoleRow(role: RoleGrant): ReadonlySet<Permission> {
   if (role.grants_all) return new Set(ADMIN_PERMISSIONS);
   return new Set((role.permissions ?? []).filter(isPermission));
 }
 
-/** Whether a resolved Member (see `getAdminContext`) holds `permission`. */
 export function hasPermission(ctx: { readonly permissions: ReadonlySet<Permission> }, permission: Permission): boolean {
   return ctx.permissions.has(permission);
 }
 
-/**
- * Legacy role names (the `admin_users.role` text column, dropped in slice 11).
- * Nothing reads them at runtime any more; they name the seed below.
- */
 export const ADMIN_ROLES = ["owner", "admin", "manager", "staff", "viewer"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 const ALL: Permission[] = [...ADMIN_PERMISSIONS];
 
-/**
- * The code matrix the `admin_roles` rows were seeded from
- * (`supabase/migrations/20261004100000_admin_roles.sql`; the old `staff` role
- * is seeded as Fulfilment), plus the keys later data migrations gave them
- * (`20261020102000_customers_edit_permission.sql`: `customers-edit` to every
- * role holding `customers`). Not read at runtime: a test keeps the seed, the
- * data migrations and this list equal, and `permissions.test.ts` proves it is
- * the pre-split matrix with every coarse key expanded (no gain, no loss).
- */
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   owner: ALL,
   admin: ALL,
@@ -251,9 +194,6 @@ export function roleHasPermission(role: AdminRole, permission: Permission): bool
   return permissionsForRole(role).includes(permission);
 }
 
-/**
- * Parse and normalize the first-admin bootstrap allowlist from an env value.
- */
 export function parseBootstrapEmails(raw: string | undefined | null): string[] {
   if (!raw) return [];
   return raw

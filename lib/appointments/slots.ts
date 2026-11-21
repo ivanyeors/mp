@@ -1,27 +1,22 @@
 import { minutesOf, type AppointmentSettings } from "./settings";
 
-/** Busy interval in UTC ms. */
 export type BusyInterval = { startMs: number; endMs: number };
 
 export type SlotOffer = {
-  /** ISO start (UTC). */
   startIso: string;
-  /** ISO end (UTC). */
   endIso: string;
-  /** Stable id for WhatsApp list reply (slot_<startIso>). */
   id: string;
 };
 
 const SGT_OFFSET_MS = 8 * 60 * 60 * 1000;
 
-/** Wall-clock parts in Asia/Singapore (no DST). */
 export function sgtParts(ms: number): {
   y: number;
-  m: number; // 1–12
+  m: number;
   d: number;
   hour: number;
   minute: number;
-  dow: number; // 0=Sun
+  dow: number;
 } {
   const sgt = new Date(ms + SGT_OFFSET_MS);
   return {
@@ -34,7 +29,6 @@ export function sgtParts(ms: number): {
   };
 }
 
-/** Build UTC ms for a Singapore local wall time. */
 export function sgtLocalToUtcMs(
   y: number,
   m: number,
@@ -79,16 +73,8 @@ export function blockedRangesToBusy(
     .filter((r) => Number.isFinite(r.startMs) && Number.isFinite(r.endMs) && r.startMs < r.endMs);
 }
 
-/** SGT calendar day. */
 export type SgtDay = { y: number; m: number; d: number };
 
-/**
- * All free start times for ONE SGT day. Slots are carved inside each of that
- * weekday's availability windows, stepping by the appointment duration from
- * the window start (a slot must end within its window — Google's schedule
- * rule), then filtered against busy intervals, admin blocks and the past.
- * Pure: pass `now` for the past-slot cutoff (defaults to real clock).
- */
 export function listDaySlots(
   busy: BusyInterval[],
   settings: AppointmentSettings,
@@ -126,16 +112,8 @@ export function listDaySlots(
   return out;
 }
 
-/** How far ahead a booking may start. The date picker has no upper bound. */
 const MAX_BOOKING_AHEAD_MS = 366 * 24 * 60 * 60 * 1000;
 
-/**
- * Is [startIso, endIso) a slot {@link listDaySlots} would offer: on the
- * availability grid, exactly one appointment long, in the future, outside the
- * blocked ranges and within a year? Calendar conflicts are `isSlotFree`'s job;
- * this refuses times no slot picker could have produced, such as one booking
- * spanning a month, which would otherwise block the calendar.
- */
 export function isOfferableSlot(
   startIso: string,
   endIso: string,
@@ -152,25 +130,12 @@ export function isOfferableSlot(
   );
 }
 
-/** A nearby day worth offering when the picked one is full. */
 export type DaySuggestion = { date: string; count: number };
 
-/** SGT calendar day as `YYYY-MM-DD`. */
 export function formatSgtDay(day: SgtDay): string {
   return `${day.y}-${String(day.m).padStart(2, "0")}-${String(day.d).padStart(2, "0")}`;
 }
 
-/**
- * The earliest days with room, for a guest whose chosen date has none. The
- * scan is rooted at today and runs to `settings.slotLookaheadDays` — never at
- * the date the guest picked, so suggestions stay inside the same booking
- * horizon the rest of the system offers and can point at an *earlier* day than
- * a far-off pick. Days with at least `minSlots` free starts win; when no day
- * reaches that (a long appointment duration can put it out of reach) any day
- * with a single opening is offered rather than nothing.
- * Pure: `now` is both the scan root and the past-slot cutoff, and `busy` must
- * already span the whole scan.
- */
 export function suggestNextDays(
   busy: BusyInterval[],
   settings: AppointmentSettings,
@@ -191,11 +156,6 @@ export function suggestNextDays(
   return roomy.length ? roomy : any;
 }
 
-/**
- * Carve up to `settings.slotOfferCount` free starts from freeBusy busy intervals.
- * Rules: per-weekday availability windows, durationMinutes, lookahead.
- * Walks SGT days from today and stops once enough slots are collected.
- */
 export function offerSlots(
   busy: BusyInterval[],
   settings: AppointmentSettings,
@@ -218,26 +178,18 @@ export function offerSlots(
 export type EventGuest = {
   startIso: string;
   endIso: string;
-  /** Appointment type summary, e.g. "Jane - Mpillow Customisation". */
   summary: string;
-  /** Picked location's street address; stamped into the GCal `location` field. */
   locationAddress: string;
-  /** Picked Location row id; stamped into private extended properties so the
-   * admin calendar can resolve the Location without matching address text. */
   locationId?: string;
   guestName: string;
   phone: string;
   email?: string;
-  /** Extra description lines Staff read at the visit (a re-adjustment's pillow and fee). */
   notes?: string[];
-  /** The Re-adjustment booking behind this event (ADR 0024); private extended property. */
   readjustmentBookingId?: string;
 };
 
-/** Key under `extendedProperties.private` carrying the Location row id. */
 export const LOCATION_ID_PROP = "mpLocationId";
 
-/** Key under `extendedProperties.private` carrying a Re-adjustment booking id. */
 export const READJUSTMENT_BOOKING_PROP = "mpReadjustmentBookingId";
 
 export type EventInsertBody = {
@@ -250,10 +202,6 @@ export type EventInsertBody = {
   extendedProperties?: { private: Record<string, string> };
 };
 
-/**
- * Pure builder for the Google `events.insert` payload. The picked location's
- * address goes into the event `location` field; guest contact into description.
- */
 export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
   const lines = [`Name: ${guest.guestName}`, `Phone: ${guest.phone}`];
   if (guest.email) lines.push(`Email: ${guest.email}`);
@@ -276,7 +224,6 @@ export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
   return body;
 }
 
-/** Human label for a slot in SGT, e.g. "Tue 14 Jul, 10:00". */
 export function formatSlotLabelSgt(startIso: string): string {
   const ms = Date.parse(startIso);
   if (!Number.isFinite(ms)) return startIso;

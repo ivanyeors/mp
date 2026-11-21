@@ -2,23 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 
-/**
- * Paired build end to end (ADR 0026), adversarially.
- *
- * The REAL route handlers — hold, Stripe webhook, status GET, assign, accept,
- * decline, cancel, Result delete and the SLA cron — run in sequence against ONE
- * shared in-memory Supabase (./paired-build.fakes.ts) and a faithful Stripe fake.
- * Only true I/O is replaced: Stripe, email transport, Telegram, the Composed
- * sellable loader and service-fee price table, the tax-rule table, and the
- * auth/session lookups. Pricing, lifecycle, capture plan, settlement, attach,
- * pair rules, the money ledger and every route's own logic are the real modules.
- *
- * Prices (SGD, GST 9% exclusive on goods, shipping 10 flat):
- *   Mpillow M premium  goods 300 + ship 10 + tax 27.00 = 337.00
- *   Mbolster medium    goods 150 + ship  0 + tax 13.50 = 163.50
- *   pair hold                                           = 500.50
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -142,7 +125,6 @@ vi.mock("@/lib/commissions/ledger", () => ({
 }));
 vi.mock("@/lib/milestones/ledger", () => ({ applyMilestoneProgress: vi.fn() }));
 vi.mock("@/lib/email/partner", () => ({ sendReferralEarnedEmail: vi.fn() }));
-// The cron chains unrelated jobs after the SLA work; none of them touch Results.
 vi.mock("@/lib/shopify/order-mirror-catchup", () => ({ runShopifyOrderMirrorCatchup: async () => ({ ok: true }) }));
 vi.mock("@/lib/analytics/journey/ga-sync", () => ({ runGaSync: async () => ({ ok: true }) }));
 vi.mock("@/lib/seo-metrics/ingest-gsc", () => ({ runGscIngestFromEnv: async () => ({ ok: true }) }));
@@ -160,10 +142,6 @@ const declineRoute = await import("@/app/api/results/[id]/decline/route");
 const cancelRoute = await import("@/app/api/results/[id]/cancel/route");
 const responsesRoute = await import("@/app/api/mp-config/responses/[id]/route");
 const cronRoute = await import("@/app/api/cron/results-sla/route");
-
-// ---------------------------------------------------------------------------
-// Fixtures
-// ---------------------------------------------------------------------------
 
 const ANCHOR = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const COMP = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -190,7 +168,7 @@ const STAFF = {
   isBootstrap: false,
 };
 
-const T0 = new Date("2026-10-05T02:00:00.000Z"); // a Monday
+const T0 = new Date("2026-10-05T02:00:00.000Z");
 
 function seed(extra: Record<string, Row[]> = {}) {
   f.resetDb({
@@ -230,7 +208,6 @@ function seed(extra: Record<string, Row[]> = {}) {
     shipping_methods: [
       { id: SHIP, slug: "standard", is_active: true, base_rate: 10, free_above: null, content: {} },
     ],
-    // The Mpillow configurator's Draft, as /api/mp-config/responses wrote it.
     mp_config_responses: [
       {
         id: ANCHOR,
@@ -264,7 +241,6 @@ const pendingRecord = {
   flowRouteDecision: "pending",
 };
 
-/** The Mpillow's finished hold body, exactly as mp-config hands it over. */
 const pillowHold = (extra: Row = {}): Row => ({
   responseId: ANCHOR,
   token: TOKEN,
@@ -296,10 +272,6 @@ const bolster = (extra: Row = {}) => ({
   ...extra,
 });
 
-// ---------------------------------------------------------------------------
-// Route drivers
-// ---------------------------------------------------------------------------
-
 const BASE = "http://localhost:3000";
 const json = (body: unknown) => ({
   method: "POST",
@@ -308,7 +280,6 @@ const json = (body: unknown) => ({
 });
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
 
-/** A JSON response body, walkable to any depth without a cast at each step. */
 type Body = { [key: string]: Body };
 
 async function call(res: Promise<Response> | Response) {
@@ -369,7 +340,6 @@ const deleteResult = (id: string) =>
   );
 const cron = () => call(cronRoute.GET(new Request(`${BASE}/api/cron/results-sla`)));
 
-/** Email money uses non-breaking spaces; compare on plain spaces. */
 const plain = (s: string) => s.replace(/\s+/g, " ");
 const R = (id: string) => f.row("mp_config_responses", id) as Row;
 const sessionsCreated = () => f.stripe.calls.sessionsCreate;
@@ -379,7 +349,6 @@ const orders = () => f.rows("orders");
 const goodsLines = (orderId: unknown) =>
   f.rows("order_items").filter((i) => i.order_id === orderId && i.kind !== "service");
 
-/** hold → Stripe Checkout completed → webhook attaches the intent. */
 async function heldAndPaid(opts: { skip?: boolean } = {}) {
   const res = opts.skip ? await holdSkip() : await holdPair();
   expect(res.status, JSON.stringify(res.body)).toBe(200);
@@ -389,7 +358,6 @@ async function heldAndPaid(opts: { skip?: boolean } = {}) {
   return { res, session };
 }
 
-/** A completed, immediate-capture Balance payment session minted for some Result. */
 async function fakeTopupFor(resultId: string, amount: number) {
   const s = await f.fakeStripeClient.checkout.sessions.create({
     mode: "payment",
@@ -433,17 +401,12 @@ afterEach(() => {
   errorSpy.mockReset();
 });
 
-// ---------------------------------------------------------------------------
-// Happy path
-// ---------------------------------------------------------------------------
-
 describe("Paired build — happy path, end to end", () => {
   it("hold → webhook → assign both → status shows partner → accept: one capture, one Order, two goods lines", async () => {
     const res = await holdPair();
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body).toMatchObject({ resultId: ANCHOR, pairedResultId: COMP, authorizedAmount: PAIR_QUOTE });
 
-    // One Checkout, a line per product, the pair's sum, manual capture.
     expect(sessionsCreated()).toHaveLength(1);
     const s = f.stripe.sessions.get(lastSessionId())!;
     expect(s.amount_total).toBe(50050);
@@ -454,7 +417,6 @@ describe("Paired build — happy path, end to end", () => {
     ]);
     expect(s.metadata).toMatchObject({ result_id: ANCHOR, paired_result_id: COMP });
 
-    // Two Results: each quotes its own build; the companion charges no shipping.
     expect(R(ANCHOR)).toMatchObject({
       status: "held",
       paired_build_id: ANCHOR,
@@ -473,23 +435,19 @@ describe("Paired build — happy path, end to end", () => {
       shipping_method: "standard",
       payment_intent_id: null,
     });
-    // The anchor's route was answered "accepted" by Add, so the hold gate passed.
     expect((R(ANCHOR).recommendation_record as Row).flowRouteDecision).toBe("accepted");
 
-    // The webhook attaches ONE intent to BOTH rows.
     const session = f.completeCheckout(lastSessionId());
     const wh = await webhook(f.sessionEvent(session));
     expect(wh.status).toBe(200);
     expect(R(ANCHOR).payment_intent_id).toBe(session.payment_intent);
     expect(R(COMP).payment_intent_id).toBe(session.payment_intent);
 
-    // Assign the pillow: the assigned email waits for the bolster.
     const a = await assignPillow();
     expect(a.status, JSON.stringify(a.body)).toBe(200);
     expect(R(ANCHOR)).toMatchObject({ status: "assigned", final_amount: PILLOW_QUOTE });
     expect(h.emails.filter((e) => /ready/i.test(e.subject))).toHaveLength(0);
 
-    // Assign the bolster: shipping 0 on the companion, and now one email for both.
     const b = await assignBolster();
     expect(b.status, JSON.stringify(b.body)).toBe(200);
     expect(R(COMP)).toMatchObject({ status: "assigned", final_amount: BOLSTER_QUOTE });
@@ -499,7 +457,6 @@ describe("Paired build — happy path, end to end", () => {
     expect(plain(ready[0].text)).toContain("Total for both: SGD 500.50");
     expect(plain(ready[0].text)).toContain("Authorized hold: SGD 500.50");
 
-    // Status page on the anchor shows its Mbolster; on the companion, points back.
     const st = await status(ANCHOR);
     expect(st.status).toBe(200);
     expect(st.body.result.paired).toMatchObject({ role: "anchor", partner: { id: COMP, status: "assigned" } });
@@ -509,18 +466,15 @@ describe("Paired build — happy path, end to end", () => {
     const stc = await status(COMP);
     expect(stc.body.result.paired).toMatchObject({ role: "companion", partner: { id: ANCHOR } });
 
-    // Accept on the anchor.
     const pi = String(R(ANCHOR).payment_intent_id);
     const acc = await accept();
     expect(acc.status, JSON.stringify(acc.body)).toBe(200);
     expect(acc.body).toMatchObject({ ok: true, status: "captured", finalAmount: PAIR_QUOTE, capturedHold: PAIR_QUOTE });
 
-    // Exactly one capture, for the sum, on the one intent.
     expect(f.stripe.calls.capture).toEqual([{ id: pi, amount: 50050 }]);
     expect(f.stripe.intents.get(pi)).toMatchObject({ status: "succeeded", amount_received: 50050, released: 0 });
     expect(f.stripe.calls.cancel).toEqual([]);
 
-    // One Order, two goods lines, shipping only on the pillow.
     expect(orders()).toHaveLength(1);
     const order = orders()[0];
     expect(order).toMatchObject({
@@ -536,18 +490,15 @@ describe("Paired build — happy path, end to end", () => {
     expect(lines.map((l) => l.sku).sort()).toEqual(["RESULT-BOLSTER-medium", "RESULT-M-premium"]);
     expect(lines.reduce((t, l) => t + Number(l.total_price), 0)).toBe(450);
 
-    // Both Results captured on the same Order, each keeping its own final.
     expect(R(ANCHOR)).toMatchObject({ status: "captured", order_id: order.id, final_amount: PILLOW_QUOTE });
     expect(R(COMP)).toMatchObject({ status: "captured", order_id: order.id, final_amount: BOLSTER_QUOTE });
 
-    // One ledger charge row for the one intent; stock deducted for both builds.
     expect(f.rows("order_payments")).toEqual([
       expect.objectContaining({ order_id: order.id, type: "charge", amount: PAIR_QUOTE, stripe_object_id: pi }),
     ]);
     const deducted = f.rows("inventory_transactions");
     expect(new Set(deducted.map((t) => (t.metadata as Row).result_id))).toEqual(new Set([ANCHOR, COMP]));
 
-    // A repeat accept (either id) is idempotent: same Order, no new capture.
     const again = await accept(COMP);
     expect(again.body).toMatchObject({ ok: true, status: "captured", orderId: order.id });
     expect(f.stripe.calls.capture).toHaveLength(1);
@@ -578,10 +529,6 @@ describe("Paired build — happy path, end to end", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Accept rules
-// ---------------------------------------------------------------------------
-
 describe("Paired build — accept", () => {
   it("refuses with 409 pair_pending while the bolster is still held; nothing moves; then works once assigned", async () => {
     await heldAndPaid();
@@ -595,7 +542,6 @@ describe("Paired build — accept", () => {
     expect(f.db.tables.mp_config_responses).toEqual(before.mp_config_responses);
     expect(orders()).toHaveLength(0);
 
-    // Same through the companion's id.
     expect((await accept(COMP)).status).toBe(409);
 
     await assignBolster();
@@ -674,7 +620,6 @@ describe("Paired build — accept", () => {
     const acc = await accept();
     expect(acc.status, JSON.stringify(acc.body)).toBe(200);
     expect(f.stripe.calls.capture).toEqual([{ id: pi, amount: 33700 }]);
-    // Stripe frees the uncaptured Mbolster share.
     expect(f.stripe.intents.get(pi)).toMatchObject({ amount_received: 33700, released: 16350 });
     const order = orders()[0];
     expect(order).toMatchObject({ total: PILLOW_QUOTE, amount_captured: PILLOW_QUOTE, shipping_amount: 10 });
@@ -684,13 +629,12 @@ describe("Paired build — accept", () => {
 
   it("top-up when the pair's finals exceed the authorized sum, then the return-from-top-up accept", async () => {
     await heldAndPaid();
-    // Costings moved between hold and assign.
     h.pillowBase = 350;
     await assignPillow();
     await assignBolster();
-    const pillowFinal = 350 + 10 + 31.5; // 391.5
+    const pillowFinal = 350 + 10 + 31.5;
     expect(R(ANCHOR).final_amount).toBe(pillowFinal);
-    const pairFinal = pillowFinal + BOLSTER_QUOTE; // 555
+    const pairFinal = pillowFinal + BOLSTER_QUOTE;
     const pi = String(R(ANCHOR).payment_intent_id);
 
     const first = await accept();
@@ -699,7 +643,6 @@ describe("Paired build — accept", () => {
     expect(f.stripe.calls.capture).toEqual([]);
     expect(R(ANCHOR).status).toBe("assigned");
 
-    // Shopper pays the Balance payment; the webhook stamps it on the anchor.
     const topup = f.completeCheckout(String(first.body.sessionId));
     expect(topup.metadata).toMatchObject({ result_id: ANCHOR, purpose: "result_topup" });
     await webhook(f.sessionEvent(topup));
@@ -724,11 +667,9 @@ describe("Paired build — accept", () => {
     const first = await accept();
     expect(first.body.needsTopUp).toBe(true);
     const topup = f.completeCheckout(String(first.body.sessionId));
-    await webhook(f.sessionEvent(topup)); // money taken: 54.50 on a second intent
+    await webhook(f.sessionEvent(topup));
     expect(f.stripe.intents.get(String(topup.payment_intent))!.amount_received).toBe(5450);
 
-    // Shopper never made it back; later opens the status page and tries to drop
-    // the Mbolster. The money for both has moved, so that is refused.
     const rm = await decline(COMP);
     expect(rm.status).toBe(409);
     expect(rm.body).toMatchObject({ code: "pair_paid" });
@@ -736,7 +677,6 @@ describe("Paired build — accept", () => {
     const acc = await accept();
     expect(acc.status).toBe(200);
 
-    // Everything the shopper paid must end up on the Order (or be refunded).
     const order = orders()[0];
     const paid = f.stripe.calls.capture.reduce((t, c) => t + c.amount, 0) + 5450;
     const ledgered = f.rows("order_payments").reduce((t, p) => t + Math.round(Number(p.amount) * 100), 0);
@@ -744,10 +684,6 @@ describe("Paired build — accept", () => {
     expect(Math.round(Number(order.amount_captured) * 100)).toBe(paid);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Endings
-// ---------------------------------------------------------------------------
 
 describe("Paired build — endings", () => {
   it("decline the anchor → companion declined too, the intent cancelled exactly once", async () => {
@@ -759,10 +695,8 @@ describe("Paired build — endings", () => {
     expect(f.stripe.calls.cancel).toEqual([pi]);
     expect(R(ANCHOR).status).toBe("declined");
     expect(R(COMP).status).toBe("declined");
-    // The customer is told the whole hold (both builds) was released.
     const mail = h.emails.at(-1)!;
     expect(plain(mail.text)).toContain("500.50");
-    // The companion can no longer be declined/accepted into money.
     expect((await decline(COMP)).status).toBe(400);
     expect((await accept(COMP)).status).toBe(400);
     expect(f.stripe.calls.capture).toEqual([]);
@@ -837,15 +771,11 @@ describe("Paired build — endings", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Webhook / status-page attach
-// ---------------------------------------------------------------------------
-
 describe("Paired build — attach", () => {
   it("a session whose amount is not the pair's sum is refused, nothing attached, the intent released", async () => {
     await holdPair();
     const s = f.stripe.sessions.get(lastSessionId())!;
-    s.amount_total = 33700; // e.g. an old pillow-only session for this Result
+    s.amount_total = 33700;
     const paid = f.completeCheckout(s.id);
     const res = await webhook(f.sessionEvent(paid));
     expect(res.status).toBe(200);
@@ -887,15 +817,10 @@ describe("Paired build — attach", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Re-submits
-// ---------------------------------------------------------------------------
-
 describe("Paired build — re-submits", () => {
   it("re-submit after a cancelled Checkout reuses the companion id; the old session is refused if paid later", async () => {
     await holdPair();
     const oldSession = lastSessionId();
-    // Shopper changes the bolster's add-on and re-submits.
     const res = await holdPair({}, { addonLines: [{ item_id: 60, quantity: 1 }] });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(f.rows("mp_config_responses").filter((r) => r.paired_build_id === ANCHOR)).toHaveLength(2);
@@ -903,7 +828,6 @@ describe("Paired build — re-submits", () => {
     const newSession = lastSessionId();
     expect(newSession).not.toBe(oldSession);
 
-    // Paying the OLD session (different sum) is refused and released.
     const stale = f.completeCheckout(oldSession);
     await webhook(f.sessionEvent(stale));
     expect(R(ANCHOR).payment_intent_id).toBeNull();
@@ -964,7 +888,6 @@ describe("Paired build — re-submits", () => {
   it("a paid pair cannot be re-submitted (anchor gate), and its companion cannot be hijacked by another anchor", async () => {
     await heldAndPaid();
     expect((await holdPair()).status).toBe(409);
-    // A different Mpillow session naming this companion id.
     f.rows("mp_config_responses").push({
       ...structuredClone(f.row("mp_config_responses", ANCHOR) as Row),
       id: STRANGER,
@@ -978,31 +901,22 @@ describe("Paired build — re-submits", () => {
   });
 
   it("MONEY: a re-submitted ended anchor with a NEW companion id unlinks the old one; accept still waits for the live one", async () => {
-    // Pair held and paid, then the shopper declines everything (anchor + companion declined).
     await pairAssigned();
     await decline(ANCHOR);
     expect(R(COMP).status).toBe("declined");
-    // The hold route lets a declined Result be re-submitted (pre-existing). The
-    // pair comes back with a freshly minted companion id.
     const res = await holdPair({}, { responseId: COMP2 });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const companions = f.rows("mp_config_responses").filter((r) => r.paired_build_id === ANCHOR && r.id !== ANCHOR);
-    // One companion per anchor: the ended one stays as a record, unlinked.
     expect(companions.map((c) => [c.id, c.status])).toEqual([[COMP2, "held"]]);
     expect(R(COMP)).toMatchObject({ status: "declined", paired_build_id: null });
     const session = f.completeCheckout(lastSessionId());
     await webhook(f.sessionEvent(session));
     expect(R(COMP2).payment_intent_id).toBe(session.payment_intent);
     await assignPillow();
-    // The new Mbolster is still being built: accept must refuse (pair_pending).
     const acc = await accept();
     expect(acc.status, `accept went through with a held companion: ${JSON.stringify(acc.body)}`).toBe(409);
   });
 });
-
-// ---------------------------------------------------------------------------
-// SLA cron
-// ---------------------------------------------------------------------------
 
 describe("Paired build — SLA cron", () => {
   const DAY = 24 * 60 * 60 * 1000;
@@ -1033,7 +947,6 @@ describe("Paired build — SLA cron", () => {
   it("mixed: anchor assigned, companion held past its SLA — companion expires alone, the hold stays", async () => {
     await heldAndPaid();
     await assignPillow();
-    // 5 working days later the unreviewed Mbolster expires; the Mpillow is still live.
     vi.setSystemTime(new Date(T0.getTime() + 5 * DAY + 60_000));
     const res = await cron();
     expect(res.body.errors).toEqual([]);
@@ -1088,16 +1001,10 @@ describe("Paired build — SLA cron", () => {
     vi.setSystemTime(new Date(T0.getTime() + 3 * DAY + 60_000));
     h.emails = [];
     await cron();
-    // An Accept right now is refused with pair_pending...
     expect((await accept()).status).toBe(409);
-    // ...so the customer should not have been chased to accept/pay.
     expect(h.emails.filter((e) => e.to === "ada@x.test")).toHaveLength(0);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Assigned email
-// ---------------------------------------------------------------------------
 
 describe("Paired build — the assigned email", () => {
   it("waits for the second build, and is sent once both are assigned (bolster assigned first)", async () => {
@@ -1113,16 +1020,12 @@ describe("Paired build — the assigned email", () => {
 
   it("COPY: when the held companion ends instead (Staff cancel), the Mpillow's assigned email is still sent", async () => {
     await heldAndPaid();
-    await assignPillow(); // suppressed: the Mbolster is still being built
-    await cancel(COMP); // ...and then it never will be
+    await assignPillow();
+    await cancel(COMP);
     const ready = h.emails.filter((e) => /ready/i.test(e.subject));
     expect(ready, "the customer is never told their Mpillow is ready to accept").toHaveLength(1);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Holds switched off
-// ---------------------------------------------------------------------------
 
 describe("Paired build — holds switched off", () => {
   it("no Checkout; the pair settles by one Balance payment at accept", async () => {
@@ -1153,10 +1056,6 @@ describe("Paired build — holds switched off", () => {
     expect(R(COMP)).toMatchObject({ status: "captured", order_id: order.id });
   });
 });
-
-// ---------------------------------------------------------------------------
-// Regression: unpaired Results
-// ---------------------------------------------------------------------------
 
 describe("Regression — unpaired Results behave as before", () => {
   it("an unpaired Mpillow (Skip): hold → webhook → assign → accept; decline releases", async () => {
@@ -1227,14 +1126,9 @@ describe("Regression — unpaired Results behave as before", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Adversarial: money paths that change between steps
-// ---------------------------------------------------------------------------
-
 describe("Paired build — adversarial money paths", () => {
   const DAY = 24 * 60 * 60 * 1000;
   const cents = (n: unknown) => Math.round(Number(n) * 100);
-  /** What Stripe actually took from the card, across every intent. */
   const takenFromCard = () => [...f.stripe.intents.values()].reduce((t, pi) => t + pi.amount_received, 0);
   const ledgered = () => f.rows("order_payments").reduce((t, p) => t + cents(p.amount), 0);
   const round = (n: number) => Math.round(n * 100) / 100;
@@ -1245,11 +1139,10 @@ describe("Paired build — adversarial money paths", () => {
     f.db.faults.push({ table: "order_items", op: "insert", error: { code: "XX000", message: "connection reset" } });
     const failed = await accept();
     expect(failed.status).toBe(500);
-    expect(f.stripe.intents.get(pi)!.amount_received).toBe(50050); // money already taken
-    expect(R(ANCHOR).status).toBe("assigned"); // claim handed back for a retry
+    expect(f.stripe.intents.get(pi)!.amount_received).toBe(50050);
+    expect(R(ANCHOR).status).toBe("assigned");
     expect(R(COMP).status).toBe("assigned");
 
-    // The hold is already captured for both: dropping the Mbolster is refused.
     const rm = await decline(COMP);
     expect(rm.status).toBe(409);
     expect(rm.body).toMatchObject({ code: "pair_paid" });
@@ -1257,26 +1150,21 @@ describe("Paired build — adversarial money paths", () => {
     const retry = await accept();
     expect(retry.status).toBe(200);
     expect(f.stripe.calls.capture).toHaveLength(1);
-    // The Order must account for every cent the intent captured.
     expect(ledgered(), "captured on Stripe but missing from the Order").toBe(takenFromCard());
   });
 
   it("MONEY: an old, larger Balance payment paid after 'Remove Mbolster' is never settled as-is — it stops for a human", async () => {
     await heldAndPaid();
-    h.pillowBase = 500; // the pillow alone now exceeds the whole pair hold
+    h.pillowBase = 500;
     await assignPillow();
     await assignBolster();
-    const pillowFinal = 500 + 10 + 45; // 555
+    const pillowFinal = 500 + 10 + 45;
     const first = await accept();
     expect(first.body).toMatchObject({ needsTopUp: true, topUpAmount: round(pillowFinal + BOLSTER_QUOTE - PAIR_QUOTE) });
 
-    // Shopper drops the Mbolster, then pays the OLD (pair) Balance payment session.
     expect((await decline(COMP)).status).toBe(200);
     const oldTopup = f.completeCheckout(String(first.body.sessionId));
     await webhook(f.sessionEvent(oldTopup));
-    // What was paid no longer matches the order: no Order, no hold capture, and
-    // the row stays assigned with the payment stamped — the queue's
-    // topup_unsettled alarm — for Staff to settle or refund.
     const acc = await accept();
     expect(acc.status, JSON.stringify(acc.body)).toBe(409);
     expect(acc.body).toMatchObject({ code: "paid_mismatch" });
@@ -1299,9 +1187,7 @@ describe("Paired build — adversarial money paths", () => {
     vi.setSystemTime(new Date(T0.getTime() + 7 * DAY + 60_000));
     const res = await cron();
     expect(res.body.errors).toEqual([]);
-    // "Money already moved is never expired here" — the anchor is left for a human...
     expect(R(ANCHOR).status).toBe("assigned");
-    // ...but the Mbolster that money paid for must not be expired out from under it.
     expect(R(COMP).status, "a paid-for companion was expired").toBe("assigned");
   });
 
@@ -1310,7 +1196,6 @@ describe("Paired build — adversarial money paths", () => {
     const [acc, rm] = await Promise.all([accept(), decline(COMP)]);
     const capturedCents = f.stripe.calls.capture.reduce((t, c) => t + c.amount, 0);
     if (rm.status === 200) {
-      // The shopper was told "You will not be charged for it."
       expect(capturedCents).toBeLessThanOrEqual(33700);
       expect(R(COMP).status).not.toBe("captured");
     }
@@ -1319,7 +1204,6 @@ describe("Paired build — adversarial money paths", () => {
 
   it("decline of the companion arriving between accept's claim and its capture", async () => {
     await pairAssigned();
-    // Hold the capture open until the decline has run.
     const realCapture = f.fakeStripeClient.paymentIntents.capture;
     let declined: { status: number } | null = null;
     f.fakeStripeClient.paymentIntents.capture = async (id: string, p?: { amount_to_capture?: number }) => {
@@ -1338,12 +1222,10 @@ describe("Paired build — adversarial money paths", () => {
 
   it("Staff cancel the still-unpaid companion before Checkout completes: the Mpillow's card must survive", async () => {
     await holdPair();
-    // The companion shows in the queue as soon as the hold is written.
     const c = await cancel(COMP);
     expect(c.status).toBe(200);
     const paid = f.completeCheckout(lastSessionId());
     await webhook(f.sessionEvent(paid));
-    // ADR: cancelling the companion leaves the anchor and its hold untouched.
     expect(R(ANCHOR).payment_intent_id, "the Mpillow lost its card hold because the Mbolster was cancelled").toBe(
       paid.payment_intent,
     );
@@ -1351,7 +1233,7 @@ describe("Paired build — adversarial money paths", () => {
 
   it("'Remove Mbolster' with the pillow's final above its own quote: captured from the pair hold, no Balance payment", async () => {
     await heldAndPaid();
-    h.pillowBase = 350; // pillow final 391.50 > its own 337 quote, < the 500.50 pair hold
+    h.pillowBase = 350;
     await assignPillow();
     await assignBolster();
     await decline(COMP);
@@ -1369,10 +1251,8 @@ describe("Paired build — adversarial money paths", () => {
     const first = await accept();
     expect(first.body.needsTopUp).toBe(true);
     expect(orders()).toHaveLength(0);
-    // Unpaid session → refused.
     const unpaid = await accept(ANCHOR, { topupSessionId: String(first.body.sessionId) });
     expect(unpaid.status).toBe(400);
-    // A paid Balance payment that belongs to another Result → refused.
     const foreign = await fakeTopupFor(STRANGER, PAIR_QUOTE);
     const wrong = await accept(ANCHOR, { topupSessionId: foreign });
     expect(wrong.status).toBe(400);
@@ -1417,7 +1297,6 @@ describe("Paired build — Self-collect", () => {
   });
 
   it("asks only who collects; both builds carry the studio, and the Order waits to be handed over", async () => {
-    // The configurator hides the address fields, so they arrive empty.
     const res = await holdPair({
       shippingMethodId: SELF,
       shippingAddress: { recipient: "Ada", line1: "", city: "", postal_code: "", country: "SG" },
@@ -1432,7 +1311,6 @@ describe("Paired build — Self-collect", () => {
       collect_location: { id: STUDIO, name: "Mpillow Singapore" },
     };
     expect(R(ANCHOR)).toMatchObject({ shipping_method: "self-collect", shipping_address: studioAddress });
-    // The Mbolster is collected with its Mpillow, and still shares its token.
     expect(R(COMP)).toMatchObject({
       shipping_method: "self-collect",
       shipping_address: studioAddress,
@@ -1451,7 +1329,6 @@ describe("Paired build — Self-collect", () => {
 
     const acc = await accept();
     expect(acc.status, JSON.stringify(acc.body)).toBe(200);
-    // Not born "delivered": it is still to be built and collected.
     expect(orders()).toHaveLength(1);
     expect(orders()[0]).toMatchObject({
       status: "confirmed",

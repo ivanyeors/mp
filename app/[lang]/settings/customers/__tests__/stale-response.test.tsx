@@ -4,14 +4,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FollowUpListData, FollowUpScope } from "@/lib/crm/followup-rules";
 
-/**
- * The Customers list and the Follow-ups tab fetch when a filter, page or
- * scope changes. Two quick changes start two requests; whichever answers
- * last must not be the older one. Each test holds the responses and answers
- * them in the wrong order on purpose.
- */
-
-// matchMedia and the act flag, which jsdom leaves out.
 import "@/components/block-editor/__tests__/dom";
 
 vi.mock("next/navigation", () => ({
@@ -22,7 +14,6 @@ vi.mock("next/navigation", () => ({
 const { FollowUpsTab } = await import("../followups-tab");
 const { CustomersClient } = await import("../customers-client");
 
-/** Every fetch waits until the test answers it. */
 type Held = { url: string; answer: (body: unknown) => Promise<void> };
 let held: Held[] = [];
 beforeEach(() => {
@@ -61,7 +52,6 @@ afterEach(() => {
 
 const button = (label: string) =>
   [...host.querySelectorAll("button, a")].find((b) => b.textContent?.trim() === label)!;
-/** The search box's debounce settles 350ms after mount (and resets the page): let it pass. */
 const pastDebounce = () => act(() => new Promise<void>((r) => setTimeout(r, 400)));
 const click = (el: Element) => act(async () => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
 const lastFor = (part: string) => [...held].reverse().find((h) => h.url.includes(part))!;

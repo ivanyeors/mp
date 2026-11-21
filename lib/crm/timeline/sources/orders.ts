@@ -5,12 +5,6 @@ import { ORDERS_GROUP } from "@/lib/crm/timeline/groups";
 import { joinBatches, readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter, TimelineRef } from "@/lib/crm/timeline/types";
 
-/**
- * Orders on the Customer timeline: each dated step an order records, and every
- * order email that went out. Both need `orders`, like the detail page's Order
- * History. An accepted Result shows up here, as the Order it became.
- */
-
 type OrderRow = {
   id: string;
   order_number: string;
@@ -34,7 +28,6 @@ type Step = {
   line: (o: OrderRow) => string;
 };
 
-/** One stream per dated column, so an old order delivered yesterday is found by its delivery. */
 const STEPS: readonly Step[] = [
   {
     column: "created_at",
@@ -74,7 +67,6 @@ export const ordersAdapter: TimelineAdapter = {
             kind: step.kind,
             ref: orderRef(o.id),
             summary: step.line(o),
-            // The current status, once, on the order's first entry.
             ...(step.column === "created_at" ? { status: o.status } : {}),
           }),
         ),
@@ -92,16 +84,10 @@ type OrderEmailRow = {
   orders: { order_number: string } | { order_number: string }[] | null;
 };
 
-/** The label Staff see for a template in the email preview, from the one registry of templates. */
 export function orderEmailLabel(template: string): string {
   return EMAIL_REGISTRY.find((c) => c.id === `order.${template}`)?.label ?? template.replace(/_/g, " ");
 }
 
-/**
- * Order emails that went out: `order_emails` rows marked sent, joined to the
- * Customer's orders. Its `created_at` is when the send was claimed, moments
- * before it went. Results emails have no ledger, so they cannot be listed.
- */
 export const orderEmailsAdapter: TimelineAdapter = {
   key: "order-emails",
   group: ORDERS_GROUP,

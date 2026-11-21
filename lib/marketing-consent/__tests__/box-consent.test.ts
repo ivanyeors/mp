@@ -7,18 +7,10 @@ import { CONSENT_BOX_SOURCES, MARKETING_BOX_LABEL, consentSourcePhrase, describe
 import { enUS as en } from "@/lib/i18n/messages/en-US";
 import { zhCN as zh } from "@/lib/i18n/messages/zh-CN";
 
-/**
- * The boxes past checkout (PRD-campaign-audiences slice 02; ADR 0039): a
- * customisation's contact step and booking an appointment. Each moves as the
- * checkout box does, under its own source; a form with no Customer of its own
- * finds or creates one by the email typed, and only when ticked.
- */
-
 let db: AftercareFakeDb;
 const client = () => fakeAftercareDb(db, { set_marketing_email: setMarketingEmailRpc }) as unknown as SupabaseClient;
 const customer = (id: string) => db.customers.find((c) => c.id === id)!;
 
-/** Finds a Customer by email in the fake, or creates one: findOrCreateCustomer's part. */
 const byEmail = vi.fn(async (email: string) => {
   const normalized = email.trim().toLowerCase();
   const found = db.customers.find((c) => c.email === normalized);
@@ -119,7 +111,6 @@ describe("the boxes' words and their provenance", () => {
     for (const source of CONSENT_BOX_SOURCES.filter((s) => s !== "newsletter")) {
       expect(consentSourcePhrase(source)).toMatch(/^from the box /);
     }
-    // The footer sign-up acts as a box but is a form of its own (slice 03).
     expect(consentSourcePhrase("sign_in")).toBe("from the box when they signed in");
     expect(consentSourcePhrase("newsletter")).toBe("from the email sign-up in the site footer");
   });

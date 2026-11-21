@@ -21,7 +21,6 @@ describe("Midview #08-83 model", () => {
     }
   });
 
-  // A spec rename would otherwise leave a part showing its raw item name.
   it("names only items that exist, and names every item", () => {
     for (const key of Object.keys(unit.partNames)) expect(items).toContain(key);
     for (const key of Object.keys(unit.pieceNames)) expect(items).toContain(key.split(":")[0]);

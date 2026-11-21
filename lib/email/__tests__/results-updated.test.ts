@@ -1,15 +1,3 @@
-/**
- * "Your build has been updated" — the email Staff send after re-configuring a
- * build the customer already has.
- *
- * Its whole reason to exist is the money sentence: the customer was quoted one
- * number, the build changed, and what their card actually covers now decides
- * whether they owe anything at checkout. That sentence is derived from
- * `planCapture`, the function Accept settles with, and these tests pin the
- * three shapes it produces so the email can never promise a split the checkout
- * contradicts.
- */
-
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -29,8 +17,6 @@ const noHold = renderResultUpdatedEmail(sampleResultUpdatedBalance());
 
 describe("renderResultUpdatedEmail", () => {
   it("does not reuse the assigned email's subject", () => {
-    // The point of the template. Two emails under "Your final build is ready"
-    // carrying different totals is the failure it exists to prevent.
     const assigned = renderResultAssignedEmail(sampleResultAssigned());
     for (const mail of [overHold, withinHold, noHold]) {
       expect(mail.subject).not.toBe(assigned.subject);

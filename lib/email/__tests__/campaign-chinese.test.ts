@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
@@ -7,13 +6,6 @@ import { CAMPAIGN_OWN_WORDS, productPriceText, renderCampaignBlocksEmail, type C
 import { money } from "../format";
 import { EMAIL_FONT_STACK } from "@/lib/font-stack";
 import { withoutChineseVersion } from "@/lib/email-campaigns/chinese-version";
-
-/**
- * The renderer in Chinese (PRD-campaign-email-editor slice 17): for `zh-CN`,
- * the 中文 version's words in the English layout, its subject and preview
- * line, and the email's own words from the Chinese set; English for anyone
- * else, and for a campaign with no 中文 version.
- */
 
 const UNSUBSCRIBE = "https://custom.mpillow.com/zh-CN/unsubscribe?u=x&t=y";
 const data = (over: Partial<CampaignBlocksEmailData> = {}): CampaignBlocksEmailData => ({

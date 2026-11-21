@@ -1,40 +1,3 @@
-/**
- * The wave sender (PRD-shopify-customer-migration slice 08; ADR 0029 i).
- *
- * A human runs every wave (scripts/customer-migration-send.ts). It is a dry
- * run unless `apply`: it prints the checks, the eligible count and the
- * selection, and sends nothing.
- *
- * **Before it sends anything** it refuses, sending nothing, unless:
- *  - the transport is Resend, built from CAMPAIGN_RESEND_API_KEY
- *    (`getCampaignTransport`), never the Gmail mailbox that sends order email;
- *  - CAMPAIGN_EMAIL_FROM is on the campaign subdomain, CAMPAIGN_EMAIL_DOMAIN;
- *  - the target site answers `POST /api/email/unsubscribe` (README, first
- *    hazard: no campaign email before one-click unsubscribe is live), and
- *    verifies links signed with this machine's UNSUBSCRIBE_SECRET;
- *  - an offer template's Claim bonus would be granted by a sign-in now (the
- *    email promises it: `claimBonusOffer`), and owner decision 3 allows the
- *    service notice;
- *  - the most recent wave holds no pause condition (bounces over 2%,
- *    complaints over 0.1%), or the human passes `resume`;
- *  - the send limit leaves room: Resend's free plan allows 100 a day and
- *    3,000 a month (`campaignSendLimits`), counted from the ledger over every
- *    template and wave.
- *
- * **What it sends.** The audience comes from `selectCampaignAudience`. Each
- * person is claimed in the ledger BEFORE the send (`claim_campaign_send`),
- * which re-checks them in SQL at that moment; the unique key makes a second
- * or concurrent run skip anyone already claimed. Each email gets its own
- * Claim link (`mintClaimLink`), the footer's unsubscribe link, and
- * `List-Unsubscribe` with `List-Unsubscribe-Post` (RFC 8058). Reply-To is the
- * support inbox. About two messages a second; it stops after five failures
- * in a row, or at once when Resend says its quota is used up. A failed send
- * is marked `failed`, and retried only with `retryFailed`.
- *
- * **Staggering.** A run sends no more than the send limit leaves, and holds
- * the rest of its selection back. The wave keeps its room, so the same
- * command run again the next day carries on where it stopped.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import {
@@ -81,49 +44,32 @@ import { mintClaimLink } from "./claim-link";
 import { claimBonusOffer } from "@/lib/points/offer";
 import { readPointsSettings } from "@/lib/points/server";
 
-/** About two messages a second. */
 export const THROTTLE_MS = 500;
-/** Stop the wave after this many failures in a row. */
 export const MAX_CONSECUTIVE_FAILURES = 5;
 
-/** Resend's answer when the account's daily or monthly quota is used up (`daily_quota_exceeded`, `monthly_quota_exceeded`). */
 export function isSendQuotaError(message: string): boolean {
   return /\(429\)/.test(message) && /quota/i.test(message);
 }
 
 export interface WaveRequest {
   template: CampaignTemplate;
-  /** The wave's label, e.g. `pilot` or `w1`. */
   wave: string;
-  /** The most the wave holds. */
   limit: number;
-  /** Leave out subscribers who never bought. */
   buyersOnly?: boolean;
-  /** Re-claim this wave's failed sends, and nobody else. */
   retryFailed?: boolean;
-  /** Send. Without it, a dry run. */
   apply?: boolean;
-  /** Run although the latest wave holds a pause condition. */
   resume?: boolean;
 }
 
 export interface WaveSetup {
   admin: SupabaseClient;
-  /** `getCampaignTransport()`: null without CAMPAIGN_RESEND_API_KEY. */
   transport: EmailTransport | null;
-  /** CAMPAIGN_EMAIL_FROM. */
   campaignFrom: string | undefined;
-  /** CAMPAIGN_EMAIL_DOMAIN: the sending subdomain. */
   campaignDomain: string | undefined;
-  /** The mailbox order email is sent from, which campaign mail must not share. */
   orderFrom: string | null;
-  /** The support inbox: Reply-To, and the `mailto:` unsubscribe. */
   replyTo: string | null;
-  /** The site every link points at, and whose unsubscribe route is probed. */
   origin: string;
-  /** UNSUBSCRIBE_SECRET on this machine: it signs every link sent. */
   unsubscribeSecret: string | undefined;
-  /** `campaignSendLimits()`; Resend's free plan when absent. */
   sendLimits?: CampaignSendLimits;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
@@ -138,12 +84,9 @@ export interface PreflightCheck {
 
 export interface WavePreflight {
   checks: PreflightCheck[];
-  /** Every check passed. */
   ready: boolean;
-  /** The Claim bonus as the offer templates state it; null when a sign-in would grant none. */
   bonus: CampaignBonusTerms | null;
   stats: CampaignWaveStats[];
-  /** How many this run may send under the send limit; null when the ledger could not be counted. */
   budget: number | null;
 }
 
@@ -156,22 +99,17 @@ export interface WaveReport {
   request: WaveRequest;
   preflight: WavePreflight;
   audience: CampaignAudience | null;
-  /** Error reading the audience, if it could not be read. */
   audienceError: string | null;
-  /** True when it sent (apply, and every check passed). */
   ran: boolean;
   claimed: number;
   sent: number;
   failed: number;
   skipped: Partial<Record<string, number>>;
-  /** Why it stopped before the end of the selection. */
   stopped: string | null;
-  /** Selected, but left for a later run by the send limit. */
   heldBack: number;
   results: WaveSendOutcome[];
 }
 
-/** `we***@example.com`: enough to recognise in a terminal, not a mailing list. */
 export function maskEmail(email: string): string {
   const at = email.lastIndexOf("@");
   if (at < 1) return "***";
@@ -190,18 +128,11 @@ async function attempt<T>(fn: () => Promise<T>): Promise<{ ok: true; value: T } 
   }
 }
 
-/** What the delivery checks read: the campaign transport, and the site its links point at. */
 export type DeliverySetup = Pick<
   WaveSetup,
   "transport" | "campaignFrom" | "campaignDomain" | "orderFrom" | "replyTo" | "origin" | "unsubscribeSecret" | "fetchImpl"
 >;
 
-/**
- * The delivery checks that need no network call: the Resend transport, the
- * From on the campaign subdomain, a support inbox for Reply-To, and a public
- * https site. The Email campaigns page's Sending card shows these on every
- * load. Pure.
- */
 export function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "unsubscribeSecret">): PreflightCheck[] {
   const checks: PreflightCheck[] = [];
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
@@ -238,12 +169,6 @@ export function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "u
   return checks;
 }
 
-/**
- * The checks every campaign email passes before anything is sent, whatever it
- * says: {@link campaignConfigChecks}, then that site answering one-click
- * unsubscribe for links signed here. Shared by the wave sender and the Email
- * campaigns page (lib/email-campaigns/sender.ts). Changes nothing.
- */
 export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
   const checks = campaignConfigChecks(setup);
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
@@ -257,12 +182,6 @@ export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<Pref
   return checks;
 }
 
-/**
- * Every check a wave must pass before it sends anything. Runs in a dry run
- * too, so the human sees what an `apply` would refuse. Changes nothing: the
- * probes are a one-click POST with no link, and one with a link for a
- * Customer who does not exist.
- */
 export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now: Date = new Date()): Promise<WavePreflight> {
   const checks: PreflightCheck[] = [];
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
@@ -337,7 +256,6 @@ export async function campaignPreflight(req: WaveRequest, setup: WaveSetup, now:
   return { checks, ready: checks.every((c) => c.ok), bonus, stats, budget };
 }
 
-/** Pure — one campaign email for one recipient. */
 export function renderCampaignEmail(
   template: CampaignTemplate,
   p: {
@@ -366,11 +284,6 @@ export function renderCampaignEmail(
   return template === "migration_reminder" ? renderMigrationReminderEmail(offer) : renderMigrationAnnouncementEmail(offer);
 }
 
-/**
- * One wave: the checks, the audience, and (with `apply`, when every check
- * passed) the sends. Never throws for one recipient: their outcome is in the
- * report.
- */
 export async function runCampaignWave(req: WaveRequest, setup: WaveSetup): Promise<WaveReport> {
   const now = (setup.now ?? (() => new Date()))();
   const sleep = setup.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -499,7 +412,6 @@ const EXCLUSION_LABEL: Record<AudienceExclusion, string> = {
   not_failed: "nothing of theirs failed in this wave (--retry-failed)",
 };
 
-/** Pure — the report as the script prints it. Emails are masked. */
 export function formatWaveReport(report: WaveReport): string[] {
   const { request: req, preflight, audience } = report;
   const lines: string[] = [];

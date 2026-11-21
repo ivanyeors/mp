@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,6 +14,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/settings/empty-state";
+import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -31,7 +32,6 @@ export type BlogRow = {
     created_at: string;
 };
 
-/** The `/api/blogs` payload the list mounts with. */
 export type BlogsInitialData = { ok: true; rows: BlogRow[] };
 
 export default function SettingsBlogsPage({ initialData }: { initialData?: BlogsInitialData }) {
@@ -54,14 +54,7 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
         }
     }, []);
 
-    // The server already loaded the rows; fetch only when it could not.
-    // Later calls (publish, delete) still fetch.
-    useEffect(() => {
-        if (initialData) return;
-        // fetchPosts() sets `loading`, which already starts true without initialData.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        void fetchPosts();
-    }, [initialData, fetchPosts]);
+    useOncePerKey(initialData ? null : "no-server-rows", fetchPosts);
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === "published" ? "unpublished" : "published";
@@ -125,7 +118,6 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
                 <EmptyState>No blog posts yet.</EmptyState>
             ) : (
                 <>
-                    {/* Phones: the row opens the editor; publish and delete sit in one menu. */}
                     <MobileList>
                         {posts.map((post) => (
                             <MobileListRow

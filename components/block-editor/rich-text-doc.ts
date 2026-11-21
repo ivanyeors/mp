@@ -1,44 +1,18 @@
-/**
- * `RichText`'s value, and its mapping to and from TipTap's document
- * (PRD-campaign-email-editor slice 04, ADR 0036). Pure, with no TipTap import,
- * so a page's mapping and its tests stay cheap.
- *
- * The value is flat, never a tree: paragraphs and bullet lists, each a list of
- * runs, a run being some words with their marks or one Variable. A page maps
- * it to its own model (an Email campaign's text block, an Email template's
- * field); TipTap's JSON never leaves the input.
- *
- * Reading a document keeps only what the value can say: any other node gives
- * its words, any other mark is dropped, a paragraph of nothing but spaces is
- * no paragraph, and a Variable the input does not offer is the words `{name}`.
- */
-
-/** Some words, with their marks. `\n` is a line break inside the paragraph. */
 export type RichTextWords = { text: string; bold?: true; italic?: true; href?: string };
-/** One Variable, by its key. */
 export type RichTextVariableRun = { var: string };
 export type RichTextRun = RichTextWords | RichTextVariableRun;
 
 export type RichTextParagraph = { kind: "p"; runs: RichTextRun[] } | { kind: "bullets"; items: RichTextRun[][] };
 
-/** What a `RichText` holds and emits. An empty list is an empty input. */
 export type RichTextValue = RichTextParagraph[];
 
-/** A Variable the input offers: a chip showing its label. */
 export interface RichTextVariable {
   key: string;
   label: string;
-  /** One line: what it becomes. Shown as the chip's title. */
   description?: string;
-  /**
-   * Why it can't be put in now (a page's rule, such as points not being live):
-   * the `{` menu and the Variables palette show it greyed, with this reason.
-   * Where the words already hold it, it still shows as its chip.
-   */
   disabledReason?: string | null;
 }
 
-/** The node and mark names the input's schema uses. */
 export const RICH_TEXT_NODES = {
   variable: "variable",
   hardBreak: "hardBreak",
@@ -47,7 +21,6 @@ export const RICH_TEXT_NODES = {
   listItem: "listItem",
 } as const;
 
-/** TipTap's JSON, as far as this file reads and writes it. */
 export interface DocNode {
   type?: string;
   text?: string;
@@ -58,7 +31,6 @@ export interface DocNode {
 
 const sameMarks = (a: RichTextWords, b: RichTextWords) => a.bold === b.bold && a.italic === b.italic && a.href === b.href;
 
-/** Runs with the same marks side by side become one. */
 function pushRun(out: RichTextRun[], r: RichTextRun) {
   if (!("text" in r) || !r.text) {
     if ("var" in r) out.push(r);
@@ -86,10 +58,8 @@ function marksOf(node: DocNode): Omit<RichTextWords, "text"> {
   return m;
 }
 
-/** Spaces and line breaks alone are no paragraph: the email would show nothing. */
 const hasWords = (runs: readonly RichTextRun[]) => runs.some((r) => "var" in r || r.text.trim());
 
-/** Every inline node under `node`, in order: what a block that is not ours reads as. */
 function inlineRuns(node: DocNode, offered: ReadonlySet<string> | null, out: RichTextRun[]) {
   for (const child of node.content ?? []) {
     if (child.type === "text") pushRun(out, words(child.text ?? "", marksOf(child)));
@@ -100,14 +70,12 @@ function inlineRuns(node: DocNode, offered: ReadonlySet<string> | null, out: Ric
       if (!offered || offered.has(key)) out.push({ var: key });
       else pushRun(out, { text: `{${key}}` });
     } else if (child.content) {
-      // A block inside a line (a paragraph in a list item): its words, a line apart.
       if (out.length) pushRun(out, { text: "\n" });
       inlineRuns(child, offered, out);
     }
   }
 }
 
-/** The list items under a list, flattened: a list inside an item is more items. */
 function listItems(list: DocNode, offered: ReadonlySet<string> | null, items: RichTextRun[][]) {
   for (const item of list.content ?? []) {
     const runs: RichTextRun[] = [];
@@ -124,10 +92,6 @@ function listItems(list: DocNode, offered: ReadonlySet<string> | null, items: Ri
   }
 }
 
-/**
- * Pure — a TipTap document as the input's value. `variables` is what the
- * input offers: any other Variable reads as its `{name}`, in words.
- */
 export function valueFromDoc(doc: DocNode, variables?: readonly RichTextVariable[]): RichTextValue {
   const offered = variables ? new Set(variables.map((v) => v.key)) : null;
   const out: RichTextValue = [];
@@ -138,7 +102,6 @@ export function valueFromDoc(doc: DocNode, variables?: readonly RichTextVariable
         listItems(node, offered, items);
         if (!items.length) continue;
         const last = out.at(-1);
-        // Two lists side by side are one list.
         if (last?.kind === "bullets") last.items.push(...items);
         else out.push({ kind: "bullets", items });
       } else if (node.type === RICH_TEXT_NODES.paragraph || !node.content?.some((c) => c.content)) {
@@ -152,7 +115,6 @@ export function valueFromDoc(doc: DocNode, variables?: readonly RichTextVariable
   return out;
 }
 
-/** One run as TipTap's inline nodes: a line break is its own node, a Variable a chip. */
 function runNodes(r: RichTextRun): DocNode[] {
   if ("var" in r) return [{ type: RICH_TEXT_NODES.variable, attrs: { key: r.var } }];
   const marks: NonNullable<DocNode["marks"]> = [];
@@ -173,7 +135,6 @@ const paragraphNode = (runs: readonly RichTextRun[]): DocNode => {
   return content.length ? { type: RICH_TEXT_NODES.paragraph, content } : { type: RICH_TEXT_NODES.paragraph };
 };
 
-/** Pure — the input's value as a TipTap document. An empty value is one empty paragraph. */
 export function docFromValue(value: RichTextValue): DocNode {
   const content = value.map((p): DocNode =>
     p.kind === "p"
@@ -186,23 +147,13 @@ export function docFromValue(value: RichTextValue): DocNode {
   return { type: "doc", content: content.length ? content : [{ type: RICH_TEXT_NODES.paragraph }] };
 }
 
-/** Pure — the value's words, a Variable as `{name}`: what a page checks for `{names}` and counts. */
 export function richTextWords(value: RichTextValue): string {
   const line = (runs: readonly RichTextRun[]) => runs.map((r) => ("var" in r ? `{${r.var}}` : r.text)).join("");
   return value.map((p) => (p.kind === "p" ? line(p.runs) : p.items.map(line).join("\n"))).join("\n\n");
 }
 
-/** A `{name}` in words, as Email templates and campaigns write one (lib/email/copy.ts's pattern). */
 const WRITTEN_VARIABLE = /\{([a-z][a-z0-9_]*)\}/g;
 
-/**
- * Pure — words with their Variables written `{name}` (a subject, a heading,
- * an Email template's field) as the input's value: each Variable the input
- * offers a chip, any other `{name}` words, a blank line a new paragraph and a
- * line end a line break. The inverse of {@link richTextWords} for words
- * without bullets, so a page that stores strings loads and saves them as they
- * were (PRD-campaign-email-editor slices 13 and 14).
- */
 export function richTextFromWords(text: string, variables: readonly RichTextVariable[]): RichTextValue {
   const offered = new Set(variables.map((v) => v.key));
   const out: RichTextValue = [];

@@ -5,8 +5,6 @@ import { DEFAULT_TEMPLATE_IDS, premiumHandGraph, premiumSampleInputs } from "../
 
 const graph = premiumHandGraph(DEFAULT_TEMPLATE_IDS);
 
-// Regression: Simulate fed inch values to the engine as cm, so every realistic
-// shoulder (12–22 in) fell under the XS band's 36 cm ceiling and always read XS.
 describe("simulationInputs", () => {
   const run = (shoulderIn: string) =>
     evaluateOrThrow(
@@ -22,10 +20,10 @@ describe("simulationInputs", () => {
     ).size;
 
   it("reads measurements as inches, so different shoulders give different sizes", () => {
-    expect(run("13")).toBe("XS"); // 33.02 cm
-    expect(run("15")).toBe("S"); // 38.1 cm
-    expect(run("16.5")).toBe("M"); // 41.91 cm
-    expect(run("22")).toBe("XL"); // 55.88 cm
+    expect(run("13")).toBe("XS");
+    expect(run("15")).toBe("S");
+    expect(run("16.5")).toBe("M");
+    expect(run("22")).toBe("XL");
   });
 
   it("leaves blanks blank so missing inputs are still refused", () => {

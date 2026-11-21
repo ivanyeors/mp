@@ -1,10 +1,3 @@
-/**
- * Custom role writes for Users & permissions → Roles (ADR 0023).
- *
- * Every write runs the pure rules in `role-policy.ts` against fresh rows,
- * saves permissions closed under `requires`, and is audited with the
- * before/after permission arrays (`role.create | role.update | role.delete`).
- */
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { AdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
@@ -23,14 +16,8 @@ export type RoleWriteResult = { ok: true; role: RoleRow } | Refusal;
 
 const ROLE_COLUMNS = "id, key, name, description, is_system, grants_all, permissions";
 
-/**
- * Keys a new role never gets: the seeded roles' keys and the legacy role
- * names. Until slice 11 drops `admin_users.role`, the database stamps it from
- * these keys for a rolled-back app, so a custom role must not look like one.
- */
 const RESERVED_KEYS: ReadonlySet<string> = new Set(["owner", "admin", "manager", "fulfilment", "staff", "viewer"]);
 
-/** A role key from its name: lowercase words joined by dashes, unique among `taken` and the reserved keys. */
 export function roleKeyFor(name: string, taken: ReadonlySet<string>): string {
   const base =
     name
@@ -101,8 +88,6 @@ export async function updateRole(
   id: string,
   input: { name?: string; description?: string | null; permissions?: readonly string[] },
 ): Promise<RoleWriteResult> {
-  // Read the version first: if the role changes after this, the conditional
-  // update below misses and nobody's edit is overwritten unseen.
   const { data: version, error: versionError } = await supabaseAdmin()
     .from("admin_roles")
     .select("updated_at")
@@ -119,7 +104,6 @@ export async function updateRole(
     if (!normalized.ok) return normalized;
     permissions = normalized.permissions;
   }
-  // Renaming and re-describing are edits too: the same rules apply.
   const decision = canEditRole(actor, role, permissions);
   if (!decision.ok) return decision;
   if (
@@ -170,7 +154,6 @@ export async function deleteRole(actor: AdminContext, id: string): Promise<{ ok:
 
   const { error } = await supabaseAdmin().from("admin_roles").delete().eq("id", id);
   if (error) {
-    // A Member took the role between the count and the delete (FK restrict).
     if (/foreign key|violates/i.test(error.message)) {
       return { ok: false, status: 409, error: `Members hold ${role.name}. Move them to another role first.` };
     }

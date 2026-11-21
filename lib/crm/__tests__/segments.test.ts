@@ -5,14 +5,6 @@ import type { CustomerOverviewRow, PurchaseClass } from "@/lib/crm/customer-over
 import { LIFECYCLE_STAGES } from "@/lib/crm/lifecycle-stage";
 import { SEGMENT_FILTERS_VERSION, parseSegmentFilters, segmentParams } from "@/lib/crm/segment-rules";
 
-/**
- * CRM 05: Segments over the Customer overview, through the list's own filter
- * mapping. A Segment and the same filters in the URL return identical
- * Customers; one with a filter the schema no longer recognises counts and
- * resolves none; live names are unique; and `resolveSegment` yields every id
- * once, ordered by id, however it is paged.
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb }));
 
 vi.mock("@/lib/supabase/server", async () => {
@@ -35,13 +27,11 @@ const {
 const NOW = new Date("2026-10-21T04:00:00.000Z");
 const MONTH = 30 * 24 * 3600 * 1000;
 
-/** A deterministic id; `n` sorts the same way the uuid does. */
 const customerId = (n: number) => `c0000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const segmentId = (n: number) => `5e000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
 const BOUGHT: PurchaseClass[][] = [[], ["premium"], ["basic"], ["premium", "mbolster"], ["accessory"]];
 
-/** One overview row per Customer, varied on every filter a Segment can save. */
 function overviewRow(n: number): Partial<CustomerOverviewRow> {
   const paidMonthsAgo = n % 7 === 0 ? null : (n % 30) + 1;
   return {
@@ -62,7 +52,6 @@ function overviewRow(n: number): Partial<CustomerOverviewRow> {
     marketing_email: n % 5 === 0 ? "subscribed" : n % 5 === 1 ? "unsubscribed" : "not_subscribed",
     open_followups: n % 8 === 0 ? 1 : 0,
     last_paid_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
-    // Slice 03: *Last order* reads purchases. Here every paid Order is one.
     last_purchase_at: paidMonthsAgo == null ? null : new Date(NOW.getTime() - paidMonthsAgo * MONTH).toISOString(),
     lifecycle_stage: LIFECYCLE_STAGES[n % LIFECYCLE_STAGES.length],
     bought: BOUGHT[n % BOUGHT.length],
@@ -71,7 +60,6 @@ function overviewRow(n: number): Partial<CustomerOverviewRow> {
   };
 }
 
-/** `count` Customers, stored out of id order so ordering is the code's, not the fixture's. */
 function customers(count: number) {
   const rows = Array.from({ length: count }, (_, i) => overviewRow(i + 1));
   return rows.map((_, i) => rows[(i * 7919) % count]!);
@@ -85,7 +73,6 @@ beforeEach(() => {
   };
 });
 
-/** Every id the Customers list shows for `url`, page after page, as the list reads them. */
 async function listIds(url: string): Promise<{ ids: string[]; total: number }> {
   const { filters } = parseCustomerFilters(new URLSearchParams(url));
   const ids: string[] = [];
@@ -110,10 +97,8 @@ async function resolveAll(id: string, pageSize?: number): Promise<{ ids: string[
   return { ids, pages };
 }
 
-/** Saves the list's `url` as a Segment, as *Save as Segment* does. */
 async function saveFromUrl(name: string, url: string) {
   const { filters } = parseCustomerFilters(new URLSearchParams(url));
-  // What the Segments row sends: the list's filters, as a Segment saves them.
   const input = parseSegmentFilters(segmentParams(filters));
   if (!input.ok) throw new Error(input.error);
   return createSegment(name, input.params, "p-jess", { now: NOW });
@@ -135,7 +120,6 @@ describe("a Segment and the same filters in the URL", () => {
     "tags=vip",
     "search=mei",
     "search=tan&readjusted=ever",
-    // PRD-crm-retention-loop slice 03: *Stage: At risk* saved as a Segment.
     "stage=at-risk,lost",
     "stage=lead&source=shopify",
   ])("return identical Customers: %s", async (url) => {
@@ -145,12 +129,10 @@ describe("a Segment and the same filters in the URL", () => {
       const segment = await saveFromUrl(`Segment ${url}`, url);
       const resolved = await resolveAll(segment.id);
 
-      // Each filter set chooses some Customers, never all 120.
       expect(list.ids.length).toBeGreaterThan(0);
       expect(list.ids.length).toBeLessThan(120);
       expect(new Set(resolved.ids)).toEqual(new Set(list.ids));
       expect(resolved.ids).toHaveLength(list.ids.length);
-      // The chip's live count is the list's total.
       expect(segment.count).toBe(list.total);
       expect((await listSegments({ now: NOW })).find((s) => s.id === segment.id)?.count).toBe(list.total);
     } finally {
@@ -192,9 +174,6 @@ describe("a Segment the schema no longer fully recognises", () => {
     await expect(resolveSegment(id).next()).rejects.toMatchObject({ reason: "needs_review", ignored: ["region=east"] });
   });
 
-  // PRD-loyalty-points slice 06: a Segment saved with the retired voucher
-  // filter, at filters_version 1, still opens and returns the same Customers
-  // as its other filters do.
   it("a version-1 Segment with voucher= opens and returns the same Customers, minus that filter", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     try {
@@ -213,7 +192,6 @@ describe("a Segment the schema no longer fully recognises", () => {
       expect(new Set(ids)).toEqual(new Set(list.ids));
       expect(ids).toHaveLength(list.ids.length);
 
-      // Updated, it is saved at the current version, without the voucher.
       await updateSegment(id, { name: "Renamed" }, { now: NOW });
       expect(h.db.customer_segments[0]).toMatchObject({ filters: { source: "shopify", voucher: "issued", bought: "premium" } });
       await updateSegment(id, { params: { source: "shopify", bought: "premium" } }, { now: NOW });
@@ -246,7 +224,6 @@ describe("Segment names", () => {
   it("renaming onto a live name is refused; onto its own name in another case is not", async () => {
     const a = await saveFromUrl("Premium", "bought=premium");
     await saveFromUrl("Basic", "bought=basic");
-    // The fake's ids are not uuids; give them real ones as the database would.
     h.db.customer_segments[0]!.id = segmentId(1);
     h.db.customer_segments[1]!.id = segmentId(2);
     await expect(updateSegment(segmentId(1), { name: "BASIC" })).rejects.toBeInstanceOf(SegmentNameTakenError);
@@ -282,7 +259,6 @@ describe("resolveSegment over 1,000 Customers", () => {
     h.db.admin_customer_overview = customers(1000);
   });
 
-  /** A stored Segment, as the database holds it. */
   const seed = (filters: Record<string, string>) => {
     h.db.customer_segments.push({
       id: segmentId(1),
@@ -298,16 +274,12 @@ describe("resolveSegment over 1,000 Customers", () => {
   const sorted = (ids: string[]) => [...ids].sort();
 
   it.each([1, 7, 128, RESOLVE_PAGE_SIZE, 1000, 5000])("yields each id exactly once, in id order, %i a page", async (pageSize) => {
-    // Matches every fixture Customer: everyone has a search_text with "@x.test".
     const id = seed({ search: "@x.test" });
     const { ids, pages } = await resolveAll(id, pageSize);
     expect(ids).toHaveLength(1000);
     expect(new Set(ids).size).toBe(1000);
     expect(ids).toEqual(sorted(h.db.admin_customer_overview.map((r) => r.id as string)));
-    // Full pages, then the empty page that ends the run.
     expect(pages).toBe(Math.ceil(1000 / pageSize));
-    // One page per id at size 1 is a thousand fake-database scans: slow on a
-    // loaded machine, not wrong.
   }, 30_000);
 
   it("yields exactly the Customers the filters choose", async () => {
@@ -328,7 +300,6 @@ describe("resolveSegment over 1,000 Customers", () => {
     for await (const page of resolveSegment(id, { pageSize: 100, now: NOW })) {
       seen.push(...page);
       if (added < 3) {
-        // One sorts before the cursor (not yielded), one after (yielded once).
         h.db.admin_customer_overview.push(
           { ...overviewRow(2000 + added), id: customerId(0) + String(added) },
           { ...overviewRow(3000 + added), id: customerId(999_000 + added) },

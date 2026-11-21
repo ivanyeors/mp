@@ -7,7 +7,6 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-/** Redirects to cart page when isOpen on mobile (e.g. after addItem). */
 export function CartShell() {
   const isMobile = useIsMobile();
   const router = useRouter();

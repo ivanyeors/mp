@@ -1,25 +1,6 @@
 import { campaignBlocker, isCampaignTemplate, WAVE_PATTERN, type CampaignSendFact } from "../campaign";
 import { marketingEmailState } from "@/lib/marketing-consent/state";
 
-/**
- * An in-memory stand-in for the service-role client, answering exactly what
- * the wave sender asks of Postgres:
- *  - `customer_campaign_candidates` and `customer_campaign_wave_stats`, the
- *    two views, computed from the tables (`select`, `order`, `range`);
- *  - `customer_campaign_sends`, for the send limit's count and its oldest
- *    send (`in`, `gte`, `order`, `limit`, `select` with `count: "exact",
- *    head: true`), and `admin_audit_log` for the tests it also counts;
- *  - `site_settings` (`eq`, `in`, `maybeSingle`);
- *  - the RPCs `claim_campaign_send`, `finish_campaign_send`, `mint_claim_link`
- *    and `set_marketing_email`.
- *
- * `claim_campaign_send` mirrors the SQL (20261020130000): owner decision 3,
- * the wave check, the rule (here `campaignBlocker`, which campaign-cases.json
- * holds equal to `campaign_send_blocker`), and the unique (Customer, template)
- * key. assert-08-campaign-sends.sql proves the real function, concurrency
- * included.
- */
-
 type Row = Record<string, unknown>;
 
 export interface FakeCustomer {
@@ -58,9 +39,7 @@ export interface CampaignWorld {
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
   settings: Record<string, string>;
   consentEvents: Row[];
-  /** `admin_audit_log` rows: the Email campaigns page's tests (`email_campaign.test`), which the send limit counts. */
   auditLog?: { action: string; created_at: string; after: Row | null }[];
-  /** Called inside each claim, before the rule runs: a test's chance to change the world. */
   onClaim?: (customerId: string) => void;
 }
 

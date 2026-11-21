@@ -1,5 +1,3 @@
-/** Hold-cancel restore: persist preview + hold-prep so Stripe cancel returns to customisation. */
-
 import {
   parsePillowAssistDraft,
   type PillowAssistDraft,
@@ -35,18 +33,11 @@ export type HoldCancelDraft = {
   step: "preview";
   responseId?: string | null;
   measurementUnit?: "cm" | "in";
-  /** Opaque measurement blob — client owns the shape. */
   measurementData?: Record<string, unknown>;
   heightUnit?: "cm" | "m" | "in";
   heightCm?: string;
   sleepPosition?: "side" | "stomach" | "other" | null;
   selections: HoldPrepSelections;
-  /**
-   * Mpillow, Staff assist mode only: the size×tier Staff chose and the mix on
-   * the x-ray. Without it the restore re-asks the engine, and the preview came
-   * back on the recommended size and template after the Paired build's
-   * Mbolster step, a reload or a cancelled Checkout.
-   */
   staffAssist?: PillowAssistDraft;
 };
 
@@ -59,7 +50,6 @@ export function isHoldCancelledQuery(search: string): boolean {
   return new URLSearchParams(q).get("hold_cancelled") === "1";
 }
 
-/** Drop hold_cancelled from the query string (keeps other params). */
 export function stripHoldCancelledFromSearch(search: string): string {
   const q = search.startsWith("?") ? search.slice(1) : search;
   const params = new URLSearchParams(q);
@@ -120,7 +110,6 @@ export function parseHoldCancelDraft(raw: unknown): HoldCancelDraft | null {
   }
   const selections = parseHoldPrepSelections(d.selections);
   if (!selections) return null;
-  // A session that does not parse is dropped on its own: the rest still restores.
   const staffAssist = parsePillowAssistDraft(d.staffAssist);
   return {
     v: 1,

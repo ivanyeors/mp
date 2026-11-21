@@ -2,15 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { evaluateEligibility, type EligibilityOrder } from "./eligibility";
 import { RMA_TERMINAL_STATUSES, type RmaResolution } from "./transitions";
 
-/**
- * RMA creation (ADR 0011, slice 03).
- *
- * `planRmaCreate` is the pure core: it re-runs eligibility (never trusting the
- * client) for every requested line against the fetched order/items and the
- * already-returned quantities, and either returns an error reason or the exact
- * rows to insert. `createRmaRequest` is the thin DB shell that persists them.
- */
-
 export interface PlanItemInput {
   order_item_id: string;
   quantity: number;
@@ -20,14 +11,12 @@ export interface PlanOrderItem {
   id: string;
   quantity: number;
   product_title: string;
-  /** `service` lines (ADR 0024) are never returnable. */
   kind?: string | null;
 }
 
 export interface PlanRmaInput {
   order: EligibilityOrder;
   orderItems: PlanOrderItem[];
-  /** order_item_id -> quantity already tied up in a non-terminal RMA. */
   alreadyReturnedByItem: Record<string, number>;
   requestedItems: PlanItemInput[];
   resolution: RmaResolution;
@@ -37,7 +26,6 @@ export interface PlanRmaInput {
 
 export interface PlannedRmaRows {
   items: Array<{ order_item_id: string; quantity: number }>;
-  /** Line titles for the confirmation email. */
   emailItems: Array<{ title: string; quantity: number }>;
 }
 
@@ -111,11 +99,6 @@ export interface CreatedRma {
   created_at: string;
 }
 
-/**
- * Insert an RMA request + its items + the initial status event
- * (null -> 'requested', actor 'system'). Returns the new request row. Assumes
- * eligibility has already been validated (via {@link planRmaCreate}).
- */
 export async function createRmaRequest(
   admin: SupabaseClient,
   input: CreateRmaInput,
@@ -163,12 +146,6 @@ export async function createRmaRequest(
   return request as CreatedRma;
 }
 
-/**
- * Sum, per order_item_id, the quantity of an order already tied up in a
- * non-terminal RMA. A line's remaining returnable quantity = ordered − this.
- * Shared by the account page (to decide eligibility) and the create route (to
- * re-check server-side). Requires a service-role client to see across RLS.
- */
 export async function openReturnedQtyByOrder(
   admin: SupabaseClient,
   orderId: string,
@@ -187,7 +164,6 @@ export async function openReturnedQtyByOrder(
   for (const row of (data ?? []) as Array<{
     order_item_id: string;
     quantity: number;
-    // Supabase types the joined row as object|array depending on cardinality.
     rma_requests: { status: string } | { status: string }[];
   }>) {
     const joined = Array.isArray(row.rma_requests) ? row.rma_requests[0] : row.rma_requests;

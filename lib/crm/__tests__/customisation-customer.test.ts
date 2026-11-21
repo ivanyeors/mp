@@ -8,17 +8,10 @@ import {
   type NewCustomerFields,
 } from "@/lib/crm/customisation-customer";
 
-/**
- * Every email given in a customisation is a Customer (ADR 0051): found by its
- * email, or created with the name and mobile given; a found one is never
- * changed; the box decides consent and nothing else.
- */
-
 let db: AftercareFakeDb;
 const client = () => fakeAftercareDb(db, { set_marketing_email: setMarketingEmailRpc }) as unknown as SupabaseClient;
 const customer = (email: string) => db.customers.find((c) => c.email === email);
 
-/** findOrCreateCustomer's part, over the fake: never touches a Customer it finds. */
 const findOrCreate = vi.fn(async (email: string, fields: NewCustomerFields) => {
   const found = db.customers.find((c) => c.email === email);
   if (found) return found.id as string;

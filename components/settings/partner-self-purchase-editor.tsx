@@ -2,13 +2,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { upsertSelfPurchaseRate } from "@/app/[lang]/settings/partner-commissions/self-purchase-actions";
 import { InfoTip } from "@/components/ui/info-tip";
 
-/**
- * Admin editor for per-partner self-purchase pricing (#82). Rate (percent of MSRP
- * or flat $ off per unit) + a unit cap, keyed on the same partner the Commissions
- * editor selects. Staff-only — mounted inside the already-admin-guarded Partner
- * Commissions page; the action re-asserts admin. A zero cap = feature off.
- */
-
 type Row = {
   id: string;
   name: string;
@@ -79,7 +72,6 @@ export async function PartnerSelfPurchaseEditor() {
         </table>
       </div>
 
-      {/* Upsert form — plain server-action form, no client JS. Cap 0 = feature off. */}
       <form
         action={upsertSelfPurchaseRate}
         className="mt-8 grid max-w-xl grid-cols-1 gap-4 rounded-lg border p-4 sm:grid-cols-2"

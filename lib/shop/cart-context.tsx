@@ -5,15 +5,12 @@ import type { CartItemClient } from "@/lib/types/ecommerce";
 
 const STORAGE_KEY = "mp_cart";
 
-/** What the one code field holds (ADR 0033): a discount or a partner's referral code. */
 export type CartCodeKind = "discount" | "referral";
 
 interface CartState {
   items: CartItemClient[];
-  /** The code, whichever kind it is; kept under its old name for stored carts. */
   couponCode: string | null;
   couponKind: CartCodeKind | null;
-  /** The partner a referral code credits, for the field's status line. */
   couponPartnerName: string | null;
   couponDiscount: number;
   couponFreeShipping: boolean;
@@ -28,7 +25,6 @@ interface CartActions {
   removeItem: (variantId: string, customizationId?: string) => void;
   updateQuantity: (variantId: string, quantity: number, customizationId?: string) => void;
   applyCoupon: (code: string | null) => Promise<void>;
-  /** Checkout checked the code itself; keep its answer so the cart agrees. */
   rememberCode: (
     result: { code: string; kind: CartCodeKind; discount: number; freeShipping: boolean; partnerName?: string } | null,
   ) => void;
@@ -66,16 +62,13 @@ function saveCartToStorage(state: Pick<CartState, "items" | "couponCode">) {
       STORAGE_KEY,
       JSON.stringify({ items: state.items, couponCode: state.couponCode })
     );
-  } catch {
-    // Ignore storage errors
-  }
+  } catch {}
 }
 
 type CodeCheck =
   | { valid: true; kind: CartCodeKind; code: string; discount: number; freeShipping: boolean; partnerName: string | null }
   | { valid: false; error: string };
 
-/** Asks the one code endpoint (ADR 0033) what this code means for this cart. */
 async function validateCouponClient(
   code: string,
   items: CartItemClient[],
@@ -153,10 +146,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Only once there is something in the cart. The provider is mounted app-wide,
-  // and customerEmail is read by coupon validation and checkout only — firing
-  // this on every page load would be a request per visit for nothing. Keyed on
-  // the boolean, not the count, so adding a second item does not refetch.
   const hasItems = state.items.length > 0;
   useEffect(() => {
     if (!hydrated || !hasItems) return;
@@ -174,7 +163,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (hydrated) saveCartToStorage(state);
   }, [state, hydrated]);
 
-  // Re-validate stored coupon when cart items change.
   useEffect(() => {
     if (!hydrated || !state.couponCode || state.items.length === 0) return;
     const subtotal = state.items.reduce(
@@ -208,7 +196,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         couponError: null,
       }));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.items, state.customerEmail, hydrated]);
 
   const addItem = useCallback((item: CartItemClient) => {

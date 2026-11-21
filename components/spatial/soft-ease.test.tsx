@@ -17,21 +17,13 @@ import { startRings, topPlanes, useSoftTopPaths, type SoftTopPlane } from "./sof
 import { softCutInputFor } from "./xray-cross-section";
 import { stageRegions } from "./xray-pillow";
 
-/**
- * The two easing hooks read the latest input, planes and `easeMs` when a new
- * settle starts, in the same commit that brought them: a held pouch's next
- * preview eases over the short `easeMs`, from where the last one was shown,
- * and a piece that is new eases in from where it was stacked.
- */
-
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// The cut's test items (soft-cut.test.ts), each cell top → bottom.
 const ITEMS: Record<number, { name: string; subtype: string }> = { 1: { name: "6D (S)", subtype: "6D" }, 2: { name: "6D Fold (S)", subtype: "6D" } };
 const DIMS = new Map<number, ResolvedDims>(Object.entries(ITEMS).map(([id, it]) => [Number(id), resolveDims({ name: it.name, category: "filling" })]));
 const SUBTYPES = new Map(Object.entries(ITEMS).map(([id, it]) => [Number(id), it.subtype] as const));
 const SMALL = { front: [1], middle: [2], back: [1] };
-const MORE = { front: [1], middle: [2], back: [1, 1] }; // one more pouch at the back: center/back/2
+const MORE = { front: [1], middle: [2], back: [1, 1] };
 
 function placementsOf(cells: Partial<Record<SubSection, number[]>>): PillowPlacement[] {
   return SUB_SECTIONS.flatMap((subSection) => (cells[subSection] ?? []).map((itemId, row) => ({ section: "center" as const, subSection, slot: row + 1, itemId, row })));
@@ -52,14 +44,12 @@ function planesOf(cells: Partial<Record<SubSection, number[]>>): SoftTopPlane[] 
   );
 }
 
-/** A path's points (its numbers, two at a time) and their middle. */
 const points = (d: string): Pt[] => {
   const n = (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
   return Array.from({ length: n.length / 2 }, (_, i) => [n[2 * i], n[2 * i + 1]] as Pt);
 };
 const middle = (ring: readonly Pt[]): Pt => [ring.reduce((s, p) => s + p[0], 0) / ring.length, ring.reduce((s, p) => s + p[1], 0) / ring.length];
 
-// Frames and the clock, by hand.
 let now = 0;
 let frames: FrameRequestCallback[] = [];
 const frame = (ms: number) =>
@@ -105,8 +95,8 @@ describe("useSoftCut", () => {
     expect(shown).toBe(settleSoftCut(small));
 
     act(() => root.render(<Cut input={more} easeMs={5} />));
-    expect(shown).not.toBe(settleSoftCut(more)); // easing, from where `small` was shown
-    frame(6); // past 5 ms: done. The settle's own length (≥ 200 ms) would still be easing.
+    expect(shown).not.toBe(settleSoftCut(more));
+    frame(6);
     expect(shown).toBe(settleSoftCut(more));
   });
 });
@@ -120,20 +110,19 @@ describe("useSoftTopPaths", () => {
 
   it("eases a new piece in from where it was stacked, over the easeMs that came with it", () => {
     act(() => root.render(<Top planes={planesOf(MORE)} />));
-    const settled = new Map(paths!); // first layout: shown as settled, no easing
+    const settled = new Map(paths!);
     act(() => root.unmount());
     root = createRoot(host);
 
     act(() => root.render(<Top planes={planesOf(SMALL)} />));
     act(() => root.render(<Top planes={planesOf(MORE)} easeMs={5} />));
-    // The new pouch starts from its stacked outline (seeded from the planes of this commit), not from where it settles.
     const stacked = planesOf(MORE)
       .map((plane) => startRings(plane).get("center/back/2"))
       .find(Boolean)!;
     const start = middle(points(paths!.get("center/back/2")!));
     const dist = (a: Pt, b: Pt) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     expect(dist(start, middle(stacked))).toBeLessThan(dist(start, middle(points(settled.get("center/back/2")!))));
-    frame(6); // past 5 ms: done. The settle's own length (≥ 200 ms) would still be easing.
+    frame(6);
     expect(paths).toEqual(settled);
   });
 });

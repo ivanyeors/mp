@@ -5,12 +5,6 @@ import MediaPage, { type MediaInitialData } from "./media-client";
 
 export const runtime = "nodejs";
 
-/**
- * Server shell for the Media gallery. The asset registry and the folder list
- * are loaded during the render; the landing-image overrides and the usage map
- * remain client fetches, and an empty registry still falls through to the
- * client so its one-shot bucket backfill can run.
- */
 export default async function MediaRoute({
   params,
 }: {

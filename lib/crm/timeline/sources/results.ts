@@ -11,30 +11,6 @@ import type {
   TimelineRef,
 } from "@/lib/crm/timeline/types";
 
-/**
- * Results on the Customer timeline, matched as the storefront matches them:
- * `customer_id`, or the email (`isCustomersResult`, shared with
- * `authorizeResultAccess`), so a guest Result shows too.
- *
- * A Result stores only three times, and the timeline invents no others:
- *
- * - created (`created_at`), with the current status as a pill. Declined and
- *   expired have no time of their own, so they show only as that pill;
- * - build sent (`assigned_at`);
- * - balance paid (`topup_paid_at`).
- *
- * An accepted Result shows as its Order (the orders adapter). A Staff cancel is
- * the `result.cancel` entry `app/api/results/[id]/cancel/route.ts` writes to
- * `admin_audit_log`. Results emails have no ledger, so they are not listed.
- *
- * A Paired build (two Results sharing `paired_build_id`, the anchor's id) is one
- * entry per fact: created when its first half was, its build sent when the last
- * half was assigned and none is still `held` (the assign route emails the
- * customer only then), its balance paid once.
- *
- * Drafts (`status` null) are left out, as on the customer's own Results list.
- */
-
 type ResultRow = {
   id: string;
   status: string;
@@ -56,15 +32,10 @@ type ResultRow = {
 const RESULT_COLUMNS =
   "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, customer_id, customer_email, paired_build_id, created_at, assigned_at, topup_paid_at";
 
-/**
- * Results read per page, by id and by email each: a Customer has a handful.
- * Past this many created before the cursor, the oldest one read is the floor.
- */
 export const RESULTS_CAP = 100;
 
 const capitalise = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : null);
 
-/** `Mpillow M · Premium`, `Mbolster 90`: the names the assign route gives a build. */
 export function resultLabel(r: ResultRow): string {
   if (r.product_type === "bolster") {
     const length = r.assigned_length ?? r.suggested_length;
@@ -77,7 +48,6 @@ export function resultLabel(r: ResultRow): string {
   return "Customisation";
 }
 
-/** A Result, or the two halves of a Paired build, anchor first. */
 type Build = { key: string; members: ResultRow[] };
 
 function buildsOf(rows: readonly ResultRow[]): Build[] {
@@ -131,10 +101,6 @@ function buildEntries(b: Build): TimelineEntry[] {
   return out;
 }
 
-/**
- * The Customer's Results created at or before the cursor, newest first, plus the
- * other half of any Paired build the window cut in two.
- */
 async function readResults(customer: TimelineCustomer, before: string | null) {
   const db = supabaseAdmin();
   const live = () => db.from("mp_config_responses").select(RESULT_COLUMNS).not("status", "is", null);
@@ -169,7 +135,6 @@ async function readResults(customer: TimelineCustomer, before: string | null) {
 
 type AuditRow = { id: string; entity_id: string; created_at: string };
 
-/** Staff cancels of these Results, from the audit entry the cancel route writes. */
 function readCancels(builds: readonly Build[], before: string | null, limit: number): Promise<TimelineBatch> {
   const buildOf = new Map<string, Build>();
   for (const b of builds) for (const m of b.members) buildOf.set(m.id, b);
@@ -188,7 +153,6 @@ function readCancels(builds: readonly Build[], before: string | null, limit: num
       const b = buildOf.get(a.entity_id);
       const row = b?.members.find((m) => m.id === a.entity_id);
       if (!b || !row) return null;
-      // Cancelling the anchor ends the pair; cancelling the Mbolster leaves the Mpillow.
       const what = row.id === b.key && b.members.length > 1 ? `Paired build: ${labelOf(b)}` : resultLabel(row);
       return {
         id: `result.cancelled:${a.id}`,

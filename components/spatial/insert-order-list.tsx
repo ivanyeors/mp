@@ -1,18 +1,5 @@
 "use client";
 
-/**
- * Insert order (CONTEXT.md): the numbered steps for putting pieces into each
- * Section — left, center, right — when the pillow is assembled. Sub-sections
- * and layers are not part of the sequence; each step names its sub-section
- * (and its Layer, in a stacked cell) only so Staff can find that piece in the
- * pillow. Mounted beside the derived pack list on Configure and Result detail
- * assign, and in its place in the Customer page's Re-adjust editor, where
- * Staff take pieces out one by one and need to know which Section each came
- * from. Drag to reorder and remove a piece when `onPlacementsChange` is given,
- * read-only otherwise. Pieces never ordered sort last, so a piece added after
- * ordering is simply the next step.
- */
-
 import type { ReactNode } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { Trash2 } from "lucide-react";
@@ -26,7 +13,6 @@ import { SECTIONS, type PillowPlacement, type Section } from "@/lib/spatial-fill
 import { fillingLabel, type FillingItemLike } from "@/lib/spatial-fillings/filling-groups";
 import { cn } from "@/lib/utils";
 
-// Unique within a Section (the cell PK minus section), which is one provider's scope.
 const pieceId = (p: PillowPlacement) => `${p.subSection}/${p.slot}`;
 
 function Step({
@@ -39,7 +25,6 @@ function Step({
 }: {
   n: number;
   label: string;
-  /** Where the piece sits in its Section: its sub-section, and its Layer in a stacked cell. */
   where: string;
   grip?: ReactNode;
   onRemove?: () => void;
@@ -81,9 +66,7 @@ export function InsertOrderList({
 }: {
   placements: PillowPlacement[];
   onPlacementsChange?: (next: PillowPlacement[]) => void;
-  /** The items handed to the editor; a pre-formatted `label` wins over the type label. */
   items: Array<FillingItemLike & { label?: string }>;
-  /** Left, center and right side by side from md, as the pillow lies, instead of one under another. */
   columns?: boolean;
   className?: string;
 }) {
@@ -91,7 +74,6 @@ export function InsertOrderList({
     const item = items.find((i) => i.id === itemId);
     return item ? item.label ?? fillingLabel(item) : `Item #${itemId}`;
   };
-  // A cell is stacked once any of its pieces sits below the top Layer; its steps then say which Layer.
   const stacked = new Set(placements.filter((p) => (p.row ?? 0) > 0).map((p) => `${p.section}/${p.subSection}`));
   const whereOf = (p: PillowPlacement) =>
     stacked.has(`${p.section}/${p.subSection}`) ? `${p.subSection} · layer ${(p.row ?? 0) + 1}` : p.subSection;

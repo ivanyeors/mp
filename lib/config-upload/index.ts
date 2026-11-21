@@ -4,10 +4,8 @@ import { MAX_IMAGES_PER_SESSION, MAX_FILE_BYTES, type ConfigUpload } from "./lim
 
 const BUCKET = "media";
 
-// Re-export the client-safe limits/type so server callers keep importing from the module root.
 export { MAX_IMAGES_PER_SESSION, MAX_FILE_BYTES, type ConfigUpload };
 
-/** A refusal the caller should surface to the user (maps to HTTP 422). */
 export class UploadRefusedError extends Error {
   constructor(message: string) {
     super(message);
@@ -15,10 +13,6 @@ export class UploadRefusedError extends Error {
   }
 }
 
-/**
- * Pure guard: ≤10 images/session, ≤15 MB/file, image mimes only.
- * Throws {@link UploadRefusedError} on the first violated rule.
- */
 export function assertUploadAllowed(
   existingCount: number,
   fileSize: number,
@@ -37,11 +31,6 @@ export function assertUploadAllowed(
   }
 }
 
-/**
- * Optimize → upload under `media/config-uploads/{sessionId}/…webp` → insert a
- * `config_upload` row. Mirrors {@link ingestImageAsset} but deliberately does NOT
- * create a Media Asset, so reference photos stay out of the DAM (ADR 0014).
- */
 export async function saveConfigUpload(opts: {
   sessionId: string;
   bytes: Buffer;
@@ -77,7 +66,6 @@ export async function saveConfigUpload(opts: {
   return mapRow(data);
 }
 
-/** All reference photos for a session, oldest first. */
 export async function listConfigUploads(sessionId: string): Promise<ConfigUpload[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
@@ -89,7 +77,6 @@ export async function listConfigUploads(sessionId: string): Promise<ConfigUpload
   return (data ?? []).map(mapRow);
 }
 
-/** Remove the storage object and the row. No-op if the row is already gone. */
 export async function deleteConfigUpload(id: string): Promise<void> {
   const admin = supabaseAdmin();
   const { data: row, error: readErr } = await admin

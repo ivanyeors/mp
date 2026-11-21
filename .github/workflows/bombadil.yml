@@ -4,9 +4,15 @@ name: bombadil
 # through the app at random and fails on the first uncaught exception,
 # unhandled promise rejection, console error or HTTP 4xx/5xx response.
 #
-# On request only, never on a push or pull request: it runs for minutes and
-# what it finds is a lead to look into, not a gate. Start it from Actions →
-# bombadil → Run workflow (pick the branch), or:
+# Never on a push or pull request: it runs for minutes and what it finds is a
+# lead to look into, not a gate. It runs on the first of each month against
+# `main`, once as owner and once as visitor, ten minutes each, so the app gets
+# explored even in a month nobody thought to ask; a failed scheduled run mails
+# the repository owner. A scheduled run has no inputs, so every input below
+# falls back to that default in the steps, not only in the form.
+#
+# On request, start it from Actions → bombadil → Run workflow (pick the
+# branch), or:
 #
 #   gh workflow run bombadil.yml --ref <branch> -f as=owner -f time-limit=10m
 #
@@ -16,12 +22,15 @@ name: bombadil
 # or reach Stripe. The same script runs locally or in a Claude session.
 #
 # A failed run means Bombadil found something. The job summary says what; the
-# `bombadil` artifact holds the trace, the screen it stopped on, and the
-# dev server's log. To step through the trace:
+# `bombadil-owner` or `bombadil-visitor` artifact holds the trace, the screen
+# it stopped on, and the dev server's log. To step through the trace:
 #
 #   bombadil browser inspect trace.bin
 
 on:
+  # 03:17 UTC on the 1st: off the hour, where scheduled runs queue up.
+  schedule:
+    - cron: "17 3 1 * *"
   workflow_dispatch:
     inputs:
       as:
@@ -49,6 +58,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
+    # The schedule explores as both; a run by hand, as the one asked for.
+    # Each is its own job, so an owner-side failure does not stop the visitor.
+    strategy:
+      fail-fast: false
+      matrix:
+        as: ${{ fromJSON(github.event_name == 'schedule' && '["owner","visitor"]' || format('["{0}"]', inputs.as || 'owner')) }}
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -70,8 +86,8 @@ jobs:
       # inject shell.
       - name: Explore
         env:
-          AS: ${{ inputs.as }}
-          TIME_LIMIT: ${{ inputs.time-limit }}
+          AS: ${{ matrix.as }}
+          TIME_LIMIT: ${{ inputs.time-limit || '10m' }}
           START: ${{ inputs.start }}
         run: |
           args=(--as "$AS" --time-limit "$TIME_LIMIT" --out bombadil-out)
@@ -81,8 +97,8 @@ jobs:
       - name: Summary
         if: always()
         env:
-          AS: ${{ inputs.as }}
-          TIME_LIMIT: ${{ inputs.time-limit }}
+          AS: ${{ matrix.as }}
+          TIME_LIMIT: ${{ inputs.time-limit || '10m' }}
         run: |
           log=bombadil-out/run.log
           {
@@ -93,7 +109,7 @@ jobs:
               echo '```'
               sed -n '/was violated:/,/^Test finished/p' "$log"
               echo '```'
-              echo "The \`bombadil\` artifact has the trace (\`bombadil browser inspect trace.bin\`), the screen it stopped on, and the dev server's log."
+              echo "The \`bombadil-$AS\` artifact has the trace (\`bombadil browser inspect trace.bin\`), the screen it stopped on, and the dev server's log."
             else
               echo "No property was violated in $TIME_LIMIT."
             fi
@@ -102,7 +118,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: bombadil
+          name: bombadil-${{ matrix.as }}
           path: bombadil-out
           if-no-files-found: ignore
           retention-days: 14

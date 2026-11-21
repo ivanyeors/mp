@@ -1,7 +1,3 @@
-/**
- * Slice 04 self-check — Premium/Basic slide-in + mp-config polish (en-US).
- * Run: npx tsx lib/i18n/marketing-copy-slice-04.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +16,6 @@ function words(s: string) {
   return t ? t.split(/\s+/).length : 0;
 }
 
-// --- Premium hero: consultative fitting (Science of Sleep is retired) ---
 const premium = enUS.slides.premiumMpillow;
 const hero = `${premium.heroSubtitle} ${premium.heroParagraphs.join(" ")}`;
 assert.doesNotMatch(hero, /Science of Sleep/i);
@@ -29,7 +24,6 @@ assert.match(hero, /consultative/i);
 assert.match(hero, /fitting|fit/i);
 assert.doesNotMatch(hero, BANNED);
 
-// --- FibreCool benefit line (Premium package, not cervical-only) ---
 const fibreLine = premium.packageItems.find((item) => /FibreCool/i.test(item));
 assert.ok(fibreLine, "FibreCool package line");
 assert.match(fibreLine!, /warm|device|heat/i);
@@ -39,20 +33,17 @@ assert.doesNotMatch(
   /cervicalNeckSupport[\s\S]*FibreCool[\s\S]*warm after long device/i
 );
 
-// --- whoItsFor conclusion: sleep comfort / overnight alignment, no treat/cure ---
 assert.match(premium.whoItsForConclusion, /sleep comfort/i);
 assert.match(premium.whoItsForConclusion, /overnight alignment/i);
 assert.doesNotMatch(premium.whoItsForConclusion, BANNED);
 assert.doesNotMatch(premium.whoItsForConclusion, /alleviate|treat|cure/i);
 
-// --- Basic description: Singapore + custom-fit cervical ---
 const basic = enUS.slides.basicMpillow;
 assert.match(basic.description, /Singapore/i);
 assert.match(basic.description, /custom[- ]?fit/i);
 assert.match(basic.description, /cervical/i);
 assert.doesNotMatch(basic.description, BANNED);
 
-// --- mp-config INTRO shell ---
 const mpSrc = read("app/[lang]/mp-config/page.tsx");
 const h1Match = mpSrc.match(/"en-US":\s*\{[\s\S]*?h1:\s*"((?:\\.|[^"\\])*)"/);
 assert.ok(h1Match, "en-US mp-config h1");
@@ -71,13 +62,11 @@ assert.doesNotMatch(lede, BANNED);
 const ledeWords = words(lede);
 assert.ok(ledeWords >= 50 && ledeWords <= 140, `mp-config lede words ${ledeWords}`);
 
-// Wizard still below SEO shell (intro → FAQ → client)
 const introAt = mpSrc.indexOf("<ConfiguratorSeoIntro");
 const faqAt = mpSrc.indexOf("<PageFaqSection");
 const clientAt = mpSrc.indexOf("<MpConfigClient");
 assert.ok(introAt >= 0 && faqAt > introAt && clientAt > faqAt, "wizard below SEO shell");
 
-// zh-CN untouched
 assert.equal(zhCN.slides.premiumMpillow.heroSubtitle, "Premium Mpillow 是一款可定制枕头");
 assert.match(zhCN.slides.basicMpillow.description, /亲民价格/);
 assert.match(mpSrc, /定制您的 Mpillow 枕头/);

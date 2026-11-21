@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migratedExtrasFromRow, migratedFactsFromRow } from "@/lib/customer-migration/overview";
 
-/** The From Shopify card's read models (migration slice 12). */
-
 describe("migratedExtrasFromRow (migration slice 06, PRD-loyalty-points slice 06)", () => {
   it("takes the first click and the Claim bonus from the overview", () => {
     expect(
@@ -15,7 +13,6 @@ describe("migratedExtrasFromRow (migration slice 06, PRD-loyalty-points slice 06
       claimLinkFirstClickedAt: null,
       claimBonusAt: null,
     });
-    // A failed overview read leaves the rows out rather than guessing.
     expect(migratedExtrasFromRow(null)).toEqual({ claimLinkFirstClickedAt: null, claimBonusAt: null });
   });
 });

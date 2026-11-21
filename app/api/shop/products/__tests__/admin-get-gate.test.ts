@@ -2,13 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 import { roleHasPermission, type AdminRole } from "@/lib/auth/permissions";
 
-/**
- * The product GETs return drafts and `product_variants(*)` (cost_price), so they
- * answer only a Staff session holding the same `products` permission the writes
- * need. requireAdmin is mocked over the real role matrix, so a wrong permission
- * name fails here too.
- */
-
 const h = vi.hoisted(() => ({
   role: null as AdminRole | null,
   from: vi.fn(),

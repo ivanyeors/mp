@@ -6,13 +6,6 @@ import { connectMetaWebhooks, productionMetaWebhookUrl } from "@/lib/social-inbo
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Settings → Users & permissions → Telegram → "Connect webhooks": points the
- * Meta app's Page and Instagram webhooks at this site and subscribes the Page
- * (OPS checklist part 1, steps 5–6). Production only — Meta has one callback
- * URL per app, and a preview must never take it. Owners/admins only, like the
- * rest of the tab.
- */
 export async function POST(req: Request) {
   let ctx;
   try {

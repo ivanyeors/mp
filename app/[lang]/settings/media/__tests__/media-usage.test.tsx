@@ -12,11 +12,6 @@ vi.mock("next/navigation", () => ({
 
 const { default: MediaPage } = await import("@/app/[lang]/settings/media/media-client");
 
-/**
- * The grid's usage badge reads the URL usage map first and falls back to what
- * the per-asset endpoint found when the file was opened. A later refresh of
- * the file list (upload, Drive import, move) must not drop that fallback.
- */
 const asset = (id: string, name: string) => ({
   id,
   name,
@@ -70,11 +65,9 @@ describe("Media gallery usage badge", () => {
     );
     await until(() => (badge("Hero shot") === "Unused" ? true : null));
 
-    // Opening the file finds a usage the URL map missed; the grid marks it used.
     act(() => card("Hero shot")!.click());
     await until(() => (badge("Hero shot") === "1 use" ? true : null));
 
-    // An upload reloads the file list.
     const input = document.body.querySelector<HTMLInputElement>('input[type="file"]')!;
     Object.defineProperty(input, "files", { value: [new File(["x"], "new.jpg", { type: "image/jpeg" })] });
     act(() => input.dispatchEvent(new Event("change", { bubbles: true })));

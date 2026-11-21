@@ -16,7 +16,6 @@ export function TextImageSection({ section, messages: m, images }: TextImageSect
   const c = section.content as TextImageContent;
   const slug = section.slug;
 
-  // Determine which built-in variant this is
   const isSizeMatters = slug === "size-matters";
   const isAmbassadors = slug === "ambassadors";
 

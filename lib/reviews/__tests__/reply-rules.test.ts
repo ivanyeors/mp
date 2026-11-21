@@ -17,7 +17,6 @@ describe("reply rules", () => {
   it("expects our WhatsApp support line, but still flags any other number", () => {
     expect(replyWarnings("Please WhatsApp us on +65 8780 5311.")).toEqual([]);
     expect(replyWarnings("Please WhatsApp us on 8780 5311.")).toEqual([]);
-    // The automated appointment sender: nobody reads messages sent to it.
     expect(replyWarnings("Message +65 8809 7571")).toEqual([expect.stringMatching(/other than our WhatsApp support line/)]);
   });
 

@@ -1,11 +1,6 @@
-/**
- * Persist Pre-order on Result at hold create (ADR 0005 / UX polish slice 06).
- * Flag is sticky for that submission — restock must not clear it.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isPreOrder, type PreOrderTriggerInput } from "./pre-order-trigger";
 
-/** Map live trigger → Result `is_pre_order` column at hold create. */
 export function preOrderFlagForResult(input: PreOrderTriggerInput): boolean {
   return isPreOrder(input).isPreOrder;
 }
@@ -18,7 +13,6 @@ export type HoldPreOrderLookup = {
   suggestedLength?: string;
 };
 
-/** Recompute trigger inputs from inventory (do not trust a client flag alone). */
 export async function loadPreOrderTriggerAtHold(
   admin: SupabaseClient,
   args: HoldPreOrderLookup,

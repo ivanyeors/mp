@@ -1,12 +1,3 @@
-/**
- * Claims / SEO / copy-fit gate for marketing surfaces.
- * Banned clinical verbs + Singapore/cervical intent + hero H1 + Answer lede bands.
- * Bands: CONTEXT.md “Copy fit” — H1 ≤2 lines, hero lede ≤4 lines.
- *
- * The bands themselves live in `./copy-bands`, which is client-safe, so the Page
- * Builder inspector can meter against the same numbers this gate enforces. They are
- * re-exported here so existing importers are unaffected.
- */
 import assert from "node:assert/strict";
 
 import {
@@ -38,11 +29,9 @@ export {
 export type GatedString = {
   label: string;
   text: string;
-  /** SEO-flagged surfaces should name Singapore and/or cervical/neck intent. */
   requireSingaporeOrCervical?: boolean;
 };
 
-/** Throws AssertionError if any gated string fails claims/SEO/copy-fit rules. */
 export function assertMarketingCopySafe(
   strings: GatedString[],
   opts?: {

@@ -10,19 +10,15 @@ import type {
   TimelineRef,
 } from "@/lib/crm/timeline/types";
 
-/** Entries per page on the Customer detail; then *Load older*. */
 export const TIMELINE_PAGE_SIZE = 50;
 
 export type TimelinePageResult = {
   entries: ShownTimelineEntry[];
   next: TimelineCursor | null;
-  /** The chips this viewer may see: groups with at least one adapter they hold. */
   groups: TimelineGroup[];
-  /** Groups whose source failed to load this time; the rest of the page stands. */
   unavailable: string[];
 };
 
-/** The link stays only for a viewer who may open that page. */
 function linkFor(ref: TimelineRef, viewer: { permissions: ReadonlySet<Permission> }): TimelineRef {
   if (!ref.href) return ref;
   const needs = permissionForHref(ref.href);
@@ -30,11 +26,6 @@ function linkFor(ref: TimelineRef, viewer: { permissions: ReadonlySet<Permission
   return { type: ref.type, id: ref.id };
 }
 
-/**
- * One page of a Customer's timeline, for a viewer. Runs only the adapters whose
- * permission the viewer holds, and of those only the kind groups asked for
- * (`groups` null: all of them), then merges.
- */
 export async function loadTimeline(input: {
   customer: TimelineCustomer;
   viewer: { permissions: ReadonlySet<Permission> };

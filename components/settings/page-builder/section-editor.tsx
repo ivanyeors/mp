@@ -37,11 +37,6 @@ interface SectionEditorProps {
   section: LandingSection;
   onSave: (section: LandingSection) => void;
   onCancel: () => void;
-  /**
-   * Lifts dirtiness to the shell. `beforeunload` only covers reloads and tab closes —
-   * the App Router has no navigation-blocking API — so selecting another section, which
-   * remounts this editor, has to be guarded by the shell instead.
-   */
   onDirtyChange?: (dirty: boolean) => void;
 }
 
@@ -50,11 +45,6 @@ const LOCALE_LABELS: Record<Locale, string> = {
   "zh-CN": "中文",
 };
 
-/**
- * Live count against a copy-fit band (CONTEXT.md "Copy fit"), so an operator compresses
- * while typing rather than after the save is refused. Bands are en-US only, matching the
- * server gate — whitespace word counts are meaningless for Chinese.
- */
 function BandMeter({ text, band, locale }: { text: string; band: CopyBand; locale: Locale }) {
   if (locale !== DEFAULT_LOCALE) return null;
   const value = measure(text, band.unit);
@@ -86,7 +76,6 @@ function BandMeter({ text, band, locale }: { text: string; band: CopyBand; local
   );
 }
 
-/** Key-order-independent stringify, for comparing a local object against a jsonb row. */
 function stableStringify(value: unknown): string {
   return JSON.stringify(value, (_key, v) =>
     v && typeof v === "object" && !Array.isArray(v)
@@ -111,7 +100,6 @@ function ImageField({
 }: {
   label: string;
   value: string;
-  /** `assetId`/`alt` are undefined when the operator typed a URL, so callers keep theirs. */
   onChange: (url: string, assetId?: string | null, alt?: string | null) => void;
 }) {
   return (
@@ -130,7 +118,6 @@ function ImageField({
       </div>
       {value && (
         <div className="mt-2 relative h-24 w-40 overflow-hidden rounded-md border bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Preview" className="h-full w-full object-cover" />
         </div>
       )}
@@ -138,10 +125,6 @@ function ImageField({
   );
 }
 
-/**
- * Cards are stored as an array of records whose text values may be locale maps, so each
- * cell reads and writes through the locale helpers rather than touching the raw value.
- */
 function CardsEditor({
   label,
   cards,
@@ -307,10 +290,6 @@ function ParagraphsEditor({
   );
 }
 
-/**
- * Card sections used to say "edit to override" while the card array defaulted to empty,
- * so there was no way to start — the two card sections were uneditable in practice.
- */
 function SeedCardsPrompt({ onSeed }: { onSeed: () => void }) {
   return (
     <div className="space-y-2 rounded-lg border border-dashed p-3">
@@ -327,29 +306,15 @@ function SeedCardsPrompt({ onSeed }: { onSeed: () => void }) {
 
 export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: SectionEditorProps) {
   const [content, setContent] = useState<Record<string, unknown>>({ ...section.content });
-  /**
-   * Which language the form is bound to. One switch per section rather than per field:
-   * a per-field toggle would have to be threaded through every branch below plus the
-   * card and paragraph sub-editors, which take arrays rather than scalars.
-   */
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [confirming, setConfirming] = useState<null | "reset">(null);
 
-  // Canonical compare: `section.content` round-trips through a jsonb column, which sorts
-  // keys, while the local object keeps insertion order. A plain stringify diverges the
-  // moment a shorter key is added — e.g. adding `alt` to {image,title,description} — and
-  // `dirty` would then stay true forever, arming the unload guard on a saved section.
   const dirty = stableStringify(content) !== stableStringify(section.content ?? {});
 
-  /**
-   * Unsaved edits used to vanish silently when the operator navigated away or collapsed
-   * the section. The browser prompt is the only thing that survives a real navigation.
-   */
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
 
-  // Also reset the shell's flag when this editor goes away.
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   useEffect(() => {
@@ -362,42 +327,29 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  /** Read a text field as it should appear for the language being edited. */
   const get = (key: string) => readLocalisedField(content, key, locale);
 
-  /** Write a text field under the language being edited, preserving the other one. */
   const set = (key: string, value: string) => {
     setContent((prev) => writeLocalisedField(prev, key, locale, value));
   };
 
-  /** Non-localised values (images, ids, numbers, booleans) are written as-is. */
   const setRaw = (key: string, value: unknown) => {
     setContent((prev) => ({ ...prev, [key]: value }));
   };
 
-  /**
-   * Typing a URL used to pass a null asset id, silently downgrading a tracked Media
-   * Asset to an untracked string and breaking the DAM's used/unused count. The id and
-   * alt text now change only when the operator actually picks from the library.
-   */
   const setImage = (url: string, assetId?: string | null, alt?: string | null) => {
     setContent((prev) => {
       const next: Record<string, unknown> = { ...prev, image: url };
       if (assetId !== undefined) {
         next.media_asset_id = assetId;
       } else if (url !== prev.image) {
-        // Typed a different URL: it is no longer the picked asset, and leaving the id
-        // behind would make the DAM mark the wrong asset as Used.
         next.media_asset_id = null;
       }
-      // The library's alt text is English copy, so it belongs in the default locale
-      // rather than whichever language the form happens to be showing.
       if (alt) next.alt = writeLocalisedValue(prev.alt, DEFAULT_LOCALE, alt);
       return next;
     });
   };
 
-  /** Seed a card list from the i18n defaults, so overriding is not a blank slate. */
   const seedCards = (defaults: Array<Record<string, string>>) => {
     setContent((prev) => ({
       ...prev,
@@ -453,8 +405,6 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
   const renderFields = () => {
     switch (section.section_type) {
       case "hero": {
-        // The <h1> is the three title fields concatenated, so the band applies to the
-        // composed string — metering each part alone would be misleading.
         const sep = locale === "zh-CN" ? "" : " ";
         const h1 = [get("titlePrefix"), get("titleEmphasis"), get("titleSuffix")]
           .filter((p) => p.trim() !== "")
@@ -627,7 +577,6 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
           </>
         );
 
-      // Custom section types
       case "custom_text_image":
         return (
           <>
@@ -772,7 +721,6 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
         </Button>
       </div>
 
-      {/* Reset is destructive and used to fire with no confirmation at all. */}
       <Dialog open={confirming === "reset"} onOpenChange={(o) => !o && setConfirming(null)}>
         <DialogContent>
           <DialogHeader>

@@ -17,7 +17,6 @@ export const runtime = "nodejs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** One campaign: its email, a test, and its waves (PRD-email-marketing; each wave's numbers, PRD-campaign-send-flow slice 04). */
 export default async function EmailCampaignPage({
     params,
     searchParams,
@@ -39,11 +38,9 @@ export default async function EmailCampaignPage({
         readWaveStats(admin, id).then((w) => w.own).catch(() => []),
         campaignPointsLive(),
         campaignAiWriting(),
-        // Slice 11: a started campaign's results; the tab says so when they cannot be read.
         campaign.lockedAt ? readCampaignResults(admin, id).catch(() => null) : Promise.resolve(null),
     ]);
     const options = segmentOptions(segments ?? [], ctx, locale);
-    // The Segment it was saved with stays choosable even if it was archived since.
     if (campaign.segmentId && !options.some((s) => s.id === campaign.segmentId)) {
         options.push({ id: campaign.segmentId, name: "(archived Segment)" });
     }
@@ -59,9 +56,7 @@ export default async function EmailCampaignPage({
             ai={ai}
             keptToday={keptToday(waves, new Date())}
             results={results}
-            // The Email funnel links a campaign's results row here.
             initialTab={query.tab === "results" ? "results" : undefined}
-            // A Playbook started here (the palette, or the Start panel after Clear all) finds its Segment, or offers to create it.
             found={playbooksFound(matchable(segments ?? []))}
             segmentsUnread={!segments}
             canCreateSegments={hasPermission(ctx, "customers-edit")}

@@ -27,7 +27,6 @@ function pct(value: number | null): string {
   return value == null || Number.isNaN(value) ? "—" : `${value.toFixed(1)}%`;
 }
 
-/** A server month instant as a local Date on that month's 1st, whatever the browser's timezone. */
 function localMonth(iso: string): Date {
   const [y, m] = sgMonthKey(iso).split("-").map(Number);
   return new Date(y, m - 1, 1);
@@ -45,12 +44,6 @@ function Kpi({ label, value, note, loading }: { label: string; value: string; no
   );
 }
 
-/**
- * Sales & margin: realised revenue, COGS frozen at sale, and the margin between
- * them. Every figure here is summed from the same sold lines, so the cards,
- * the breakdown and the timeline agree, and a sale with no cost is reported as
- * such instead of as profit.
- */
 export function SalesTab({ from, to, dateRange }: { from: string; to: string; dateRange: { from: Date; to: Date } }) {
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);

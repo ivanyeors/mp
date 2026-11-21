@@ -24,7 +24,6 @@ describe("post body", () => {
     expect(await render("[NHS](https://www.nhs.uk/)")).toContain('href="https://www.nhs.uk/"');
   });
 
-  // Every post we ship must compile, and its table of contents must point at real ids.
   const files = readdirSync("data/blogs").filter((f) => f.endsWith(".mdx"));
   it.each(files)("%s compiles and its contents links resolve", async (file) => {
     const body = matter(readFileSync(`data/blogs/${file}`, "utf8")).content;
@@ -32,7 +31,6 @@ describe("post body", () => {
     for (const h of extractHeadings(body)) expect(html).toContain(`id="${h.id}"`);
   });
 
-  // Drafts mark unsourced claims as [[cite: …]]; none may ship (content-standard.md).
   it.each(files)("%s has no unresolved citation markers", (file) => {
     expect(readFileSync(`data/blogs/${file}`, "utf8").match(/\[\[cite:[^\]]*\]\]/g) ?? []).toEqual([]);
   });

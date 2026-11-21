@@ -55,7 +55,6 @@ const AssignSchema = z.object({
   assignedTier: z.enum(["basic", "premium"]).optional(),
   assignedLength: z.enum(BOLSTER_LENGTHS).optional(),
   fillingTemplateId: z.number().int().positive(),
-  /** Spatial Result snapshot (pillow cells or bolster slots). Shape gate — lib validates per kind. */
   placements: z
     .array(
       z.object({
@@ -63,10 +62,6 @@ const AssignSchema = z.object({
         sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
-        // row_index is the piece's LAYER (0 = top/front). Bound derives from
-        // MAX_LAYERS_PER_CELL, matching the DB constraint and
-        // validatePillowPlacements — NOT from the per-cell piece cap, which is
-        // five times larger now that a layer holds several pieces.
         row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
         insert_order: z.number().int().min(1).nullable().optional(),
         offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
@@ -83,7 +78,6 @@ function itemLabel(name: string, subtype: string | null | undefined): string {
   return subtype ? `${name} (${subtype})` : name;
 }
 
-/** Best-effort "final build ready" notice. Rendering lives in lib/email/results.ts. */
 async function sendAssignedEmail(opts: {
   to: string;
   resultId: string;
@@ -118,8 +112,6 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Assign sets the sold configuration and the final amount that will be captured.
-  // It is staff-only; the route had no gate at all, and proxy.ts skips /api.
   const denied = await requireAdmin("results");
   if (denied) return denied;
 
@@ -208,8 +200,6 @@ export async function POST(
     );
   }
 
-  // Spatial snapshot rows: validate per product kind via the lib. Bolster rows
-  // carry only slot/item_id and never validate against the pillow enums.
   const isBolster = productType === "bolster";
   const toPlacements = (
     rows: Array<{ section?: string; sub_section?: string; slot: number; item_id: number }>,
@@ -236,7 +226,6 @@ export async function POST(
           { status: 400 },
         );
       }
-      // Legacy flat template with an untouched empty grid: assign it as-is (flat path).
       placementRows = null;
     } else {
       const cats = await lookupPlacementKinds(admin, placementRows.map((r) => r.item_id));
@@ -281,7 +270,6 @@ export async function POST(
 
   const composedBomRaw = composed.sellable.bomLines;
 
-  // Filling pack: flatten of the saved snapshot when provided, else the template's flat lines.
   const fillPack = derivePackList(placementRows ?? [], tplLines ?? []);
   const fillItemIds = fillPack.map((l) => l.item_id);
   const allItemIds = [
@@ -321,7 +309,6 @@ export async function POST(
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  // `placementKind` tells a placed neck support from a filling: both go inside.
   const fillingTemplateLines = fillPack.map((l) => {
     const item = itemById.get(l.item_id);
     return { item_id: l.item_id, quantity: l.count, category: item ? placementKind(item) : "unknown" };
@@ -338,9 +325,6 @@ export async function POST(
     return NextResponse.json({ error: assembled.error }, { status: 400 });
   }
 
-  // Customer still to pick cover and case (ADR 0017): the BOM's defaults are
-  // placeholders, so their stock must not block assignment. The finish route
-  // and accept both re-check stock against what the customer actually chose.
   const finishLater = needsCustomerFinish(row);
   const shortages = findStockShortages(
     finishLater
@@ -359,9 +343,6 @@ export async function POST(
     );
   }
 
-  // Final amount, always. A Result with no Authorization hold still has a
-  // price — the whole total, owed by Balance payment — and `authorized` falls
-  // out null, which is what tells the email which voice to use.
   const familyByItem = new Map<number, string | null>(
     (items ?? []).map((i) => [
       i.id as number,
@@ -376,8 +357,6 @@ export async function POST(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support is
-    // in the pillow's MSRP, like the fillings, but an ear pad adds its own.
     addonLines: [
       ...addonLines.map((l) => ({
         msrp: msrpByItem.get(l.item_id) ?? null,
@@ -394,8 +373,6 @@ export async function POST(
     );
   }
 
-  // The Measurement service fee follows who measured and the tier being assigned
-  // now — a Staff tier change at assign moves the fee with it (ADR 0024).
   let serviceLines;
   try {
     serviceLines = await loadResultServiceLines(admin, {
@@ -411,7 +388,6 @@ export async function POST(
     );
   }
   const services = sumServiceLines(serviceLines);
-  // The discount code kept at hold comes off the build assigned now (ADR 0033).
   const coupon = resultCouponPricing(row.coupon_terms, goods.subtotal);
 
   let shippingAmount = 0;
@@ -424,9 +400,6 @@ export async function POST(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      // Free shipping is earned by goods; tax is due on goods and services alike,
-      // less the discount.
-      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
       shippingAmount =
         shipsWithAnchor(row) || coupon.freeShipping
           ? 0
@@ -455,16 +428,10 @@ export async function POST(
     tax: priced.tax,
     total: priced.total,
     currency: composed.sellable.currency ?? row.currency ?? "SGD",
-    // Null with no hold — and that null is what makes the assigned email ask
-    // for a Balance payment instead of an accept/decline. A quote with no card
-    // behind it (an abandoned hold Checkout) is no hold either: Accept charges
-    // the whole total as a Balance payment.
     authorized:
       row.authorized_amount != null && row.payment_intent_id ? Number(row.authorized_amount) : null,
   };
 
-  // Divergence rule (PRD): keep filling_template_id only while the snapshot exactly
-  // matches the confirmed template's current placements; snapshot rows always persist.
   let persistedTemplateId: number | null = input.fillingTemplateId;
   let fingerprint: string | null | undefined;
   if (placementRows) {
@@ -486,17 +453,10 @@ export async function POST(
       filling_template_id: persistedTemplateId,
       final_amount: finalAmount,
       status: lifecycle.status,
-      // Anchors the customer payment-reminder cadence. No counter reset beside
-      // it: this update is CAS'd on `status = 'held'` and transitionResult
-      // refuses assign from `assigned`, so a row can only arrive here with the
-      // counters still at their insert defaults.
       assigned_at: new Date().toISOString(),
-      // Only touched when a spatial save happened; hold-create snapshots stay otherwise.
       ...(fingerprint !== undefined ? { filling_fingerprint: fingerprint } : {}),
     })
     .eq("id", id)
-    // Check-and-set on the status read above: a concurrent assign that already
-    // moved it on must not re-open accept's claim.
     .eq("status", "held")
     .select("id");
 
@@ -507,8 +467,6 @@ export async function POST(
     return NextResponse.json({ error: "This Result has already moved on" }, { status: 409 });
   }
 
-  // Result snapshot: replace-insert (first write for guest Results). Bolster
-  // snapshots land in their own table (own schema).
   if (placementRows) {
     const snapshotTable = isBolster ? "result_bolster_filling_placements" : "result_filling_placements";
     const { error: delErr } = await admin.from(snapshotTable).delete().eq("result_id", id);
@@ -544,9 +502,6 @@ export async function POST(
     (l) => `${nameByItem.get(l.item_id) ?? `Item #${l.item_id}`} ×${l.quantity}`,
   );
 
-  // A Paired build (ADR 0026) is accepted as one, from its Mpillow's page, so
-  // the customer hears once neither build is still being built: the email
-  // links the Mpillow and quotes both against the one hold.
   let emailResultId = id;
   let emailPricing = pricingBreakdown;
   let pairedLine: { label: string; total: number } | null = null;

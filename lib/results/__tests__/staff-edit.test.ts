@@ -1,13 +1,3 @@
-/**
- * Staff re-configuration of a live Result.
- *
- * The rule for "may this build still be changed?" is one predicate, and the
- * damage from getting it wrong is silent: repricing a Result the customer is
- * already paying for moves the number under an open Stripe Checkout. These
- * tests pin the predicate and the route guards that have to keep the money
- * path and the edit path from crossing.
- */
-
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { staffEditableResult } from "../staff-edit";
@@ -21,8 +11,6 @@ describe("staffEditableResult", () => {
   });
 
   it("refuses a Result that is mid-payment or settled", () => {
-    // `accepted` is the in-between state accept claims before money moves: a
-    // reprice here would change the total under an open Checkout.
     for (const status of ["accepted", "captured", "declined", "expired", "cancelled"]) {
       expect(staffEditableResult({ ...pillow, status }).ok).toBe(false);
     }
@@ -103,8 +91,6 @@ describe("request-payment", () => {
 
   it("persists the price it quotes, so the email and Accept agree", () => {
     expect(src).toMatch(/final_amount: build\.pricing\.total/);
-    // The write lands before the send, so a failed reprice never mails a price
-    // the Result does not carry.
     expect(src.indexOf("final_amount: build.pricing.total")).toBeLessThan(
       src.indexOf("getEmailTransport().send("),
     );
@@ -116,9 +102,6 @@ describe("request-payment", () => {
   });
 
   it("sends the update template only when the price actually moved", () => {
-    // A plain re-send ("the customer lost the email") is still the assigned
-    // one. Two emails under the same subject with different totals is the
-    // failure renderResultUpdatedEmail exists to prevent.
     expect(src).toMatch(/repriced === "updated" && !needsFinish\s*\?\s*renderResultUpdatedEmail/);
     expect(src).toMatch(
       /:\s*renderResultAssignedEmail\(\{ \.\.\.spec, needsFinish \}, await loadEmailCopy\(RESULT_EMAIL_COPY\.assigned\)\)/,
@@ -127,15 +110,12 @@ describe("request-payment", () => {
 
   it("hands the customer's previous quote to the update template", () => {
     expect(src).toMatch(/previousTotal: storedFinal/);
-    // Read before the write, or it would compare the new total against itself.
     expect(src.indexOf("const storedFinal")).toBeLessThan(
       src.indexOf("final_amount: build.pricing.total"),
     );
   });
 
   it("keeps the floor-price voice for a Result still awaiting its finish", () => {
-    // Its price is a floor until the customer picks cover, case and shipping
-    // (ADR 0017) — "your new total" would be a number that does not exist yet.
     expect(src).toMatch(/const needsFinish = needsCustomerFinish\(row\);/);
   });
 });

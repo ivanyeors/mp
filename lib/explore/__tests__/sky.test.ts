@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import { guessPlace, inkFor, luminance, moonPhase, moonPosition, skyAt, skyCss, skyPalette, sunPosition, toHex } from "@/lib/explore/sky";
 
 const SINGAPORE = { lat: 1.35, lon: 103.82 };
-/** A Singapore clock time on 17 November 2026. */
 const sgt = (hour: number, minute = 0) => new Date(Date.UTC(2026, 10, 17, hour - 8, minute));
 
 describe("sunPosition", () => {
   it("has the sun up through a Singapore day and down at night", () => {
-    // Sunrise is about 06:47 and sunset about 18:51 there in mid-November.
     expect(sunPosition(sgt(6, 0), SINGAPORE).elevation).toBeLessThan(0);
     expect(sunPosition(sgt(7, 30), SINGAPORE).elevation).toBeGreaterThan(0);
     expect(sunPosition(sgt(13, 0), SINGAPORE).elevation).toBeGreaterThan(60);
@@ -23,11 +21,11 @@ describe("sunPosition", () => {
 
   it("turns like a wheel: out of the sea at 180, highest at 90, into the sea at 0, lowest at 270", () => {
     const turn = (h: number, m = 0) => sunPosition(sgt(h, m), SINGAPORE).wheel;
-    expect(Math.abs(turn(6, 47) - 180)).toBeLessThan(4); // sunrise
-    expect(Math.abs(turn(12, 50) - 90)).toBeLessThan(4); // solar noon
-    const set = turn(18, 51); // sunset: 0, give or take, from either side
+    expect(Math.abs(turn(6, 47) - 180)).toBeLessThan(4);
+    expect(Math.abs(turn(12, 50) - 90)).toBeLessThan(4);
+    const set = turn(18, 51);
     expect(Math.min(set, 360 - set)).toBeLessThan(4);
-    expect(Math.abs(turn(0, 50) - 270)).toBeLessThan(4); // the middle of the night
+    expect(Math.abs(turn(0, 50) - 270)).toBeLessThan(4);
   });
 
   it("never jumps: a minute moves the wheel by under a degree, all day and all night", () => {
@@ -67,7 +65,7 @@ describe("the moon", () => {
   });
 
   it("a full moon is across the wheel from the sun", () => {
-    const at = new Date(Date.UTC(2026, 11, 24, 14, 0)); // 22:00 in Singapore
+    const at = new Date(Date.UTC(2026, 11, 24, 14, 0));
     const apart = Math.abs(moonPosition(at, SINGAPORE).wheel - sunPosition(at, SINGAPORE).wheel);
     expect(Math.abs(Math.min(apart, 360 - apart) - 180)).toBeLessThan(25);
   });
@@ -107,10 +105,8 @@ describe("skyPalette", () => {
     const wetNight = skyPalette(-40, false, true);
     expect(wetDay.sunStrength).toBeLessThan(0.2);
     expect(wetNight.stars).toBeLessThan(0.1);
-    // Greyer: the blue and the red of the day sky come closer together.
     const clear = skyPalette(50, false);
     expect(wetDay.top[2] - wetDay.top[0]).toBeLessThan(clear.top[2] - clear.top[0]);
-    // A rainy night is lighter than a clear one: slate, not black.
     expect(luminance(wetNight.top)).toBeGreaterThan(luminance(skyPalette(-40, false).top));
   });
 });

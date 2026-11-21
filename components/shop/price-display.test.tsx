@@ -3,13 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 
-/**
- * Prices the storefront writes inside a sentence (the free-shipping line on the
- * product page and in the cart, a coupon's discount) once went through
- * `formatPrice`, which never converts, so they stayed in SGD after the shopper
- * picked another currency while every other price on the page changed.
- */
-
 const display = vi.hoisted(() => ({ currency: "USD" as string }));
 vi.mock("@/lib/shop/currency-context", () => ({
   useCurrency: () => ({
@@ -19,7 +12,6 @@ vi.mock("@/lib/shop/currency-context", () => ({
 }));
 
 const { PriceDisplay, useDisplayPrice } = await import("./price-display");
-/** Server HTML without the `<!-- -->` React puts between adjacent text nodes. */
 const html = (node: React.ReactElement) => renderToString(node).replaceAll("<!-- -->", "");
 const { CartSummary } = await import("./cart/cart-summary");
 

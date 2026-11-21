@@ -3,12 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ImportBatchView } from "@/lib/customer-migration/batches";
 import type { PreviewSummary } from "@/lib/customer-migration/preview";
 
-/**
- * What the Import step and the history show (slice 03): the stopped-import
- * notice, the same-file guard, the typed confirmation, and the history with
- * its states and Undo.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers/import",
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -111,9 +105,7 @@ describe("the page and its history", () => {
     for (const text of ["Import history", "customers_export.csv", "Ivan", "3,000", "300", "Applied", "Stopped", "at 1,200 of 3,400", "Undone", "312 removed, 41 kept"]) {
       expect(html).toContain(text);
     }
-    // Undo for applied and stopped batches; none for the undone one.
     expect(html.match(/>Undo</g)).toHaveLength(2);
-    // The Customer overview links a batch as #batch-<id>.
     for (const id of ["b1", "b2", "b3"]) expect(html).toMatch(new RegExp(`<tr[^>]*id="batch-${id}"`));
   });
 

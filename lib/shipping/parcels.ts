@@ -10,17 +10,14 @@ import type {
   TypeBoxes,
 } from "@/lib/shipping/types";
 
-/** More boxes than this is a wholesale order, not a checkout quote. */
 export const MAX_PARCELS = 20;
 
-/** Pillows and bolsters ship one unit per box; a bundle is boxed as a pillow. */
 export function packageTypeOf(productType: ProductType): PackageType {
   if (productType === "bolster") return "bolster";
   if (productType === "accessory") return "accessory";
   return "pillow";
 }
 
-/** Each type's mapped courier-account box (cm, kg) as parcel inputs; a missing or dangling mapping is left out. */
 export function typeBoxes(doc: Pick<EasyshipSettings, "boxes" | "box_for_type"> | null | undefined): TypeBoxes {
   const out: TypeBoxes = {};
   for (const type of BOX_TYPES) {
@@ -66,20 +63,6 @@ function parcelOf(box: TypeBox, items: ParcelItem[]): Parcel {
   return { length_cm: box.length_cm, width_cm: box.width_cm, height_cm: box.height_cm, weight_kg: parcelWeight(items, box), items };
 }
 
-/**
- * Box a cart for a courier quote. Pure and deterministic: the same lines always
- * give the same parcels, which is what lets the checkout route reuse the quote
- * the checkout page was shown (same parcels → same cache key).
- *
- * - Every pillow, bolster or bundle unit is its own box, sized by its type's
- *   box — they are bulky, so couriers price them by volume, not weight.
- * - Accessories (covers, cases, sprays) ride flat in the first box. With no box
- *   to ride in, they share one accessory box.
- * - A parcel weighs its box's empty weight plus its contents.
- *
- * Returns null when the cart needs more than MAX_PARCELS boxes, or a line's type has no box
- * (an accessory with its own weight only needs a box when nothing else ships).
- */
 export function buildParcels(lines: ShippableLine[], boxes: TypeBoxes): Parcel[] | null {
   const parcels: Parcel[] = [];
   let firstBox: TypeBox | null = null;
@@ -91,7 +74,6 @@ export function buildParcels(lines: ShippableLine[], boxes: TypeBoxes): Parcel[]
     const box = boxes[type];
     if (type === "accessory") {
       const weighed = line.weight_grams != null && line.weight_grams > 0;
-      // An accessory with its own weight needs no box of its own: it rides in the first box.
       if (!box && !weighed) return null;
       loose.push(itemOf(line, box ?? { length_cm: 0, width_cm: 0, height_cm: 0, weight_grams: 0 }, line.quantity));
       continue;

@@ -2,13 +2,10 @@ import type { RewritableBlock } from "@/lib/email-campaigns/ai-refine-brief";
 import type { RefineRequest } from "@/lib/email-campaigns/ai-refine-shape";
 import type { RefineBrief } from "@/lib/email-campaigns/ai-refine";
 
-/** ✨ Refine's fixtures (PRD-campaign-email-editor slice 10): an email Staff wrote, its blocks, and Claude's answers as JSON. */
-
 export const FITTING_URL = "https://mpillow.com/book?from=email";
 
 type Kind<K extends RefineRequest["kind"]> = Extract<RefineRequest, { kind: K }>;
 
-/** A text block with a link and a Variable: what every rewrite must keep. */
 export const LINKED_TEXT: Extract<RewritableBlock, { type: "text" }> = {
   id: "t1",
   type: "text",
@@ -58,7 +55,6 @@ export const FIVE_SUBJECTS = [
   "A cooler night's sleep starts with the cover your pillow has been waiting for all year long",
 ];
 
-/** A shorter rewrite of LINKED_TEXT that keeps its link (by key) and its Variable. */
 export const SHORTER_TEXT = {
   paragraphs: [
     { kind: "p", runs: [{ text: "Hi " }, { var: "first_name" }, { text: ", the FibreCool cover is back in every size." }] },

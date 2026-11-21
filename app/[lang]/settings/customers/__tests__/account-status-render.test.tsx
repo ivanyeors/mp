@@ -6,13 +6,6 @@ import type { AdminCustomerLifecycle } from "@/lib/ecommerce/admin/customers";
 import type { MigratedCustomerFacts } from "@/lib/customer-migration/overview";
 import { DEFAULT_CUSTOMER_FILTERS, type CustomerListFilters } from "@/lib/crm/customer-filters";
 
-/**
- * Account status on every Customer, and the Shopify migration surfaces
- * (migration slice 12): the list's Account column and Shopify badge, and the
- * detail page's Account and From Shopify cards. The Migration card left the
- * list on 2026-11-01.
- */
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "c1" }),
   usePathname: () => "/en-US/settings/customers",
@@ -23,7 +16,6 @@ const { CustomersClient } = await import("../customers-client");
 const { CustomerDetailClient } = await import("../[id]/customer-detail-client");
 const { CustomerFilterGroup } = await import("../customer-filters-panel");
 
-/** One group of the mega filter, as it renders inside the open panel. */
 const groupFor = (
   group: "stage" | "purchases" | "reach" | "account" | "reviews",
   filters: Partial<CustomerListFilters>,
@@ -134,7 +126,6 @@ describe("Customers list", () => {
         }}
       />,
     );
-    // The sort stays in the toolbar; the filters are the mega filter's, and their chips.
     expect(html).toContain('aria-label="Sort"');
     expect(html).toMatch(/Filters<span[^>]*data-slot="badge"[^>]*>3</);
     const account = groupFor("account", { account: "no-account", source: "shopify" });
@@ -201,16 +192,11 @@ const detail = (c: Customer, migration?: { ok: true; facts: MigratedCustomerFact
 
 const { FromShopifyCard, SignInFacts } = await import("../[id]/customer-account-cards");
 
-/** The From Shopify facts as the Journey shows them, on the chapter that holds the import. */
 const shopify = (migration?: { ok: true; facts: MigratedCustomerFacts | null } | { ok: false }, canImport = false) =>
   renderToString(
     <FromShopifyCard migration={migration} importHistoryHref={canImport ? "/en-US/settings/customers/import" : null} bare />,
   );
 
-// CRM slice 11 grew the Account card into the Contact and sign-in card.
-// PRD-customer-page-journey slice 01 split it: Contact details keeps the
-// sign-up date (as *Verified since*), and the Sign-in row holds how they sign
-// in and the last signed-in visit.
 describe("Customer detail: Contact details and the Sign-in row (was the Account card)", () => {
   const member = customer({
     auth_user_id: "auth-1",
@@ -223,7 +209,6 @@ describe("Customer detail: Contact details and the Sign-in row (was the Account 
     expect(html).toContain("Contact details");
     expect(html).toContain("Verified: signed in with it since <!-- -->2 Oct 2026");
     expect(html).toContain('aria-label="About the sign-up date"');
-    // The row is closed: its line says how they sign in, and its facts wait for a press.
     expect(html).toContain(">Sign-in<");
     expect(html).not.toContain("Last signed-in visit");
   });
@@ -243,8 +228,6 @@ describe("Customer detail: Contact details and the Sign-in row (was the Account 
   });
 });
 
-// The From Shopify card is no longer a card on the page: the Journey shows its
-// facts on the chapter that holds the import (PRD-customer-page-journey slice 04).
 describe("Customer detail: From Shopify facts", () => {
   it("are left out for a Customer who is not a Migrated customer", () => {
     expect(shopify({ ok: true, facts: null })).toBe("");

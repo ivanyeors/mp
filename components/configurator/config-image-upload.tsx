@@ -10,15 +10,11 @@ import {
 } from "@/lib/config-upload/limits";
 
 type ConfigImageUploadProps = {
-  sessionId: string | null; // current session id if known — hydrate thumbnails on mount
-  ensureSessionId: () => string | null; // create + return the session id on first upload
+  sessionId: string | null;
+  ensureSessionId: () => string | null;
   className?: string;
 };
 
-/**
- * Staff-only "Reference photos" uploader. Product-agnostic — slice 04 reuses it
- * for bolster unchanged. Backed by /api/config-uploads (admin-gated).
- */
 export function ConfigImageUpload({
   sessionId,
   ensureSessionId,
@@ -29,7 +25,6 @@ export function ConfigImageUpload({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Hydrate thumbnails on mount and whenever sessionId becomes known.
   useEffect(() => {
     if (!sessionId) return;
     let active = true;
@@ -57,7 +52,6 @@ export function ConfigImageUpload({
 
       setUploading(true);
       try {
-        // Snapshot count so the client pre-check tracks appends within this batch.
         let count = images.length;
         for (const file of files) {
           // ponytail: instant UX only — server enforces (422); these mirror assertUploadAllowed.
@@ -171,7 +165,6 @@ export function ConfigImageUpload({
               key={image.id}
               className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.hostedUrl}
                 alt="Reference photo"
@@ -182,9 +175,6 @@ export function ConfigImageUpload({
                 type="button"
                 onClick={() => void handleDelete(image.id)}
                 aria-label="Remove reference photo"
-                // Issue #59: hover-reveal is dead on touch. Visible on mobile
-                // (max-md:opacity-100) + keyboard focus, hover-reveal on desktop.
-                // ≥44px tap target on mobile via padding; tight on desktop.
                 className="absolute right-1 top-1 flex items-center justify-center rounded-full bg-background/90 p-2.5 shadow transition-opacity max-md:min-h-11 max-md:min-w-11 max-md:opacity-100 md:p-1 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
               >
                 <X className="h-3.5 w-3.5" />

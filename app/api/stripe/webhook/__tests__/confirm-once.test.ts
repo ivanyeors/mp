@@ -1,16 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Prod hardening (slice 08, plus the points double-spend):
- * - a declined attempt leaves the Order `pending`, so nothing treats it as
- *   over while the same Checkout can still be paid;
- * - an Order paid after Staff closed it is recorded, flagged and not fulfilled;
- * - an Order whose points came back before it was paid is flagged;
- * - the confirm is claimed once, and every unexpected failure answers 500 so
- *   Stripe retries instead of the event being lost.
- */
-
 const ORDER = "0b0b0b0b-0000-4000-8000-000000000001";
 
 const h = vi.hoisted(() => ({
@@ -31,7 +21,6 @@ vi.mock("@/lib/supabase/server", async () => {
       const fake = fakeSupabaseAdmin(h.db);
       return {
         ...fake,
-        // The dead-letter write is an upsert, which the shared fake has not got.
         from: (table: string) =>
           Object.assign(fake.from(table), {
             upsert: async (row: Record<string, unknown>) => {
@@ -132,7 +121,6 @@ describe("Stripe webhook — confirm once, honestly", () => {
     expect((await deliver("checkout.session.completed", paidSession)).status).toBe(200);
     expect(order().status).toBe("confirmed");
     expect(order().paid_at).toBeTruthy();
-    // The courier label is made once the payment is answered (ADR 0044).
     expect(h.autoLabel).toHaveBeenCalledWith(expect.anything(), ORDER);
   });
 
@@ -170,7 +158,6 @@ describe("Stripe webhook — confirm once, honestly", () => {
     await deliver("checkout.session.completed", paidSession);
     expect(timelineTypes().filter((t) => t === "payment_confirmed")).toHaveLength(1);
     expect(h.deduct).toHaveBeenCalledTimes(1);
-    // order_emails sends each template once; the webhook asks every time.
     expect(h.emails).toHaveBeenCalledTimes(2);
   });
 
@@ -180,7 +167,6 @@ describe("Stripe webhook — confirm once, honestly", () => {
     expect(res.status).toBe(500);
     expect(h.db.stripe_webhook_failures).toHaveLength(1);
 
-    // The retry finishes the steps the first delivery never reached.
     expect((await deliver("checkout.session.completed", paidSession)).status).toBe(200);
     expect(h.deduct).toHaveBeenCalledTimes(1);
     expect(h.emails).toHaveBeenCalled();

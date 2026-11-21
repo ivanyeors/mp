@@ -23,10 +23,8 @@ export interface TikTokPlayerHandle {
 
 interface TikTokPlayerProps {
   postId: string;
-  /** The iframe's accessible name. */
   title: string;
   options?: TikTokPlayerOptions;
-  /** "lazy" for players placed in the page, "eager" for one the visitor just opened. */
   loading?: "lazy" | "eager";
   onEnded?: () => void;
   onError?: (error: { errorCode?: number; errorType?: string }) => void;
@@ -34,14 +32,6 @@ interface TikTokPlayerProps {
   className?: string;
 }
 
-/**
- * One TikTok post in TikTok's Embed Player. Size it from outside: it fills its
- * box, which should be 9:16 for a video post.
- *
- * Each player is a full TikTok page, and TikTok limits embeds per domain, so
- * put this behind a click (a cover card opening `TikTokPip`) rather
- * than rendering many at once.
- */
 export const TikTokPlayer = React.forwardRef<TikTokPlayerHandle, TikTokPlayerProps>(function TikTokPlayer(
   { postId, title, options, loading = "lazy", onEnded, onError, onEvent, className },
   ref,
@@ -49,9 +39,7 @@ export const TikTokPlayer = React.forwardRef<TikTokPlayerHandle, TikTokPlayerPro
   const frame = React.useRef<HTMLIFrameElement>(null);
   const src = React.useMemo(() => tiktokPlayerSrc(postId, options), [postId, options]);
 
-  // The latest callbacks, without re-subscribing the listener on every render.
   const onMessage = React.useEffectEvent((e: MessageEvent) => {
-    // Several players can share a page: only listen to this one.
     if (!frame.current || e.source !== frame.current.contentWindow) return;
     const event = readTikTokPlayerMessage(e.origin, e.data);
     if (!event) return;

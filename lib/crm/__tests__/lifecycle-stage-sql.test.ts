@@ -10,22 +10,12 @@ import {
 } from "@/lib/crm/lifecycle-stage";
 import { NOT_A_PURCHASE } from "@/lib/readjustment/purchases";
 
-/**
- * PRD-crm-retention-loop slice 03: the Lifecycle stage is computed in SQL
- * (`customer_lifecycle_stage`, `customer_lifecycle_detail`, called by
- * `admin_customer_overview`) and mirrored in lib/crm/lifecycle-stage.ts. This
- * holds the latest migration's numbers and words to the TypeScript's, so a
- * threshold changed on one side fails here; lib/crm/lifecycle-stage.check.ts
- * runs both on a database.
- */
-
 const dir = new URL("../../../supabase/migrations/", import.meta.url);
 const files = readdirSync(dir)
   .filter((f) => f.endsWith(".sql"))
   .sort()
   .map((f) => ({ name: f, sql: readFileSync(new URL(f, dir), "utf8").replace(/--.*$/gm, "") }));
 
-/** The body of the latest `create or replace function public.<name>`. */
 function latestFunction(name: string): string {
   const re = new RegExp(`create (?:or replace )?function public\\.${name}\\s*\\(([\\s\\S]*?)\\$\\$([\\s\\S]*?)\\$\\$`, "gi");
   const bodies = files.flatMap(({ sql }) => [...sql.matchAll(re)].map((m) => m[0]));
@@ -33,17 +23,14 @@ function latestFunction(name: string): string {
   return bodies.at(-1)!.replace(/\s+/g, " ");
 }
 
-/** The latest definition of the Customer overview, whitespace folded. */
 function latestOverview(): string {
   const re = /create (?:or replace )?view (?:public\.)?admin_customer_overview\b[\s\S]*?;/gi;
   const defs = files.flatMap(({ sql }) => [...sql.matchAll(re)].map((m) => m[0]));
   return defs.at(-1)!.replace(/\s+/g, " ");
 }
 
-/** Every quoted word in a function body, numbers aside. */
 const wordsOf = (fn: string) => [...fn.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!).filter((w) => w !== "UTC");
 
-// In UTC whatever the session's TimeZone, as monthsBefore counts.
 const before = (interval: string) => `((p_now at time zone 'UTC') - interval '${interval}') at time zone 'UTC'`;
 const lastActivity = "greatest(p_last_purchase_at, p_last_booking_at)";
 
@@ -136,10 +123,8 @@ describe("admin_customer_overview", () => {
         "coalesce(x.fitted_at > coalesce(pu.last_purchase_at, '-infinity'::timestamptz), false) as dated_by_fitting " +
         "from (select case when coalesce(m.shopify_orders_count, 0) > 0 then fi.last_fitted_at end as fitted_at) x ) lp on true",
     );
-    // Deliveries we made, for the Delivered filter and the review timing.
     expect(view).toContain("pu.last_purchase_delivered_at as last_delivered_at");
     expect(view).toContain("lp.dated_by_fitting as last_purchase_dated_by_fitting");
-    // Every stage call reads `lp`: none is left on the purchase here alone.
     expect(view.slice(0, view.indexOf(" from public.customers c "))).not.toMatch(/pu\.last_purchase_at/);
   });
 
@@ -154,7 +139,6 @@ describe("admin_customer_overview", () => {
     const pu = view.slice(view.indexOf("as last_purchase_delivered_at"));
     const statuses = pu.match(/o\.status not in \(([^)]*)\)/)![1]!.split(",").map((s) => s.trim().replace(/'/g, ""));
     expect(new Set(statuses)).toEqual(new Set(NOT_A_PURCHASE));
-    // The whole where clause, so a loosened or negated rule fails here and not only on a database.
     expect(pu).toContain(
       "where o.customer_id is not null and o.paid_at is not null " +
         "and o.status not in ('pending', 'cancelled', 'refunded', 'payment_failed') " +

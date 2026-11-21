@@ -1,12 +1,3 @@
-/**
- * Premium pricing: a Cervical Neck Support placed in the pillow is in the
- * pillow's MSRP, and an Ear Comfort Pad add-on is charged on top (owner,
- * 4-11-2026); so is an Ear Comfort Pad placed in the pillow (owner, 5-11-2026).
- * Driven through `loadAssignedBuild`, the money path behind finish,
- * request-payment, reorder and Staff re-configure, so the rule is pinned where
- * the money is taken, not only in the pure function.
- */
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings";
@@ -56,7 +47,6 @@ const PRICES = [
   { item_id: EAR_PAD, msrp: EAR_PAD_MSRP, cost_price: 15 },
 ];
 
-/** Answers `from(table).select(...).in("id"|"item_id", ids)` from the rows above. */
 function fakeAdmin(): SupabaseClient {
   const tables: Record<string, Array<Record<string, unknown>>> = {
     items: ITEMS,
@@ -127,7 +117,6 @@ describe("premium pricing: neck support inside, ear pad on top", () => {
 
   it("charges each Ear Comfort Pad placed in the pillow at its MSRP on top", async () => {
     expect((await build(withEarPads)).pricing.goods).toBe(PREMIUM_S_MSRP + 2 * EAR_PAD_MSRP);
-    // Beside a placed neck support, only the ear pad adds to the price.
     expect((await build([...withNeck, at(4, EAR_PAD)])).pricing.goods).toBe(PREMIUM_S_MSRP + EAR_PAD_MSRP);
   });
 
@@ -136,7 +125,6 @@ describe("premium pricing: neck support inside, ear pad on top", () => {
     expect(assembled.lines).toContainEqual(
       expect.objectContaining({ item_id: EAR_PAD, quantity: 2, role: "filling" }),
     );
-    // Protector 6 + one 6D at 3 + two ear pads at 15.
     expect(assembled.cogs).toBe(39);
   });
 
@@ -145,7 +133,6 @@ describe("premium pricing: neck support inside, ear pad on top", () => {
     expect(assembled.lines).toContainEqual(
       expect.objectContaining({ item_id: NECK_S, quantity: 1, role: "filling" }),
     );
-    // Protector 6 + two 6D at 3 + neck support 9.
     expect(assembled.cogs).toBe(21);
     expect((await build(withoutNeck)).cogs).toBe(12);
   });

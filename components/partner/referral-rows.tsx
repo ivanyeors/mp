@@ -1,14 +1,6 @@
 import { maskEmail, maskName } from "@/lib/referrals/masking";
 import type { ReferralRow } from "@/lib/commissions/referral-rows";
 
-/**
- * Shared per-referral rows table (#80). Server component — masking happens here,
- * so a masked identity never reaches the client. One row per attributed order.
- *  - Partner hub (default): assist rows show full details; link/code rows masked.
- *  - Admin Panel (`adminView`): everything unmasked + a Partner column (AC5).
- * Voided commission is struck, never dropped (AC6).
- */
-
 const money = (n: number) => `$${n.toFixed(2)}`;
 const dateFmt = new Intl.DateTimeFormat("en-SG", { day: "numeric", month: "short", year: "numeric" });
 
@@ -21,7 +13,6 @@ export function releaseLabel(row: ReferralRow): string {
     case "void":
       return "Voided";
     default:
-      // held — never undated (AC2): exact date when known, else the rule.
       return row.releaseAt
         ? `Releases ${dateFmt.format(new Date(row.releaseAt))} — return window`
         : "Releases 30 days after delivery";

@@ -8,12 +8,10 @@ import { ProductSlideSection } from "./product-slide-section";
 
 type MeasureCarouselSectionProps = {
   content: MeasureCarouselContent;
-  /** One icon per card, in card order. */
   icons: string[];
   borderTop?: boolean;
 };
 
-/** Measurement cards, each with its icon, in a swipe carousel. */
 export function MeasureCarouselSection({ content, icons, borderTop }: MeasureCarouselSectionProps) {
   return (
     <ProductSlideSection borderTop={borderTop} className="space-y-3">

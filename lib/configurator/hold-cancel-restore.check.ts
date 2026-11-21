@@ -1,7 +1,3 @@
-/**
- * Slice 04 self-check: hold-cancel restore helper.
- * Run: npx tsx lib/configurator/hold-cancel-restore.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -87,7 +83,6 @@ assert.equal(readHoldCancelDraft(mem, "mp-full"), null);
 assert.equal(holdCancelDraftKey("mp-basic"), "mp_hold_cancel_mp-basic_v1");
 assert.match(HOLD_CANCELLED_NOTICE.title, /cancelled/i);
 
-// Clients wire restore (acceptance: preview restore + notice + exit clears)
 const ROOT = process.cwd();
 const mp = readFileSync(join(ROOT, "app/[lang]/mp-config/mp-config-client.tsx"), "utf8");
 const bolster = readFileSync(
@@ -105,28 +100,19 @@ for (const src of [mp, bolster]) {
   assert.match(src, /preserveSelections:\s*true/);
 }
 
-// Mpillow full + basic share client; cancelPath follows variant path
 assert.match(mp, /holdSurface:\s*HoldCancelSurface\s*=\s*isBasic\s*\?\s*"mp-basic"\s*:\s*"mp-full"/);
 assert.match(mp, /cancelPath:\s*configPath/);
 assert.match(flowVariant, /\/mp-basic/);
 assert.match(flowVariant, /\/mp-config/);
 
-// Mbolster: explicit cancel path + stay on preview when re-fetching
 assert.match(bolster, /cancelPath:\s*"\/mbolster-config"/);
 assert.match(bolster, /stayOnStep:\s*true/);
 
-// Mbolster session id (= the Result its reference photos hang off): dropped from
-// storage at hold so the next customer on a shared device starts fresh, but kept
-// in the hold-cancel draft and restored ONLY on a cancelled Checkout. Restoring
-// on a plain revisit would hand the next customer the previous Result's id.
 assert.match(bolster, /surface: "mbolster",\s*step: "preview",\s*responseId: configSessionId,/);
 assert.match(bolster, /if \(holdCancelled && draft\.responseId\)/);
 assert.match(bolster, /removeItem\(CONFIG_SESSION_KEY\)/);
-// Clearing state before the redirect would re-run the draft effect and erase
-// the id from the draft before the page unloads.
 assert.doesNotMatch(bolster, /setConfigSessionId\(null\)/);
 
-// Server cancel URL already appends hold_cancelled=1
 assert.match(holdRoute, /cancelUrl:\s*`\$\{origin\}\$\{cancelPath\}\?hold_cancelled=1`/);
 
 console.log("hold-cancel-restore.check.ts: ok");

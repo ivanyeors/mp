@@ -7,12 +7,6 @@ import {
   WhatsAppSendError,
 } from "@/lib/appointments/whatsapp";
 
-/**
- * The utility sender after aftercare (CRM slice 13): a "stop" intent, a bare
- * "cancel" that asks first, the reworded auto-reply, and the URL button on
- * sendTemplateMessage.
- */
-
 const text = (body: string) => ({
   entry: [{ changes: [{ value: { messages: [{ id: "wamid.1", from: "6591234567", type: "text", text: { body } }] } }] }],
 });
@@ -44,7 +38,6 @@ describe("askBeforeCancel", () => {
 
   it("asks when the latest aftercare send is newer than the reminder's latest message", () => {
     expect(askBeforeCancel({ bare: true, lastAftercareSentAt: "2026-11-03T01:00:00Z", reminderLastOutboundAt: reminder })).toBe(true);
-    // A reminder that has no outbound time yet is older than anything.
     expect(askBeforeCancel({ bare: true, lastAftercareSentAt: "2026-11-03T01:00:00Z", reminderLastOutboundAt: null })).toBe(true);
   });
 
@@ -73,7 +66,6 @@ describe("the approved free-text replies, word for word", () => {
   });
 
   it("the cancel question", () => {
-    // 14:00 on Tue 3 Nov 2026 in Singapore.
     expect(guestText.cancelQuestion("2026-11-03T06:00:00Z")).toBe(
       'Do you want to cancel your appointment on Tue 3 Nov 2026 at 14:00? Reply "cancel appointment" to cancel it. To stop aftercare messages, reply "stop".',
     );

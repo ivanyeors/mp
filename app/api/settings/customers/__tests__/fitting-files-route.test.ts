@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * ADR 0042 f: a Fitting record's Drive photos are previewed through the
- * platform. The route serves a file only by its position on that Customer's
- * own Fitting record, to a viewer holding `customers`, and never keeps it.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -39,7 +33,6 @@ vi.mock("@/lib/media-assets/drive", async () => {
   };
 });
 
-// A 1×1 PNG.
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64",

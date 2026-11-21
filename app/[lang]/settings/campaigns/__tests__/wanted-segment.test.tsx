@@ -7,19 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerSegment, SegmentParams } from "@/lib/crm/segment-rules";
 import type { CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * A wanted Segment on New campaign (PRD-email-funnel slices 04 and 06): a
- * Playbook's (`?starter=`), a stage's (`?stage=`) or a follow-up's
- * (`?after=`), found by its filters on the server or named beside the
- * Audience with *Create the Segment*. The click goes through the Segments'
- * own create, the real route (`POST /api/settings/customers/segments`: its
- * permission, validation, unique name and audit row), here with the database
- * replaced by a list. The Segment is saved with the wanted name and exact
- * filters and chosen; a second click creates nothing more; a name taken by a
- * Segment with other filters is reported (a follow-up's is made unique
- * first) and left as it is. Opening the page saves and sends nothing.
- */
-
 const db = vi.hoisted(() => ({ rows: [] as { id: string; name: string; params: Record<string, string> }[] }));
 const auth = vi.hoisted(() => ({
   requireAdmin: vi.fn<(permission: string) => Promise<null>>(async () => null),
@@ -45,7 +32,6 @@ vi.mock("@/lib/crm/segments", async (orig) => {
   return {
     ...real,
     listSegments: vi.fn(async () => db.rows.map(liveRow)),
-    // The live-name rule (any case), as `assertNameFree` and the table's unique index keep it.
     createSegment: vi.fn(async (name: string, params: SegmentParams): Promise<CustomerSegment> => {
       if (db.rows.some((r) => r.name.toLowerCase() === name.toLowerCase())) throw new real.SegmentNameTakenError(name);
       const row = { id: `seg-${db.rows.length + 1}`, name, params: params as Record<string, string> };
@@ -61,7 +47,6 @@ const actions = vi.hoisted(() => ({
   describeCampaignProducts: vi.fn(async () => ({ ok: true as const, products: [] })),
   duplicateCampaign: vi.fn(),
   findCampaignProducts: vi.fn(async () => ({ ok: true as const, products: [] })),
-  // Answered as the action answers (follow-up-actions.test.ts runs the real one): the live Segment with the filters, by id and name.
   findWantedSegmentAction: vi.fn(),
   listPastCampaignsAction: vi.fn(async () => ({ ok: true as const, campaigns: [] })),
   planCampaignWave: vi.fn(),
@@ -84,7 +69,6 @@ const { newCampaignFromAddress } = await import("@/lib/email-campaigns/starters"
 const { findWanted, matchable } = await import("@/lib/email-campaigns/wanted-segment");
 const { filtersKey } = await import("@/lib/crm/filters-key");
 
-/** The browser's fetch, answered by the real create route. */
 const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
   if (url !== "/api/settings/customers/segments") throw new Error(`Unexpected fetch ${url}`);
   return POST(new Request(`https://admin.test${url}`, init));
@@ -94,10 +78,6 @@ const WE_MISS_YOU = { id: "7c0a1e2b-3d4f-4a5b-8c6d-9e0f1a2b3c4d", name: "We miss
 
 type Row = { id: string; name: string; params: Record<string, string> };
 let root: Root | null = null;
-/**
- * New campaign at `query`, as its page opens it (`newCampaignFromAddress` on the server, from `segments` with their
- * filters): the editor gets the Segments' names and what the server found, never a filter.
- */
 function open(
   query: Record<string, string>,
   segments: Row[] = db.rows,
@@ -138,7 +118,6 @@ const sentBody = (n = 0) => JSON.parse(String(fetchMock.mock.calls[n][1]!.body))
 const startPanel = () => document.querySelector("[aria-labelledby='c-start-title']");
 const choice = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("[aria-labelledby='c-start-title'] button")].find((b) => b.firstElementChild?.textContent === label) ?? null;
-/** Two clicks on Create before the first answer, then the notice gone. */
 const createTwice = async () => {
   const b = await until(createButton);
   await act(async () => {
@@ -153,7 +132,6 @@ beforeEach(() => {
   db.rows = [];
   window.localStorage.clear();
   vi.stubGlobal("fetch", fetchMock);
-  // As the action answers (follow-up-actions.test.ts runs the real one): the address's wanted Segment, derived again.
   actions.findWantedSegmentAction.mockImplementation(async (address: Record<string, string>) => {
     const segments = matchable(db.rows.map(liveRow));
     const { wanted } = newCampaignFromAddress(address, segments, WE_MISS_YOU);
@@ -186,7 +164,6 @@ describe("a Playbook whose Segment is missing (slice 04)", () => {
     await createTwice();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(sentBody()).toEqual({ name: "At risk · 12 to 24 months", filters: { stage: "at-risk", last_order: "within:24" } });
-    // The route's own permission check and audit row.
     expect(auth.requireAdmin).toHaveBeenCalledWith("customers-edit");
     expect(auth.recordAdminAction).toHaveBeenCalledTimes(1);
     expect(auth.recordAdminAction.mock.calls[0][0]).toMatchObject({ action: "customer_segment.create" });
@@ -238,7 +215,6 @@ describe("?stage=<stage> (slice 06)", () => {
     open({ stage: "at-risk" }, [{ id: "seg-near", name: "At risk · 12 to 24 months", params: { stage: "at-risk", last_order: "within:24" } }]);
     expect(audience()).toBe("A saved Segment");
     expect(notice()!.textContent).toContain("This campaign sends to the Segment “At risk”, which doesn't exist yet.");
-    // Otherwise empty: the Start panel is offered.
     await until(startPanel);
     expect(document.querySelector<HTMLInputElement>("#c-name")!.value).toBe("");
     expect(fetchMock).not.toHaveBeenCalled();
@@ -319,7 +295,6 @@ describe("?after=<campaign id>:<did> (slice 06)", () => {
 
 describe("review findings on the shared mechanism", () => {
   it("chooses a Segment made with the wanted filters since the page loaded, instead of claiming other filters (409)", async () => {
-    // The page read no such Segment; another tab has made it since.
     open({ stage: "at-risk" }, []);
     db.rows = [{ id: "seg-tab", name: "At risk", params: { stage: "at-risk" } }];
     await click(await until(createButton));
@@ -448,7 +423,6 @@ describe("which wanted Segment survives (the split, slice 06)", () => {
     await click(choice("New website: sign in for points")!);
     expect(audience()).toBe("Imported from Shopify, not signed in yet");
     expect(notice()).toBeNull();
-    // That the wanted Segment itself is ended is `wantedAfterStarter`'s test; Undo brings the address's back with the Audience.
     await act(async () => press("z", { ctrl: true }, document.body));
     expect(notice()).not.toBeNull();
   });

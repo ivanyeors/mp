@@ -1,22 +1,3 @@
-/**
- * Applying a Fitting import from the Admin Panel, end to end, apart from the
- * server actions it calls (ADR 0042 e).
- *
- * Pure: the page passes the actions in, so vitest drives the same flow with
- * fakes, and the server action shares the chunk check and the row builder.
- *
- *  1. `startFittingImport` records the batch: the file's name and SHA-256,
- *     its row count, and how its dates are read.
- *  2. The browser sends every row's cells in import order (`importOrder`:
- *     the rows with an email first, then the rest, each in file order), 100
- *     at a time, from the batch's `rows_done`. Each chunk is one transaction in
- *     `import_fitting_rows`, which re-decides every row against the rows as
- *     they are then. A chunk that does not start at `rows_done` is refused,
- *     so a resumed or retried import never counts a row twice.
- *  3. The browser marks a row whose key an earlier row in the file has: only
- *     it holds the whole file.
- *  4. `finishFittingImport` reconciles and stamps the batch applied.
- */
 import { IMPORT_CONFIRMATION, UNDO_CONFIRMATION, localIsoDate } from "@/lib/customer-migration/apply";
 import { takeChunk } from "@/lib/customer-migration/preview";
 import { parseFittingFormCsv, type DateOrder, type FittingColumns, type FormRawRow } from "./google-form-csv";
@@ -25,15 +6,11 @@ import { readRawRow } from "./rows";
 
 export { IMPORT_CONFIRMATION, UNDO_CONFIRMATION, localIsoDate };
 
-/** `import_fitting_rows` takes at most this many rows per call. */
 export const APPLY_CHUNK_ROWS = 100;
-/** Well under the 1 MB server action limit, with room for its encoding. */
 export const APPLY_CHUNK_MAX_BYTES = 512 * 1024;
 
-/** One row as the apply sends it. A row skipped as a duplicate carries no cells at all. */
 export type ApplyRawRow = { i: number; raw: FormRawRow; skip?: "duplicate_in_file" };
 
-/** The rows as the apply sends them: indexed in import order, every cell, duplicates marked. */
 export function applyPayload(rows: readonly FormRawRow[], order: DateOrder): ApplyRawRow[] {
   const dupes = duplicateSkips(normaliseRows(rows.map((raw, i) => ({ i, raw })), order));
   return rows.map(({ cells, other }, i) =>
@@ -41,10 +18,6 @@ export function applyPayload(rows: readonly FormRawRow[], order: DateOrder): App
   );
 }
 
-/**
- * The server's check of one chunk: at most 100 rows, numbered in import order
- * from `startIndex`, each read back with `readRawRow`.
- */
 export function readApplyChunk(
   input: unknown,
   startIndex: unknown,
@@ -70,17 +43,10 @@ export function readApplyChunk(
   return { ok: true, startIndex, rows };
 }
 
-/** One row of `import_fitting_rows`' input (20261101100000_customer_fittings.sql). */
 export type ImportRow =
   | { i: number; skip: SkipReason }
   | { i: number; key: string; email: string | null; phone: string | null; name: string | null; fitting: FittingColumns };
 
-/**
- * What the server hands the SQL function for a chunk. Every row is normalised
- * here from its raw cells, with the batch's own date order, never trusting
- * the browser's reading. The browser's duplicate marks are kept, and
- * duplicates within the chunk are found again here.
- */
 export function importRows(chunk: readonly ApplyRawRow[], order: DateOrder, now?: number): ImportRow[] {
   const normalised = normaliseRows(
     chunk.filter((r) => !r.skip).map(({ i, raw }) => ({ i, raw })),
@@ -99,9 +65,6 @@ export function importRows(chunk: readonly ApplyRawRow[], order: DateOrder, now?
   });
 }
 
-// ─── Server answers ──────────────────────────────────────────────────────────
-
-/** One row's outcome as the database decided it. No PII: the browser holds the row. */
 export type RowOutcome = { i: number; outcome: PlanOutcome; reason?: SkipReason };
 
 export type RefusedReason = "out_of_order" | "past_end" | "applied" | "undone";
@@ -119,7 +82,6 @@ export function readImportResult(data: unknown): ApplyChunkResponse {
   return { ok: true, status: "applied", rowsDone: d.rows_done, outcomes: d.outcomes as RowOutcome[] };
 }
 
-/** A batch's counts, as the server keeps them. */
 export type BatchCounts = {
   rowsTotal: number;
   rowsDone: number;
@@ -133,7 +95,6 @@ export type BatchCounts = {
 export const skippedTotal = (skipped: BatchCounts["skipped"]) =>
   Object.values(skipped).reduce<number>((sum, n) => sum + (n ?? 0), 0);
 
-/** Fitting records a batch wrote: one per created Customer and per match. */
 export const recordsWritten = (c: BatchCounts) => c.created + c.matchedEmail + c.matchedPhone;
 
 export type Reconciliation = { complete: boolean; accounted: number; reconciles: boolean };
@@ -171,14 +132,11 @@ export function readFinishResult(data: unknown): FinishResponse {
   return { ok: true, status, counts: countsFrom(d), fittingRecords: num(d.fitting_records), newlyApplied: d.newly_applied === true };
 }
 
-// ─── Starting a batch ────────────────────────────────────────────────────────
-
 export type StartImportInput = {
   fileName: string;
   sha256: string;
   rowsTotal: number;
   dateOrder: DateOrder;
-  /** The operator typed IMPORT_CONFIRMATION. */
   confirmation: string;
 };
 
@@ -197,14 +155,11 @@ export function readStartInput(input: unknown): { ok: true; row: StartImportRow 
   return { ok: true, row: { file_name: fileName, file_sha256: v.sha256, rows_total: v.rowsTotal, date_order: v.dateOrder } };
 }
 
-// ─── The run ─────────────────────────────────────────────────────────────────
-
 export type ApplyChunkFn = (batchId: string, startIndex: number, rows: ApplyRawRow[]) => Promise<ApplyChunkResponse>;
 export type FinishFn = (batchId: string) => Promise<FinishResponse>;
 
 export type ImportRun =
   | { kind: "finished"; result: Extract<FinishResponse, { ok: true }>; outcomes: RowOutcome[] }
-  /** Stopped part-way. Picking the same file continues from `rowsDone`. */
   | { kind: "stopped"; rowsDone: number; error: string; outcomes: RowOutcome[] };
 
 export const REFUSED_LABELS: Record<RefusedReason, string> = {
@@ -214,12 +169,6 @@ export const REFUSED_LABELS: Record<RefusedReason, string> = {
   undone: "This import was undone.",
 };
 
-/**
- * Send the file's rows from the batch's `rowsDone`, then finish. A refusal
- * that says the batch is further on than we are (a chunk that landed but whose
- * answer was lost) moves on from there; any other refusal or failure stops,
- * and the same file resumes it.
- */
 export async function runFittingImport({
   text,
   batch,

@@ -158,7 +158,6 @@ describe("Google review card", () => {
       }),
     );
     expect(card.text.length).toBeLessThanOrEqual(4096);
-    // The review is clipped harder; the draft being approved is never cut.
     expect(card.text).toContain("Service recovery reply, drafted by Claude");
     expect(card.text).toContain("y".repeat(1400));
   });
@@ -229,7 +228,6 @@ describe("Google review card", () => {
     const card = renderGoogleReviewCard(row(), { possibleCustomerMatch: url });
     const added = card.text.split("\n").filter((l) => !renderGoogleReviewCard(row()).text.split("\n").includes(l));
     expect(added).toEqual([`👤 Possible customer match: confirm in the Admin Panel: ${url}`]);
-    // The buttons are unchanged, and without a suggestion there is no line.
     expect(card.replyMarkup).toEqual(renderGoogleReviewCard(row()).replyMarkup);
     expect(renderGoogleReviewCard(row(), { possibleCustomerMatch: null }).text).not.toContain("Possible customer match");
   });

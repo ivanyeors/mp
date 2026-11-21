@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -46,6 +46,7 @@ import {
   type DiscoverySourceCatalog,
   type DiscoverySourceOption,
 } from "@/lib/discovery-source";
+import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { getApiErrorMessage } from "@/lib/utils";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -67,7 +68,6 @@ function emptyLabels() {
   return { "en-US": "", "zh-CN": "" };
 }
 
-/** The `/api/settings/forms/discovery-source` payload the page mounts with. */
 export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog };
 
 export default function FormsSettingsPage({
@@ -99,14 +99,7 @@ export default function FormsSettingsPage({
     }
   }, []);
 
-  // The server already loaded the catalog; fetch only when it could not.
-  // Saves and rollbacks still call load().
-  useEffect(() => {
-    if (initialData) return;
-    // load() sets `loading`, which already starts true without initialData.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [initialData, load]);
+  useOncePerKey(initialData ? null : "no-server-catalog", load);
 
   const save = async (next: DiscoverySourceOption[]) => {
     setSaving(true);
@@ -196,7 +189,6 @@ export default function FormsSettingsPage({
   const editable = options.filter((o) => o.id !== OTHER_DISCOVERY_SOURCE_ID);
   const other = options.find((o) => o.id === OTHER_DISCOVERY_SOURCE_ID);
 
-  // Only `editable` is sortable, so "Other" keeps its always-last slot on a drop too.
   const handleDragEnd = (event: SortableDragEndEvent) => {
     const next = sortableMove(editable, event, (o) => o.id);
     if (next) void save(other ? [...next, other] : next);
@@ -350,7 +342,6 @@ export default function FormsSettingsPage({
                                 <ArchiveRestore className="h-4 w-4" />
                               )}
                             </button>
-                            {/* Phones: the whole name line opens the labels, at 44px. */}
                             <CollapsibleTrigger asChild>
                               <button
                                 type="button"

@@ -5,20 +5,6 @@ import { canonicalAt, EMPTY_BATCH } from "@/lib/crm/timeline/merge";
 import { cappedBatch, joinBatches, newestRows, readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter, TimelineEntry, TimelineRef } from "@/lib/crm/timeline/types";
 
-/**
- * Re-adjustment bookings on the Customer timeline (`appointments`).
- *
- * A booking stores when it was made (`created_at`) and the visit's slot, but no
- * time for attended, no-show or cancelled: `updated_at` also moves when the
- * visit is rescheduled. So the booking is one dated entry with its current
- * status as a pill, and Staff marking the visit is the `readjustment.*` entry
- * `app/api/settings/readjustments/[id]/route.ts` writes to `admin_audit_log`.
- * A cancel from the customer's WhatsApp writes no audit entry, so it shows only
- * as the pill.
- *
- * A booking has no page of its own: the link opens Appointments.
- */
-
 type BookingRow = {
   id: string;
   status: string;
@@ -29,7 +15,6 @@ type BookingRow = {
   created_at: string;
 };
 
-/** Bookings read per page: a Customer has a handful. Past this many, the oldest one read is the floor. */
 export const BOOKINGS_CAP = 100;
 
 const STAFF_ACTIONS: Record<string, { kind: string; line: (date: string) => string }> = {

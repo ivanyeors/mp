@@ -1,17 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * The two Owner-facing Result routes that write money-adjacent fields (slice 05).
- *
- * GET /api/results/[id] — the Stripe success return syncs `payment_intent_id`.
- * An Owner who re-submitted a new build can still pay an OLDER open Checkout;
- * that card must not land on a Result now quoting a different amount.
- *
- * POST /api/results/[id]/finish — a viewer (carries `orders`, not `results`)
- * must not count as Staff and rewrite a customer's shipping and price.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),
@@ -50,9 +39,6 @@ vi.mock("@/lib/stripe/client", () => ({
   getStripe: () => ({ checkout: { sessions: { retrieve: h.retrieve } } }),
 }));
 vi.mock("@/lib/config-upload", () => ({ listConfigUploads: vi.fn().mockResolvedValue([]) }));
-// importOriginal so the real ASSIGNED_BUILD_COLUMNS comes through: the routes
-// interpolate it into their select, and a mock that omits it fails at the query
-// rather than at the behaviour under test.
 vi.mock("@/lib/results/assigned-build", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/results/assigned-build")>()),
   loadAssignedBuild: h.loadAssignedBuild,
@@ -72,7 +58,6 @@ beforeEach(() => {
 });
 
 describe("GET /api/results/[id] — return from a hold Checkout", () => {
-  /** Build B re-submitted at 150; the Owner pays the still-open Checkout for build A. */
   const heldAt150 = {
     id: ID,
     status: "held",

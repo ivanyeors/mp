@@ -1,7 +1,3 @@
-/**
- * Slice 01 self-check: schema + engine core wiring + acceptance behaviors.
- * Run: npx tsx lib/rules-engine/slice-01.check.ts
- */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,7 +14,6 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
-// --- Migration ---
 const mig = "supabase/migrations/20260719180000_rule_graphs.sql";
 assert.ok(existsSync(join(ROOT, mig)), "rule_graphs migration exists");
 const sql = read(mig);
@@ -27,7 +22,6 @@ assert.match(sql, /uq_rule_graphs_draft/);
 assert.match(sql, /uq_rule_graphs_published_version/);
 assert.match(sql, /premium-mpillow/);
 
-// --- API routes + rules-engine gate ---
 const routes = [
   "app/api/settings/rules-engine/[flow]/route.ts",
   "app/api/settings/rules-engine/[flow]/publish/route.ts",
@@ -42,7 +36,6 @@ for (const r of routes) {
 assert.equal(roleHasPermission("owner", "rules-engine"), true);
 assert.equal(roleHasPermission("viewer", "rules-engine"), false);
 
-// --- Hand-written Premium graph: validate + evaluate ---
 const graph = premiumHandGraph(DEFAULT_TEMPLATE_IDS);
 assert.deepEqual(validateForPublish("premium-mpillow", graph), []);
 
@@ -63,18 +56,15 @@ assert.ok(
   "template terminal fired",
 );
 
-// Determinism
 const a = evaluateOrThrow("premium-mpillow", graph, premiumSampleInputs());
 const b = evaluateOrThrow("premium-mpillow", graph, premiumSampleInputs());
 assert.deepEqual(a, b);
 
-// Missing required input — refuse, do not default
 const incomplete = { ...premiumSampleInputs() };
 delete incomplete.shoulder_length_cm;
 const refused = evaluate("premium-mpillow", graph, incomplete);
 assert.ok("error" in refused && refused.missing.includes("shoulder_length_cm"));
 
-// Publish rejection cases (node ids)
 const cycle = premiumHandGraph(DEFAULT_TEMPLATE_IDS);
 cycle.edges.push({ id: "c", source: "tpl-m", target: "rng-shoulder" });
 assert.ok(validateForPublish("premium-mpillow", cycle).some((e) => e.code === "cycle" && e.nodeId));
@@ -121,7 +111,6 @@ assert.ok(
   ),
 );
 
-// Restore copy does not mutate history
 const published = { graph: premiumHandGraph(DEFAULT_TEMPLATE_IDS) };
 const draft = structuredClone(published.graph);
 const dTpl = draft.nodes.find((n) => n.id === "tpl-m");

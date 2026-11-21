@@ -5,16 +5,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-/**
- * Public, unauthenticated order lookup used by the post-payment confirmation
- * page. Orders are keyed by their (semi-guessable) order number, so a matching
- * Stripe `session_id` is required as a capability token to prevent enumeration
- * of other shoppers' orders.
- *
- * It returns the customer's own columns only (ORDER_WITH_ITEMS): the service
- * role would otherwise hand Staff notes and cost snapshots to anyone holding
- * the success URL, which sits in browser history.
- */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ orderNumber: string }> }
@@ -40,8 +30,6 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Capability check: the session id must match the order's Stripe session.
-  // Without a valid session id, do not expose order details.
   if (!secretMatches(order.stripe_session_id ?? undefined, sessionId)) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }

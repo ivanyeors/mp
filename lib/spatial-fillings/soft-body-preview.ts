@@ -1,11 +1,3 @@
-/**
- * The Soft body Settings preview (ADR 0025): the sample Items and recipes the
- * testing preview settled on, so Staff tune the soft cut against the same
- * pillows it was approved on. A recipe is written as one Section's three
- * sub-section columns, each listed top → bottom (Layer 0 first), and applied
- * to whichever Section the preview cuts. Pure + browser-safe.
- */
-
 import { SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "./core";
 import type { DimensionsPayload } from "./dimension-overrides";
 import {
@@ -23,11 +15,8 @@ export type SampleItem = {
   id: number;
   name: string;
   subtype: string;
-  /** Null for an unsized Item (the Ear Comfort Pad). */
   size: string | null;
-  /** Absent = a filling. */
   category?: string;
-  /** What the pouch is labelled when its type alone would not tell it apart ("6D Fold"). */
   label?: string;
 };
 
@@ -42,9 +31,7 @@ export const SOFT_BODY_SAMPLE_ITEMS: readonly SampleItem[] = [
 export type SampleRecipe = {
   key: string;
   name: string;
-  /** Item ids per sub-section, top Layer first. */
   cells: Readonly<Record<SubSection, readonly number[]>>;
-  /** Insert order by `sub-section/Layer`, e.g. `"back/1": 4`. */
   order: Readonly<Record<string, number>>;
 };
 
@@ -86,7 +73,6 @@ export const SOFT_BODY_RECIPES: readonly SampleRecipe[] = [
     order: { "middle/1": 1, "middle/0": 2, "front/1": 3, "front/0": 4, "back/2": 5, "back/1": 6, "back/0": 7 },
   },
   {
-    // An Ear Comfort Pad on top of the middle, where the ear rests, over a Type 11 build.
     key: "ear-pad",
     name: "Ear pad mix",
     cells: { front: [1], middle: [5, 1], back: [3, 1, 1] },
@@ -100,7 +86,6 @@ export function sampleRecipe(key: string | null | undefined): SampleRecipe {
   return SOFT_BODY_RECIPES.find((r) => r.key === key) ?? SOFT_BODY_RECIPES.find((r) => r.key === DEFAULT_SAMPLE_RECIPE)!;
 }
 
-/** The recipe as Placements in `section`: one piece per Layer, slot = Layer + 1. */
 export function recipePlacements(recipe: SampleRecipe, section: Section): PillowPlacement[] {
   return SUB_SECTIONS.flatMap((subSection) =>
     recipe.cells[subSection].map((itemId, row): PillowPlacement => {
@@ -110,12 +95,6 @@ export function recipePlacements(recipe: SampleRecipe, section: Section): Pillow
   );
 }
 
-/**
- * The registry the Settings › Dimensions tab reports (`GET
- * /settings/product-builder/dimensions`): its configured rows folded over the
- * code defaults, so the preview draws measured pouches as every x-ray does.
- * Default and unmeasured entries are the code's own values already.
- */
 export function registryFromCatalog(
   payload: Pick<DimensionsPayload, "pouches" | "neck" | "loftAllowance"> | null | undefined,
 ): DimensionRegistry {
@@ -137,7 +116,6 @@ export function registryFromCatalog(
   return { pouches, neck, loftAllowance, configured };
 }
 
-/** What the drawing reads per sample Item: its label type, its size and its registry dimensions. */
 export function sampleItemMaps(registry: DimensionRegistry = CODE_REGISTRY): {
   itemSubtypes: Map<number, string>;
   itemSizes: Map<number, string | null>;

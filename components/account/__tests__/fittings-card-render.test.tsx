@@ -3,13 +3,7 @@ import { renderToString } from "react-dom/server";
 import { OwnFittingsCard } from "../fittings-card";
 import type { FittingAnswersView } from "@/lib/fitting-import/view";
 
-/** The markup's text, without the markers React puts between text nodes. */
 const render = (el: React.ReactElement) => renderToString(el).replaceAll("<!-- -->", "");
-
-/**
- * Profile → Fitting history (ADR 0042 h): the customer's own answers in the
- * Staff card's layout, with no photo, preview or Drive link. Made-up data.
- */
 
 const fitting = (over: Partial<FittingAnswersView> = {}): FittingAnswersView => ({
   id: "0e000000-0000-4000-8000-0000000000c2",
@@ -65,7 +59,6 @@ describe("OwnFittingsCard", () => {
     expect(html.match(/>Latest</g)).toHaveLength(1);
     expect(html).toContain("18.5 in");
     expect(html).toContain("was 18 in");
-    // Unchanged (2.5 both times), or nothing to compare with (C was not taken before): no "was".
     expect(html).not.toContain("was 2.5 in");
     expect(html.match(/was \d/g)).toHaveLength(1);
     expect(html).toContain("where one changed, you can see what it was the visit before");

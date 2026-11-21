@@ -11,13 +11,6 @@ export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Confirmation page for the "hide listing" link in the Staff notification email.
- * A GET link can't mutate anything (a state-changing GET is CSRF-able via a
- * top-level nav that carries the Lax session cookie); hiding happens only when a
- * signed-in Staff member clicks Confirm, which runs a Server Action — a POST with
- * Next's built-in Origin check — re-guarded with `assertAdmin`.
- */
 export default async function HidePartnerListingPage({
   params,
   searchParams,

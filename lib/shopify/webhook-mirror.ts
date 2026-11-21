@@ -1,7 +1,3 @@
-/**
- * Best-effort Shopify order-mirror writes from the webhook path.
- * Failures are logged only — never fail the webhook (catch-up retries).
- */
 import {
   applyShopifyRefund,
   upsertShopifyOrderMirror,
@@ -9,7 +5,6 @@ import {
   type ShopifyRefundLike,
 } from '@/lib/shopify/order-mirror-ingest'
 
-/** refunds/create payload: id + order_id (orders have id + line_items, no order_id). */
 export function isShopifyRefundPayload(value: unknown): value is ShopifyRefundLike {
   if (!value || typeof value !== 'object') return false
   const v = value as { id?: unknown; order_id?: unknown }

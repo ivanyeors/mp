@@ -14,7 +14,6 @@ function resolveFetchUrl(input: RequestInfo | URL): string | null {
     if (typeof input === "string") return input;
     if (input instanceof URL) return input.toString();
     if (input instanceof Request) return input.url;
-    // Unknown type; best-effort stringification.
     return String(input);
   } catch {
     return null;
@@ -30,7 +29,6 @@ function resolveFetchMethod(input: RequestInfo | URL, init?: RequestInit): strin
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-/** Pure predicate for tests; pageOrigin is typically window.location.origin. */
 export function shouldTrackFetchRequest(
   rawUrl: string,
   method: string,
@@ -87,7 +85,6 @@ export function ApiRequestTracker() {
     }) as typeof fetch;
 
     return () => {
-      // Root-mounted normally, but keep cleanup safe for HMR / test environments.
       if (globalThis.__mpOriginalFetch) {
         window.fetch = globalThis.__mpOriginalFetch;
       }

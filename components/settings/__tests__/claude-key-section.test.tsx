@@ -5,8 +5,6 @@ import { ClaudeKeyForm, claudeKeyStatus } from "../claude-key-section";
 import { claudeKeyRefusal } from "@/lib/ai/claude-key";
 import type { ClaudeCredentialSource } from "@/lib/ai/claude";
 
-/** General → Claude API key: where the credentials come from, and the one field to paste a key into. */
-
 const render = (source: ClaudeCredentialSource | null, value = "") =>
   renderToStaticMarkup(
     <ClaudeKeyForm source={source} value={value} onValueChange={() => {}} busy={null} onSave={() => {}} onRemove={() => {}} />,

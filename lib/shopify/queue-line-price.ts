@@ -1,5 +1,3 @@
-/** Costings MSRP for a Shopify sales-queue line (product/part). */
-
 export type QueueLinePriceKind = "pillow" | "bolster" | "part";
 
 export function detectPremiumVariantFromTitle(title: string | null | undefined): "linen" | "fibrecool" {
@@ -19,7 +17,6 @@ export function resolveShopifyQueueLineMsrp(args: {
   bolsterVariant: string | null;
   itemId: number | null;
   variantTitle: string | null;
-  /** From selected BOM template; wins over title heuristic for premium UX. */
   templatePillowVariant: "linen" | "fibrecool" | null;
   pillowProductIdByKindSize: Map<string, number> | Record<string, number>;
   productMsrpByKey: Map<string, number | string | null> | Record<string, number | string | null>;
@@ -82,7 +79,6 @@ export function parseReplaceLinesFromMetadata(metadata: unknown): ReplaceLine[] 
   return lines.length ? lines : null;
 }
 
-/** Unit MSRP for one product from replace BOM lines; null if any line lacks MSRP. */
 export function sumReplaceLinesMsrp(
   lines: ReplaceLine[],
   itemMsrpById: Map<number, number | string | null> | Record<number, number | string | null>,

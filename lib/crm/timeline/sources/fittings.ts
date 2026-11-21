@@ -13,12 +13,6 @@ type FittingRow = {
   serviced_by: string | null;
 };
 
-/**
- * Fitting records (ADR 0042) on the timeline (`customers`): one entry per
- * in-store fitting the old Google Form recorded, at the form's own time. The
- * summary carries the form's codes and who serviced them; measurements and
- * health answers stay on the Fitting history card.
- */
 export const fittingsAdapter: TimelineAdapter = {
   key: "fittings",
   group: FITTINGS_GROUP,

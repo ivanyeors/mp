@@ -30,17 +30,6 @@ export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({ locale: z.string().optional() }).passthrough();
 
-/**
- * POST /api/readjustments/checkout — a charged re-adjustment (ADR 0024).
- *
- * Signed-in only. The fee comes from Costings → Service fees and the eligibility
- * rule on the server; the body carries no amount. A visit the server says is free
- * is refused so the page books it through /api/readjustments/book instead.
- *
- * Writes, in order: the booking (holding the slot), a pending Order with one
- * Service fee line, then the Checkout Session. Payment confirms the Order through
- * the shop webhook branch and only then puts the visit on the calendar.
- */
 export async function POST(req: Request) {
   const customer = await resolveSignedInCustomer().catch(() => null);
   if (!customer) {
@@ -68,8 +57,6 @@ export async function POST(req: Request) {
   const resolved = await resolveBookingTarget(admin, customer.id, body);
   if (!resolved) return NextResponse.json({ error: "Purchase not found" }, { status: 404 });
   const { target } = resolved;
-  // Free visits (complimentary, or a $0 fee Stripe could not take) book through
-  // /api/readjustments/book.
   if (isFreeVisit(target.quote)) {
     return NextResponse.json(
       { error: "This visit is complimentary", code: "complimentary", quote: target.quote },
@@ -78,8 +65,6 @@ export async function POST(req: Request) {
   }
   const fee = target.quote.fee;
 
-  // Double-press / reload: the customer already holds this slot for this purchase
-  // with Checkout still open — send them back to that Session, not a second one.
   const existing = await admin
     .from("readjustment_bookings")
     .select("id, fee_order_id")
@@ -138,7 +123,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: bookErr?.message ?? "Booking failed" }, { status: 500 });
   }
 
-  // From here a failure releases the hold and cancels whatever Order exists.
   const abandon = async (orderId: string | null) => {
     const stamp = new Date().toISOString();
     await admin
@@ -171,7 +155,6 @@ export async function POST(req: Request) {
       tax_amount: tax,
       discount_amount: 0,
       total: fee + tax,
-      // A service is delivered at the studio: nothing ships (ADR 0024).
       shipping_address: {
         recipient: body.guest_name,
         line1: slot.location.address,
@@ -189,14 +172,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: orderErr?.message ?? "Failed to create order" }, { status: 500 });
   }
 
-  // The service's cost from Costings → Service fees, frozen like a Result's
-  // measurement line, so Analytics reads the same cost for both.
   let serviceCost: number | null = null;
   try {
     serviceCost = (await loadServicePrices(admin)).readjustment.costPrice;
-  } catch {
-    // The fee itself was priced above; a missing cost leaves the line uncosted.
-  }
+  } catch {}
   const { error: lineErr } = await admin.from("order_items").insert({
     order_id: order.id,
     variant_id: null,
@@ -247,8 +226,6 @@ export async function POST(req: Request) {
   }
   await admin.from("orders").update({ stripe_session_id: session.sessionId }).eq("id", order.id);
 
-  // The marketing email box (ADR 0039), as at shop checkout: recorded with the
-  // fee's Order, for the signed-in Customer. Never stops the booking.
   await recordBoxConsent(admin, customer.id, body.marketing_email === true, "appointment");
 
   return NextResponse.json({ ok: true, url: session.url, bookingId: booking.id });

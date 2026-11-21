@@ -8,12 +8,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/staff-orders/quote — price a Staff order draft (ADR 0048). Writes
- * nothing. The body names Variants, Services, where it goes and a code; every
- * amount in the answer is read from the database, the same function the create
- * route writes the Order from.
- */
 export async function POST(req: Request) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;

@@ -19,21 +19,6 @@ import { withLocale } from "@/lib/i18n/routing";
 import { welcomeLeftShare, type WelcomeGrantReason, type WelcomeOffer } from "@/lib/points/welcome";
 import { cn } from "@/lib/utils";
 
-/**
- * The Explore page (owner, 2026-11-17): one screen, no scrolling. A countdown
- * to the launch and one button, over a scene whose sky follows the visitor's
- * own day and night (components/explore/explore-scene.ts). The points flow is
- * a popup (explore-claim-dialog.tsx).
- *
- * The scene is the picture, never the content: everything a visitor needs is
- * in the words over it, and they read the same over a plain gradient where
- * the scene cannot load.
- *
- * The flowers are an Easter egg (owner, 2026-11-17): a picked one's petals
- * drift to the grass, then a popup shows the 1 to 3 points it held, or, signed
- * out, asks them to sign up for those points (explore-flower-dialog.tsx).
- */
-
 type Look = { hour: number | null; rain: boolean | null };
 type Float = { id: number; x: number; y: number; text: string };
 
@@ -42,21 +27,17 @@ const wait = (ms: number) => new Promise<void>((done) => window.setTimeout(done,
 const number = (n: number) => n.toLocaleString("en-SG");
 const two = (n: number) => String(n).padStart(2, "0");
 
-/** The visitor's clock, or the hour the address asked to look at. */
 function skyMoment(look: Look): Date {
   const d = new Date();
   if (look.hour != null) d.setHours(Math.floor(look.hour), Math.round((look.hour % 1) * 60), 0, 0);
   return d;
 }
 
-/** Where the visitor's own clock says they are. */
 function placeFromClock(): Place {
   let zone: string | null = null;
   try {
     zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
-  } catch {
-    // An old browser: the clock's offset alone.
-  }
+  } catch {}
   return guessPlace(zone, -new Date().getTimezoneOffset());
 }
 
@@ -79,19 +60,15 @@ export function ExploreExperience({
   locale: Locale;
   serverNow: number;
   launchAt: number;
-  /** Singapore's sky when the page was made: what shows until the visitor's clock is read. */
   initialSky: SkyState;
   offer: WelcomeOffer | null;
   pointsOn: boolean;
-  /** Points are on and launched: a signed-in visitor's flower would pay. */
   pointsLive: boolean;
   rules: { minRedeem: number; maxShare: number };
   signedIn: boolean;
   viewer: ExploreViewer | null;
   flowers: ExploreFlowers;
-  /** Back from signing in with `?claim=1`: finish the claim. */
   finishClaim: boolean;
-  /** Back from signing in with `?flower=N`: pick that flower for them. */
   finishFlower: number | null;
   look: Look;
 }) {
@@ -107,10 +84,8 @@ export function ExploreExperience({
   const claimPath = `${withLocale("/explore", locale)}?claim=1`;
   const flowerPath = (flower: number) => `${withLocale("/explore", locale)}?flower=${flower}`;
 
-  // ------------------------------------------------------------ the clock
   const [now, setNow] = useState(serverNow);
   useEffect(() => {
-    // The visitor's clock, unless it is far from ours: then ours, carried forward.
     const drift = serverNow - Date.now();
     const offset = Math.abs(drift) > 30_000 ? drift : 0;
     const tick = () => setNow(Date.now() + offset);
@@ -120,7 +95,6 @@ export function ExploreExperience({
   }, [serverNow]);
   const left = countdownParts(now, launchAt);
 
-  // ------------------------------------------------------------ the sky
   const [sky, setSky] = useState<SkyState>(initialSky);
   const [weather, setWeather] = useState<{ raining: boolean; place: Place | null }>({ raining: false, place: null });
   const sceneRef = useRef<ExploreScene | null>(null);
@@ -149,7 +123,6 @@ export function ExploreExperience({
 
   useEffect(() => {
     const clock = placeFromClock();
-    // The visitor's time zone decides day and night. A position that disagrees with it (a VPN) is ignored.
     const offsetHours = -new Date().getTimezoneOffset() / 60;
     const place = weather.place && Math.abs(weather.place.lon / 15 - offsetHours) <= 2.5 ? weather.place : clock;
     const update = () => setSky(skyAt(skyMoment(look), place, look.rain ?? weather.raining));
@@ -158,7 +131,6 @@ export function ExploreExperience({
     return () => window.clearInterval(timer);
   }, [look, weather]);
 
-  // ------------------------------------------------------------ points
   const [offer, setOffer] = useState(initialOffer);
   const [viewer, setViewer] = useState(initialViewer);
   const [flowers, setFlowers] = useState(initialFlowers);
@@ -168,7 +140,6 @@ export function ExploreExperience({
   const [floats, setFloats] = useState<Float[]>([]);
   const floatId = useRef(0);
 
-  // From the launch, Explore offers no claim: only signing up or in (owner, 2026-11-17).
   const launched = left.done;
   const canClaim = !launched && Boolean(offer?.current) && (signedIn ? (viewer ? viewer.canClaim : true) : true);
   const holdsPoints = signedIn && !canClaim;
@@ -190,7 +161,6 @@ export function ExploreExperience({
   };
   const finishClaimNow = useEffectEvent(() => void claim(false));
 
-  // Back from signing in: finish what the press began, once, and tidy the address.
   const finished = useRef(false);
   useEffect(() => {
     if (!finishClaim || finished.current) return;
@@ -211,7 +181,6 @@ export function ExploreExperience({
     setOpen(true);
   };
 
-  // ------------------------------------------------------------ flowers
   const float = (at: { x: number; y: number }, text: string) => {
     const id = (floatId.current += 1);
     setFloats((f) => [...f, { id, x: at.x, y: at.y, text }]);
@@ -220,11 +189,6 @@ export function ExploreExperience({
 
   const [flowerPopup, setFlowerPopup] = useState<FlowerPopup | null>(null);
 
-  /**
-   * A flower was picked: it goes and its petals fall, and once they have, the
-   * popup. Signed in, the database says how many points it held; signed out,
-   * the popup asks them to sign up for them.
-   */
   const onFlower = async (index: number, at: { x: number; y: number }) => {
     const falling = wait(sceneRef.current?.popFlower(index) ?? 0);
     setFlowers((f) => ({ ...f, picked: [...f.picked, index] }));
@@ -250,17 +214,14 @@ export function ExploreExperience({
     } else if (res?.state === "nothing" && res.reason === "already") {
       float(at, "A flower for you");
     } else if (res?.state === "nothing" && res.reason === "spent") {
-      // Every flower point found: from now on they are just flowers.
       setFlowers((f) => ({ ...f, givesPoints: false }));
       float(at, "A flower for you");
     } else if (!res || (res.state === "nothing" && res.reason === "error")) {
       float(at, "That did not go through. Try again later");
     }
   };
-  // The scene is made once and the finish timer set once; each calls whatever onFlower is now.
   const pickFlower = useEffectEvent((index: number, at: { x: number; y: number }) => void onFlower(index, at));
 
-  // ------------------------------------------------------------ the scene
   const skyRef = useRef(sky);
   const flowersRef = useRef(flowers);
   useEffect(() => {
@@ -288,9 +249,7 @@ export function ExploreExperience({
         sceneRef.current = scene;
         setSceneOn(true);
       })
-      .catch(() => {
-        // No WebGL here: the gradient behind stays, and the page works the same.
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
       scene?.dispose();
@@ -298,8 +257,6 @@ export function ExploreExperience({
     };
   }, []);
 
-  // Back from signing up for a flower's points: pick that flower for them, once
-  // the scene has grown it again (or straight away, where there is no scene).
   const flowerFinished = useRef(false);
   useEffect(() => {
     if (finishFlower == null || flowerFinished.current) return;
@@ -309,7 +266,6 @@ export function ExploreExperience({
       const url = new URL(window.location.href);
       url.searchParams.delete("flower");
       window.history.replaceState(window.history.state, "", url);
-      // Not a flower today (an old link): nothing. Picked already: the database says so.
       if (finishFlower >= flowersRef.current.count) return;
       pickFlower(finishFlower, { x: window.innerWidth * 0.72, y: window.innerHeight * 0.55 });
     };
@@ -326,13 +282,11 @@ export function ExploreExperience({
       style={{ background: skyCss(sky.palette) }}
       data-sky-ink={sky.ink}
       data-scene={sceneOn ? "on" : "off"}
-      // App UI that sets its own sizes: the marketing type scale would force every line to 18px.
       data-typography-scope="app"
     >
       <style>{`@keyframes explore-float{0%{opacity:0;transform:translate(-50%,-30%) scale(.9)}15%{opacity:1;transform:translate(-50%,-70%) scale(1)}100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}`}</style>
       <div ref={hostRef} className="absolute inset-0" aria-hidden="true" />
 
-      {/* Words over the sky. The layer lets taps through to the scene; its controls take their own. */}
       <div
         className={cn(
           "pointer-events-none absolute inset-0 flex flex-col px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] transition-colors duration-700 sm:px-8 lg:px-[7vw]",
@@ -408,7 +362,6 @@ export function ExploreExperience({
           <div className="pointer-events-auto mt-7 flex flex-col items-center gap-3 [text-shadow:none] lg:items-start">
             <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start">
               {left.done ? (
-                // The launch has come: the way in to the real home page, which no longer sends anyone here.
                 <Link
                   href={links.home}
                   className={cn(
@@ -420,7 +373,6 @@ export function ExploreExperience({
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               ) : null}
-              {/* After the launch, no claim: "Sign up or sign in" for a visitor, and nothing more for someone signed in. */}
               {launched && signedIn ? null : (
                 <button
                   type="button"
@@ -467,7 +419,6 @@ export function ExploreExperience({
           </div>
         </div>
 
-        {/* The flowers are in the picture, so a keyboard or a screen reader reaches them here. */}
         {flowers.count - flowers.picked.length > 0 ? (
           <button
             type="button"
@@ -507,7 +458,6 @@ export function ExploreExperience({
         open={open}
         onOpenChange={setOpen}
         stage={stage}
-        // After the launch the popup is a plain sign-in, which goes on to the home page.
         offer={launched ? null : offer}
         signedIn={signedIn}
         viewer={viewer}

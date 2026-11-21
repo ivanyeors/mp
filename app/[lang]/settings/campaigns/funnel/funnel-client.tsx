@@ -17,26 +17,10 @@ import { bandSizes, campaignNamesOf, canOpenWith, cardRenderKeys, countText, MAX
 import { EmailFlow, type FlowCtx, type PreviewTarget, type Renders } from "./funnel-flow";
 import { lifecycleStageColour, Results, Segments, StageHeader, StateBadge } from "./funnel-panels";
 
-/**
- * The Email funnel as a marketer's workspace (PRD-email-funnel slices 03 and
- * 07; owner, 2026-11-18 and 2026-11-19): the five stages as a funnel picture,
- * and for the chosen one its Email flow (./funnel-flow), one column of the
- * emails in the order people get them, each with its email as the real
- * renderer draws it, where drafts are put in order by dragging. Segments and
- * Results follow (./funnel-panels).
- *
- * The renders are asked for after the page shows, only for the chosen stage
- * and only for cards whose preview shows (`renderFunnelEmails`); a card whose
- * render failed shows without a picture. *Hide previews* is remembered per
- * browser.
- */
-
 const n = (v: number) => v.toLocaleString("en-SG");
 
-/** Where the browser remembers *Show previews* / *Hide previews*. */
 export const PREVIEWS_KEY = "mp.emailFunnel.previews";
 
-/** The remembered choice, or null: read in try/catch, since storage can be blocked. */
 function readPreviewsChoice(): string | null {
     try {
         return window.localStorage.getItem(PREVIEWS_KEY);
@@ -66,7 +50,6 @@ export function FunnelClient({
     view: FunnelView;
     initialStage: LifecycleStage;
     locale: Locale;
-    /** The role's permissions: every link on the page shows only where the role can open its page. */
     permissions: readonly string[];
 }) {
     const [stage, setStage] = useState<LifecycleStage>(initialStage);
@@ -77,9 +60,6 @@ export function FunnelClient({
     const canOpen = canOpenWith(permissions);
     const nav = { to, canOpen };
 
-    // Previews: all shown by default (the owner wants to see how the emails look), or all hidden, remembered per
-    // browser; a card's chevron overrides it for that card. Read after mount, so the server's render and the first
-    // client render agree.
     const stored = useSyncExternalStore(subscribeToStorage, readPreviewsChoice, () => null);
     const [chosen, setChosen] = useState<boolean | null>(null);
     const allShown = chosen ?? stored !== "hidden";
@@ -89,21 +69,17 @@ export function FunnelClient({
         setOwn({});
         try {
             window.localStorage.setItem(PREVIEWS_KEY, shown ? "shown" : "hidden");
-        } catch {
-            // Storage blocked: the choice lasts this visit.
-        }
+        } catch {}
     }, []);
     const shown = useCallback((key: string) => own[key] ?? allShown, [own, allShown]);
     const toggle = useCallback((key: string) => setOwn((o) => ({ ...o, [key]: !(o[key] ?? allShown) })), [allShown]);
 
-    // The chosen stage's renders for the cards whose preview shows, asked for once each; a card opened later asks then.
     const [renders, setRenders] = useState<Renders>({});
     const asked = useRef(new Set<string>());
     useEffect(() => {
         const keys = [...new Set(cardRenderKeys(current).filter((c) => shown(c.card)).flatMap((c) => c.keys))].filter((k) => !asked.current.has(k));
         if (!keys.length) return;
         for (const k of keys) asked.current.add(k);
-        // Asked in chunks of the action's limit, so every card of a long stage gets its render.
         for (let i = 0; i < keys.length; i += MAX_RENDER_KEYS) {
             const chunk = keys.slice(i, i + MAX_RENDER_KEYS);
             const settle = (got: Record<string, FunnelRender>) =>
@@ -115,7 +91,6 @@ export function FunnelClient({
     }, [current, shown]);
 
     const [target, setTarget] = useState<PreviewTarget | null>(null);
-    // A card opened full size while its preview is hidden asks for its render then.
     const open = (t: PreviewTarget) => {
         setTarget(t);
         const key = t.key;
@@ -126,7 +101,6 @@ export function FunnelClient({
             .catch(() => setRenders((prev) => ({ ...prev, [key]: null })));
     };
 
-    // The stage lives in the URL, so a view can be shared; switching needs no new page read.
     const choose = (s: FunnelStageView) => (e: MouseEvent<HTMLAnchorElement>) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();
@@ -141,7 +115,6 @@ export function FunnelClient({
         to,
         canOpen,
         open,
-        // A move may make a Segment, which needs the Segments' own permission.
         canArrange: permissions.includes("campaigns") && permissions.includes("customers-edit"),
         shown,
         toggle,
@@ -191,13 +164,6 @@ export function FunnelClient({
     );
 }
 
-// ─── The funnel picture ──────────────────────────────────────────────────────
-
-/**
- * The five stages as joined, tapering bands: left to right on a desktop, top
- * to bottom on a phone. Each band's size is its Customers (`bandSizes`), and
- * its far edge meets the next band's, so the shape reads as a funnel.
- */
 function FunnelPicture({
     view,
     current,
@@ -232,13 +198,11 @@ function FunnelPicture({
                                 aria-label={`${s.header.label}: ${countText(s.header.customers)} customers, ${s.header.subscribed === null ? "subscribed not counted" : `${n(s.header.subscribed)} subscribed`}, ${emails}`}
                                 className="group relative block h-[4.5rem] rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-48"
                             >
-                                {/* Phone: the band narrows downwards. */}
                                 <span
                                     aria-hidden
                                     className="absolute inset-0 transition-[background] group-hover:brightness-95 md:hidden"
                                     style={{ ...fill, clipPath: `polygon(${inA}% 0, ${100 - inA}% 0, ${100 - inB}% 100%, ${inB}% 100%)` }}
                                 />
-                                {/* Desktop: the band narrows to the right. */}
                                 <span
                                     aria-hidden
                                     className="absolute inset-0 hidden transition-[background] group-hover:brightness-95 md:block"
@@ -274,8 +238,6 @@ function FunnelPicture({
     );
 }
 
-// ─── The opened email ────────────────────────────────────────────────────────
-
 function EmailPreviewDialog({
     target,
     renders,
@@ -290,7 +252,6 @@ function EmailPreviewDialog({
     const [dark, setDark] = useState<Record<string, FunnelRender | null>>({});
     const key = target?.key ?? null;
 
-    // Dark: a campaign or a Starter is drawn again with the shell's dark rules, as the editor's preview does.
     useEffect(() => {
         if (!key || scheme !== "dark" || !target?.redrawsDark || key in dark) return;
         let live = true;
@@ -316,7 +277,6 @@ function EmailPreviewDialog({
                                 {target.state ? <StateBadge state={target.state} /> : null}
                             </DialogTitle>
                             <DialogDescription>{target.kind}</DialogDescription>
-                            {/* Above the email, so they show without scrolling past it. */}
                             {target.actions.length ? (
                                 <div className="flex flex-wrap gap-2 pt-1">
                                     {target.actions.map((a) => (

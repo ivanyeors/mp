@@ -12,7 +12,6 @@ function setEnv(env: {
   VERCEL_ENV?: string;
   ALLOW_EMAIL_PREVIEW?: string;
 }) {
-  // NODE_ENV is readonly in the Node types but writable at runtime.
   Object.assign(process.env, {
     NODE_ENV: env.NODE_ENV,
     VERCEL_ENV: env.VERCEL_ENV,
@@ -50,8 +49,6 @@ describe("isEmailPreviewAllowed", () => {
   });
 
   it("blocks a Vercel preview deployment without the opt-in flag", () => {
-    // Vercel builds preview deploys with NODE_ENV=production, so this is the
-    // case a NODE_ENV-only guard would get wrong.
     setEnv({ NODE_ENV: "production", VERCEL_ENV: "preview" });
     expect(isEmailPreviewAllowed()).toBe(false);
   });

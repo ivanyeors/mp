@@ -16,15 +16,12 @@ const prices: ServicePrices = {
 
 describe("measurementServiceKey — the fee follows who measured (ADR 0024)", () => {
   it.each([
-    // [who measured, product, assigned tier, suggested tier, expected]
     ["by_user", "pillow", null, "premium", null],
     [null, "pillow", null, "premium", null],
     ["staff", "pillow", null, "premium", "measurement_premium"],
     ["staff", "pillow", null, "basic", "measurement_basic"],
-    // Staff changed the tier at assign, or the shopper accepted an upsell.
     ["staff", "pillow", "premium", "basic", "measurement_premium"],
     ["staff", "pillow", "basic", "premium", "measurement_basic"],
-    // Mbolster carries no measurement fee, whoever measured.
     ["staff", "bolster", null, null, null],
     ["by_user", "bolster", null, null, null],
   ])("%s / %s / assigned %s / suggested %s → %s", (who, product, assigned, suggested, expected) => {

@@ -14,12 +14,6 @@ import {
   withClickToken,
 } from "../click";
 
-/**
- * Campaign clicks (PRD-campaign-audiences slice 08): a random token per send
- * on the email's site links, only its hash stored, taken off the address by
- * the proxy before the page renders.
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const TOKEN = "A".repeat(43);
 
@@ -123,7 +117,6 @@ describe("recordCampaignClick", () => {
     const throwing = { rpc: vi.fn(() => Promise.reject(new Error("network"))) } as unknown as SupabaseClient;
     expect(await recordCampaignClick(failing, TOKEN)).toBe(false);
     expect(await recordCampaignClick(throwing, TOKEN)).toBe(false);
-    // Logged without the token.
     expect(JSON.stringify(error.mock.calls)).not.toContain(TOKEN);
     error.mockRestore();
   });

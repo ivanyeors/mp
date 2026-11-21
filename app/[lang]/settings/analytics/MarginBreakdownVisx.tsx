@@ -10,7 +10,6 @@ import { ChartWidth } from "./ChartWidth";
 import { useTooltip } from "@visx/tooltip";
 import { Button } from "@/components/ui/button";
 
-/** One row of a sales breakdown, as `buildSalesReport` returns it. */
 export type MarginBreakdownRow = {
   key: string;
   label: string;
@@ -124,7 +123,6 @@ function Chart({
                 onClick={() => onRowClick?.(row)}
                 onMouseMove={(evt) => onMove(evt, row)}
               >
-                {/* Hit target: the whole row, not only the thin bars. */}
                 <rect x={-left} y={-ROW_GAP / 2} width={left + innerWidth} height={ROW_STEP} fill="transparent" />
                 <Bar x={0} y={0} width={costW} height={BAR_HEIGHT} rx={4} fill={COST_COLOR} />
                 <Bar x={0} y={BAR_HEIGHT + INNER_BAR_GAP} width={costedW} height={BAR_HEIGHT} rx={4} fill={REVENUE_COLOR} />
@@ -235,11 +233,6 @@ function BreakdownTable({ rows }: { rows: MarginBreakdownRow[] }) {
   );
 }
 
-/**
- * Revenue against COGS, top level first; a top-level row drills into its
- * children. Margin is over costed revenue only, and revenue with no cost is
- * drawn hatched beside it, never counted as profit.
- */
 export function MarginBreakdownVisx({
   rows,
   emptyText,
@@ -249,7 +242,6 @@ export function MarginBreakdownVisx({
   rows: MarginBreakdownRow[];
   emptyText: string;
   drillHint: string;
-  /** What a drilled row's children are, e.g. "by size". */
   drillTitle?: (parentKey: string) => string;
 }) {
   const [selected, setSelected] = useState<string | null>(null);

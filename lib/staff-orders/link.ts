@@ -1,10 +1,3 @@
-/**
- * The Payment link of a Staff order (ADR 0048): its row in
- * `order_payment_links`, and the Order and lines it pays. Server-only: the
- * token is a bearer capability, read with the service role and never sent
- * anywhere but the customer's email and the Staff who made it.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Locale } from "@/lib/i18n/locales";
@@ -113,7 +106,6 @@ export async function loadPayLinkByToken(admin: SupabaseClient, token: string): 
   return data ? loadOrderAndItems(admin, data as PayLinkRow) : null;
 }
 
-/** The link of a Staff order, or null for any other Order. */
 export async function loadPayLinkRow(admin: SupabaseClient, orderId: string): Promise<PayLinkRow | null> {
   const { data, error } = await admin
     .from("order_payment_links")
@@ -129,12 +121,10 @@ export async function loadPayLinkForOrder(admin: SupabaseClient, orderId: string
   return link ? loadOrderAndItems(admin, link) : null;
 }
 
-/** The link as the customer opens it. */
 export function payLinkUrl(origin: string, token: string, locale: Locale): string {
   return `${origin.replace(/\/$/, "")}${withLocale(payLinkPath(token), locale)}`;
 }
 
-/** Another 7 days from now; returns the new expiry. */
 export async function renewPayLink(admin: SupabaseClient, orderId: string, now: Date): Promise<string> {
   const expiresAt = payLinkExpiry(now).toISOString();
   const { error } = await admin.from("order_payment_links").update({ expires_at: expiresAt }).eq("order_id", orderId);

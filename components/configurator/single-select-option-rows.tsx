@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 
 export type SingleSelectOption = { value: string; label: string };
 
-/** Cover-style full-width single-select rows (same language as Cover Style). */
 export function SingleSelectOptionRows({
   options,
   value,
@@ -16,7 +15,6 @@ export function SingleSelectOptionRows({
   options: SingleSelectOption[];
   value: string;
   onChange: (value: string) => void;
-  /** Slice 03: field error border when submit fails. */
   invalid?: boolean;
   error?: string;
 }) {

@@ -5,12 +5,6 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
 export { shopCardPrice } from "./shop-card-price";
 
-/**
- * Attach live `stock_available` (from the variant_stock view) onto each variant
- * of the given products. This is the single availability truth the storefront
- * gates on — pillow buildable, bolster buildable, item on-hand, or infinite for
- * untracked variants. Mutates and returns the same products for convenience.
- */
 export async function attachStockAvailable<
   T extends { product_variants?: { id: string; stock_available?: number }[] }
 >(products: T[]): Promise<T[]> {
@@ -38,30 +32,18 @@ export async function attachStockAvailable<
   return products;
 }
 
-/**
- * Columns the storefront may see. The public getters below feed client
- * components, so whatever they select is serialized into the RSC payload:
- * never cost_price, Stripe/Shopify ids or inventory links. Admin reads live in
- * lib/ecommerce/admin/products.ts.
- */
 export const PUBLIC_PRODUCT_COLUMNS =
   "id, slug, product_type, status, content, category_id, featured, tags, published_at, created_at, updated_at";
 export const PUBLIC_VARIANT_COLUMNS =
   "id, product_id, sku, title, option1, option2, option3, price, compare_at_price, currency, track_inventory, weight_grams, image_url, is_active, position";
 const PUBLIC_PRODUCT_SELECT = `${PUBLIC_PRODUCT_COLUMNS}, product_variants(${PUBLIC_VARIANT_COLUMNS}), product_images(id, product_id, variant_id, url, alt_text, position)`;
 
-/** Composed main products — buyable only via customisation, not the shop catalog. */
 export const CUSTOM_COMPOSED_PRODUCT_TYPES = ["pillow", "bolster"] as const;
 
 export function isShopCatalogProduct(product: { product_type: string }): boolean {
   return !(CUSTOM_COMPOSED_PRODUCT_TYPES as readonly string[]).includes(product.product_type);
 }
 
-/**
- * Pure — the product is **Listed** in the shop catalog (CONTEXT.md): active,
- * with at least one active Variant, and bought from the shop rather than
- * through the configurator.
- */
 export function isListedShopProduct(product: {
   status: string;
   product_type: string;
@@ -80,8 +62,7 @@ export interface GetProductsOpts {
   collection_id?: string;
   page?: number;
   limit?: number;
-  sort?: string; // "newest" | "price-asc" | "price-desc" | "title"
-  /** When true (default), exclude pillow/bolster auto-generated main products. */
+  sort?: string;
   shopCatalogOnly?: boolean;
 }
 
@@ -104,17 +85,12 @@ export async function getProducts(opts: GetProductsOpts = {}) {
   if (opts.featured !== undefined) query = query.eq("featured", opts.featured);
   if (opts.tags?.length) query = query.overlaps("tags", opts.tags);
   if (opts.search) {
-    // `.or()` is a raw PostgREST filter string, so the term must be sanitized,
-    // not interpolated — see sanitizeSearchTerm. An all-metacharacter term
-    // sanitizes to "" and simply drops the filter (same as no search) rather
-    // than producing a malformed `.ilike.%%`.
     const term = sanitizeSearchTerm(opts.search);
     if (term) {
       query = query.or(`slug.ilike.%${term}%,content->>'en-US'->>'title'.ilike.%${term}%`);
     }
   }
 
-  // Sort
   switch (opts.sort) {
     case "price-asc":
       query = query.order("created_at", { ascending: true });
@@ -134,7 +110,6 @@ export async function getProducts(opts: GetProductsOpts = {}) {
   const { data, error, count } = await query;
   if (error) throw new Error(error.message);
 
-  // If filtering by collection, we need a separate query
   let products = (data ?? []) as (Product & { product_variants: ProductVariant[]; product_images: ProductImage[] })[];
 
   if (opts.collection_id) {
@@ -209,13 +184,11 @@ export async function getFeaturedProducts(limit = 8) {
   }));
 }
 
-/** Resolve localized product content with fallback */
 export function resolveProductContent(product: Product, locale: Locale = DEFAULT_LOCALE) {
   const content = product.content[locale] ?? product.content[DEFAULT_LOCALE] ?? Object.values(product.content)[0];
   return content ?? { title: product.slug, description: "", body: "" };
 }
 
-/** Get the lowest price from all active variants */
 export function getProductPriceRange(variants: ProductVariant[]) {
   const active = variants.filter((v) => v.is_active);
   if (!active.length) return { min: 0, max: 0, currency: "SGD" };

@@ -12,7 +12,6 @@ const CreateSchema = z.object({
   permissions: z.array(z.string()).max(200).default([]),
 });
 
-/** Every role with its permissions and member count. */
 export async function GET() {
   try {
     await requireAdminContext("users");
@@ -26,7 +25,6 @@ export async function GET() {
   }
 }
 
-/** Create a custom role. Its pages are closed under `requires` and must be within the creator's own. */
 export async function POST(req: Request) {
   let ctx;
   try {

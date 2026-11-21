@@ -1,10 +1,3 @@
-/**
- * Documentation → Mpillow Points: how the programme works, for the owner and
- * Staff, in plain words. Pure, and built from the live settings, so every
- * number here is the one the ledger, checkout and the daily job use. The
- * rules are ADR 0030 and the PRD (`.claude/PRD-loyalty-points/`); this says
- * them for people running the shop.
- */
 import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 import { pointsForOrder } from "@/lib/points/earn";
 import { milestoneCostRows } from "@/lib/points/milestones";
@@ -35,7 +28,6 @@ const sgDateTime = (iso: string) =>
     timeZone: "Asia/Singapore",
   });
 
-/** Pure — where the programme stands now, in one sentence. */
 export function pointsStatusLine(s: PointsSettings, now: Date = new Date()): string {
   const view = profilePointsView(s, now);
   if (view === "live") return `Points are on, since ${sgDateTime(s.launchAt!)}. Customers earn and use them.`;
@@ -48,7 +40,6 @@ export function pointsStatusLine(s: PointsSettings, now: Date = new Date()): str
   return 'Points are off, with no launch date. Customers see "Coming soon" on their Profile and nothing earns.';
 }
 
-/** Pure — every section of the guide, with the numbers from `s`. */
 export function pointsGuideSections(s: PointsSettings, now: Date = new Date()): DocSection[] {
   const rate = s.earnPerDollar;
   const perDollar = formatEarnRate(rate);

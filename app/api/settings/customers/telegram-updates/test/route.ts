@@ -7,13 +7,6 @@ import { readTelegramUpdates, sendTelegramUpdatesTest } from "@/lib/crm/telegram
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Customers → Settings → Telegram updates → *Send test* (CRM slice 14): each
- * enabled type once, with sample numbers, marked TEST, to the Staff group. The
- * online Result sample is a made-up build for `test@example.com`, never a real
- * Result. The precedent is the review cards' *Send preview*. Needs
- * `customers-edit`, like every change on the card.
- */
 export async function POST(req: Request) {
   let ctx;
   try {

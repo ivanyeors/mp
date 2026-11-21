@@ -1,11 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The Pub/Sub push endpoint: refuses a delivery without the shared token,
- * acknowledges non-review notifications without work, and runs the sync after
- * acknowledging a review notification — never trusting the payload itself.
- */
-
 const h = vi.hoisted(() => ({ after: vi.fn(), sync: vi.fn() }));
 
 vi.mock("next/server", async (orig) => ({

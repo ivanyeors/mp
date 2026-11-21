@@ -27,13 +27,11 @@ import {
 import { cn } from "@/lib/utils";
 import { trackGaEvent } from "@/lib/analytics/ga-events";
 
-/** A bookable Location, as `GET /api/locations` answers it; the page reads them on the server. */
 export type BookingLocation = { id: string; name: string; type: string; address: string };
 type Location = BookingLocation;
 type Slot = { id: string; startIso: string; endIso: string };
 type DaySuggestion = { date: string; count: number };
 
-/** Today's date in Asia/Singapore as YYYY-MM-DD (earliest bookable day). */
 function sgtToday(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Singapore",
@@ -43,13 +41,11 @@ function sgtToday(): string {
   }).format(new Date());
 }
 
-/** "YYYY-MM-DD" → local midnight Date (no UTC shift), for the Calendar. */
 function parseYmdLocal(ymd: string): Date {
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
-/** Local Date → "YYYY-MM-DD" from local parts (the SGT day the user tapped). */
 function formatYmdLocal(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -57,7 +53,6 @@ function formatYmdLocal(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Chosen date as a long label, e.g. "Fri, 25 Jul 2026". */
 function dateLabel(ymd: string): string {
   return new Intl.DateTimeFormat("en-SG", {
     weekday: "short",
@@ -67,7 +62,6 @@ function dateLabel(ymd: string): string {
   }).format(parseYmdLocal(ymd));
 }
 
-/** Slot start time labelled in SGT, e.g. "2:30 PM". */
 function slotLabel(startIso: string): string {
   return new Intl.DateTimeFormat("en-SG", {
     timeZone: "Asia/Singapore",
@@ -77,7 +71,6 @@ function slotLabel(startIso: string): string {
   }).format(new Date(startIso));
 }
 
-/** Build the /api/appointments/ics query for the confirmed booking (values URL-encoded). */
 function icsHref(loc: Location, slot: Slot, summaryType: string, eventId: string | null): string {
   const params = new URLSearchParams({
     summary: `Mpillow ${summaryType}`,
@@ -90,10 +83,6 @@ function icsHref(loc: Location, slot: Slot, summaryType: string, eventId: string
   return `/api/appointments/ics?${params.toString()}`;
 }
 
-/**
- * A signed-in re-adjustment (ADR 0024): the customer's purchases with today's
- * server quote, the fee for "not listed", and their account details.
- */
 export type ReadjustmentBooking = {
   purchases: ReadjustmentPurchaseOption[];
   fee: number;
@@ -108,7 +97,6 @@ export function BookingFlow({
 }: {
   type: ApptType;
   readjustment?: ReadjustmentBooking;
-  /** The bookable Locations, read by the page (`readBookingLocations`). */
   locations?: Location[];
 }) {
   const { m, locale } = useI18n();
@@ -122,7 +110,6 @@ export function BookingFlow({
     none: t.languageNone,
   };
 
-  // Re-adjustment: which purchase, and — when not listed — where it came from.
   const [selection, setSelection] = React.useState<PurchaseSelection>(() => {
     if (!readjustment) return null;
     const pre = readjustment.purchases.find((p) => p.orderItemId === readjustment.preselect);
@@ -135,7 +122,6 @@ export function BookingFlow({
     readjustment && selection && selection !== UNLISTED
       ? (readjustment.purchases.find((p) => p.orderItemId === selection) ?? null)
       : null;
-  // The price the server quoted; it re-quotes on submit and refuses a stale one.
   const quote = readjustment
     ? selection === UNLISTED
       ? ({ complimentary: false, fee: readjustment.fee } as const)
@@ -155,8 +141,6 @@ export function BookingFlow({
   const [phone, setPhone] = React.useState(readjustment?.prefill.phone ?? "");
   const [email, setEmail] = React.useState(readjustment?.prefill.email ?? "");
   const [language, setLanguage] = React.useState<LanguagePreference>("none");
-  // The marketing email box: ticked by default (owner, 2026-10-31; ADR 0039).
-  // It subscribes only someone nobody has asked; unticking changes nothing.
   const [marketingEmail, setMarketingEmail] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -164,9 +148,8 @@ export function BookingFlow({
   const [redirecting, setRedirecting] = React.useState(false);
   const [confirmedEventId, setConfirmedEventId] = React.useState<string | null>(null);
 
-  // Fetch free slots whenever the chosen date changes.
   React.useEffect(() => {
-    if (!date) return; // cleared date → reset handler already empties slots
+    if (!date) return;
     let alive = true;
     setSlotsLoading(true);
     setSlot(null);
@@ -202,7 +185,6 @@ export function BookingFlow({
     purchaseReady &&
     !submitting;
 
-  /** Re-adjustment submit: free → book now; charged → Stripe Checkout, booked on payment. */
   async function submitReadjustment() {
     if (!readjustment || !slot || !location || !quote) return;
     const purchase =
@@ -226,7 +208,6 @@ export function BookingFlow({
     });
     const body = await res.json().catch(() => null);
     if (res.ok && body?.url) {
-      // Paid: Stripe Checkout, then /appointments/confirmed once the webhook books it.
       setRedirecting(true);
       window.location.assign(body.url);
       return;
@@ -242,7 +223,6 @@ export function BookingFlow({
       return;
     }
     if (res.status === 409 && ["not_complimentary", "complimentary", "free_visit_taken"].includes(body?.code)) {
-      // The price moved under the customer: refresh the quotes, never book at the old one.
       setError(rt.errorRequote);
       router.refresh();
       return;
@@ -300,9 +280,6 @@ export function BookingFlow({
       if (res.status === 409) {
         setError(t.errorSlotTaken);
         setSlot(null);
-        // Refresh the day's slots so the taken one drops off. Bumping the key
-        // re-runs the fetch effect, which is guarded against a stale response
-        // overwriting a date the guest has since changed.
         setRefreshKey((k) => k + 1);
       } else {
         const body = await res.json().catch(() => null);
@@ -382,7 +359,6 @@ export function BookingFlow({
         />
       ) : null}
 
-      {/* Location picker */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-location">{t.locationLabel}</Label>
         <Select value={locationId} onValueChange={setLocationId}>
@@ -404,7 +380,6 @@ export function BookingFlow({
         </Select>
       </div>
 
-      {/* Date */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-date">{t.dateLabel}</Label>
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
@@ -435,7 +410,6 @@ export function BookingFlow({
         </Popover>
       </div>
 
-      {/* Slot grid */}
       <div className="flex flex-col gap-2" aria-live="polite">
         <Label>{t.slotLabel}</Label>
         {!date ? (
@@ -484,7 +458,6 @@ export function BookingFlow({
         )}
       </div>
 
-      {/* Guest form */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-name">{t.nameLabel}</Label>
         <Input
@@ -515,7 +488,6 @@ export function BookingFlow({
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           required
-          // A re-adjustment's invite goes to the account that owns the purchase.
           readOnly={!!readjustment}
           aria-describedby={readjustment ? "booking-email-hint" : undefined}
         />
@@ -535,7 +507,6 @@ export function BookingFlow({
         </label>
       </div>
 
-      {/* Language preference: Staff read it on the event and try to match it. */}
       <div className="flex flex-col gap-2">
         <Label id="booking-language-label">{t.languageLabel}</Label>
         <div

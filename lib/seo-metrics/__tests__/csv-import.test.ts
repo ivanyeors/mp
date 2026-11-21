@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { detectReport, parseCsv, parseReport, parseReportDate, siteMismatchWarning } from "@/lib/seo-metrics/csv-import";
 
-// Shapes and sample rows from real exports (2026-10-02).
 const GSC_CHART = "Date,Impressions\n2026-07-09,0\n2026-07-10,1\n2026-07-11,4\n";
 const GSC_PAGES =
   "Top pages,Impressions\nhttps://custom.mpillow.com/en-US/blog/unlocking-better-sleep-the-benefits-of-a-frequency-bed,6\nhttps://custom.mpillow.com/en-US/blog/bolster-pillow-vs-regular-pillow-which-offers-better-support,3\n";
-const GSC_DEVICES = "Device,Impressions\nMobile,17\nDesktop,14"; // no trailing newline, as exported
+const GSC_DEVICES = "Device,Impressions\nMobile,17\nDesktop,14";
 const GSC_FILTERS = "Filter,Value\nSearch type,Web\nDate,Last 3 months\n";
 const BING =
   '﻿"Date","Citations","Cited Pages"\r\n"4/2/2026 12:00:00 AM","1","1"\r\n"4/9/2026 12:00:00 AM","4","2"\r\n"4/29/2026 12:00:00 AM","16","1"\r\n';

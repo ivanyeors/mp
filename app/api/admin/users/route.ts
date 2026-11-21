@@ -11,7 +11,6 @@ const InviteSchema = z.object({
   profile_name: z.string().trim().max(120).nullish(),
 });
 
-/** Every Member and every role, for Users & permissions. */
 export async function GET() {
   try {
     await requireAdminContext("users");
@@ -26,13 +25,6 @@ export async function GET() {
   }
 }
 
-/**
- * Invite a Member by email with a role the inviter may assign, plus their
- * first Staff profile, and email them a Sign in link. The row is Invited
- * until they sign in with that address. A duplicate email is a 409 naming the
- * existing Member's state; a failed email still returns 201 with
- * `emailSent: false` so the page can offer Resend.
- */
 export async function POST(req: Request) {
   let ctx;
   try {

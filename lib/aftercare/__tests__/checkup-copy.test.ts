@@ -10,13 +10,6 @@ import { checkupFeeLine, renderCheckupEmail } from "@/lib/email/aftercare";
 import { getEmailCase } from "@/lib/email/registry";
 import { AFTERCARE_CHECKUP_TEMPLATE, checkupTemplateParams } from "@/lib/whatsapp/aftercare-templates";
 
-/**
- * The Check-up reminder's copy (CRM slice 08), by email and on WhatsApp: it
- * says plainly that the visit is paid and states the fee as Costings gives it,
- * links to booking, says how to stop, and carries no other price, no offer and
- * no other product (README, second hazard).
- */
-
 const ORIGIN = "https://custom.mpillow.com";
 const ITEM = "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
 
@@ -54,14 +47,11 @@ const waParams = (fee: string) =>
     orderItemId: ITEM,
   });
 const wa = waParams("S$30");
-/** The WhatsApp message as the customer reads it: the approved body with its parameters. */
 const waText = AFTERCARE_CHECKUP_TEMPLATE.text.replace(/\{\{(\d)\}\}/g, (_m, n) => wa.bodyParams[Number(n) - 1]);
 
-/** Every price in a text: the fee must be the only one. */
 const PRICE = /(?:S\$|SGD\s?|USD\s?|MYR\s?|\$)\s?\d+(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?\s?(?:SGD|dollars)/gi;
 const prices = (text: string) => text.match(PRICE) ?? [];
 
-/** No percentage, no offer, no product but the one they own. */
 const FORBIDDEN: Array<[string, RegExp]> = [
   ["a percentage", /\d\s?%/],
   ["an offer", /\b(discount|voucher|coupon|promo|offer|sale|deal|free|complimentary|gift|reward|draw|win|prize|cashback|credit|code|limited time)\b/i],
@@ -73,7 +63,6 @@ describe("the check-up email", () => {
     expect(checkupFeeLine("S$30")).toBe("A re-adjustment is a paid visit: S$30, paid when you book.");
     expect(email.text).toContain(checkupFeeLine("S$30"));
     expect(visible(email.html)).toContain(checkupFeeLine("S$30"));
-    // A different price in Costings is a different message: nothing is written into the copy.
     const dearer = render(formatCheckupFee({ msrp: 32.5, currency: "SGD" })!);
     expect(dearer.text).toContain("A re-adjustment is a paid visit: S$32.50, paid when you book.");
     expect(dearer.text).not.toContain("S$30");
@@ -81,7 +70,7 @@ describe("the check-up email", () => {
 
   it("states no other price", () => {
     expect(prices(email.text)).toEqual(["S$30"]);
-    expect(prices(visible(email.html))).toEqual(["S$30", "S$30"]); // the preheader and the body
+    expect(prices(visible(email.html))).toEqual(["S$30", "S$30"]);
     expect(prices(email.subject)).toEqual([]);
   });
 

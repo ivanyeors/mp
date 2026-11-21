@@ -1,8 +1,3 @@
-/**
- * The email footer mirrors the site footer. Drift between the two is exactly how
- * the email chrome went stale before, so it is asserted rather than trusted.
- */
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";

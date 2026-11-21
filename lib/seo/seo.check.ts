@@ -11,7 +11,6 @@ import type { Product } from "@/lib/types/ecommerce";
 
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
-// answer-lede fallbacks
 assert.equal(resolveAnswerLede({ seo_answer: "Direct answer." }), "Direct answer.");
 assert.equal(
   resolveAnswerLede({ seo_description: "Meta desc.", description: "Body." }),
@@ -19,7 +18,6 @@ assert.equal(
 );
 assert.equal(resolveAnswerLede({}), null);
 
-// metadata canonical
 const meta = buildPageMetadata({
   title: "Test",
   description: "Desc",
@@ -28,7 +26,6 @@ const meta = buildPageMetadata({
 });
 assert.equal(String(meta.alternates?.canonical), "https://custom.mpillow.com/en-US/shop/foo");
 
-// llms index curated (no blog bodies); Science of Sleep is retired
 const llms = buildLlmsIndex([{ slug: "cervical-support", title: "Cervical Support" }]);
 assert.ok(llms.length < 10_000);
 assert.ok(llms.includes("Product taxonomy"));
@@ -37,7 +34,6 @@ assert.ok(llms.includes("our-partners"));
 assert.ok(llms.includes("tech neck pillow Singapore"));
 assert.ok(!llms.includes("### Full Content"));
 
-// product jsonld — no rating when count=0
 const stubProduct = {
   id: "p1",
   slug: "test",
@@ -67,7 +63,6 @@ const withReviews = buildProductJsonLd({
 });
 assert.ok(withReviews.aggregateRating);
 
-// configurator product jsonld — AggregateOffer when range
 const configLd = buildConfiguratorProductJsonLd({
   lang: "en-US",
   path: "/mp-config",

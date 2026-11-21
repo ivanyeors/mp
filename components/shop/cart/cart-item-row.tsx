@@ -17,7 +17,6 @@ interface CartItemRowProps {
   onQuantityChange: (quantity: number) => void;
   onNavigate?: () => void;
   variant?: CartVariant;
-  /** Live availability cap for this variant (omitted = no cap, e.g. customized items). */
   maxQuantity?: number;
 }
 

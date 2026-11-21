@@ -9,35 +9,15 @@ import {
   type SeenNumberSource,
 } from "@/lib/crm/contact-status";
 
-/**
- * The parts of Contact status that take phone matching (PRD customer-crm
- * slice 11): whether the number on file has ever messaged us on WhatsApp,
- * whether our last WhatsApp to it failed, and the other numbers a Customer has
- * given on their bookings and Results. Resolved for one Customer on their
- * page, never in a list query: `whatsapp_inbound` and `appointment_reminders`
- * are keyed by phone with no Customer link, and `phonesMatch` is loose.
- *
- * Two numbers are the same when `phonesMatch` says so of their normalised
- * forms (`normalizePhone`), so a local eight digits on file is Singapore's.
- *
- * Server-only (`phonesMatch` lives beside the Google People client). The pure
- * resolvers are exported for tests; `readContactFacts` reads and applies them.
- */
-
-/** A row of `whatsapp_inbound`: proof a person used this number on WhatsApp. */
 export type InboundRow = { phone: string; received_at: string };
 
-/** The send outcome an `appointment_reminders` row keeps. */
 export type ReminderSendRow = {
   phone: string;
-  /** The last send Meta accepted. */
   last_outbound_at: string | null;
-  /** Set by a failed send, or a late delivery failure; cleared by the next success. */
   last_error: string | null;
   last_error_at: string | null;
 };
 
-/** A number given on a booking or a Result, and when. */
 export type SeenPhoneRow = { phone: string | null; at: string; source: SeenNumberSource };
 
 const time = (iso: string | null | undefined): number => {
@@ -45,29 +25,16 @@ const time = (iso: string | null | undefined): number => {
   return Number.isNaN(t) ? Number.NEGATIVE_INFINITY : t;
 };
 
-/**
- * A number as it is compared: its E.164 form when it normalises, so a local
- * `8780 5311` is Singapore's and not a suffix of `+44 8780 5311` too (which
- * `phonesMatch` alone would allow); as typed otherwise.
- */
 const matchKey = (phone: string | null | undefined): string | null => normalizePhone(phone) ?? phone ?? null;
 
-/** `phonesMatch` on the normalised forms. */
 const sameNumber = (a: string | null | undefined, b: string | null | undefined): boolean =>
   phonesMatch(matchKey(a), matchKey(b));
 
-/**
- * The digits a stored number must end with to `phonesMatch` this one: its last
- * eight, or all of them when it has fewer. Every match ends with them, so a
- * `like '%tail'` read is a superset that `phonesMatch` then narrows. Null when
- * the number has no digits.
- */
 export function matchTail(phone: string | null | undefined): string | null {
   const digits = phoneDigits(matchKey(phone));
   return digits ? digits.slice(-8) : null;
 }
 
-/** When `phone` last messaged us on WhatsApp, any kind of message; null for never. */
 export function latestInboundAt(phone: string | null | undefined, rows: readonly InboundRow[]): string | null {
   let latest: InboundRow | null = null;
   for (const r of rows) {
@@ -77,12 +44,6 @@ export function latestInboundAt(phone: string | null | undefined, rows: readonly
   return latest?.received_at ?? null;
 }
 
-/**
- * When our last reminder WhatsApp to `phone` failed, if the latest send to it
- * did. Across every reminder row for the number, the latest outcome wins: a
- * later success on any row (which clears that row's `last_error`) means it is
- * no longer the latest fact.
- */
 export function latestFailedSendAt(phone: string | null | undefined, rows: readonly ReminderSendRow[]): string | null {
   let success = Number.NEGATIVE_INFINITY;
   let failure: string | null = null;
@@ -94,11 +55,6 @@ export function latestFailedSendAt(phone: string | null | undefined, rows: reado
   return failure && time(failure) > success ? failure : null;
 }
 
-/**
- * The WhatsApp row: the latest message from the number, and our failed send
- * only while nothing later says the number reaches them (a success, or a
- * message from them).
- */
 export function whatsAppFacts(
   phone: string | null | undefined,
   inbound: readonly InboundRow[],
@@ -110,11 +66,6 @@ export function whatsAppFacts(
   return { messagedAt, failedAt };
 }
 
-/**
- * The numbers a Customer gave on their bookings and Results that differ from
- * the one on file (by `phonesMatch`), one entry per number however it was
- * typed, most recently seen first, so Staff can ask which is current.
- */
 export function otherNumbersSeen(onFile: string | null | undefined, rows: readonly SeenPhoneRow[]): OtherNumber[] {
   const byNumber = new Map<string, { raw: string; at: string; sources: Map<SeenNumberSource, number> }>();
   for (const r of rows) {
@@ -139,17 +90,10 @@ export function otherNumbersSeen(onFile: string | null | undefined, rows: readon
     }));
 }
 
-/** The Customer page reads this many candidate rows per source; more is a ponytail. */
 const CANDIDATE_LIMIT = 200;
 
-/**
- * Reads and resolves the facts for one Customer, with the service role.
- * `whatsapp_inbound` and `appointment_reminders` are read by the number's
- * last digits (a superset; ponytail: `like '%…'` cannot use their phone index,
- * fine while each holds months, not years, of rows) and narrowed with
- * `phonesMatch`. Bookings and Results are each read only when the viewer holds
- * their own permission (ADR 0028 (b)). Throws when a read fails.
- */
+// ponytail: `whatsapp_inbound` and `appointment_reminders` are read by the number's last digits,
+// and `like '%…'` cannot use their phone index, fine while each holds months, not years, of rows.
 export async function readContactFacts(
   admin: SupabaseClient,
   customer: { id: string; email: string | null; phone: string | null },
@@ -194,8 +138,6 @@ export async function readContactFacts(
           .order("created_at", { ascending: false })
           .limit(CANDIDATE_LIMIT)
       : none,
-    // Results join a Customer the way the storefront matches them: the id, or
-    // the lower-cased email (lib/results/access.ts).
     access.results && email
       ? admin
           .from("mp_config_responses")

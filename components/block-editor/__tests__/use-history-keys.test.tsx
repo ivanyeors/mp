@@ -24,7 +24,6 @@ function Keys({ history, enabled }: { history: { undo: () => void; redo: () => v
   return null;
 }
 
-// jsdom's navigator is not a Mac: Ctrl is the modifier.
 const press = (key: string, shiftKey = false) => {
   const e = new KeyboardEvent("keydown", { key, ctrlKey: true, shiftKey, bubbles: true, cancelable: true });
   window.dispatchEvent(e);

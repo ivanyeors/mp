@@ -1,17 +1,3 @@
-/**
- * The Paired build stepper (ADR 0026). When the Mpillow's Rule graph routes to
- * Mbolster, the preview becomes a four-step order:
- *
- *   1 Mpillow · 2 Mbolster (optional) · 3 Details · 4 Review
- *
- * Both builds are customised before anything else is asked. Step 2 is the
- * Mbolster configurator itself, in paired mode: it asks only for height, then
- * shows its own customisation page — case, add-ons, and the Staff x-ray editor —
- * and hands its answer back. Steps 3 and 4 are the Mpillow page's, because a
- * pair's contact, address and shipping are the anchor's: contact and shipping,
- * then a summary of both builds, then the one hold for both. Pure; both
- * configurators share these.
- */
 import { parseRecommendationRecord } from "@/lib/rules-engine/recommendation-record";
 import { withJourneyOnAccept, withJourneyOnDecline } from "@/lib/rules-engine/journey";
 import type { RuleFlow } from "@/lib/rules-engine/types";
@@ -20,10 +6,8 @@ import {
   type BolsterAssistDraft,
 } from "@/lib/configurator/staff-assist-draft";
 
-/** sessionStorage: the pair as the shopper has built it so far, shared by both pages. */
 export const PAIRED_HANDOFF_KEY = "mp_paired_build_handoff";
 
-/** Step 2's page, in paired mode. */
 export const PAIRED_MBOLSTER_PATH = "/mbolster-config?paired=1";
 
 export type BolsterSleepPosition = "side" | "stomach" | "other";
@@ -38,24 +22,13 @@ export type PairedBolster = {
   assistFilling?: { placements: unknown[]; templateId: number | null };
 };
 
-/** The Mbolster as step 4 shows it, priced the way its own page priced it. */
 export type PairedBolsterSummary = {
   label: string;
-  /** Case and add-on names. */
   lines: string[];
-  /** Goods and services; null when its page could not price them. */
   ballpark: number | null;
   currency: string;
 };
 
-/**
- * The Mpillow as step 1 priced it. `ballpark` is its whole price — goods and
- * Service fees — and what step 2 adds to the Mbolster for the order's running
- * total. `goods` and `services` split it the way steps 1, 3 and 4 show it, so
- * the Measurement service stays its own row on step 2 too rather than vanishing
- * into the Mpillow's figure (ADR 0024). A hand-off written before they existed
- * carries neither, and step 2 shows the one figure.
- */
 export type PairedPillowSummary = {
   label: string;
   ballpark: number | null;
@@ -64,46 +37,30 @@ export type PairedPillowSummary = {
   services?: Array<{ label: string; amount: number }>;
 };
 
-/** What step 2 was given, so reopening it shows the same Mbolster. */
 export type PairedBolsterAnswers = {
   heightUnit?: string;
   heightCm?: string;
   caseId?: number | null;
   addonIds?: number[];
-  /** Staff assist mode: the mix Staff built on the Mbolster's x-ray. */
   assist?: BolsterAssistDraft;
 };
 
-/** Step 2's answer: the Mbolster to hold with the Mpillow, or none (Skip). */
 export type PairedChoice =
   | { bolster: PairedBolster; summary: PairedBolsterSummary }
   | { bolster: null };
 
 export type PairedHandoff = {
   v: 2;
-  /** The Mpillow's Result id — the pair's anchor. */
   anchorId: string;
-  /** The companion's Result id, minted once per anchor so a re-submit reuses it. */
   companionId: string;
-  /** The pillow's answer, carried rather than asked again. */
   sleepPosition: BolsterSleepPosition;
-  /** The fired route's reason, from the Rule graph. */
   reason: string;
-  /** The Mpillow's configurator: where step 2 returns to. */
   configPath: string;
-  /** The Mpillow as step 1 priced it, for step 2's running total. */
   pillow: PairedPillowSummary;
-  /** Step 2's own answers, kept so Back and forth does not lose them. */
   bolster?: PairedBolsterAnswers;
-  /** Step 2's answer, once given. Opening step 2 again clears it until re-answered. */
   choice?: PairedChoice;
 };
 
-/**
- * Whether this session runs the stepper. Only a shopper holding a card on the
- * configurator: an Assisted customisation is sent without a finish, a partner
- * run never sees upsells, and a reopened Result is past this decision.
- */
 export function runsPairedStepper(opts: {
   routeTarget: RuleFlow | null | undefined;
   assisted: boolean;
@@ -113,14 +70,12 @@ export function runsPairedStepper(opts: {
   return opts.routeTarget === "mbolster" && !opts.assisted && !opts.partnerAssisted && !opts.reopened;
 }
 
-/** The pillow's sleep position in the Mbolster flow's words. */
 export function bolsterSleepPosition(pillow: string): BolsterSleepPosition {
   if (pillow === "side") return "side";
   if (pillow === "stomach") return "stomach";
   return "other";
 }
 
-/** Where step 2 sends the shopper once it is answered: the Mpillow page's step 3. */
 export function pairedDetailsPath(configPath: string): string {
   return `${configPath}?paired=details`;
 }
@@ -134,7 +89,6 @@ function parsePairedChoice(raw: unknown, companionId: string): PairedChoice | un
   const c = raw as { bolster?: unknown; summary?: unknown };
   if (c.bolster === null) return { bolster: null };
   const b = c.bolster as Partial<PairedBolster> | undefined;
-  // An answer for another companion belongs to another pair.
   if (!b || typeof b !== "object" || b.responseId !== companionId) return undefined;
   if (typeof b.suggestedLength !== "string" || !b.measurements) return undefined;
   if (!Array.isArray(b.preferenceLines) || !Array.isArray(b.addonLines)) return undefined;
@@ -174,13 +128,6 @@ function parsePairedPillow(raw: Partial<PairedPillowSummary> | undefined): Paire
   return pillow;
 }
 
-/**
- * The Mpillow's rows in step 2's summary: its goods, then each Service fee on
- * its own row, as steps 1, 3 and 4 show them. The rows always add up to
- * `ballpark`, the figure step 2's total uses. A hand-off without the split, or
- * one whose split does not add up, shows `ballpark` as one row (null when step 1
- * could not price it).
- */
 export function pairedPillowRows(
   pillow: PairedPillowSummary,
 ): Array<{ key: string; label: string; amount: number | null }> {
@@ -236,12 +183,6 @@ export function clearPairedHandoff(storage: Pick<Storage, "removeItem">): void {
   storage.removeItem(PAIRED_HANDOFF_KEY);
 }
 
-/**
- * The hand-off moved onto the Mpillow's current Result. A cancelled Checkout
- * leaves the old pair held and the page carries on under a fresh id, so the
- * Mbolster needs a fresh id too — the hold would otherwise reach for a companion
- * that already belongs to the old anchor. Its answers are kept.
- */
 export function reanchorPairedHandoff(
   handoff: PairedHandoff,
   anchorId: string,
@@ -255,12 +196,6 @@ export function reanchorPairedHandoff(
   return { ...handoff, anchorId, companionId, ...(choice ? { choice } : {}) };
 }
 
-/**
- * The one hold request for both builds — the Mpillow's own body with its
- * Mbolster route answered — or, on Skip, the Mpillow alone with the route
- * declined. The route is answered here because this is where the shopper's
- * step 2 answer is sent.
- */
 export function pairedHoldBody(
   pillowHold: Record<string, unknown>,
   bolster: PairedBolster | null,

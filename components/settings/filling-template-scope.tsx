@@ -10,19 +10,6 @@ import {
   type FillingKind,
 } from "@/lib/filling-templates/keys";
 
-/**
- * Which sizes a Filling Template serves.
- *
- * A recipe is not size-specific — the 3×3 grid, the pack list and the
- * fingerprint are all identical whatever the pillow measures — so the same mix
- * often belongs to several sizes. These are the three surfaces that make that
- * shared scope visible: a chip strip on a list row, an editable set in the
- * editor, and the warning that a save reaches sizes the operator is not looking
- * at.
- */
-
-/** Read-only scope strip for a list row. Sizes not served are dimmed, not hidden,
- * so a row reads as a position on the full size range rather than a bare list. */
 export function TemplateScopeChips({
   kind,
   keys,
@@ -36,8 +23,6 @@ export function TemplateScopeChips({
 }) {
   const all = templateKeysForKind(kind);
   const noun = kind === "bolster" ? "lengths" : "sizes";
-  // Dim-vs-filled is a convention nobody is told, so the strip carries the same
-  // fact in words for a screen reader and on hover.
   const label = `Applies to ${noun} ${formatTemplateKeys(kind, keys)}`;
   return (
     <span
@@ -68,9 +53,6 @@ export function TemplateScopeChips({
   );
 }
 
-/** Editable scope. At least one size must stay on — a template serving none
- * would vanish from every list with no way back. */
-/** The dot a Size chip carries when the recipe has been judged at that Size (slice 04). */
 const FIT_DOT: Record<FitStatus, { className: string; label: string }> = {
   ok: { className: "bg-emerald-500", label: "fits" },
   compressed: { className: "bg-amber-500", label: "fits compressed" },
@@ -90,7 +72,6 @@ export function TemplateScopeField({
   currentKey: string;
   disabled?: boolean;
   onChange: (next: string[]) => void;
-  /** Size key → the recipe's fit status at that Size; a chip with one shows a dot. Pillows only. */
   fitBySize?: Partial<Record<string, FitStatus>>;
 }) {
   const all = templateKeysForKind(kind);
@@ -147,8 +128,6 @@ export function TemplateScopeField({
   );
 }
 
-/** The cost of sharing: a save here rewrites the recipe everywhere it is used.
- * The fork CTA is what keeps that safe — one size can always stop tracking. */
 export function SharedTemplateNotice({
   kind,
   keys,

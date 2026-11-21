@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -13,16 +12,6 @@ import {
 import { EMAIL_BLOCK_TYPES, emptyBlock, type CampaignContent } from "@/lib/email-campaigns/content";
 import { EMPTY_CAMPAIGN_DRAFT, type CampaignDraft } from "@/lib/email-campaigns/rules";
 import { renderCampaignPreview } from "@/lib/email-campaigns/sender";
-
-/**
- * Each Email block as the editor's preview draws it, in light and with *Dark*
- * on (PRD-campaign-email-editor slice 15): one email per block type with every
- * option it has (EMAIL_BLOCK_SAMPLES), with its images' renditions
- * (EMAIL_BLOCK_SAMPLE_IMAGES) and its products as the shop sells them
- * (EMAIL_BLOCK_SAMPLE_PRODUCTS), and one with every field on its placeholder.
- * A new block type adds its sample there, and its files appear here. Dark is the same document with the shell's dark rules forced on: the
- * words, the subject and the plain text never differ.
- */
 
 const ORIGIN = "https://custom.mpillow.com";
 
@@ -40,7 +29,6 @@ const draft = (content: CampaignContent): CampaignDraft => ({
   content,
 });
 
-// The footer's year is the clock's.
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-29T00:00:00Z"));
@@ -58,8 +46,6 @@ describe("each Email block in the preview, light and dark", () => {
     expect({ subject: dark.subject, text: dark.text }).toEqual({ subject: light.subject, text: light.text });
   });
 
-  // The 中文 version (slice 17): every block type with words, its subject and
-  // preview line, and the email's own words in Chinese, light and dark.
   it("the 中文 version", async () => {
     const zh: CampaignDraft = { ...draft(CHINESE_SAMPLE_CONTENT), subject: CHINESE_SAMPLE_LINES.subject, preheader: CHINESE_SAMPLE_LINES.preheader, greeting: true };
     const shown = { images: EMAIL_BLOCK_SAMPLE_IMAGES, products: CHINESE_SAMPLE_PRODUCTS, locale: "zh-CN" as const };

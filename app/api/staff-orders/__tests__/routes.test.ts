@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * The Staff order routes (ADR 0048): every one needs `orders`; the create
- * route prices the order again from the database whatever the body says, and
- * writes the Audit Log; the public Pay route takes nothing but the token.
- */
-
 const h = vi.hoisted(() => ({
   denied: null as null | "401" | "403",
   quote: vi.fn(),

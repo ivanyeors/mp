@@ -1,7 +1,3 @@
-/**
- * Slice 02 — journey path + transition rules.
- * Run: npx tsx lib/analytics/journey/journey.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -57,9 +53,9 @@ if (ok.ok) {
 const { nodes, edges } = buildPageTransitions([
   { visitId: "v1", path: "/", occurredAt: "2026-07-15T10:00:00.000Z" },
   { visitId: "v1", path: "/shop", occurredAt: "2026-07-15T10:01:00.000Z" },
-  { visitId: "v1", path: "/", occurredAt: "2026-07-15T10:02:00.000Z" }, // loop
+  { visitId: "v1", path: "/", occurredAt: "2026-07-15T10:02:00.000Z" },
   { visitId: "v2", path: "/shop", occurredAt: "2026-07-15T11:00:00.000Z" },
-  { visitId: "v2", path: "/shop", occurredAt: "2026-07-15T11:01:00.000Z" }, // refresh ignored
+  { visitId: "v2", path: "/shop", occurredAt: "2026-07-15T11:01:00.000Z" },
 ]);
 
 assert.equal(nodes.find((n) => n.path === "/")?.views, 2);

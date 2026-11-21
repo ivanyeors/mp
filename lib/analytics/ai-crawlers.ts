@@ -1,17 +1,7 @@
-/**
- * AI crawler detection by user agent (slice 04, PRD-search-visibility).
- *
- * Crawling precedes citation: a rise in OAI-SearchBot / PerplexityBot fetches is
- * the earliest sign a page is entering AI answers. User agents are not verified
- * against published IP ranges, so treat counts as indicative; spoofed bots are
- * rare on a small site and would inflate, not hide, activity.
- */
-
 export type CrawlerPurpose = "training" | "ai_search" | "user_fetch" | "search_engine";
 
 export type Crawler = { bot: string; operator: string; purpose: CrawlerPurpose };
 
-/** Lower-cased UA substring → crawler. More specific tokens first. */
 const CRAWLERS: [token: string, crawler: Crawler][] = [
   ["oai-searchbot", { bot: "OAI-SearchBot", operator: "OpenAI", purpose: "ai_search" }],
   ["chatgpt-user", { bot: "ChatGPT-User", operator: "OpenAI", purpose: "user_fetch" }],
@@ -32,7 +22,6 @@ const CRAWLERS: [token: string, crawler: Crawler][] = [
   ["applebot", { bot: "Applebot", operator: "Apple", purpose: "search_engine" }],
   ["cohere-ai", { bot: "cohere-ai", operator: "Cohere", purpose: "training" }],
   ["youbot", { bot: "YouBot", operator: "You.com", purpose: "ai_search" }],
-  // Classic search engines, recorded for comparison.
   ["googlebot", { bot: "Googlebot", operator: "Google", purpose: "search_engine" }],
   ["bingbot", { bot: "Bingbot", operator: "Microsoft", purpose: "search_engine" }],
 ];
@@ -49,7 +38,6 @@ export function crawlerByName(bot: string): Crawler | null {
   return BY_BOT.get(bot) ?? null;
 }
 
-/** Coarse page groups, so the table stays small and the dashboard readable. */
 export function crawlerPathGroup(pathname: string): string {
   const p = pathname.replace(/^\/(en-US|zh-CN)(?=\/|$)/, "") || "/";
   if (p === "/") return "home";
@@ -63,7 +51,6 @@ export function crawlerPathGroup(pathname: string): string {
   return "other";
 }
 
-/** Calendar date in Singapore (UTC+8, no DST). */
 function singaporeToday(now = Date.now()): string {
   return new Date(now + 8 * 3_600_000).toISOString().slice(0, 10);
 }
@@ -72,10 +59,6 @@ type RpcClient = {
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>;
 };
 
-/**
- * Count one hit. Never throws: analytics must not be able to break a page, and
- * this runs after the response anyway.
- */
 export async function recordCrawlerHit(client: RpcClient, crawler: Crawler, pathname: string): Promise<void> {
   try {
     const { error } = await client.rpc("record_ai_crawler_hit", {
@@ -90,7 +73,6 @@ export async function recordCrawlerHit(client: RpcClient, crawler: Crawler, path
 }
 
 let warned = false;
-/** Once per process: a missing migration would otherwise log on every bot hit. */
 function warnOnce(message: string) {
   if (warned) return;
   warned = true;

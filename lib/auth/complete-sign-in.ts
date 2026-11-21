@@ -15,26 +15,6 @@ import { marketingEmailState, type MarketingEmailState } from "@/lib/marketing-c
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { createSupabaseServerClient } from "@/lib/supabase/ssr-server";
 
-/**
- * The one place a sign-in finishes (PRD-campaign-audiences slice 03), however
- * it was proven: Google or a link through `/auth/callback`, the 6-digit code
- * (`finishSignIn`), or the scanner-safe link (`/auth/confirm`). Server only.
- *
- *  - **Staff** tab: an email on the team goes on to the Admin Panel. Anyone
- *    else is signed out again and sent back to the Staff tab with why. It
- *    never makes a Customer and never records consent.
- *  - **Partner Hub**: as before, straight to the destination.
- *  - **Customer** tab and footer: their Customer is found or made now
- *    (`linkCustomerToAuthUser`, which also runs the Claim and adopts their
- *    guest orders), so the CRM and the campaign Audiences see them at once,
- *    in the language they signed up in. Then the consent they gave is
- *    recorded under its source, only now that the address is proven, and
- *    only for someone nobody has asked (`set_marketing_email`).
- *
- * A failure after the session exists (the Customer, the consent) is logged
- * and never stops the sign-in.
- */
-
 export type SignInOutcome =
   | { ok: true; destination: string; notice: SignUpNotice | null }
   | { ok: false; destination: string };

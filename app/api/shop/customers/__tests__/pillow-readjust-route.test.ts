@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * ADR 0042 l: Re-adjust. At a Re-adjustment visit Staff change the fillings in
- * the pillow a Customer already has; what they leave in it is saved on the
- * Staff link and drawn from then on, on the Customer page and the Profile. It
- * moves no stock and reaches no order or price. A view-only role changes
- * nothing. Every name and id here is made up; the template names follow the
- * catalog's.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -28,7 +19,6 @@ vi.mock("@/lib/supabase/server", async () => {
       return {
         from: (table: string) => {
           const q = fake.from(table) as ReturnType<typeof fake.from> & { upsert?: unknown; or?: unknown };
-          // The shared fake has no upsert; customer_pillows is keyed by `customer_id`.
           q.upsert = async (row: Record<string, unknown>) => {
             const list = (h.db[table] ??= []);
             const at = list.findIndex((r) => r.customer_id === row.customer_id);
@@ -36,7 +26,6 @@ vi.mock("@/lib/supabase/server", async () => {
             else list.push({ ...row });
             return { error: null };
           };
-          // Nor PostgREST's `or`: the placeable-Items filter is the shared PLACEABLE_ITEMS_OR, so every row here is one.
           q.or = () => q;
           return q;
         },
@@ -95,7 +84,6 @@ const template = (id: number, name: string, key: string, over: Record<string, un
   ...over,
 });
 
-/** Type-12's two pieces with the 6D M swapped for two 3D S, one under the other. */
 const MIX = [piece("center", "middle", 1, 67), piece("left", "front", 1, 69, 0), piece("left", "front", 2, 69, 1)];
 
 beforeEach(() => {
@@ -199,7 +187,6 @@ describe.each(["crm-editor", "owner"])("a role with customers-edit (%s)", (roleI
         linked_by_profile_id: "p-mei",
       }),
     ]);
-    // A Service: no stock moves, no order is touched.
     expect(h.db.inventory_transactions).toHaveLength(0);
     expect(h.db.orders).toHaveLength(0);
     expect(h.audit).toHaveBeenCalledWith(

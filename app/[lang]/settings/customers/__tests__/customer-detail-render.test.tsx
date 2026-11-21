@@ -3,11 +3,6 @@ import { renderToString } from "react-dom/server";
 import type { Customer } from "@/lib/types/ecommerce";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 
-/**
- * View-only Customers (CRM slice 10): without `customers-edit` the Customer
- * detail renders the same facts as text, with none of its edit controls.
- */
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "c1" }),
   usePathname: () => "/en/settings/customers/c1",
@@ -30,7 +25,6 @@ const customer = {
   updated_at: "2026-09-01T00:00:00Z",
 } as unknown as Customer;
 
-/** A Customer note (CRM 02) written by the viewer, so it is theirs to delete. */
 const notes: CustomerNote[] = [
   { id: "n1", body: "Prefers mornings.", createdAt: "2026-10-01T02:00:00Z", authorName: "Jess", authorUserId: "u1", legacy: false },
 ];
@@ -44,12 +38,6 @@ const render = (canEdit: boolean) =>
     />,
   );
 
-/**
- * Each edit control on the page as it opens. Name, mobile and tags sit behind
- * *Edit*; a note is added from the Journey's composer; a follow-up and a note
- * each have a button in the header. What a press reveals (the edit form, an
- * entry's buttons, *Add address* in its row) renders for the same flag.
- */
 const CONTROLS = [">Edit<", "<textarea", "Add note", 'aria-label="New note"', ">Note<", ">Follow-up<", 'aria-label="Add to the journey"'];
 
 describe("Customer detail edit controls", () => {

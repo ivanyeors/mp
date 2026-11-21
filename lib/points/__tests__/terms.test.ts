@@ -3,12 +3,6 @@ import { SEEDED_MILESTONES } from "../milestones";
 import { POINTS_DEFAULTS, pointsLive } from "../settings";
 import { pointsTermsSections } from "../terms";
 
-/**
- * The points terms page (PRD-loyalty-points slice 08) states every rule the
- * slice lists, with the numbers the settings hold, and says nothing of the
- * old platform (owner, 2026-10-21).
- */
-
 const text = (s = POINTS_DEFAULTS) =>
   pointsTermsSections(s)
     .flatMap((x) => [x.heading, ...x.paragraphs])

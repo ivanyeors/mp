@@ -79,7 +79,6 @@ const ShippingAddressSchema = z.object({
   country: z.string().default("SG"),
   phone: z.string().optional(),
 }).refine((a) => !usesPostalCode(a.country) || a.postal_code.length > 0, {
-  // Blank only where the country has no postal codes (Hong Kong, the UAE…).
   message: "Postal code is required",
   path: ["postal_code"],
 });
@@ -93,42 +92,17 @@ const CheckoutItemSchema = z.object({
 const CheckoutSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
-  /**
-   * The marketing email box, ticked by default (ADR 0039). Absent, as from a
-   * checkout tab opened before it, is unticked.
-   */
   marketing_email: z.boolean().optional(),
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
-  /**
-   * The one optional code (ADR 0033): a partner's referral code or a discount
-   * code, resolved here. An unrecognised code never blocks; a discount code
-   * that cannot be used on this order does, with its reason.
-   */
   code: z.string().trim().max(CHECKOUT_CODE_MAX_LENGTH).optional(),
-  /** What a checkout tab from before `code` still sends: a discount code. */
   coupon_code: z.string().optional(),
-  /** Likewise, a typed partner/referral code (attribution, #74). Never blocks. */
   referral_code: z.string().optional(),
-  /**
-   * Points to take off (ADR 0030 (h) to (j)). Any number: the server refuses
-   * an odd step, too few, too many for the order, or more than the balance,
-   * in words rather than as a schema error.
-   */
   points: z.number().optional(),
-  /**
-   * Where the shopper wants to pay (ADR 0053). The page sends `elements` only
-   * once Stripe.js has loaded, so it can mount Apple Pay and the card form on
-   * itself; the server downgrades it to `hosted` when this deploy has no
-   * publishable key for the secret key's account. Absent is `hosted`.
-   */
   payment_ui: z.enum(["hosted", "elements"]).optional(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 
-// Working line item: derived entirely from server-side data (never trust
-// client-sent prices). Mirrors the previous cart-item shape so the downstream
-// pricing / order-creation logic can stay unchanged.
 type WorkingItem = {
   variant_id: string;
   quantity: number;
@@ -138,14 +112,12 @@ type WorkingItem = {
 };
 
 export async function POST(req: Request) {
-  // 1. Validate request body (checkout is authoritative from posted items)
   const body = await req.json().catch(() => null);
   const parsed = CheckoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Every call creates an Order and a Stripe Checkout Session.
   const limited = await tooManyRequests([
     { bucket: "checkout-ip", key: clientIp(req), windowMs: 10 * 60_000, max: 30 },
   ]);
@@ -155,28 +127,18 @@ export async function POST(req: Request) {
     parsed.data;
   const pointsRequested = parsed.data.points != null && parsed.data.points !== 0;
 
-  // Every code is looked up below, so checkout is as good an oracle for
-  // guessing codes as the check endpoint: it draws on the same meter.
   if ((code || coupon_code?.trim()) && (await checkoutCodeRateLimited(req))) {
     return NextResponse.json({ error: CHECKOUT_CODE_RATE_LIMITED_MESSAGE }, { status: 429 });
   }
 
   const admin = supabaseAdmin();
 
-  // 2. Optional server cart token (cookie). The storefront uses a localStorage
-  // cart, so this is usually absent — we only forward it to Stripe metadata so
-  // the webhook can clear a server cart if one happens to exist.
   const cookieStore = await cookies();
   const cartToken = cookieStore.get(CART_COOKIE)?.value ?? null;
 
-  // Resolve the shopper's locale so the post-payment redirect lands on a real,
-  // localized confirmation route (avoids an extra middleware redirect).
   const localeCookie = cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? "";
   const locale = isSupportedLocale(localeCookie) ? localeCookie : DEFAULT_LOCALE;
 
-  // 3. Build the authoritative working set from posted items: fetch variants
-  // (with product) server-side by variant_id. Prices/currency/stripe_price come
-  // from the DB, never from the client.
   const requestedVariantIds = [...new Set(items.map((i) => i.variant_id))];
   const { data: variantRows, error: variantError } = await admin
     .from("product_variants")
@@ -216,13 +178,10 @@ export async function POST(req: Request) {
     });
   }
 
-  // Currency is derived from the variants themselves (base currency).
   const cartCurrency = cartItems[0]?.variant.currency ?? "SGD";
 
-  // Shim so the rest of the handler can keep referencing `cart.items`.
   const cart = { items: cartItems, currency: cartCurrency };
 
-  // Composed main products are not plain-buyable; entry is customisation only.
   for (const item of cart.items) {
     const productType = item.product?.product_type;
     if (
@@ -239,11 +198,9 @@ export async function POST(req: Request) {
     }
   }
 
-  // 5. Validate stock — branch on customization vs standard items
   const standardItems = cart.items.filter((item) => !item.customization_id);
   const customizedItems = cart.items.filter((item) => !!item.customization_id);
 
-  // 5a. Standard items: validate via variant_stock view
   if (standardItems.length > 0) {
     const variantIds = standardItems.map((item) => item.variant_id);
     const { data: stockRows, error: stockError } = await admin
@@ -262,8 +219,6 @@ export async function POST(req: Request) {
       ])
     );
 
-    // Per Variant, not per line: the same variant_id on two lines, each within
-    // stock, would otherwise oversell.
     const requestedByVariant = new Map<string, number>();
     for (const item of standardItems) {
       requestedByVariant.set(
@@ -284,7 +239,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // 5b. Customized items: validate via full config check
   const customizationMap = new Map<string, CustomizationConfigRow>();
 
   if (customizedItems.length > 0) {
@@ -317,10 +271,6 @@ export async function POST(req: Request) {
 
       const productType = resolveCustomizationProductType(cfg);
 
-      // The config prices and builds ONE composed sellable, so the line's Variant
-      // must be that sellable's. Otherwise a cheap accessory variant_id carries a
-      // full build through checkout. One Variant per customisation, too, since the
-      // recomputed price below is stored per customisation.
       const matchesBuild =
         productType === "pillow"
           ? cfg.pillow_product_id != null &&
@@ -336,10 +286,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // A bolster product carries one Variant per length (`option1`, as the
-      // variant_stock view and inventory deduction read it). The config's length is
-      // what gets priced and built, so the line takes that Variant whatever length
-      // was posted — its title and SKU are what fulfilment reads.
       if (
         productType === "bolster" &&
         item.variant.option1?.toLowerCase() !== cfg.bolster_variant
@@ -371,10 +317,6 @@ export async function POST(req: Request) {
       }
       variantByCustomization.set(item.customization_id!, item.variant_id);
 
-      // Price the build now, from Costings, through the same quote the customise
-      // route used. `total_addon_price` on the row is a display snapshot and is
-      // never charged: a Costings change since customising is legitimate, and a
-      // tampered row must not name its own price.
       let key: ComposedSellableKey | null = null;
       if (productType === "bolster") {
         key = cfg.bolster_variant ? { productType: "bolster", length: cfg.bolster_variant } : null;
@@ -403,12 +345,6 @@ export async function POST(req: Request) {
       if (!quote.ok) {
         return NextResponse.json({ error: quote.error }, { status: 400 });
       }
-      // Every downstream reader (subtotal, coupon, order_items, the Stripe line)
-      // adds this to `variant.price`, so it is re-based on the Variant: the line then
-      // charges exactly the composed subtotal, and Stripe's catalog-Price shortcut
-      // (delta 0) fires only when the composed build really costs the shelf price.
-      // The lines are the quote's too, so the order snapshot Staff build from and
-      // inventory deduct from is the build that was priced.
       customizationMap.set(item.customization_id!, {
         ...cfg,
         config_lines: quote.lines,
@@ -433,14 +369,12 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      // Per item across every customised line, as standard lines are per Variant.
       for (const [itemId, qty] of result.needed) {
         reservedComponents.set(itemId, (reservedComponents.get(itemId) ?? 0) + qty);
       }
     }
   }
 
-  // 6. Validate every variant has a Price in the account THIS environment uses
   const missingStripePrice = cart.items.some((item) => !stripePriceIdOf(item.variant));
   if (missingStripePrice) {
     return NextResponse.json(
@@ -449,7 +383,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // 7. Calculate subtotal (including customization addon prices)
   const subtotal = cart.items.reduce((sum, item) => {
     const basePrice = item.quantity * (item.variant?.price ?? 0);
     const addonPrice = item.customization_id
@@ -458,7 +391,6 @@ export async function POST(req: Request) {
     return sum + basePrice + addonPrice;
   }, 0);
 
-  // 8. Resolve the code, and validate a discount code against this order
   let discountAmount = 0;
   let couponId: string | null = null;
   let appliedCouponCode: string | null = null;
@@ -467,9 +399,6 @@ export async function POST(req: Request) {
   const normalizedEmail = email.toLowerCase().trim();
   const existingCustomer = await findCustomerByEmail(normalizedEmail);
 
-  // One code per order (ADR 0033). With `code` present the legacy fields are
-  // ignored, so a referral in `code` cannot stack with a discount in
-  // `coupon_code`; with only the legacy fields, a coupon wins over a referral.
   const codeGiven = Boolean(code?.trim());
   const legacyCouponCode = codeGiven ? "" : (coupon_code?.trim() ?? "");
   const typedCode = await resolveCheckoutCode(code);
@@ -479,8 +408,6 @@ export async function POST(req: Request) {
       : legacyCouponCode
         ? await findActiveCoupon(legacyCouponCode)
         : null;
-  // A stale tab's explicit coupon_code is refused when unknown, as it always
-  // was; a `code` nobody recognises is simply not applied.
   if (!coupon && legacyCouponCode) {
     return NextResponse.json({ error: "This code isn't valid" }, { status: 400 });
   }
@@ -516,7 +443,6 @@ export async function POST(req: Request) {
     isFreeShipping = couponResult.coupon?.discount_type === "free_shipping";
   }
 
-  // 9. Load shipping method and calculate shipping rate
   const { data: shippingMethodRow, error: shippingError } = await admin
     .from("shipping_methods")
     .select("*")
@@ -524,7 +450,6 @@ export async function POST(req: Request) {
     .eq("is_active", true)
     .single();
 
-  // Self-collect is offered on customisations only; the shop delivers.
   if (shippingError || !shippingMethodRow || isSelfCollect(shippingMethodRow)) {
     return NextResponse.json({ error: "Invalid or unavailable shipping method" }, { status: 400 });
   }
@@ -539,13 +464,9 @@ export async function POST(req: Request) {
 
   let shippingAmount: number;
   let shippingLabel = resolveShippingContent(shippingMethod).name;
-  // Set only for a live (Easyship) method; flat methods leave the courier columns untouched.
   let courierColumns: Record<string, unknown> = {};
   let shipmentQuote: { courier_service_id: string; quoted_carrier_cost: number | null } | null = null;
   if ((shippingMethod.rate_source ?? "flat") === "easyship") {
-    // Re-priced here from the database, never taken from the client. The page's
-    // quote built the same parcels from the same variants, so this reads the
-    // rate the shopper was shown from the quote cache (ADR 0020).
     const { options } = await quoteShippingMethods(admin, {
       methods: [shippingMethod],
       lines: cart.items.map((item) =>
@@ -582,16 +503,12 @@ export async function POST(req: Request) {
     shippingAmount = isFreeShipping ? 0 : calculateShippingRate(shippingMethod, subtotal);
   }
 
-  // Referral attribution (#74): resolved BEFORE tax so a self-purchase discount
-  // (#82) reduces the taxable base. Invalid code silently attributes nothing.
   const codedPartner =
     typedCode?.kind === "referral"
       ? typedCode.partner
       : !codeGiven && !coupon && referral_code
         ? await getPartnerByReferralCode(referral_code)
         : null;
-  // A partner's own code on their own purchase attributes nothing: no
-  // commission, no milestone progress. They get capped Partner pricing below.
   const sessionPartner = codedPartner ? await getPartnerContext() : null;
   const referralPartner =
     codedPartner &&
@@ -599,19 +516,9 @@ export async function POST(req: Request) {
       ? codedPartner
       : null;
 
-  // Partner self-purchase (#82): a signed-in APPROVED partner buying pillows/
-  // bolsters in their OWN account, and NOT via a referral attribution. It is
-  // UNATTRIBUTED by design — orders.partner_id stays null (set only from
-  // referralPartner below), so commission (#77 fires on order.partner_id) and
-  // milestone (#79, counts attributed commissions) NEVER fire. The discount is
-  // folded into discountAmount + applied as a Stripe coupon (mirroring the coupon
-  // path) so the partner is actually charged the better price. Over-cap units keep
-  // MSRP. self_purchase_partner_id (NOT partner_id) tracks the allowance for AC5.
   let discountLabel: string | null = appliedCouponCode;
   let selfPurchasePartnerId: string | null = null;
   let selfPurchaseUnits = 0;
-  // Read once: self-purchase pricing and the points refusal ask the same question.
-  // Already read when a code named a partner; otherwise read it now.
   const partnerCtx = codedPartner ? sessionPartner : await getPartnerContext();
   if (!referralPartner) {
     if (isPartnerActive(partnerCtx)) {
@@ -639,16 +546,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // Points (ADR 0030 (h) to (k)): money off this shop Order, after the coupon
-  // and partner pricing, in the same Stripe amount_off. Free shipping and a
-  // coupon's minimum were judged on the subtotal above and do not move.
-  //   (h) only the signed-in Customer, checking out under their own account
-  //       email: the session and the email must resolve to one Customer;
-  //   (r) never a partner, by the same context self-purchase pricing reads
-  //       (and reserve_points asks is_partner_customer again);
-  //   (i) S$1 steps, at least the minimum, at most the share of the products
-  //       after the coupon, and no more than the balance.
-  // Reserved below, once the pending Order exists (rule j).
   let pointsSpent = 0;
   let pointsDiscount = 0;
   let pointsCustomerId: string | null = null;
@@ -696,11 +593,6 @@ export async function POST(req: Request) {
     discountLabel = withPointsLabel(discountLabel);
   }
 
-  // 10. Compute tax from the configurable region/rate table (keyed on the
-  // shipping country) and the grand total. When Stripe Tax is enabled this is
-  // only a pre-checkout ESTIMATE: the webhook overwrites tax_amount/total from
-  // the completed session (Stripe Tax is authoritative). When disabled it is
-  // the final tax, added to Stripe as an explicit exclusive line item.
   const useStripeTax = process.env.STRIPE_AUTOMATIC_TAX === "true";
   const taxInput = { subtotal, shippingAmount, discountAmount };
   const taxRule = await resolveTaxRuleForRegion(shipping_address.country);
@@ -708,8 +600,6 @@ export async function POST(req: Request) {
   const taxAmount = tax.taxAmount;
   const total = computeOrderTotal(taxInput, tax);
 
-  // 10b. Each line's COGS is the cost of the stock its sale takes out (the same
-  // build the webhook deducts), frozen on the line when it is created below.
   const snapshots = cart.items.map((item) => {
     const cfg = item.customization_id ? customizationMap.get(item.customization_id) : null;
     return cfg ? buildCheckoutCustomizationSnapshot(cfg) : null;
@@ -729,10 +619,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to load item costs" }, { status: 500 });
   }
 
-  // 11. Find or create customer
   const customer = await findOrCreateCustomer(email, { phone: phone ?? undefined });
 
-  // 12. Create order in DB
   const { data: orderRow, error: orderError } = await admin
     .from("orders")
     .insert({
@@ -753,15 +641,9 @@ export async function POST(req: Request) {
       coupon_code: appliedCouponCode,
       partner_id: referralPartner?.id ?? null,
       ref_code: referralPartner?.referral_code ?? null,
-      // Shop has only the typed-code attribution path today (no assist/link),
-      // so a referral here is always 'typed'; self-purchase (#82) stays null (#80).
       attribution_source: referralPartner ? "typed" : null,
-      // #82: self-purchase marker + consumed-unit count. NOT partner_id, so this
-      // never triggers commission/milestone — it only tracks the allowance.
       self_purchase_partner_id: selfPurchasePartnerId,
       self_purchase_units: selfPurchaseUnits,
-      // Its share of discount_amount (ADR 0030). Written only when points are
-      // used, so an Order without them reads exactly as before.
       ...(pointsSpent > 0 ? { points_spent: pointsSpent, points_discount: pointsDiscount } : {}),
       payment_method: "stripe",
       locale,
@@ -776,12 +658,8 @@ export async function POST(req: Request) {
     );
   }
 
-  // The marketing email box (ADR 0039): subscribes a Customer nobody has asked,
-  // never one who unsubscribed. Never stops the sale.
   await recordCheckoutConsent(admin, customer.id, parsed.data.marketing_email === true);
 
-  // The courier the shopper chose and what it cost us, for the label later.
-  // Server-only table; a failure here must not lose the sale.
   if (shipmentQuote) {
     const { error: shipmentError } = await admin
       .from("order_shipments")
@@ -791,7 +669,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // 13. Create order_items from cart items
   const orderItems = cart.items.map((item, i) => {
     const cfg = item.customization_id
       ? customizationMap.get(item.customization_id)
@@ -819,15 +696,10 @@ export async function POST(req: Request) {
 
   const { error: itemsError } = await admin.from("order_items").insert(orderItems);
   if (itemsError) {
-    // Attempt to clean up the orphaned order
     await admin.from("orders").delete().eq("id", orderRow.id);
     return NextResponse.json({ error: "Failed to create order items" }, { status: 500 });
   }
 
-  // Reserve the points (rule j): one SQL call takes the Customer's lock,
-  // re-reads the balance and writes the `spend`, so a second tab spending the
-  // same balance gets `insufficient` here. Before Stripe, so no Checkout ever
-  // opens on points that were not there.
   if (pointsSpent > 0 && pointsCustomerId) {
     const reserved = await reservePoints(admin, {
       customerId: pointsCustomerId,
@@ -843,7 +715,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // 14. Create Stripe Checkout Session
   const { getSiteOrigin } = await import("@/lib/site-url");
   const siteUrl = getSiteOrigin();
 
@@ -873,12 +744,8 @@ export async function POST(req: Request) {
       ui: paymentUi,
       shippingAmount,
       shippingLabel,
-      // The discount is applied as a Stripe coupon so the customer is charged
-      // the discounted amount (closes the discount leak).
       discountAmount,
       discountLabel: discountLabel ?? undefined,
-      // Stripe Tax (gated): compute tax on the post-discount amount and supply
-      // the address. Otherwise add manual exclusive tax as a line item.
       automaticTax: useStripeTax,
       customerName: shipping_address.recipient,
       customerAddress: useStripeTax
@@ -891,47 +758,27 @@ export async function POST(req: Request) {
             country: shipping_address.country,
           }
         : undefined,
-      // Only exclusive tax is added to the Stripe total; inclusive tax is
-      // already embedded in the variant prices.
       taxAmount: tax.mode === "exclusive" ? taxAmount : 0,
       taxLabel: tax.rate > 0 ? `${tax.name} (${(tax.rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)` : undefined,
       cartToken: cartToken ?? undefined,
-      // Stable per-order key: a double-submit reuses the same Stripe session
-      // instead of creating a duplicate.
       idempotencyKey: `checkout_${orderRow.id}`,
     });
-    // An elements-mode Session is only reachable through its client secret,
-    // and a hosted one through its URL. Without it the shopper has no way to
-    // pay this Order, so it is undone like any other failed Session.
     if (paymentUi === "elements" ? !stripeSession.clientSecret : !stripeSession.url) {
       throw new Error("Stripe did not return a way to pay this checkout. Please try again.");
     }
   } catch (err) {
-    // Clean up orphaned order and items on Stripe failure, giving back any
-    // points reserved for it first.
     await abandonPendingOrder(admin, orderRow.id, { reserved: pointsSpent > 0 });
     const message = err instanceof Error ? err.message : "Failed to create payment session";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  // Persist stripe_session_id on the order
   await admin
     .from("orders")
     .update({ stripe_session_id: stripeSession.sessionId })
     .eq("id", orderRow.id);
 
-  // This browser's Visits belong to the shopper checking out (ADR 0007), which
-  // is how the webhook finds the Visit that paid. Never on a Staff or Partner
-  // session, and never stops the checkout.
   await stitchShopperVisitor(admin, req, { email: normalizedEmail, customerId: customer.id });
 
-  // Note: coupon usage is incremented in the Stripe webhook after successful payment,
-  // not here — avoids double-counting when checkout sessions are abandoned.
-
-  // 15. Return how to pay, and the order number. Hosted: the page redirects
-  // to `checkout_url`. Elements: the page opens `client_secret` in place, and
-  // keeps `session_id` (the same capability token the confirmation page uses)
-  // to release the Order if the shopper goes back to edit it.
   if (paymentUi === "elements") {
     return NextResponse.json({
       ok: true,
@@ -949,13 +796,6 @@ export async function POST(req: Request) {
   });
 }
 
-/**
- * Removes a pending Order whose Checkout never opened, with its lines. When
- * points may be reserved for it, `release_points` gives them back first; if
- * that cannot be confirmed, the Order is cancelled rather than deleted, so the
- * daily sweep still finds the reservation and gives it back. A deleted Order
- * would leave the `spend` pointing at nothing.
- */
 async function abandonPendingOrder(
   admin: ReturnType<typeof supabaseAdmin>,
   orderId: string,

@@ -7,7 +7,7 @@ import {
 
 const priceByKey = new Map([
   ["product:pillow:1", { msrp: "120.00", compare_at_price: "150.00" }],
-  ["product:pillow:2", { msrp: "150.00", compare_at_price: "180.00" }], // premium/linen override
+  ["product:pillow:2", { msrp: "150.00", compare_at_price: "180.00" }],
   ["product:bolster:short", { msrp: "80.00", compare_at_price: "100.00" }],
   ["product:bolster:medium", { msrp: "90.00" }],
   ["item:99", { msrp: "35.00", compare_at_price: "45.00" }],
@@ -22,7 +22,7 @@ const priceByBolsterVariant = new Map([
 ]);
 const priceByItem = new Map([
   [99, { msrp: "35.00", compare_at_price: "45.00" }],
-  [100, { msrp: "20.00" }], // no compare-at
+  [100, { msrp: "20.00" }],
 ]);
 
 const bomByPillow = new Map([
@@ -35,12 +35,11 @@ const costByItem = new Map([
   [10, 30],
   [11, 10],
   [20, 50],
-  [99, 25], // direct item link
+  [99, 25],
 ]);
 
 describe("resolveVariantPrice", () => {
   it("price_key takes priority over pillow_product_id", () => {
-    // variant has both; price_key should win (linen override case)
     const v = { price_key: "product:pillow:2", pillow_product_id: 1, option1: null, item_id: null };
     expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(150);
   });
@@ -105,7 +104,6 @@ describe("resolveVariantCost", () => {
   });
 
   it("sums BOM lines for pillow_product_id", () => {
-    // item 10 × 1 = 30, item 11 × 2 = 20, total = 50
     const v = { item_id: null, pillow_product_id: 1, option1: null };
     expect(resolveVariantCost(v, bomByPillow, bomByBolster, costByItem)).toBe(50);
   });
@@ -121,7 +119,7 @@ describe("resolveVariantCost", () => {
   });
 
   it("returns null when a BOM component is missing a cost", () => {
-    const partialCost = new Map([[10, 30]]); // item 11 missing
+    const partialCost = new Map([[10, 30]]);
     const v = { item_id: null, pillow_product_id: 1, option1: null };
     expect(resolveVariantCost(v, bomByPillow, bomByBolster, partialCost)).toBeNull();
   });

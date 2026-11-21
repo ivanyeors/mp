@@ -5,11 +5,6 @@ import FormsSettingsPage from "./forms-client";
 
 export const runtime = "nodejs";
 
-/**
- * The discovery-source catalog comes from the same `site-settings`-tagged read
- * that backs `/api/settings/forms/discovery-source`, so the page mounts with
- * its options instead of fetching them after hydration.
- */
 export default async function FormsSettingsRoute({
   params,
 }: {

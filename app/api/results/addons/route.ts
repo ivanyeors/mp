@@ -12,10 +12,6 @@ import { familyKey } from "@/lib/ecommerce/inventory-families";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Accessory add-ons with Costings MSRP, scoped to product type + size/length.
- * Pillow: size-matched accessories (and one-size). Bolster: BOLSTER / length / S–L only.
- */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const productTypeParam = url.searchParams.get("productType")?.trim().toLowerCase();
@@ -59,8 +55,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ addons: [], productType, sizeKey });
   }
 
-  // Add-on card imagery from the Item's primary Media Asset (slice 12), or its
-  // family's when this size has none (Cervical Neck Support has one photo, on S).
   const mediaRefs = (items ?? []).map((i) => ({
     id: i.id as number,
     primary_media_asset_id: (i.primary_media_asset_id as string | null) ?? null,
@@ -72,7 +66,6 @@ export async function GET(req: Request) {
     ),
   ];
 
-  // Prices and asset imagery both depend only on the items query, so fetch both at once.
   const [pricesResult, assetsResult] = await Promise.all([
     admin.from("item_prices").select("item_id, msrp, currency").in("item_id", ids),
     assetIds.length > 0

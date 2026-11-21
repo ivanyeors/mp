@@ -1,5 +1,3 @@
-/** Assign screen prep: composed product lines + default filling hint + catalog. */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
 import { templateIdsForKey } from "@/lib/filling-templates/membership";
@@ -25,9 +23,7 @@ export type AssignPrepDefault = {
 
 export type AssignPrep = {
   productLines: AssignPrepProductLine[];
-  /** Hint shown to the operator (engine-recommended or size Default FT). */
   defaultFillingTemplate: AssignPrepDefault | null;
-  /** Size's catalog Default Filling Template (always the size default, for fallback). */
   sizeDefaultFillingTemplate: AssignPrepDefault | null;
   hintSource: "engine" | "default";
   fillingTemplates: Array<{ id: number; name: string }>;
@@ -98,8 +94,6 @@ export async function loadAssignPrep(
 
   const sizeKey = key.productType === "pillow" ? key.size : key.length;
 
-  // Scope by membership, not by `key`: a recipe shared in from another size is
-  // as assignable here as one authored here (CONTEXT.md, Filling Template).
   const members = await templateIdsForKey(admin, sizeKey);
   if (!members.ok) return members;
 
@@ -116,8 +110,6 @@ export async function loadAssignPrep(
   ]);
   if (tplErr) return { ok: false, error: tplErr.message };
 
-  // Every row came back through the membership filter, so `keys` carries this
-  // size for all of them — the pure filter then only re-checks kind and active.
   const withKeys = (templates ?? []).map((t) => ({ ...t, keys: [sizeKey] }));
   const selectable = filterSelectableFillingTemplates(withKeys, {
     productType: key.productType,

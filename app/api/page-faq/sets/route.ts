@@ -20,7 +20,6 @@ const EnsureSetSchema = z.object({
   titles: LabelsSchema.optional(),
 });
 
-/** List all Page FAQ sets, or one set + items by surface_key. */
 export async function GET(req: Request) {
   const denied = await requireAdmin("faq");
   if (denied) return denied;
@@ -38,7 +37,6 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, rows });
 }
 
-/** Ensure a set exists for surface_key (creates empty set on demand). */
 export async function POST(req: Request) {
   const denied = await requireAdmin("faq");
   if (denied) return denied;

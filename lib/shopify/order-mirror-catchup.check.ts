@@ -1,9 +1,3 @@
-/**
- * Run: npx tsx lib/shopify/order-mirror-catchup.check.ts
- *
- * Slice 05: cursor survives partial runs, chain wiring, exactly 2 crons.
- * No live Shopify — fetchPage is a fixture.
- */
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -17,7 +11,6 @@ import type { ShopifyOrderLite, ShopifyOrdersPage } from '@/lib/shopify/orders'
 const root = path.resolve(process.cwd())
 
 async function main() {
-  // --- vercel.json still exactly two crons (no third catch-up entry) ---
   const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')) as {
     crons: Array<{ path: string; schedule: string }>
   }
@@ -31,12 +24,11 @@ async function main() {
     'results-sla cron must remain',
   )
 
-  // Shopify page_info cursors reject sibling filters (status) — only page_info + limit.
   const ordersSrc = fs.readFileSync(path.join(root, 'lib/shopify/orders.ts'), 'utf8')
   assert.match(
     ordersSrc,
-    /page_info cursor requests may only send page_info \+ limit/,
-    'document page_info + limit-only rule',
+    /qs\.set\('limit', String\(limit\)\)\s*if \(args\?\.pageInfo\) \{\s*qs\.set\('page_info', args\.pageInfo\)\s*\} else \{\s*qs\.set\('status', 'any'\)/,
+    'a page_info cursor request sends only page_info + limit; status and filters only without one',
   )
   assert.doesNotMatch(
     ordersSrc,
@@ -44,16 +36,17 @@ async function main() {
     'status must not be set before page_info branch',
   )
 
-  // --- chain call site in results-sla (same request) ---
   const slaSrc = fs.readFileSync(path.join(root, 'app/api/cron/results-sla/route.ts'), 'utf8')
   assert.match(slaSrc, /runShopifyOrderMirrorCatchup/, 'results-SLA must chain catch-up')
-  assert.match(
-    slaSrc,
-    /Chain: same request after SLA/,
-    'document same-request chain (not a third cron)',
+  const slaGet = slaSrc.indexOf('export async function GET')
+  const slaLastWork = slaSrc.indexOf('summary.reminded += 1', slaGet)
+  const slaCatchup = slaSrc.indexOf('catchup = await runShopifyOrderMirrorCatchup()', slaGet)
+  const slaGetEnd = slaSrc.indexOf('\n}\n', slaGet)
+  assert.ok(
+    slaGet >= 0 && slaLastWork > slaGet && slaCatchup > slaLastWork && slaCatchup < slaGetEnd,
+    'catch-up runs in the same GET request, after the SLA work (not a third cron)',
   )
 
-  // --- cursor advances across budgeted pages; partial progress survives ---
   const at = '2026-07-15T01:00:00.000Z'
   let state: SyncStateRow = {
     id: 1,
@@ -128,7 +121,6 @@ async function main() {
   assert.equal(state.phase, 'backfill')
   assert.deepEqual(upsertedIds, [10])
 
-  // Second invoke resumes — history finishes → reconcile
   const run2 = await runShopifyOrderMirrorCatchup({
     maxPages: 3,
     maxMs: 60_000,

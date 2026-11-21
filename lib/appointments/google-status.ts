@@ -1,12 +1,5 @@
 import { getGoogleAccessToken } from "./google-auth";
 
-/**
- * Diagnostics for the admin@mpillow.com Google OAuth grant used by appointments:
- * which scopes the refresh token carries and whether Calendar + People calls
- * actually succeed. Surfaced at /api/settings/appointments/google-status so ops
- * can confirm a re-consent from the browser without handling secrets.
- */
-
 export const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
 export const CONTACTS_SCOPE = "https://www.googleapis.com/auth/contacts";
 
@@ -16,7 +9,6 @@ export type ScopeSummary = {
   hasContacts: boolean;
 };
 
-/** Parse Google's space-separated `scope` string from tokeninfo. */
 export function interpretScopes(scope: string | null | undefined): ScopeSummary {
   const scopes = (scope ?? "").split(/\s+/).filter(Boolean);
   return {
@@ -28,26 +20,21 @@ export function interpretScopes(scope: string | null | undefined): ScopeSummary 
 
 export type ApiProbe = { ok: boolean; status: number | null; error: string | null };
 
-/** Prefer Google's own error message; keep the raw body short otherwise. */
 export function googleErrorMessage(body: string): string {
   try {
     const json = JSON.parse(body) as { error?: { message?: string } | string };
     if (typeof json.error === "string") return json.error;
     if (json.error?.message) return json.error.message;
-  } catch {
-    /* raw */
-  }
+  } catch {}
   return body.slice(0, 300);
 }
 
 export type GoogleStatus = {
   ok: boolean;
-  /** Account the grant belongs to (id of the primary calendar), when Calendar works. */
   account: string | null;
   scopes: ScopeSummary;
   calendar: ApiProbe;
   contacts: ApiProbe;
-  /** Plain-language fix for the first problem found, null when everything passes. */
   nextStep: string | null;
 };
 
@@ -116,18 +103,14 @@ export async function checkGoogleStatus(): Promise<GoogleStatus> {
   let scopeString = "";
   try {
     scopeString = (JSON.parse(info.body) as { scope?: string }).scope ?? "";
-  } catch {
-    /* tokeninfo failed — scopes stay empty */
-  }
+  } catch {}
   const scopes = interpretScopes(scopeString);
 
   const cal = await probe("https://www.googleapis.com/calendar/v3/calendars/primary", token);
   let account: string | null = null;
   try {
     account = (JSON.parse(cal.body) as { id?: string }).id ?? null;
-  } catch {
-    /* no calendar body */
-  }
+  } catch {}
 
   const people = await probe(
     "https://people.googleapis.com/v1/people:searchContacts?query=&readMask=names",

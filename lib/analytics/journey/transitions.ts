@@ -2,7 +2,6 @@ export type PageViewEvent = {
   visitId: string;
   path: string;
   occurredAt: string;
-  /** Visit.country when color-by-country mode splits edges. */
   country?: string;
 };
 
@@ -11,13 +10,10 @@ export type JourneyEdge = {
   from: string;
   to: string;
   count: number;
-  /** Cross-Visit re-entry after Drop-off (slice 08). Same-session backtracks stay solid. */
   dashed?: boolean;
-  /** Set when Admin color-by-country mode (≥2 countries selected). */
   country?: string;
 };
 
-/** Build unique-node page→page transitions from ordered page_view rows. */
 export function buildPageTransitions(events: PageViewEvent[]): {
   nodes: JourneyNode[];
   edges: JourneyEdge[];
@@ -39,8 +35,8 @@ export function buildPageTransitions(events: PageViewEvent[]): {
     for (let i = 1; i < list.length; i++) {
       const from = list[i - 1]!.path;
       const to = list[i]!.path;
-      if (from === to) continue; // same-path refresh is not a transition
-      const country = list[i]!.country; // Visit country (same for all events in Visit)
+      if (from === to) continue;
+      const country = list[i]!.country;
       const key = country ? `${from}\0${to}\0${country}` : `${from}\0${to}`;
       edgeCounts.set(key, (edgeCounts.get(key) ?? 0) + 1);
     }
@@ -89,13 +85,12 @@ export type SectionEdge = {
   count: number;
 };
 
-/** Section nodes + consecutive section_view edges within each page path. */
 export function buildSectionTransitions(
   events: SectionViewEvent[],
   dropOffs: { path: string; sectionId: string; count: number }[] = [],
 ): { nodes: SectionNode[]; edges: SectionEdge[] } {
-  const views = new Map<string, number>(); // path\0section
-  const edgeCounts = new Map<string, number>(); // path\0from\0to
+  const views = new Map<string, number>();
+  const edgeCounts = new Map<string, number>();
   const byVisitPath = new Map<string, SectionViewEvent[]>();
 
   for (const e of events) {
@@ -127,7 +122,6 @@ export function buildSectionTransitions(
     dropMap.set(k, (dropMap.get(k) ?? 0) + d.count);
   }
 
-  // Include drop-off-only sections so expand still shows the sink block.
   for (const k of dropMap.keys()) {
     if (!views.has(k)) views.set(k, 0);
   }
@@ -164,10 +158,6 @@ export function buildSectionTransitions(
   return { nodes, edges };
 }
 
-/**
- * Expand one page into section child nodes (`path#sectionId`).
- * Page node stays; collapse = omit expandPath (page-only graph).
- */
 export function expandPageToSections(
   pageGraph: { nodes: JourneyNode[]; edges: JourneyEdge[] },
   sectionGraph: { nodes: SectionNode[]; edges: SectionEdge[] },

@@ -8,13 +8,6 @@ import { parseUsersTab } from "./tabs";
 
 export const runtime = "nodejs";
 
-/**
- * Users & permissions (ADR 0023): Members, Staff profiles, Roles and Telegram
- * on one page, like an organisation's settings. The whole page is the `users`
- * permission. Every tab mounts with its rows read here, so nothing fetches
- * after hydration; a failed read is passed as undefined so that tab fetches
- * and surfaces the error itself instead of looking empty.
- */
 export default async function UsersPermissionsPage({
   params,
   searchParams,

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { selectWelcomeState, type WelcomeInput } from "@/lib/customer-migration/welcome";
 
-/**
- * The welcome page's state selection (migration slice 06), as a pure function
- * over the five situations the slice names. An invalid token must select
- * exactly what no token selects, so the page cannot say which it was.
- */
-
 const TOKEN = "A".repeat(43);
 const jane = { customerId: "c-jane", firstName: "Jane", email: "jane@x.test" };
 
@@ -32,7 +26,6 @@ describe("selectWelcomeState", () => {
     ["malformed", "not-a-token"],
     ["empty", ""],
   ])("3. signed out, token %s: identical to no token, field for field", (_label, token) => {
-    // openClaimLink resolves every one of these to null.
     expect(state({ token, tokenCustomer: null })).toEqual(state({}));
   });
 

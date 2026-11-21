@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * PRD-crm-retention-loop slice 11: *Mind telling us why?* on the unsubscribe
- * page. Only with the same signed link the unsubscribe used, JSON only,
- * limited per address, and never a way to change consent: it records an
- * answer through `record_unsubscribe_reason()`, which decides whether there is
- * an unsubscribe to answer (assert-11-unsubscribe-reasons.sql proves it).
- */
-
 const h = vi.hoisted(() => ({
   calls: [] as { fn: string; args: Record<string, unknown> }[],
   outcome: "recorded" as string,
@@ -64,7 +56,6 @@ describe("POST /api/email/unsubscribe/reason", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, recorded: true });
     expect(h.calls).toEqual([{ fn: "record_unsubscribe_reason", args: { p_customer_id: ID, p_reason: "too_many", p_text: null } }]);
-    // Never a consent change: the unsubscribe route made it already.
     expect(h.calls.some((c) => c.fn === "set_marketing_email")).toBe(false);
   });
 

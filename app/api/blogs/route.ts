@@ -17,7 +17,6 @@ const CreateBlogSchema = z.object({
         description: z.string().optional().default(""),
         body: z.string().optional().default(""),
         seo_keywords: z.array(z.string()).optional().default([]),
-        // Answer lede (CONTEXT.md). Optional: omitted on update keeps the stored value.
         seo_answer: z.string().max(1000).optional(),
     })).default({}),
     image_url: z.string().nullable().optional().default(null),

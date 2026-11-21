@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * getAdminContext's email fallback (#169). An `admin_users` row found by email
- * belongs to whoever it is bound to: a second auth user with the same email
- * gets nothing, and a `_`/`%` in the signed-in email is literal, so it can't
- * adopt another Staff member's unbound row either.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -88,7 +81,6 @@ describe("getAdminContext email fallback", () => {
     expect(await getAdminContext()).toMatchObject({ roleKey: "owner", isBootstrap: true });
     expect(h.db.admin_users).toHaveLength(1);
     expect(h.db.admin_users[0]).toMatchObject({ email: "sg@mpillow.com", role_id: "r-owner" });
-    // …with a first Staff profile named from the email.
     expect(h.db.mp_staff).toEqual([expect.objectContaining({ name: "Sg", admin_user_id: h.db.admin_users[0].id })]);
   });
 });

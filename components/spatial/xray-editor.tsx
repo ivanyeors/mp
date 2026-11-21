@@ -1,30 +1,7 @@
 "use client";
 
-/**
- * X-ray editor frame (CONTEXT.md): mounts XrayPillow (or XrayBolster) in normal document flow.
- *
- * XrayPillow renders its SVG at h-full/w-full inside a className-only root and
- * positions its dive overlay `absolute inset-0`, so it needs a positioned
- * ancestor with a definite height. The configurator gives it one by stretching
- * it over a full-bleed stage (`absolute inset-0`); an Admin Panel card does not.
- * This supplies that box at the x-ray's own aspect ratio so the same component
- * works inside a card without being modified.
- *
- * Colours come from Product Builder overrides as CSS variables on the container
- * (filling_color_overrides is service-role-only, so the Admin Panel receives the
- * rows from its server route). Absent variables fall back to the code default.
- * Dimensions (slice 02 / ADR 0019) come the same way: the dimension override
- * rows ride beside the colour rows and are folded over the code registry here.
- *
- * The physical fit (slice 03/04): a host that asks the save confirm or shows
- * the cross-section computes it once with `usePillowFit`
- * (use-pillow-fit.ts) and hands the same object to this frame, so the x-ray,
- * the gauges and the cross-section can never disagree. A host that needs none
- * of those omits it and the x-ray computes its own.
- *
- * ponytail: a wrapper, not a fork — every editing behaviour stays in XrayPillow,
- * so the three surfaces cannot drift.
- */
+// ponytail: a wrapper, not a fork — every editing behaviour stays in XrayPillow, so the three
+// surfaces cannot drift.
 
 import { useMemo, type ReactNode } from "react";
 
@@ -43,15 +20,6 @@ import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 
-// The pouch colour, label size and drawn footprint come from each Item's type,
-// size and registry dimensions, exactly as in the configurator — derived in
-// `useItemMaps` (use-pillow-fit.ts) so call sites pass one items array, and so
-// a host can compute the same fit without loading this frame.
-
-// Light ground in light mode, dark in dark mode (xray-theme.ts, shared with the
-// cross-section); the shell paint follows via the variables XrayPillow reads.
-// Pieces keep their family colors.
-
 function XrayFrame({
   colorOverrides,
   className,
@@ -63,8 +31,6 @@ function XrayFrame({
 }) {
   return (
     <div
-      // Phones: the dive picker blooms wider than the x-ray is tall (and the
-      // dive dock sits under it), so the frame must not clip below md.
       className={`relative w-full overflow-hidden rounded-lg max-md:overflow-visible ${XRAY_THEME} ${className ?? ""}`}
       style={{ aspectRatio: `${XRAY_VIEW.width} / ${XRAY_VIEW.height}`, ...xrayColorVarStyle(colorOverrides) }}
     >
@@ -86,24 +52,17 @@ export function XrayEditor({
   className,
 }: {
   placements: PillowPlacement[];
-  /** Omit together with `items` for a read-only render (no edit affordances). */
   onPlacementsChange?: (next: PillowPlacement[]) => void;
-  /** Inventory filling Items for the dive picker; omit for read-only. */
   items?: FillingItem[];
-  /** The pillow Size the mix is drawn for; any case, unknown falls back to M. */
   pillowSize?: string | null;
   colorOverrides?: ColorOverrideRow[];
-  /** Settings dimension overrides from the same server route as the colours. */
   dimensionOverrides?: DimensionOverridesPayload;
-  /** The host's fit (`usePillowFit`), shared with its banner and cross-section; computed by the x-ray when omitted. */
   fit?: PillowFit;
   onDiveChange?: (section: Section | null) => void;
-  /** Desktop: where the dive controls render instead of over the pillow. */
   controlsSlot?: HTMLElement | null;
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims, loftAllowance } = useItemMaps(items, dimensionOverrides);
-  // The soft body from the same payload the host's cross-section reads it from: one Settings value for both views.
   const softBody = useMemo(() => softBodyFromPayload(dimensionOverrides), [dimensionOverrides]);
   const size: PillowSize = pillowDimensions(pillowSize).dims.size;
   return (
@@ -127,7 +86,6 @@ export function XrayEditor({
   );
 }
 
-/** Same frame for the Mbolster capsule x-ray the /mbolster-config staff assist edits on. */
 export function XrayBolsterEditor({
   placements,
   length,
@@ -141,14 +99,11 @@ export function XrayBolsterEditor({
 }: {
   placements: BolsterPlacement[];
   length: BolsterLength;
-  /** Omit together with `items` for a read-only render (no edit affordances). */
   onPlacementsChange?: (next: BolsterPlacement[]) => void;
   items?: FillingItem[];
   colorOverrides?: ColorOverrideRow[];
   dimensionOverrides?: DimensionOverridesPayload;
-  /** The host's fit (`useBolsterFit`), shared with its confirm and cross-section; computed by the x-ray when omitted. */
   fit?: BolsterFit;
-  /** Desktop: where the compartment controls render instead of over the capsule. */
   controlsSlot?: HTMLElement | null;
   className?: string;
 }) {

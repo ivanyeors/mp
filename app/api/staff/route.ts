@@ -11,12 +11,6 @@ const CreateSchema = z.object({
   memberId: z.string().uuid(),
 });
 
-/**
- * Staff profiles with the login each works under. Results reads this for its
- * "measured by" picker (`results`); Users & permissions manages them
- * (`users`). `?includeArchived=1` adds archived profiles, so old Results can
- * still be labelled. Login emails are for `users` holders only.
- */
 export async function GET(req: Request) {
   const denied = await requireAnyAdmin(["results", "users"]);
   if (denied) return denied;
@@ -37,7 +31,6 @@ export async function GET(req: Request) {
   }
 }
 
-/** Add a Staff profile under a login. */
 export async function POST(req: Request) {
   let ctx;
   try {

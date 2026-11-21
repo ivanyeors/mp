@@ -1,29 +1,3 @@
-/**
- * The Claim (ADR 0029 f; PRD-shopify-customer-migration slice 05), with the
- * Claim bonus that replaced the Welcome-back voucher (ADR 0030 f, g;
- * PRD-loyalty-points slice 05).
- *
- * A Migrated customer's first sign-in after import. `linkCustomerToAuthUser`
- * binds the login as it would for any Customer, then calls `claimOnSignIn`,
- * for every decision type. That covers someone who signed in before this
- * shipped, and a Customer who already had an account when their Shopify row
- * merged into it: either claims on their next sign-in.
- *
- * `claim_migrated_customer` (20261021150000) does it in one transaction: it
- * stamps `claimed_at` once, then grants the Claim bonus if points are on, the
- * Claim fell inside the customer's window, and they are not a partner. The
- * grant does not depend on this sign-in being the Claim, so someone who
- * claimed while points were off is granted at their next sign-in. For
- * everyone else it is one indexed update that matches nothing and one index
- * probe. Nothing here binds a login or touches `auth.users`.
- *
- * The claim_bonus email is transactional (it confirms what the customer's own
- * sign-in just added), so it is sent whatever their Marketing consent, once,
- * through the `customer_emails` ledger. It goes after the response, so the
- * sign-in does not wait on the mail server, and a failed send is retried by a
- * later sign-in while it has attempts left. (Counsel may call it commercial,
- * PRD-loyalty-points slice 08; then gate it on Marketing consent here.)
- */
 import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CLAIM_BONUS_EMAIL_COPY, renderClaimBonusEmail } from "@/lib/email/account";
@@ -36,24 +10,16 @@ import { getSiteOrigin } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Customer } from "@/lib/types/ecommerce";
 
-/**
- * The registry id of the claim_bonus email, and its `customer_emails`
- * template. claim_migrated_customer names the same string.
- */
 export const CLAIM_BONUS_EMAIL = "account.claim_bonus";
 
 export interface ClaimOutcome {
-  /** This call stamped `claimed_at`. */
   claimed: boolean;
-  /** This call granted the Claim bonus. */
   bonusGranted: boolean;
-  /** A Claim bonus whose email is unsent, not in flight, with attempts left. */
   bonusEmailDue: boolean;
 }
 
 const NOTHING: ClaimOutcome = { claimed: false, bonusGranted: false, bonusEmailDue: false };
 
-/** Pure — the RPC's one row, or nothing when it returned none. */
 export function readClaimRow(data: unknown): ClaimOutcome {
   const row = (Array.isArray(data) ? data[0] : data) as
     | { claimed?: unknown; bonus_granted?: unknown; bonus_email_due?: unknown }
@@ -67,10 +33,6 @@ export function readClaimRow(data: unknown): ClaimOutcome {
   };
 }
 
-/**
- * Runs the Claim for one Customer. Never throws: a failed Claim must not break
- * sign-in, and changes nothing, so the next sign-in simply claims again.
- */
 export async function claimMigratedCustomer(
   customerId: string,
   admin: SupabaseClient = supabaseAdmin(),
@@ -92,10 +54,6 @@ export async function claimMigratedCustomer(
 
 type ClaimingCustomer = Pick<Customer, "id" | "email" | "first_name" | "locale">;
 
-/**
- * Sends the claim_bonus email for this Customer's bonus, at most once
- * (customer_emails, entity = the Customer). Never throws.
- */
 export async function sendClaimBonusEmail(
   customer: ClaimingCustomer,
   options: { admin?: SupabaseClient; transport?: EmailTransport; origin?: string } = {},
@@ -131,7 +89,6 @@ export async function sendClaimBonusEmail(
   }
 }
 
-/** Runs after the response when there is one; outside a request, now. */
 function afterResponse(task: () => Promise<unknown>): void {
   try {
     after(task);
@@ -140,11 +97,6 @@ function afterResponse(task: () => Promise<unknown>): void {
   }
 }
 
-/**
- * The Claim as `linkCustomerToAuthUser` runs it, for a Customer row the
- * signed-in user owns. Awaits the Claim itself, so a bonus it grants is on
- * this same page load, and defers only the email.
- */
 export async function claimOnSignIn(
   customer: ClaimingCustomer,
   options: { admin?: SupabaseClient; defer?: (task: () => Promise<unknown>) => void } = {},

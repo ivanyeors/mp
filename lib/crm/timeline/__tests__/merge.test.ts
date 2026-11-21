@@ -4,12 +4,6 @@ import { decodeCursor, encodeCursor } from "@/lib/crm/timeline/cursor";
 import { cappedBatch, joinBatches, streamBatch } from "@/lib/crm/timeline/read";
 import type { TimelineBatch, TimelineCursor, TimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * CRM 03: the Customer timeline's pure merge. Newest first, ties broken by kind
- * then ref.id (then the entry's own id), a cursor that pages through every
- * entry exactly once, and sources with nothing to show.
- */
-
 const at = (minute: number) => new Date(Date.UTC(2026, 9, 1, 0, minute)).toISOString();
 
 const entry = (id: string, minute: number, kind = "k.x", refId = id): TimelineEntry => ({
@@ -106,7 +100,6 @@ describe("mergeTimeline: the cursor", () => {
   });
 
   it("shows nothing at or below a source's floor, and fetches it on the next page", () => {
-    // `full` came back full: below 5 it may hold more, so `other`'s older entries wait.
     const full: TimelineBatch = { entries: [entry("f9", 9), entry("f5", 5)], floor: at(5) };
     const other = complete([entry("o7", 7), entry("o3", 3)]);
     const page = mergeTimeline([full, other], 10);
@@ -119,28 +112,19 @@ describe("mergeTimeline: the cursor", () => {
     const page = mergeTimeline([full], 10);
     expect(page.entries).toEqual([]);
     expect(page.next).toEqual({ at: canonicalAt(at(5)), kind: "", refId: "", id: "" });
-    // From the floor, every entry at that instant is still to come.
     expect(ids(mergeTimeline([complete([entry("f5", 5)])], 10, page.next).entries)).toEqual(["f5"]);
   });
 
   it("steps forward through a source that returned a whole page at the cursor's instant", () => {
-    // The previous page ended on s1; the source still answers with its two entries at 5.
     const saturated: TimelineBatch = { entries: [entry("s1", 5), entry("s2", 5)], floor: at(5) };
     const afterS1 = cursorOf({ ...entry("s1", 5), at: canonicalAt(at(5))! });
     const page = mergeTimeline([saturated], 2, afterS1);
     expect(ids(page.entries)).toEqual(["s2"]);
-    // Nothing left at that instant: the next page starts one microsecond below it.
     const done = mergeTimeline([saturated], 2, page.next);
     expect(done.entries).toEqual([]);
     expect(done.next).toEqual({ at: "2026-10-01T00:04:59.999999Z", kind: "", refId: "", id: "" });
   });
 
-  /**
-   * Sources that behave as the adapters do: each returns its newest `limit`
-   * entries at or before the cursor time (ties in any order, as a database
-   * returns them), with a floor when it came back full. Paging until `next` is
-   * null must show every entry once, in order.
-   */
   function source(all: TimelineEntry[], shuffle: (n: number) => number) {
     return (before: string | null, limit: number): TimelineBatch => {
       const rows = all
@@ -160,7 +144,6 @@ describe("mergeTimeline: the cursor", () => {
       const batches = sources.map((s) => s(after?.at ?? null, limit));
       const page: TimelinePage = mergeTimeline(batches, limit, after);
       shown.push(...page.entries);
-      // Through the route's encoding, as the browser sends it back.
       after = page.next ? decodeCursor(encodeCursor(page.next)) : null;
       if (!after) return shown;
     }
@@ -180,8 +163,6 @@ describe("mergeTimeline: the cursor", () => {
       for (const list of lists) {
         const perMinute = new Map<number, number>();
         for (let i = rand(30); i > 0; i--) {
-          // Few distinct minutes, so ties land on page boundaries; fewer per source
-          // per minute than the smallest page, which is what microsecond times give.
           const minute = rand(12);
           if ((perMinute.get(minute) ?? 0) >= 6) continue;
           perMinute.set(minute, (perMinute.get(minute) ?? 0) + 1);

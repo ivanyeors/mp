@@ -67,12 +67,10 @@ export const Particles: React.FC<ParticlesProps> = ({
       window.removeEventListener("mousemove", onMouseMove);
       window.cancelAnimationFrame(frame.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [color]);
 
   useEffect(() => {
     initCanvas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh]);
 
   const initCanvas = () => {

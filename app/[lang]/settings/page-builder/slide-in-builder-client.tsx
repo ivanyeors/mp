@@ -40,14 +40,6 @@ function viewTitle(view: SlideInSectionView): string {
   return view.header ? "Header" : sectionTitle(view);
 }
 
-/**
- * The Page Builder for one of the landing page's sub pages — a learn-more slide-in.
- *
- * Same three panes as the landing page: the section list, **Preview mode**, and the
- * inspector. Sections are code templates, so there is no Add or Remove: Staff reorder,
- * show and hide them, and edit their copy, images and video. The sheet header is pinned
- * first and always shown.
- */
 export default function SlideInBuilder({
   page,
   initialData,
@@ -66,7 +58,6 @@ export default function SlideInBuilder({
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  /** A ref, not state: read only when selection changes, and typing must not reload the preview. */
   const inspectorDirty = useRef(false);
   const narrow = useMediaQuery("(max-width: 1023px)");
 
@@ -93,8 +84,6 @@ export default function SlideInBuilder({
     }
   }, [endpoint]);
 
-  // The server loads the sections; only a failed server read leaves this to the client,
-  // which then surfaces the error itself.
   const skipFirstFetch = useRef(initialData != null);
   useEffect(() => {
     if (skipFirstFetch.current) {

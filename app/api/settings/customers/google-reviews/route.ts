@@ -7,17 +7,6 @@ import { parseReviewTabScope } from "@/lib/crm/reviews";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/settings/customers/google-reviews?scope=to-match|unlinked&page=N
- *
- * The Customers page's Reviews tab (CRM slice 12). *To match*: unlinked Google
- * reviews with a suggested Customer, each suggestion with its reason. *All
- * unlinked*: every review no Staff member has linked, newest first. Seeing
- * matches needs `customers`; linking and *Not them* need `customers-edit`
- * (./[reviewId]/link, ./[reviewId]/rejections).
- *
- * Answers `{ ok, scope, rows, page, limit, total, counts }`.
- */
 export async function GET(req: Request) {
   const denied = await requireAdmin("customers");
   if (denied) return denied;

@@ -1,17 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * Who measured, and the Measurement service fee it decides (ADR 0024).
- *
- * The hold route used to write `measured_by_type: "by_user"` over every Draft it
- * submitted. On a Draft a Staff device had stamped `staff`, that either broke the
- * 0025 consistency check (by_user with a staff id) or erased the attribution — and
- * once the fee keys on that column, it would silently drop $50 from every Staff
- * assist mode sale. Same in-memory harness as ownership.test.ts, with the real
- * priceResult and service-lines rule so the asserted amounts are the charged ones.
- */
-
 const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   requireAnyAdmin: vi.fn(),
@@ -149,7 +138,6 @@ const ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TOKEN = "11111111-1111-4111-8111-111111111111";
 const STAFF = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
-/** A Draft Result created on a Staff device: the working-as profile measured. */
 const staffDraft = {
   id: ID,
   status: null,
@@ -210,7 +198,6 @@ describe("POST /api/results/hold — who measured, and the fee it decides", () =
     const row = h.rows.get(ID)!;
     expect(row.measured_by_type).toBe("staff");
     expect(row.measured_by_staff_id).toBe(STAFF);
-    // Goods 200 (stubbed quote) + Measurement service (Premium) 50.
     expect(row.authorized_amount).toBe(250);
   });
 

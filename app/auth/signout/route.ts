@@ -6,12 +6,6 @@ import { getRequestOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
-/**
- * Signs the current user out and clears the session cookie. Accepts an
- * optional `next` redirect target (defaults to the locale home). Works for
- * both shopper and staff sessions since there is a single Supabase Auth user.
- * Local scope ends this device's session only; other devices stay signed in.
- */
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const origin = getRequestOrigin(request);

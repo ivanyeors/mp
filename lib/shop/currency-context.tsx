@@ -15,18 +15,15 @@ interface CurrencyContextValue {
   setCurrency: (c: SupportedCurrency) => void;
   rates: Record<string, number>;
   isLoading: boolean;
-  /** Convert an amount from base currency (SGD) to the selected display currency */
   convertFromBase: (amount: number) => number;
-  /** Format an amount in the selected display currency (with conversion) */
   formatPrice: (amountInBase: number) => string;
-  /** Whether the display currency differs from the base currency */
   isConverted: boolean;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
 const RATES_CACHE_KEY = "mp_exchange_rates";
-const RATES_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const RATES_CACHE_TTL = 60 * 60 * 1000;
 
 function getCurrencyFromCookie(): SupportedCurrency {
   if (typeof document === "undefined") return BASE_CURRENCY;
@@ -61,9 +58,7 @@ function setCachedRates(rates: Record<string, number>) {
   try {
     const data: CachedRates = { rates, timestamp: Date.now() };
     sessionStorage.setItem(RATES_CACHE_KEY, JSON.stringify(data));
-  } catch {
-    // sessionStorage unavailable
-  }
+  } catch {}
 }
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
@@ -71,12 +66,10 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [rates, setRates] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Read cookie on mount
   useEffect(() => {
     setCurrencyState(getCurrencyFromCookie());
   }, []);
 
-  // Fetch rates on mount
   useEffect(() => {
     const cached = getCachedRates();
     if (cached) {
@@ -93,9 +86,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
           setCachedRates(data.rates);
         }
       })
-      .catch(() => {
-        // Fail silently — prices will show in SGD
-      })
+      .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -128,7 +119,6 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         maximumFractionDigits: config.decimals,
       }).format(converted);
 
-      // Add approximate indicator for non-base currencies
       if (currency !== BASE_CURRENCY) {
         return `~${formatted}`;
       }

@@ -3,13 +3,6 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { getReviewAggregates, type LandingRatings } from "@/lib/seo/review-aggregate";
 import { getProductBySlug } from "@/lib/ecommerce/products";
 
-/**
- * Everything the landing page needs besides its sections.
- *
- * Shared by the public route and Preview mode, so the builder previews the same prices,
- * ratings and image slots production renders — not just the same markup.
- */
-
 async function getLandingRatings(): Promise<LandingRatings> {
   const empty = { average: 0, count: 0 };
   try {
@@ -71,7 +64,6 @@ async function getPillowXsFromPriceLabel(kind: PillowKind): Promise<string> {
       return formatPriceLabel(parsePrice(priceRow?.msrp));
     }
 
-    // Premium: prefer per-variant keys; if both exist, show the lower price as "From".
     const keys = [`product:pillow:${productId}:linen`, `product:pillow:${productId}:fibrecool`, `product:pillow:${productId}`];
     const { data: rows, error: rowsError } = await admin
       .from("product_prices")
@@ -109,7 +101,6 @@ async function getBolsterFromPriceLabel(): Promise<string> {
   }
 }
 
-// Default images – overridable via Settings → Landing Site → Media
 const IMAGE_DEFAULTS: Record<string, string> = {
   landing_hero: "/m-pillow-417953-web.webp",
   landing_size_matters: "/images/landing/size-matters.jpg",

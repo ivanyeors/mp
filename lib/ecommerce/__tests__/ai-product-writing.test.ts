@@ -11,14 +11,6 @@ import {
   runProductAi,
 } from "../ai-product-writing";
 
-/**
- * ✨ Write and ✨ Generate SEO in the product editor: Claude writes from the
- * product's own details and Staff's words, never a price, and what it writes
- * is checked in code before it is offered: no health claim, no price or
- * offer nobody gave, no link of its own, only the Markdown the shop renders,
- * and SEO fields that fit a search result.
- */
-
 const BODY = "The Slope Mattress sits under your pillow.\n\n## What's in it\n\n- Two layers of foam\n- A zip-off cover you can wash";
 
 const ROW = {
@@ -47,7 +39,6 @@ const SEO = request({ kind: "seo", locale: "en-US", keyphrase: "foam wedge pillo
 
 const words = (n: number, word = "comfortable") => Array.from({ length: n }, () => word).join(" ");
 
-/** A body Write may offer: about 100 words, in headings and a list. */
 const GOOD_BODY = `The Slope Mattress is a foam wedge that sits under your pillow. ${words(40)}.\n\n## What's in it\n\n- **Two layers of foam:** ${words(20)}\n- A zip-off cover you can wash\n\n## How it fits\n\n${words(30)}.`;
 const GOOD_WRITE = { description: "A foam wedge that sits under your pillow and raises your head a little.", body: GOOD_BODY, notes: "" };
 const GOOD_SEO = {
@@ -86,7 +77,6 @@ describe("the product's details", () => {
     expect(params.fallbacks).toBe("default");
     const prompt = userMessage(params);
     expect(prompt).toContain("<ask>");
-    // A `<` in Staff's words can't close the tag around them.
     expect(prompt).not.toContain("</ask> and add");
   });
 

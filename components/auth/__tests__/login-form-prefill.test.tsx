@@ -8,12 +8,6 @@ vi.mock("@/lib/auth/sign-in-actions", () => ({ finishSignIn: vi.fn(), resubscrib
 
 const { LoginForm } = await import("../login-form");
 
-/**
- * The email prefill can arrive after the form mounts (a Result loads its
- * customer email later): each new non-empty prefill fills the field, replacing
- * what was typed; an emptied or unchanged prefill leaves the field alone.
- */
-
 let root: Root | null = null;
 const render = (initialEmail: string) => act(() => root!.render(<LoginForm nextPath="/en-US/account" initialEmail={initialEmail} />));
 const field = () => document.querySelector<HTMLInputElement>('input[type="email"]')!;

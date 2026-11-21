@@ -1,35 +1,3 @@
-/**
- * CRM 04 parity check: `classifyOrderLine` (TypeScript) and
- * `customer_purchase_lines` (SQL) say the same of every line, and the Customer
- * overview and the list's filters return what a hand-written query does.
- *
- * Run: CRM_CHECK_DATABASE_URL=postgresql://… npx tsx lib/crm/purchase-lines.check.ts
- *
- * CRM_CHECK_DATABASE_URL is a Postgres connection string for a database with
- * every migration applied: a development project (Supabase dashboard → Connect
- * → direct connection string) or a local one. `psql` must be on the PATH.
- *
- * Everything runs in one transaction that is rolled back, so nothing is left
- * behind, on any database:
- *   1. the fixture (lib/crm/__tests__/purchase-lines-fixture.ts) is inserted;
- *   2. every Order line in the database, the fixture's and the database's own,
- *      is classified in TypeScript and read from the view, and any difference
- *      fails;
- *   3. the overview's paid_orders, first/last_paid_at, bought,
- *      last_readjusted_at and search_text are checked for the fixture Customers;
- *   4. `bought=premium&last_order=over:12&readjusted=never`, mapped by
- *      `applyCustomerFilters`, returns exactly what a hand-written SQL query
- *      over the base tables returns;
- *   5. the searches `Tan, Mei`, `(test)`, `a%b` and others run, and find
- *      exactly the fixture Customers they should;
- *   6. (PRD-campaign-audiences slice 04) each line's pillow size and the
- *      overview's `pillow_sizes` are compared as in 2 and 3, and *Didn't buy*
- *      and *Pillow size*, alone and beside *Bought*, list exactly the fixture
- *      Customers whose `bought` and `pillow_sizes` the fixture declares.
- *
- * Without CRM_CHECK_DATABASE_URL it says so and stops; the TypeScript side is
- * covered by lib/crm/__tests__/purchase-lines.test.ts.
- */
 import assert from "node:assert/strict";
 import { applyCustomerFilters, parseCustomerFilters } from "@/lib/crm/customer-filters";
 import { boughtClasses, isCountedOrder, pillowSizes, purchaseLine, type PurchaseLine } from "@/lib/crm/purchase-lines";
@@ -63,7 +31,6 @@ const now = new Date();
 const fixtureCustomerIds = Object.values(CUSTOMERS).map((c) => c.id);
 const inFixture = `id in (${fixtureCustomerIds.map(lit).join(", ")})`;
 
-/** The overview filtered by a list URL, among the fixture Customers. */
 function filterQuery(name: string, search: string): string {
   const { filters, ignored } = parseCustomerFilters(new URLSearchParams(search));
   assert.deepEqual(ignored, [], `${search}: nothing ignored`);
@@ -142,7 +109,6 @@ function fixtureSql(pillow: PillowIds): string {
   ].join("\n");
 }
 
-/** Every Order with its lines, shaped as `loadReadjustmentContext`'s query returns them. */
 const ORDERS_AS_THE_APP_READS_THEM = `
 select '@@orders@@'::text || coalesce(jsonb_agg(jsonb_build_object(
   'id', o.id, 'order_number', o.order_number, 'paid_at', o.paid_at, 'status', o.status, 'customer_id', o.customer_id,
@@ -161,10 +127,6 @@ select '@@orders@@'::text || coalesce(jsonb_agg(jsonb_build_object(
     where i.order_id = o.id)
 )), '[]') from public.orders o;`;
 
-// The hand-written query for the acceptance filter, over the base tables and
-// not the views: a Premium pillow on a counted Order, the latest purchase (a
-// counted Order with a goods line, PRD-crm-retention-loop slice 03) more than
-// 12 months ago, and no attended Re-adjustment booking.
 const HAND_WRITTEN = `
 select '@@hand_written@@'::text || coalesce(jsonb_agg(c.id order by c.id), '[]')
 from public.customers c
@@ -216,14 +178,12 @@ type OverviewRow = {
 };
 type DbOrder = OrderRow & { customer_id: string | null };
 
-/** The line, less its keys, in PurchaseLine's key order. */
 const lineOf = (r: ViewRow): PurchaseLine => ({ product_type: r.product_type, tier: r.tier, size: r.size });
 
 type Name = keyof typeof CUSTOMERS;
 const bought = (name: Name, c: string) => (BOUGHT[name] as string[]).includes(c);
 const sized = (name: Name, ...sizes: string[]) => sizes.some((z) => (SIZES[name] as string[]).includes(z));
 
-/** Slice 04's filters, and which fixture Customers each lists, read from the fixture's declarations. */
 const SLICE_04_FILTERS: { search: string; lists: (name: Name) => boolean }[] = [
   { search: "not_bought=premium", lists: (n) => !bought(n, "premium") },
   { search: "not_bought=mbolster,accessory", lists: (n) => !bought(n, "mbolster") && !bought(n, "accessory") },
@@ -262,7 +222,6 @@ function main() {
     ].join("\n"),
   );
 
-  // --- 2. every line, TypeScript against the view ---------------------------
   const pillowById = new Map(
     json<{ id: number; size: string; kind: string }[]>(results, "pillows").map((p) => [Number(p.id), { size: String(p.size), kind: String(p.kind) }]),
   );
@@ -298,7 +257,6 @@ function main() {
     if (JSON.stringify(got) !== JSON.stringify(l.expect)) diffs.push(`fixture "${l.why}": SQL ${JSON.stringify(got)}, expected ${JSON.stringify(l.expect)}`);
   }
 
-  // --- 3. the overview's columns for the fixture Customers -----------------
   const overview = new Map(json<OverviewRow[]>(results, "overview").map((r) => [r.id, r]));
   for (const [name, c] of Object.entries(CUSTOMERS) as [keyof typeof CUSTOMERS, (typeof CUSTOMERS)[keyof typeof CUSTOMERS]][]) {
     const row = overview.get(c.id);
@@ -338,7 +296,6 @@ function main() {
     if (JSON.stringify(row.pillow_sizes) !== JSON.stringify(SIZES[name])) diffs.push(`overview ${name}: pillow_sizes ${row.pillow_sizes}, fixture says ${SIZES[name]}`);
   }
 
-  // --- 4. the acceptance filter against the hand-written query -------------
   const wanted = Object.values(CUSTOMERS)
     .filter((c) => c.premiumLapsedNeverReadjusted)
     .map((c) => c.id)
@@ -348,7 +305,6 @@ function main() {
   if (JSON.stringify(handWritten) !== JSON.stringify(wanted)) diffs.push(`hand-written query: ${handWritten}, fixture says ${wanted}`);
   if (JSON.stringify(mapped) !== JSON.stringify(handWritten)) diffs.push(`bought=premium&last_order=over:12&readjusted=never: ${mapped}, hand-written ${handWritten}`);
 
-  // --- 6. slice 04's filters, against what the fixture declares -------------
   SLICE_04_FILTERS.forEach((f, i) => {
     const got = json<string[]>(results, `slice04_${i}`);
     const want = (Object.keys(CUSTOMERS) as (keyof typeof CUSTOMERS)[])
@@ -359,7 +315,6 @@ function main() {
     if (JSON.stringify(got) !== JSON.stringify(want)) diffs.push(`${f.search}: ${got}, expected ${want}`);
   });
 
-  // --- 5. searches ----------------------------------------------------------
   SEARCHES.forEach((s, i) => {
     const found = json<string[]>(results, `search_${i}`);
     const want = s.finds.map((c) => c.id).sort();

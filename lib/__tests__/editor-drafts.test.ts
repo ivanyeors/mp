@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { clearDraft, DRAFT_MAX_AGE_MS, DRAFT_PREFIX, draftTimeLabel, listDrafts, readDraft, writeDraft, type DraftStore } from "../editor-drafts";
 
-/** An in-memory Storage, as localStorage behaves. */
 function memoryStore(): DraftStore & { map: Map<string, string> } {
   const map = new Map<string, string>();
   return {
@@ -17,7 +16,6 @@ function memoryStore(): DraftStore & { map: Map<string, string> } {
   };
 }
 
-/** A store that refuses every write and read, as a blocked or private-mode localStorage can. */
 const refusing: DraftStore = {
   length: 0,
   key: () => null,

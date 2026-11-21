@@ -115,7 +115,6 @@ describe("priceLiveRate", () => {
   });
 
   it("does not round float noise up a whole step", () => {
-    // 6.818181… × 1.1 = 7.4999999…; that is 7.50, not 8.00.
     expect(priceLiveRate(75 / 11, { markup_percent: 10, markup_fixed: 0, rate_rounding: 0.5 })).toBe(7.5);
   });
 

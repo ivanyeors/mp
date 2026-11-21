@@ -8,14 +8,8 @@ import { shopReviewByline } from "@/lib/reviews/shop-review-byline";
 
 export const runtime = "nodejs";
 
-/**
- * What the storefront may see of a review: our reply and when it was made, but
- * never customer_id, order_id, status, or who on the team wrote the reply.
- */
 const PUBLIC_COLUMNS = "id, rating, title, body, author_name, created_at, store_reply, store_reply_at";
 
-// No author_name: the byline is the Customer record's (shopReviewByline). An
-// older page that still sends one has it stripped, like any unknown key.
 const CreateReviewSchema = z.object({
   product_id: z.string().uuid(),
   order_id: z.string().uuid().nullable().optional().default(null),
@@ -24,7 +18,6 @@ const CreateReviewSchema = z.object({
   body: z.string().trim().max(5000).nullable().optional().default(null),
 });
 
-/** Approved reviews for one product. `?status=` is ignored: only approved rows are public. */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const product_id = z.string().uuid().safeParse(searchParams.get("product_id"));
@@ -51,13 +44,11 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
 }
 
-/** A signed-in Customer submits a review; it waits as pending for staff approval. */
 export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: "Sign in to write a review" }, { status: 401 });
   }
-  // A Customer is linked by email; a phone-only account has none to link.
   if (!user.email) {
     return NextResponse.json({ error: "Add an email to your account to write a review" }, { status: 400 });
   }
@@ -81,7 +72,6 @@ export async function POST(req: Request) {
       .eq("id", parsed.data.order_id)
       .eq("customer_id", customer.id)
       .maybeSingle();
-    // order_items.variant_id is many-to-one, so the embed is an object; the untyped client infers an array.
     const items = (order?.order_items ?? []) as unknown as { product_variants: { product_id: string } | null }[];
     if (!items.some((i) => i.product_variants?.product_id === parsed.data.product_id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -97,8 +87,6 @@ export async function POST(req: Request) {
     console.error("[shop/reviews] insert failed", error.message);
     return NextResponse.json({ error: "Failed to submit review" }, { status: 500 });
   }
-  // A moderation card in the measurements Telegram group, after the response:
-  // the shopper never waits on Telegram.
   const reviewId = (data as { id?: string } | null)?.id;
   if (reviewId) after(() => notifyNewShopReview(reviewId));
   return NextResponse.json({ ok: true, row: data }, { status: 201 });

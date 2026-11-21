@@ -4,7 +4,6 @@ import { chatError, openChat, rateLimited } from "@/lib/support/chat-http";
 
 export const runtime = "nodejs";
 
-/** POST: the customer ends the chat. A chat with an email gets its transcript now. */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const limited = await rateLimited(req, "support-chat-end", 20, 60_000);
   if (limited) return limited;

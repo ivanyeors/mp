@@ -2,10 +2,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { planBranchSave, type BranchInput } from "./branches";
 
-/** Most further clinics one partner can list; well past any partner we have. */
 export const MAX_PARTNER_BRANCHES = 30;
 
-/** The `branches` field the Admin Panel and the Partner Hub send; no id = a new clinic. */
 export const BranchesSchema = z
   .array(
     z.object({
@@ -17,7 +15,6 @@ export const BranchesSchema = z
   )
   .max(MAX_PARTNER_BRANCHES, `A partner can list up to ${MAX_PARTNER_BRANCHES + 1} locations.`);
 
-/** A refused branch save, with the HTTP status the route answers with. */
 export class BranchSaveError extends Error {
   constructor(
     message: string,
@@ -31,17 +28,8 @@ export class BranchSaveError extends Error {
 const IN_USE =
   "A location you removed is still in use, by Results recorded there or by a booking. Keep it, or move those first.";
 
-/**
- * Replace a partner's further clinics with `branches` (ADR 0037). Every write
- * is scoped to `parent_id = parentId`, so a caller can only ever touch the
- * branches of the main row it names, and the Partner Hub passes the signed-in
- * partner's own row. Branches take the main row's current name and, when new,
- * its `bookable`; they are never `visible` on their own (the main row decides
- * /our-partners).
- *
- * ponytail: three statements, no transaction. Updates and inserts run before
- * the delete, so a failure part-way leaves a clinic too many, never one lost.
- */
+// ponytail: three statements, no transaction. Updates and inserts run before the delete, so a
+// failure part-way leaves a clinic too many, never one lost.
 export async function savePartnerBranches(parentId: string, branches: BranchInput[]): Promise<void> {
   if (branches.length > MAX_PARTNER_BRANCHES) {
     throw new BranchSaveError(`A partner can list up to ${MAX_PARTNER_BRANCHES + 1} locations.`, 400);
@@ -121,7 +109,6 @@ export async function savePartnerBranches(parentId: string, branches: BranchInpu
   }
 }
 
-/** Copy a renamed partner's name onto its branches, which every Location reader shows. */
 export async function syncBranchNames(parentId: string, name: string): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("partners")

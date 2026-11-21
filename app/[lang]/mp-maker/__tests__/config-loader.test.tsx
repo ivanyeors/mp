@@ -3,13 +3,6 @@ import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * MP Maker's warm start: `?height&position` (from the Mbolster form) or
- * `?config=<id>` (from a Google Form fitting) loads a recommendation once.
- * A failed load used to leave nothing that stops the effect, so it retried
- * forever, toasting an error each time.
- */
-
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let search = "";
@@ -20,7 +13,6 @@ vi.mock("sonner", () => ({ toast: { error: (...a: unknown[]) => toastError(...a)
 const { BuilderProvider } = await import("../components/BuilderProvider");
 const { ConfigLoader } = await import("../components/ConfigLoader");
 
-/** Fetch answers with `body`; past `cap` calls it hangs, so a loop cannot run away. */
 const cap = 20;
 let fetchMock: ReturnType<typeof vi.fn>;
 const answerWith = (body: unknown, status = 200) => {
@@ -42,7 +34,6 @@ const mount = async (strict = false) => {
     </BuilderProvider>
   );
   await act(async () => root!.render(strict ? <StrictMode>{tree}</StrictMode> : tree));
-  // Let any retry loop run as far as it would.
   for (let i = 0; i < 10; i++) await act(async () => {});
 };
 

@@ -1,4 +1,3 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -11,14 +10,6 @@ import { planWave, renderCampaignPreview, sendCampaignBatch, usesYourPillow, typ
 import { CHECK_LABEL, fitSummary } from "../send-flow";
 import { NO_DETAILS, SAMPLE_RECIPIENT } from "../variables";
 import { emptyWorld, fakeCampaignsClient, type FakeWorld } from "./fake-db";
-
-/**
- * The fit checks and *Your pillow* in the sender (PRD-campaign-audiences
- * slice 09): a wave's plan runs the checks over the people it would go to,
- * reading their facts once, and lists them as advice that holds nothing; a
- * batch reads its recipients' pillows once, only for an email that says
- * *Your pillow*, and fills each one's.
- */
 
 const ORIGIN = "https://custom.mpillow.com";
 const SECRET = "campaign-test-secret";
@@ -121,12 +112,10 @@ describe("a wave's plan (slice 09)", () => {
       blockId: "t",
       text: expect.stringMatching(/^1 of 3 ship outside Singapore, and 1 more ship to an unknown country, and Block 2, Text offers an in-store visit/),
     });
-    // Each has a name in the checklist, and the plan a line for them.
     for (const c of r.fit) expect(CHECK_LABEL[c.key]).toBeTruthy();
     expect(fitSummary(r.fit.length)).toBe("Recommended: 4 things about who it goes to, listed under The email above. None holds the wave.");
     expect(fitSummary(1)).toMatch(/^Recommended: one thing about/);
     expect(fitSummary(0)).toBeNull();
-    // Who is Unengaged once for the plan (slice 12); then their facts, read once for the wave: the overview, then their pillow lines.
     expect(world.reads?.filter((t) => t === "admin_customer_overview" || t === "customer_purchase_lines")).toEqual([
       "admin_customer_overview",
       "admin_customer_overview",
@@ -154,7 +143,6 @@ describe("a wave's plan (slice 09)", () => {
     const s = setup();
     const admin = s.admin as unknown as { from: (t: string) => unknown };
     const from = admin.from.bind(admin);
-    // The plan's read of who is Unengaged (slice 12) answers; the fit checks' read of their facts does not.
     let overviewReads = 0;
     admin.from = (t: string) => {
       if (t === "admin_customer_overview" && ++overviewReads > 1) throw new Error("Could not read who it goes to: timeout");
@@ -176,7 +164,6 @@ describe("Your pillow in a wave (slice 09)", () => {
       "A check-up for your pillow",
     ]);
     expect(sent[0].html).toContain("How is Premium Mpillow, size M?");
-    // One read for the batch.
     expect(world.reads?.filter((t) => t === "customer_purchase_lines")).toEqual(["customer_purchase_lines"]);
   });
 

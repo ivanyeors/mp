@@ -9,12 +9,6 @@ import {
   type Permission,
 } from "@/lib/auth/permissions";
 
-/**
- * Customers → Import from Shopify is its own key (hazard 4): Owner and Admin
- * hold it through grants_all, Manager and Staff hold `customers` but not this,
- * so they get the denied page and never see the button.
- */
-
 const h = vi.hoisted(() => ({ permissions: new Set<string>(), history: [] as unknown[], consent: null as unknown }));
 
 vi.mock("@/lib/auth/admin", () => ({
@@ -40,7 +34,6 @@ const { default: CustomersPage } = await import("../../page");
 const { CustomersPageTabs } = await import("../../customers-page-tabs");
 const { CustomerImportClient } = await import("../import-client");
 
-/** What each seeded role row resolves to at runtime (`permissionsForRoleRow`). */
 const ROLE_ROWS = {
   owner: { grants_all: true, permissions: [] },
   admin: { grants_all: true, permissions: [] },
@@ -107,7 +100,6 @@ describe("/settings/customers/import", () => {
     expect(html).toContain("905</span> of 1,240 imported customers are not subscribed yet");
     expect(html).toContain("Shopify&#x27;s unsubscribed list");
     expect(html).toContain("Nobody has unsubscribed in Shopify");
-    // Nothing to run until the list, or the owner's word, is given.
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Subscribe 905 customers<\/button>/);
   });
 

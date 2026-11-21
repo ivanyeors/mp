@@ -22,11 +22,6 @@ import {
 import { cn } from "@/lib/utils";
 
 interface CartPageClientProps {
-  /**
-   * Plain strings only. The server page cannot hand over `CartMessages` (it
-   * holds formatter functions, which cannot cross the server → client
-   * boundary), so the formatted shape is built on this side.
-   */
   dictionary: CartDictionary;
   locale: Locale;
 }
@@ -54,8 +49,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
   const checkoutHref = withLocale("/shop/checkout", locale);
   const currency = items[0]?.currency ?? "SGD";
 
-  // Live availability for standard (non-customized) items. Customized items are
-  // validated against their component BOM at checkout, so they are not capped here.
   const standardVariantIds = items
     .filter((i) => !i.customizationId)
     .map((i) => i.variantId);
@@ -64,8 +57,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
   const maxFor = (item: (typeof items)[number]): number | undefined =>
     item.customizationId ? undefined : stock[item.variantId];
 
-  // Auto-clamp any quantity that now exceeds live availability (stock may have
-  // dropped after the item was added to the cart).
   useEffect(() => {
     for (const item of items) {
       const max = maxFor(item);
@@ -73,7 +64,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
         updateQuantity(item.variantId, max, item.customizationId);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stock]);
 
   const hasShortage = items.some((item) => {
@@ -89,9 +79,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
     );
   }
 
-  // Both views below are app UI that set their own sizes: `data-typography-scope="app"`
-  // keeps the public-route typography from forcing every <p> to 18px, which put
-  // each line's variant above its product name.
   if (items.length === 0) {
     return (
       <div data-typography-scope="app" className="flex min-h-[50vh] flex-col">
@@ -147,7 +134,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
           currency={currency}
           messages={messages}
         />
-        {/* Live delivery options for this cart; the shipping bar above already tracks free shipping. */}
         <DeliveryEstimator
           locale={locale}
           items={items.map((item) => ({ variant_id: item.variantId, quantity: item.quantity }))}
@@ -163,7 +149,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
         </p>
       )}
 
-      {/* Desktop inline footer */}
       <div className="mt-6 hidden flex-col gap-3 md:flex">
         <CartSummary
           subtotal={subtotal}
@@ -186,7 +171,6 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
         </Button>
       </div>
 
-      {/* Mobile sticky checkout bar */}
       <MobileStickyActionBar>
         <CartSummary
           subtotal={subtotal}

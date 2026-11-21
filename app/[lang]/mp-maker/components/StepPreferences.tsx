@@ -23,8 +23,6 @@ import {
   type HeightUnit,
 } from "@/lib/configurator/height-draft";
 
-// ─── Pillow option data ──────────────────────────────────────
-
 const SLEEP_POSITIONS: {
   value: CustomerPreferences["sleep_position"];
   label: string;
@@ -51,20 +49,16 @@ const FIRMNESS_LEVELS = [
   { value: "firm" as const, label: "Firm" },
 ];
 
-// ─── Component ───────────────────────────────────────────────
-
 export function StepPreferences() {
   const builder = useBuilder();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
 
-  // Pillow state
   const [sleepPosition, setSleepPosition] = useState<CustomerPreferences["sleep_position"] | null>(null);
   const [bodyType, setBodyType] = useState<CustomerPreferences["body_type"] | null>(null);
   const [firmness, setFirmness] = useState<CustomerPreferences["firmness"]>("medium");
   const [notes, setNotes] = useState("");
 
-  // Bolster state
   const [heightUnit, setHeightUnit] = useState<HeightUnit>("cm");
   const [heightValue, setHeightValue] = useState("");
   const [bolsterSleepPos, setBolsterSleepPos] = useState<"side" | "stomach" | "other" | null>(null);
@@ -103,7 +97,6 @@ export function StepPreferences() {
 
       builder.setRecommendation(data);
 
-      // Pre-select default cover/case
       const defaultCover = data.components?.covers?.find((c: { base_quantity: number }) => c.base_quantity > 0);
       const defaultCase = data.components?.cases?.find((c: { base_quantity: number }) => c.base_quantity > 0);
       if (defaultCover) builder.setSelectedCover(defaultCover.item_id);
@@ -164,8 +157,6 @@ export function StepPreferences() {
     }
   }, [bolsterSleepPos, heightValue, heightUnit, builder]);
 
-  // ─── Pillow form ───────────────────────────────────────────
-
   if (builder.productType === "pillow") {
     return (
       <div className="space-y-8">
@@ -174,7 +165,6 @@ export function StepPreferences() {
           <p className="text-muted-foreground">We&apos;ll recommend the perfect pillow for you.</p>
         </div>
 
-        {/* Sleep position */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">Sleep Position</Label>
           <div className="grid grid-cols-2 gap-3">
@@ -199,7 +189,6 @@ export function StepPreferences() {
           </div>
         </div>
 
-        {/* Body type */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">Body Type</Label>
           <div className="grid grid-cols-3 gap-3">
@@ -222,7 +211,6 @@ export function StepPreferences() {
           </div>
         </div>
 
-        {/* Firmness */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">Firmness Preference</Label>
           <div className="flex gap-2 flex-wrap">
@@ -245,7 +233,6 @@ export function StepPreferences() {
           </div>
         </div>
 
-        {/* Notes */}
         <div className="space-y-2">
           <Label className="text-sm">Additional notes (optional)</Label>
           <Textarea
@@ -256,7 +243,6 @@ export function StepPreferences() {
           />
         </div>
 
-        {/* Measurement link */}
         <div className="rounded-lg bg-muted/50 p-4 text-sm">
           <p className="text-muted-foreground">
             Want a more precise recommendation?{" "}
@@ -269,7 +255,6 @@ export function StepPreferences() {
           </p>
         </div>
 
-        {/* Submit */}
         <Button
           size="lg"
           className="w-full"
@@ -292,8 +277,6 @@ export function StepPreferences() {
     );
   }
 
-  // ─── Bolster form ──────────────────────────────────────────
-
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -301,7 +284,6 @@ export function StepPreferences() {
         <p className="text-muted-foreground">Tell us a bit about yourself for the perfect fit.</p>
       </div>
 
-      {/* Height */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Your Height</Label>
         <div className="flex gap-3 items-end">
@@ -338,7 +320,6 @@ export function StepPreferences() {
         </div>
       </div>
 
-      {/* Sleep position */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Sleep Position</Label>
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
@@ -361,7 +342,6 @@ export function StepPreferences() {
         </div>
       </div>
 
-      {/* Submit */}
       <Button
         size="lg"
         className="w-full"

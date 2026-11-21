@@ -2,12 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { Stripe } from "@stripe/stripe-js";
 import { confirmWithWallet, fromMinorUnits, toMinorUnits, walletsBeside } from "../wallet";
 
-/**
- * Wallet buttons beside the checkout button (ADR 0053): the sheet shows the
- * page's total, and the Checkout Session the server then makes is paid only if
- * it totals exactly that.
- */
-
 function fakeStripe(opts: {
   totalMinor?: number;
   loadError?: string;
@@ -48,7 +42,6 @@ describe("confirmWithWallet", () => {
   });
 
   it("charges nothing when the server priced the Order differently", async () => {
-    // Exclusive GST the page does not show: 128.50 became 140.07.
     const { stripe, confirm } = fakeStripe({ totalMinor: 14007 });
     expect(await confirmWithWallet(stripe, PAY)).toEqual({ type: "total_changed", total: 140.07 });
     expect(confirm).not.toHaveBeenCalled();

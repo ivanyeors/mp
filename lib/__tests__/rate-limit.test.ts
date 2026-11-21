@@ -31,7 +31,6 @@ describe("isRateLimited", () => {
     expect(isRateLimited({ ...opts, key: "5.6.7.8", now: 5 })).toBe(false);
   });
 
-  // One busy endpoint must not exhaust another's allowance for the same IP.
   it("counts each bucket separately", () => {
     for (let i = 0; i < 4; i += 1) isRateLimited({ ...opts, now: i });
     expect(isRateLimited({ ...opts, bucket: "other", now: 5 })).toBe(false);
@@ -81,7 +80,6 @@ describe("rateLimitExceeded", () => {
     expect(rpc.mock.calls[0][1].p_window_seconds).toBe(86_400);
   });
 
-  // A limiter outage must never close checkout, but a flood on one instance is still slowed.
   it("falls back to the per-instance count when the store fails", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "function rate_limit_hit does not exist" } });
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});

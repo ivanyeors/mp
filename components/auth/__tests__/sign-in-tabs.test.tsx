@@ -7,11 +7,6 @@ vi.mock("@/lib/auth/sign-in-actions", () => ({ finishSignIn: vi.fn(), resubscrib
 const { SignInTabs } = await import("../sign-in-tabs");
 const { LoginForm } = await import("../login-form");
 
-/**
- * Sign in's two tabs as they render (PRD-campaign-audiences slice 03): the
- * Customer tab signs in or up with the box ticked; the Staff tab has no box.
- */
-
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&apos;/g, "'").replace(/\s+/g, " ");
 
 const base = {

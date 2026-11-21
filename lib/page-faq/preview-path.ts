@@ -1,9 +1,5 @@
 import { parseSurfaceKey } from "./surface-key";
 
-/**
- * Public pathname (no locale) for a FAQ surface preview link.
- * Product surfaces need `productSlug` from the shop catalog.
- */
 export function pageFaqPreviewPath(
   surfaceKey: string,
   productSlug?: string | null

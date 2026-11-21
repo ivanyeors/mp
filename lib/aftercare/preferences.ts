@@ -1,16 +1,3 @@
-/**
- * Aftercare preferences: the reads, and the one write path (PRD customer-crm
- * slice 13). Server only, through the service role: the tables are
- * server-only, and set_aftercare_preference() is not executable by the
- * customer's own key.
- *
- * Two callers change a preference, and both come through here:
- *  - the customer, from their Profile, with the Customer resolved from the
- *    session (app/[lang]/account/actions.ts), source `profile`;
- *  - Staff, with the manual switch on the Customer page
- *    (app/api/shop/customers/[id]/aftercare), source `staff`.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhone } from "@/lib/appointments/phone";
 import {
@@ -23,17 +10,10 @@ import {
 
 export const WHATSAPP_MARKETING_OFF = "whatsapp_marketing_off";
 
-/** How many changes the Customer page lists. */
 const HISTORY_LIMIT = 50;
 
 export type SetPreferenceResult = { ok: true; changed: boolean } | { ok: false; error: string };
 
-/**
- * Change one switch. Writes the column and exactly one event together, and
- * nothing when the value is already that (`changed: false`). Turning WhatsApp
- * on needs `wording` from the Profile, or a `note` from Staff; the function
- * refuses either without it.
- */
 export async function setAftercarePreference(
   admin: SupabaseClient,
   input: {
@@ -82,7 +62,6 @@ function toEvent(row: EventRow): PreferenceEvent {
   };
 }
 
-/** When this number last asked us to stop on WhatsApp, or null. */
 export async function latestStopAt(admin: SupabaseClient, e164: string | null): Promise<string | null> {
   if (!e164) return null;
   const { data, error } = await admin
@@ -97,11 +76,6 @@ export async function latestStopAt(admin: SupabaseClient, e164: string | null): 
   return (data?.received_at as string | undefined) ?? null;
 }
 
-/**
- * Everything the WhatsApp channel needs to decide about one Customer: whether
- * they opted in, their mobile as stored, and whether a STOP is open. Null when
- * there is no such Customer.
- */
 export async function readWhatsAppGate(
   admin: SupabaseClient,
   customerId: string,
@@ -141,7 +115,6 @@ export async function readWhatsAppGate(
   };
 }
 
-/** The Customer page's Aftercare switches, with their history. Null when there is no such Customer. */
 export async function readAftercareView(
   admin: SupabaseClient,
   customerId: string,
@@ -195,7 +168,6 @@ export async function readAftercareView(
   };
 }
 
-/** The signed-in customer's own switches and mobile, for their Profile. */
 export async function readProfileAftercare(
   admin: SupabaseClient,
   customerId: string,
@@ -214,11 +186,6 @@ export async function readProfileAftercare(
   };
 }
 
-/**
- * Every open STOP request: opted-in Customers whose number sent a `stop` after
- * their latest WhatsApp change. For the Aftercare card's count (slice 07).
- * Reads only opted-in Customers, which with no checkout checkbox are few.
- */
 export async function listOpenStopRequests(
   admin: SupabaseClient,
 ): Promise<Array<{ customerId: string; stopRequestedAt: string }>> {

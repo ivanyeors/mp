@@ -2,10 +2,6 @@ import { cmToInches, inchesToCm, roundCm } from "@/lib/rules-engine/units";
 
 export type MeasurementUnit = "cm" | "in";
 
-/**
- * Incomplete drafts like "16." stay invalid until the user finishes typing.
- * Without `minCm` the value must be positive; with it, anything from `minCm` up.
- */
 export function normalizeMeasurementDraft(
   unit: MeasurementUnit,
   draft: string,

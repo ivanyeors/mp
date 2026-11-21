@@ -1,7 +1,3 @@
-/**
- * Slice 11 — section tags on PDP, configurators, checkout/Result.
- * Run: npx tsx lib/analytics/journey/section-surfaces.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -52,7 +48,6 @@ assert.match(results, /data-section=\{`status-\$\{status\}`\}/);
 assert.match(results, /data-step=\{status\}/);
 assert.match(results, /data-section="decide"/);
 
-// Admin Panel surfaces must stay untagged (tracker also skips /settings/*).
 function* walkTsx(dir: string): Generator<string> {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, name.name);

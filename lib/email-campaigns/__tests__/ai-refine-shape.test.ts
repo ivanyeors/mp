@@ -13,12 +13,6 @@ import {
 } from "@/lib/email-campaigns/ai-refine-shape";
 import { FITTING_URL, LINKED_TEXT, PREVIEW_LINES, REWRITE, SHORTER_TEXT, SUBJECTS, TITLE } from "./ai-refine-fixtures";
 
-/**
- * ✨ Refine's shapes (PRD-campaign-email-editor slice 10): what the editor
- * may ask, the small schema Claude fills, and a rewrite back as its block,
- * every link put back by its key and checked by the schema a save uses.
- */
-
 describe("RefineRequestSchema", () => {
   it("takes subject and preview line asks, and a rewrite of a heading or a text block", () => {
     for (const r of [SUBJECTS, PREVIEW_LINES, REWRITE, { ...REWRITE, block: TITLE }]) expect(RefineRequestSchema.safeParse(r).success).toBe(true);

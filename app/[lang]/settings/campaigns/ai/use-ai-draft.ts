@@ -8,42 +8,25 @@ import type { CampaignContent } from "@/lib/email-campaigns/content";
 import { keepAiDraft } from "../ai-actions";
 import type { EditorDraft } from "../kept-draft";
 
-/**
- * ✨ Generate in the campaign editor (PRD-campaign-email-editor slice 09,
- * decision 9): a draft streams into the email block by block, as one change
- * in the editor's history (one held burst), so one Undo puts the email back
- * exactly as it was. Picking a subject or preview line idea, and *Keep*,
- * while nothing else has changed, belong to the same change. Nothing here
- * saves or sends; the run itself (the stream and each event's change) is
- * run-draft.ts, loaded with the first draft.
- */
-
-/** What Staff told ✨ Generate in its popover. */
 export interface AiBrief {
   about: string;
   goal: DraftGoal | null;
   products: string[];
 }
 
-/** Where a draft goes: the whole email (replacing it, or below it), or one empty text block's words. */
 export type AiDraftWhere = { scope: "email"; mode: DraftMode } | { scope: "text"; target: string };
 
 export interface AiDraftRun {
   n: number;
-  /** The history burst its changes share. */
   burst: string;
   where: AiDraftWhere;
   brief: AiBrief;
   status: "working" | "done" | "stopped" | "failed";
   stage: DraftStage;
   error: string | null;
-  /** Claude's notes for whoever reads it. */
   notes: string[];
-  /** Its call in the audit log, once finished. */
   draftId: string | null;
-  /** The blocks it put in. */
   blocks: string[];
-  /** Its step in the history, once it has changed the email. */
   step: number | null;
 }
 
@@ -60,7 +43,6 @@ export function useAiDraft({ history, campaignId }: { history: EditorHistory<Edi
   const latest = useRef(history);
   const live = useRef<AbortController | null>(null);
   const runs = useRef(0);
-  // The run whose first change awaits its step number, and each run's step once known.
   const awaiting = useRef<number | null>(null);
   const steps = useRef(new Map<number, number>());
   useEffect(() => {
@@ -76,13 +58,11 @@ export function useAiDraft({ history, campaignId }: { history: EditorHistory<Edi
   useEffect(() => () => live.current?.abort(), []);
 
   const current = Boolean(run && run.step !== null && run.step === history.step);
-  /** The run's change is the history's present step: one Undo takes it back. Before the page has drawn it, it is too. */
   const isPresent = (n: number) => {
     const step = steps.current.get(n);
     return step === undefined ? awaiting.current === n : latest.current.step === step;
   };
 
-  // Staff took the draft back (⌘Z) while it was being written: stop writing it.
   useEffect(() => {
     if (run?.status === "working" && run.step !== null && history.step < run.step) live.current?.abort();
   }, [run, history.step]);
@@ -111,7 +91,6 @@ export function useAiDraft({ history, campaignId }: { history: EditorHistory<Edi
         update,
         ideas: (patch: Partial<AiIdeas>) => setIdeas((i) => ({ ...i, ...patch })),
         fail: (error: string) => {
-          // Nothing half-written stays: the email goes back as it was.
           if (touched && isPresent(n)) latest.current.undo();
           setIdeas(NO_IDEAS);
           update({ status: "failed", error, blocks: [] });
@@ -131,10 +110,8 @@ export function useAiDraft({ history, campaignId }: { history: EditorHistory<Edi
 
   const stop = useCallback(() => live.current?.abort(), []);
 
-  /** The run's change while it is still the present step; any other change is a step of its own. */
   const together = run && current ? { burst: run.burst, hold: true } : undefined;
 
-  /** *Keep*: a person has read the draft; its blocks are no longer marked. */
   const keep = () => {
     if (!run) return;
     const ids = run.blocks;
@@ -143,14 +120,12 @@ export function useAiDraft({ history, campaignId }: { history: EditorHistory<Edi
     setRun(null);
   };
 
-  /** *Undo*: the email as it was before ✨, and its ideas gone. */
   const undo = () => {
     if (run && current) latest.current.undo();
     setRun(null);
     setIdeas(NO_IDEAS);
   };
 
-  /** *Try again*: the draft taken back, and written again from the same brief. */
   const tryAgain = () => {
     if (!run) return;
     const { brief, where, blocks } = run;
@@ -159,13 +134,11 @@ export function useAiDraft({ history, campaignId }: { history: EditorHistory<Edi
     void start(brief, where, { exclude: blocks });
   };
 
-  /** A subject or preview line idea, put in its field. */
   const pick = (field: "subject" | "preheader", value: string) => {
     latest.current.set((e) => ({ ...e, [field]: value }), together);
     setIdeas((i) => ({ ...i, [field === "subject" ? "subjects" : "preheaders"]: [] }));
   };
   const dismissIdeas = (field: "subject" | "preheader") => setIdeas((i) => ({ ...i, [field === "subject" ? "subjects" : "preheaders"]: [] }));
-  /** The bar goes once the draft is no longer the last change, unless it is still writing or has something to say. */
   const dismiss = () => setRun(null);
 
   const showBar = Boolean(run && (run.status === "working" || run.status === "failed" || current));

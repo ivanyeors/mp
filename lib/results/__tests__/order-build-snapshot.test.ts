@@ -1,7 +1,3 @@
-/**
- * Slice 10 — Order build snapshot for production fulfill.
- * Maps to .claude/PRD-template-linked-customisation/issues/10-order-build-snapshot-fulfill.md
- */
 import { describe, it, expect } from "vitest";
 import {
   buildResultOrderSnapshot,

@@ -5,13 +5,6 @@ import { renderToString } from "react-dom/server";
 import { selectWelcomeState, type WelcomeInput } from "@/lib/customer-migration/welcome";
 import type { WelcomePageData } from "@/lib/customer-migration/welcome-page";
 
-/**
- * The welcome page a Claim link opens (migration slice 06), rendered for each
- * state. An invalid token renders byte for byte what no token renders; the
- * wrong-account screen shows the switch and nothing of the token's Customer;
- * and nothing on the page can create a session.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/account/welcome",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -49,7 +42,6 @@ describe("signed out", () => {
     expect(page({ token: "garbage", tokenCustomer: null })).toBe(none);
     expect(none).toContain("Welcome back.");
     expect(none).toContain('value=""');
-    // The words a visitor reads, not attributes such as aria-invalid.
     expect(none.replace(/<[^>]*>/g, " ")).not.toMatch(/invalid|expired|not found|not valid/i);
   });
 });
@@ -119,7 +111,6 @@ describe("signed in", () => {
 });
 
 describe("a Claim link never creates a session", () => {
-  // Proof of the email is always the Sign in itself (ADR 0029, decision 7).
   const files = [
     "app/[lang]/account/welcome/page.tsx",
     "app/[lang]/account/welcome/welcome-view.tsx",

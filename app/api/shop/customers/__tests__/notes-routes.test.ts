@@ -1,13 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * CRM 02: Customer notes and the Customer save path. Notes are written as the
- * signed-in login and the profile it works as, deleted softly by their author
- * or an Owner or Admin, and audited without their text. Saving a Customer
- * writes only what changed, accepts a cleared name, and is audited.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -33,10 +26,10 @@ const customerRoute = await import("../[id]/route");
 const CUSTOMER = "aaaaaaaa-0000-4000-8000-000000000001";
 const NAMELESS = "aaaaaaaa-0000-4000-8000-000000000002";
 const MISSING = "aaaaaaaa-0000-4000-8000-0000000000ff";
-const STUDIO = "00000000-0000-4000-8000-0000000000b1"; // Owner login, two profiles
-const CLERK = "00000000-0000-4000-8000-0000000000b2"; // Staff login, one profile
-const VIEWER = "00000000-0000-4000-8000-0000000000b3"; // no customers key
-const LOOKER = "00000000-0000-4000-8000-0000000000b4"; // customers, without customers-edit
+const STUDIO = "00000000-0000-4000-8000-0000000000b1";
+const CLERK = "00000000-0000-4000-8000-0000000000b2";
+const VIEWER = "00000000-0000-4000-8000-0000000000b3";
+const LOOKER = "00000000-0000-4000-8000-0000000000b4";
 const JESS = "11111111-1111-4111-8111-111111111111";
 const KAI = "22222222-2222-4222-8222-222222222222";
 const CLERK_PROFILE = "33333333-3333-4333-8333-333333333333";
@@ -92,7 +85,6 @@ beforeEach(() => {
       { id: NAMELESS, email: "anon@x.test", first_name: null, last_name: null, phone: null, locale: "en-US", tags: [], notes: null },
     ],
     customer_notes: [
-      // Moved from customers.notes by the migration: no author.
       { id: N_LEGACY, customer_id: CUSTOMER, body: "old box", author_profile_id: null, author_user_id: null, created_at: "2026-03-04T05:06:07Z", deleted_at: null },
       { id: N_CLERK, customer_id: CUSTOMER, body: "Called about delivery", author_profile_id: CLERK_PROFILE, author_user_id: "auth-clerk", created_at: "2026-10-01T02:00:00Z", deleted_at: null },
       { id: N_OWNER, customer_id: CUSTOMER, body: "Owner's note", author_profile_id: null, author_user_id: "auth-studio", created_at: "2026-10-02T02:00:00Z", deleted_at: null },
@@ -179,7 +171,7 @@ describe("deleting a note", () => {
     expect((await deleteNote(N_CLERK)).status).toBe(200);
     expect(note(N_CLERK).deleted_at).toEqual(expect.any(String));
     expect(note(N_CLERK).deleted_by_profile_id).toBe(CLERK_PROFILE);
-    expect(note(N_CLERK).body).toBe(SECRET); // kept: the deletion is soft
+    expect(note(N_CLERK).body).toBe(SECRET);
     expect(h.db.admin_audit_log[0]).toMatchObject({
       action: "customer_note.delete",
       entity_type: "customer_note",
@@ -220,7 +212,6 @@ describe("view-only Customers (customers without customers-edit, CRM 10)", () =>
     signIn(LOOKER);
     expect((await listNotes()).status).toBe(200);
     expect((await addNote({ body: "hi" })).status).toBe(403);
-    // Even a note their own login wrote is not theirs to delete without customers-edit.
     h.db.customer_notes.find((n) => n.id === N_CLERK)!.author_user_id = "auth-looker";
     expect((await deleteNote(N_CLERK)).status).toBe(403);
     expect((await patchCustomer({ first_name: "Changed" })).status).toBe(403);

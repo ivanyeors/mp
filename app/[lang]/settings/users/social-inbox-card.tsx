@@ -8,15 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { SocialInboxStatus } from "@/lib/social-inbox/status";
 
-/**
- * Users & permissions → Telegram → Customer messages: which of Facebook, Instagram and TikTok
- * are connected to the measurements group, what still stands in Meta's way
- * (checked live against Meta), and the one-click connects — Meta's webhooks
- * once its env is set, TikTok's sign-in (.claude/PRD-social-inbox/OPS-CHECKLIST.md).
- *
- * The TikTok callback lands back on this tab with ?tiktok=connected|error;
- * that outcome is toasted once and removed from the address bar.
- */
 export function SocialInboxCard() {
   const [status, setStatus] = useState<SocialInboxStatus | null>(null);
   const [failed, setFailed] = useState(false);
@@ -65,7 +56,6 @@ export function SocialInboxCard() {
     } catch (e) {
       toast.error(`Couldn't connect the webhooks: ${e instanceof Error ? e.message : "unknown error"}`);
     }
-    // Either way, show what Meta now says.
     await load().then(setStatus, () => setFailed(true));
     setConnectingMeta(false);
   }
@@ -154,7 +144,6 @@ export function SocialInboxCard() {
             }
             action={
               tiktok?.appConfigured ? (
-                // A full-page navigation (not the router): the route redirects to TikTok's sign-in.
                 <Button
                   variant="outline"
                   size="sm"
@@ -197,7 +186,6 @@ export function SocialInboxCard() {
   );
 }
 
-/** TikTok's connection lasts a year; say when it ends once that is a month away. */
 function reconnectNote(refreshExpiresAt: string | null): string {
   if (!refreshExpiresAt) return "";
   const ends = new Date(refreshExpiresAt);
@@ -207,7 +195,6 @@ function reconnectNote(refreshExpiresAt: string | null): string {
   return `. Reconnect by ${ends.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}`;
 }
 
-/** One connection on the Telegram tab: name, Connected / Not connected, what it means, and its button. */
 export function ConnectionRow({
   name,
   connected,

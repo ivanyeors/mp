@@ -1,7 +1,6 @@
 import type { DiscoverySourceCatalog } from "./types";
 import { OTHER_DISCOVERY_SOURCE_ID } from "./types";
 
-/** Starter list ops can edit later; Other is always last and system-locked. */
 export const DEFAULT_DISCOVERY_SOURCE_CATALOG: DiscoverySourceCatalog = {
   options: [
     {

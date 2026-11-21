@@ -73,14 +73,8 @@ import {
     undoShopifyImport,
 } from "./actions";
 
-/** The skipped-rows table stops here; the download has every row. */
 const SKIPPED_SHOWN = 200;
 
-/**
- * The picked file, held in this tab's memory only. The text is kept so the
- * import can send the same rows the preview read; it is gone when the tab
- * closes.
- */
 type PickedFile = { name: string; sha256: string; lastModified: number; text: string; pickedAt: number };
 
 type State =
@@ -106,7 +100,6 @@ export function CustomerImportClient({
     consent,
 }: {
     history?: ImportBatchView[] | null;
-    /** Where the imported customers stand on marketing email; null when unread, undefined hides the card. */
     consent?: DefaultConsentCounts | null;
 }) {
     const pathname = usePathname() ?? "/";
@@ -116,11 +109,8 @@ export function CustomerImportClient({
     const [state, setState] = useState<State>({ phase: "idle" });
     const [importing, setImporting] = useState(false);
     const busy = state.phase === "reading" || state.phase === "previewing" || importing;
-    // The history is read on the server; after a write, read it again.
     const refresh = () => router.refresh();
 
-    // The file is read here and lives only in this tab's memory. Nothing
-    // uploads or stores it: the server actions receive rows, a chunk at a time.
     const onPick = async (input: HTMLInputElement) => {
         const file = input.files?.[0];
         input.value = "";
@@ -266,12 +256,10 @@ function Notice({ children }: { children: ReactNode }) {
     );
 }
 
-/** created + merged + already imported + skipped, as a sum. */
 function countsSum(c: BatchCounts) {
     return [c.created, c.merged, c.alreadyImported, skippedTotal(c.skipped)].map((n) => int.format(n)).join(" + ");
 }
 
-/** A batch that does not reconcile: shown in red, and never marked applied. */
 function MismatchProblem({ counts, rows }: { counts: BatchCounts; rows?: { created: number; merged: number } }) {
     const r = reconcile(counts);
     return (
@@ -294,7 +282,6 @@ function MismatchProblem({ counts, rows }: { counts: BatchCounts; rows?: { creat
     );
 }
 
-/** A batch that never finished: picking the same file continues it. */
 function StoppedNotice({ batch }: { batch: ImportBatchView }) {
     if (batchMismatch(batch)) return <MismatchProblem counts={batch} />;
     return (
@@ -403,10 +390,6 @@ type ApplyPhase =
     | { kind: "error"; error: string }
     | { kind: "done"; run: ImportRun };
 
-/**
- * The Import step under the preview: start a batch (or continue the one this
- * file already has), send its rows, then show the server's own counts.
- */
 export function ImportPanel({
     file,
     summary,
@@ -604,7 +587,6 @@ export function ImportPanel({
     );
 }
 
-/** What the server says the import did. */
 function ImportOutcome({ run }: { run: ImportRun }) {
     if (run.kind === "stopped") {
         return (
@@ -654,7 +636,6 @@ function ImportOutcome({ run }: { run: ImportRun }) {
 
 const STATE_LABELS = { applied: "Applied", stopped: "Stopped", undone: "Undone" } as const;
 
-/** Every Import batch, newest first, with Undo. */
 function HistoryCard({
     history,
     busy,
@@ -672,8 +653,6 @@ function HistoryCard({
             ) : history.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No imports yet.</p>
             ) : (
-                // Phones: each batch is a card (the row turns into a grid), not a table
-                // too wide for the screen. One element per batch keeps #batch-<id> working.
                 <div className="min-w-0 overflow-x-auto rounded-xl border">
                     <Table className="max-md:block">
                         <TableHeader className="max-md:hidden">
@@ -703,7 +682,6 @@ function HistoryCard({
 function HistoryRow({ batch, busy, onChanged }: { batch: ImportBatchView; busy: boolean; onChanged: () => void }) {
     const state = batchState(batch);
     const mismatch = batchMismatch(batch);
-    // The Customer overview links each batch as /settings/customers/import#batch-<id>.
     return (
         <TableRow
             id={`batch-${batch.id}`}
@@ -754,7 +732,6 @@ function HistoryRow({ batch, busy, onChanged }: { batch: ImportBatchView; busy: 
     );
 }
 
-/** A count column; on a phone, a labelled figure in the batch card. */
 function CountCell({ label, value }: { label: string; value: number }) {
     return (
         <TableCell className="px-4 text-right align-top tabular-nums max-md:p-0 max-md:text-left">
@@ -771,7 +748,6 @@ type UndoPhase =
     | { kind: "done"; counts: UndoCounts }
     | { kind: "error"; error: string; counts?: UndoCounts };
 
-/** A preview of the undo first, then a typed confirmation. */
 function UndoButton({ batch, disabled, onChanged }: { batch: ImportBatchView; disabled: boolean; onChanged: () => void }) {
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState<UndoPhase>({ kind: "loading" });

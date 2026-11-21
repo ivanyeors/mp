@@ -38,9 +38,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   settings: AppointmentSettings;
   onSaved: (settings: AppointmentSettings) => void;
-  /** Every Location (own + partner); the sheet shows those with an address. */
   locations: ResolvedLocation[];
-  /** Immediate, optimistic write — unlike the form fields, which wait for Save. */
   onToggleLocation: (id: string, bookable: boolean) => Promise<void>;
 };
 
@@ -56,17 +54,10 @@ function SectionHeading({ title, hint, info }: { title: string; hint?: string; i
   );
 }
 
-/** Sun, Tue, Wed … — the calendar's firstDay=0 order. */
 const DAY_ORDER = [0, 1, 2, 3, 4, 5, 6] as const;
 
 type SheetTab = "locations" | "availability" | "booking" | "whatsapp" | "calendar";
 
-/**
- * Per-weekday window editor — Google Calendar's appointment-schedule
- * availability. One row per day: on/off switch, then each window as a pair
- * of time inputs, plus add / copy-to-open-days. Validation is shared with
- * the API (`validateAvailability`) so the Save button knows before the round trip.
- */
 function AvailabilityEditor({
   value,
   onChange,
@@ -87,7 +78,6 @@ function AvailabilityEditor({
         const open = windows.length > 0;
         return (
           <li key={dow} className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start">
-            {/* Whole row head is the tap target for the day switch. */}
             <label
               htmlFor={`day-${dow}`}
               className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-between gap-3 rounded-md transition-colors active:bg-press sm:w-24 sm:justify-start"
@@ -208,19 +198,15 @@ export function AppointmentsSettingsSheet({
   const pathname = usePathname() ?? "/";
   const locale = (getLocaleFromPathname(pathname) ?? "en-US") as Locale;
 
-  // Only Locations with an address can be booked (the address is stamped on the event).
   const addressed = locations.filter((l) => !!l.address?.trim());
   const bookableCount = addressed.filter((l) => l.bookable).length;
-  // Same position-based colours the calendar dots and legend use.
   const colors = locationColorMap(locations.map((l) => l.id));
 
   const toggle = async (loc: ResolvedLocation, bookable: boolean) => {
     setTogglingId(loc.id);
     try {
       await onToggleLocation(loc.id, bookable);
-    } catch {
-      /* toast + rollback handled by the caller */
-    } finally {
+    } catch {} finally {
       setTogglingId(null);
     }
   };
@@ -229,8 +215,6 @@ export function AppointmentsSettingsSheet({
     if (open) setDraft(settings);
   }, [open, settings]);
 
-  // Re-adjustment fee and complimentary rule, read-only here — edited in
-  // Costings → Service fees (ADR 0024). A miss just hides the line.
   const [serviceFees, setServiceFees] = useState<{
     readjustment: number;
     freeVisits: number;
@@ -318,8 +302,6 @@ export function AppointmentsSettingsSheet({
           onValueChange={(v) => setTab(v as SheetTab)}
           className="flex min-h-0 flex-1 flex-col gap-3 max-md:px-3"
         >
-          {/* Five sections: too wide for a phone, so TabsList collapses them into
-              one menu button there and keeps the pill row on desktop. */}
           <TabsList className="w-full justify-start md:w-fit">
             {(
               [
@@ -366,7 +348,6 @@ export function AppointmentsSettingsSheet({
                     const busy = togglingId === loc.id;
                     return (
                       <li key={loc.id}>
-                        {/* Whole row is the tap target: the switch alone is 20×36px. */}
                         <label
                           htmlFor={`bookable-${loc.id}`}
                           className={cn(
@@ -584,7 +565,6 @@ export function AppointmentsSettingsSheet({
 
             <TabsContent value="calendar" className="space-y-4">
               <SectionHeading title="Calendar" hint="Saved with the button below." />
-              {/* Whole row is the tap target: the switch alone is 20×36px. */}
               <label
                 htmlFor="show-cancelled"
                 className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-border px-3 py-2 transition-colors active:bg-press"

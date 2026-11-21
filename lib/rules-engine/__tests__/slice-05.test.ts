@@ -80,7 +80,7 @@ describe("assign hint source", () => {
         engineTemplateId: 42,
         defaultTemplateId: 7,
         sizeScopeChanged: false,
-        hasAssistFillingSnapshot: true, // assist is truth; engine still the hint
+        hasAssistFillingSnapshot: true,
       }),
     ).toBe(42);
   });

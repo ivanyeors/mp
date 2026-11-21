@@ -1,20 +1,9 @@
-/**
- * Payment request (ADR 0048): the email that sends a Staff order's Payment
- * link. What is in the order and its total come first, so the customer knows
- * what they are paying before they press the button; the link opens our pay
- * page, which hands them to Stripe's hosted Checkout.
- */
-
 import { renderEmailShell } from "./base";
 import { addressBlock, card, dataTable, paragraph, statusPill } from "./components";
 import { defaultEmailCopy, defineEmailCopy, fillCopy, type EmailCopy } from "./copy";
 import { money, negativeMoney } from "./format";
 import type { RenderedEmail } from "./types";
 
-/**
- * Its words (PRD-email-templates). The lines, totals, delivery and note are
- * data, and stay in code.
- */
 export const PAYMENT_REQUEST_EMAIL_COPY = defineEmailCopy({
   id: "order.payment_request",
   name: "Payment request",
@@ -54,13 +43,10 @@ export type PaymentRequestEmailData = {
   discountAmount: number;
   taxAmount: number;
   total: number;
-  /** "Collect from <studio>", or where it is delivered: the heading of the address block. */
   deliveryHeading: string;
   deliveryLines: string[];
-  /** The note Staff wrote for the customer, if any. */
   note: string | null;
   payUrl: string;
-  /** When the link stops working, already formatted for Singapore. */
   expires: string;
 };
 
@@ -95,7 +81,6 @@ export function renderPaymentRequestEmail(
   for (const k of Object.keys(copy) as Array<keyof Copy>) t[k] = fillCopy(copy[k], values);
 
   const totals = totalsRows(p);
-  // The text is built from the same words and rows as the HTML, so the two cannot drift.
   const text = [
     t.intro,
     "",

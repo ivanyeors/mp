@@ -86,7 +86,6 @@ describe("classifyVisit", () => {
 
     it("does not call an fbclid click paid: Meta adds it to organic links too", () => {
       expect(classifyVisit(signals({ entry_click_id_kind: "fbclid" }))).toMatchObject({ channel: "social", platform: "Meta" });
-      // The referrer or the app says which of the two
       expect(classifyVisit(signals({ entry_click_id_kind: "fbclid" }, "l.facebook.com")).platform).toBe("Facebook");
       expect(classifyVisit(signals({ entry_click_id_kind: "fbclid", entry_app: "instagram" })).platform).toBe("Instagram");
     });
@@ -94,7 +93,6 @@ describe("classifyVisit", () => {
     it("takes an untagged Visit from an app's own browser out of Direct", () => {
       expect(classifyVisit(signals({ entry_app: "tiktok" }))).toEqual({ channel: "social", aiSource: null, platform: "TikTok" });
       expect(classifyVisit(signals({ entry_app: "instagram" }))).toMatchObject({ channel: "social", platform: "Instagram" });
-      // A Visit from before these were recorded is still Direct
       expect(classifyVisit(visit(null))).toEqual({ channel: "direct", aiSource: null, platform: null });
     });
 

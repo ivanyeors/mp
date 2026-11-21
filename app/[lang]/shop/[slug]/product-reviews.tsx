@@ -14,15 +14,7 @@ import { Label } from "@/components/ui/label";
 import type { PublicProductReview } from "@/lib/types/ecommerce";
 import type { ReviewAuthorState } from "@/lib/reviews/shop-review-byline";
 
-// ---------------------------------------------------------------------------
-// Star display — see components/shop/review-stars.tsx
-// ---------------------------------------------------------------------------
-
 export { ReviewStars } from "@/components/shop/review-stars";
-
-// ---------------------------------------------------------------------------
-// Hook: fetch approved reviews for a product
-// ---------------------------------------------------------------------------
 
 interface ApprovedReviewsState {
   reviews: PublicProductReview[];
@@ -79,12 +71,6 @@ export function useApprovedReviews(productId: string): ApprovedReviewsState {
   return { reviews, count: reviews.length, average, loading, error, reload };
 }
 
-// ---------------------------------------------------------------------------
-// Who may write: only a signed-in Customer (POST /api/shop/reviews enforces it;
-// GET /api/shop/reviews/author lets the form say so before anyone types).
-// ---------------------------------------------------------------------------
-
-/** null while loading; "error" when the check itself failed. */
 function useReviewAuthor(): ReviewAuthorState | "error" | null {
   const [state, setState] = useState<ReviewAuthorState | "error" | null>(null);
 
@@ -109,10 +95,6 @@ function useReviewAuthor(): ReviewAuthorState | "error" | null {
   return state;
 }
 
-/**
- * The storefront's sign-in page, coming back to this product's reviews after.
- * `#reviews` is the Reviews tab's id: it names where the shopper was going.
- */
 function useSignInHref(): string {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleOrDefault(pathname);
@@ -144,7 +126,6 @@ function SignInPrompt({ note }: { note?: string }) {
   );
 }
 
-/** Signed in, but to an account with no email: it links to no Customer. */
 function NoEmailNotice() {
   const signInHref = useSignInHref();
   return (
@@ -215,10 +196,6 @@ function ReviewComposer({ productId }: { productId: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Submission form (signed-in Customers only)
-// ---------------------------------------------------------------------------
-
 function ReviewForm({
   productId,
   byline,
@@ -226,9 +203,7 @@ function ReviewForm({
   onSessionEnded,
 }: {
   productId: string;
-  /** What the server will store as the review's byline. */
   byline: string;
-  /** False when the Customer has no name on record and the byline is the stand-in. */
   named: boolean;
   onSessionEnded: () => void;
 }) {
@@ -370,10 +345,6 @@ function ReviewForm({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Reviews tab: summary + list + form
-// ---------------------------------------------------------------------------
-
 function formatDate(value: string): string {
   try {
     return new Date(value).toLocaleDateString("en-SG", {
@@ -386,7 +357,6 @@ function formatDate(value: string): string {
   }
 }
 
-/** Our public reply under a review, written from its Telegram card. */
 function StoreReply({ reply, at }: { reply: string; at: string | null }) {
   return (
     <div className="mt-1.5 flex flex-col gap-1 rounded-md border-l-2 border-foreground/20 bg-muted/40 px-3 py-2">

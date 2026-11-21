@@ -10,20 +10,8 @@ export const runtime = "nodejs";
 
 type SiteSettingRow = { key: string; value: string; updated_at: string | null };
 
-/**
- * This route answers to `media`, so it only serves the Media page's landing
- * image slots (`landing_*` and their `landing_*_asset_id`). Every other key
- * (return address, ops email, booking URLs, …) has its own route gated by its
- * own page; letting `media` reach them would let any role with Blogs or
- * Products (which tick Media) rewrite them.
- */
 const isLandingKey = (key: string) => key.startsWith("landing_");
 
-/**
- * Site settings change rarely and are read on nearly every admin screen, so the
- * DB read is cached and invalidated by every writer via the `site-settings` tag.
- * Uses the service-role client only — no cookies/headers inside the cached fn.
- */
 const readSiteSettings = unstable_cache(
   async (keys: string[] | null): Promise<SiteSettingRow[]> => {
     const admin = supabaseAdmin();
@@ -38,20 +26,12 @@ const readSiteSettings = unstable_cache(
   { tags: ["site-settings"], revalidate: 300 },
 );
 
-/**
- * GET /api/site-settings
- * Optionally accepts ?keys=key1,key2 to filter. Landing slot keys only.
- * Public pages read lib/site-settings on the server.
- */
 export async function GET(req: Request) {
   const denied = await requireAdmin("media");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const keysParam = searchParams.get("keys");
-  // Normalise before the cached read: the key list is part of the cache key,
-  // so dedupe + sort so equivalent requests share an entry, and cap it so a
-  // caller cannot mint unbounded entries.
   const keys = keysParam
     ? Array.from(new Set(keysParam.split(",").map((k) => k.trim()).filter(Boolean))).sort()
     : null;
@@ -74,13 +54,6 @@ export async function GET(req: Request) {
   }
 }
 
-/**
- * PUT /api/site-settings
- * Body: { key: string, value: string, media_asset_id?: string | null }
- *
- * Landing slots (`landing_*`): value = hosted URL; optional media_asset_id
- * dual-writes companion key `landing_*_asset_id` (slice 15).
- */
 export async function PUT(req: Request) {
   const denied = await requireAdmin("media");
   if (denied) return denied;
@@ -113,7 +86,6 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Dual-write Asset id for landing slots
     if (key.startsWith("landing_") && !key.endsWith("_asset_id")) {
       const idKey = landingAssetIdKey(key);
       if (typeof media_asset_id === "string" && media_asset_id.length > 0) {
@@ -149,11 +121,6 @@ export async function PUT(req: Request) {
   }
 }
 
-/**
- * DELETE /api/site-settings?key=landing_hero
- * Removes a setting so the default is used again.
- * Also clears companion landing_*_asset_id when resetting a landing slot.
- */
 export async function DELETE(req: Request) {
   const denied = await requireAdmin("media");
   if (denied) return denied;

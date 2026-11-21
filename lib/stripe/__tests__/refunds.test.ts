@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Capture the params/options passed to Stripe without hitting the network.
 const createRefund = vi.fn(async () => ({ id: "re_123", status: "succeeded" }));
 vi.mock("../client", () => ({
   getStripe: () => ({ refunds: { create: createRefund } }),
@@ -34,7 +33,7 @@ describe("refundPayment", () => {
       metadata: { order_id: "o1" },
     });
     const [params, options] = lastCall();
-    expect(params.amount).toBe(1250); // dollars -> cents
+    expect(params.amount).toBe(1250);
     expect(params.reason).toBe("requested_by_customer");
     expect(params.metadata).toEqual({ order_id: "o1" });
     expect(options.idempotencyKey).toBe("refund_o1_1250");

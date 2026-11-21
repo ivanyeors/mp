@@ -2,18 +2,12 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AGREEMENT_VERSION } from "@/lib/partner-application";
 
-/** react-markdown hands every element its AST `node`; keep it off the DOM. */
 function dom<P extends { node?: unknown }>(props: P): Omit<P, "node"> {
   const rest = { ...props };
   delete rest.node;
   return rest;
 }
 
-/**
- * Element styles for the agreement. The site does not load the Tailwind typography
- * plugin, so `prose` classes do nothing here; each element is styled directly.
- * Tables (the commission Schedule) are GFM, hence remark-gfm.
- */
 const components: Components = {
   h1: (props) => <h1 {...dom(props)} className="mt-8 mb-3 text-xl font-normal first:mt-0" />,
   h2: (props) => <h2 {...dom(props)} className="mt-8 mb-3 text-lg font-normal first:mt-0" />,
@@ -43,19 +37,6 @@ const components: Components = {
   ),
 };
 
-/**
- * Renders the Partner Agreement copy (markdown) shown by the apply flow and the
- * re-accept screen. The copy is owner-editable (Admin → Partners → Agreement,
- * stored in partners_page.agreement_md); callers fetch it via getAgreementMarkdown
- * and pass it in, so this stays a pure presentational component (server/client safe).
- *
- * The VERSION is a separate code constant (AGREEMENT_VERSION) — editing copy does
- * NOT bump it. Bump AGREEMENT_VERSION deliberately when a change must be re-consented
- * (money terms or the MANDATORY AHPC §5.7/§5.7.1 patient-disclosure clause) — ADR 0015.
- *
- * `data-typography-scope="app"` opts out of the marketing overrides in globals.css,
- * which would otherwise force every paragraph to 18px and every h2 to 28px.
- */
 export function AgreementContent({ content }: { content: string }) {
   return (
     <article data-typography-scope="app" className="text-sm text-foreground">

@@ -1,8 +1,3 @@
-/**
- * Shopify order-mirror ingest (finance facts). Shared by webhook + catch-up.
- * Takes no stock.
- */
-
 import { resolveVariantCost } from '@/lib/shop/price-sync'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
@@ -46,7 +41,6 @@ export type ShopifyOrderLike = {
   total_price?: string | number | null
   total_outstanding?: string | number | null
   line_items?: ShopifyOrderLineLike[]
-  /** REST transactions when present (payment time fallback). */
   transactions?: Array<{
     status?: string | null
     kind?: string | null
@@ -68,7 +62,6 @@ export type ShopifyRefundLike = {
   created_at?: string | null
   processed_at?: string | null
   currency?: string | null
-  /** Present on some REST shapes; otherwise sum transactions / line subtotals. */
   transactions?: Array<{
     amount?: string | number | null
     status?: string | null
@@ -149,10 +142,6 @@ export function isShopifyPaidFinancialStatus(status: string | null | undefined):
   return PAID_STATUSES.has(String(status ?? '').toLowerCase())
 }
 
-/**
- * Mirror paid_at = payment/processed time (not created_at alone).
- * Prefer processed_at, then successful sale transaction time, then created_at if paid.
- */
 export function selectShopifyPaidAt(order: ShopifyOrderLike): string | null {
   if (!isShopifyPaidFinancialStatus(order.financial_status)) return null
   if (order.processed_at) return order.processed_at
@@ -166,7 +155,6 @@ export function selectShopifyPaidAt(order: ShopifyOrderLike): string | null {
   return order.created_at ?? null
 }
 
-/** Unit COGS from Costings rollup via mapping → BOM / item_prices. Null → Others. */
 export function resolveShopifyMappingUnitCost(
   mapping: ShopifyVariantMapping,
   ctx: Pick<
@@ -228,7 +216,6 @@ export function buildMirrorLineFromShopify(
     title: li.title ?? null,
     quantity: qty,
     gross_revenue: gross,
-    // Others: COGS 0/null; revenue + units still stored.
     unit_cost: isOthers ? null : round2(unitCost!),
     total_cost: isOthers ? null : round2(unitCost! * qty),
     mapping_kind: mapping?.kind ?? null,
@@ -237,10 +224,6 @@ export function buildMirrorLineFromShopify(
   }
 }
 
-/**
- * Freeze rule: healthy frozen costs are not rewritten on re-ingest.
- * Gaps (Others / null cost) may pick up newly available Costings.
- */
 export function mergeFrozenMirrorLine(
   existing: MirrorLineRow | null | undefined,
   incoming: MirrorLineRow,
@@ -257,10 +240,6 @@ export function mergeFrozenMirrorLine(
   return incoming
 }
 
-/**
- * Re-resolve gap/Others only — opposite of freeze merge.
- * Healthy frozen lines (not Others, unit_cost set) are left untouched.
- */
 export function planReResolveMirrorLines(
   lines: MirrorLineRow[],
   ctx: CostingsContext,
@@ -335,7 +314,7 @@ export function planShopifyOrderMirrorUpsert(
       paid_at: paidAt,
       financial_status: order.financial_status ?? null,
       total_price: toMoney(order.total_price),
-      amount_refunded: 0, // refunds owned by applyShopifyRefund
+      amount_refunded: 0,
       synced_at: at,
       updated_at: at,
     },
@@ -363,7 +342,6 @@ export function refundAmountFromPayload(refund: ShopifyRefundLike): number {
   return round2(lineSum)
 }
 
-/** Restock types that reduce COGS (parallel to platform returned_quantity). */
 export function isRestockSignal(restockType: string | null | undefined): boolean {
   const t = String(restockType ?? '').toLowerCase()
   return t === 'return' || t === 'cancel'
@@ -371,18 +349,13 @@ export function isRestockSignal(restockType: string | null | undefined): boolean
 
 export type RefundApplyPlan = {
   refund: MirrorRefundRow
-  /** Idempotent no-op when refund id already stored. */
   alreadyApplied: boolean
   amountRefunded: number
-  /** Line patches for restock-aware COGS (only when newly applied). */
   lineCostPatches: Array<{ shopify_line_item_id: number; total_cost: number }>
 }
 
-/**
- * Plan refund upsert: net revenue via amount_refunded; paid_at unchanged by caller.
- * ponytail: order-level refund amount + optional line total_cost trim on restock;
- * line-level refund allocation table deferred if Analytics needs finer splits.
- */
+// ponytail: order-level refund amount + optional line total_cost trim on restock; line-level refund
+// allocation table deferred if Analytics needs finer splits.
 export function planShopifyRefundApply(args: {
   refund: ShopifyRefundLike
   existingRefundIds: Set<number>
@@ -418,7 +391,6 @@ export function planShopifyRefundApply(args: {
     if (!restockQty) continue
     const next = round2(Math.max(0, line.total_cost - line.unit_cost * restockQty))
     lineCostPatches.push({ shopify_line_item_id: lineId, total_cost: next })
-    // so multiple refund_line_items on same line accumulate in one plan
     args.lines.set(lineId, { ...line, total_cost: next })
   }
 
@@ -430,7 +402,6 @@ export function planShopifyRefundApply(args: {
   }
 }
 
-/** Advance single-row sync cursor; since_id only moves forward. */
 export function planShopifySyncCursorAdvance(
   current: SyncStateRow,
   patch: SyncCursorPatch,
@@ -533,7 +504,6 @@ export type UpsertShopifyOrderMirrorResult =
   | { ok: true; skipped?: undefined; orderId: number; lineCount: number; paidAt: string | null }
   | { ok: true; skipped: true; reason: 'not_paid' | 'invalid' }
 
-/** Upsert paid Shopify order → shopify_orders + shopify_order_lines with Costings freeze / Others. */
 export async function upsertShopifyOrderMirror(
   payload: ShopifyOrderLike,
   opts?: { admin?: AdminClient; costCtx?: CostingsContext; now?: Date },
@@ -582,7 +552,6 @@ export async function upsertShopifyOrderMirror(
   )
   if (!plan.ok) return { ok: true, skipped: true, reason: plan.reason }
 
-  // Preserve amount_refunded already applied by refunds.
   const orderRow = {
     ...plan.order,
     amount_refunded: toMoney(existingOrder?.amount_refunded ?? 0),
@@ -612,7 +581,6 @@ export type ApplyShopifyRefundResult =
   | { ok: true; alreadyApplied: true; orderId: number; amountRefunded: number }
   | { ok: true; alreadyApplied: false; orderId: number; amountRefunded: number }
 
-/** Idempotent refund row + net amount_refunded; never moves paid_at. */
 export async function applyShopifyRefund(
   payload: ShopifyRefundLike,
   opts?: { admin?: AdminClient; now?: Date },
@@ -687,7 +655,6 @@ export async function applyShopifyRefund(
     .update({
       amount_refunded: plan.amountRefunded,
       updated_at: nowIso(opts?.now),
-      // paid_at intentionally omitted — never move once paid
     })
     .eq('shopify_order_id', payload.order_id)
   if (oErr) throw new Error(oErr.message)
@@ -731,7 +698,6 @@ export async function getShopifySyncState(admin: AdminClient = supabaseAdmin()):
   }
 }
 
-/** Cursor helpers for catch-up (slice 05); not wired to cron here. */
 export async function advanceShopifySyncCursor(
   patch: SyncCursorPatch,
   opts?: { admin?: AdminClient; now?: Date },
@@ -744,10 +710,6 @@ export async function advanceShopifySyncCursor(
   return next
 }
 
-/**
- * Immediate graduation of gap/Others lines after mapping or Costings save.
- * Does not rewrite healthy frozen costs. Cron/catch-up unchanged.
- */
 export async function reResolveShopifyLineCosts(opts?: {
   variantIds?: number[]
   admin?: AdminClient

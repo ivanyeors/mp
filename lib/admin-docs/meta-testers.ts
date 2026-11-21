@@ -1,10 +1,3 @@
-/**
- * Documentation → Adding teammates to the Meta app: how to give a teammate a
- * role on mpillow-sg so their own Facebook and Instagram messages reach the
- * Telegram group before App Review. The setup itself is the OPS checklist
- * (`.claude/PRD-social-inbox/OPS-CHECKLIST.md`, part 1); this is the part
- * someone repeats for each new teammate.
- */
 import type { DocGuide, DocSection } from "./types";
 
 export const META_TESTERS_GUIDE: DocGuide = {
@@ -17,7 +10,6 @@ export const META_TESTERS_GUIDE: DocGuide = {
 
 const TELEGRAM_TAB = { label: "Users & permissions → Telegram", href: "/settings/users?tab=telegram" };
 
-/** Pure — every section of the guide. */
 export function metaTestersGuideSections(): DocSection[] {
   return [
     {

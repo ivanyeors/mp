@@ -12,11 +12,6 @@ export type ApiConfigRow = {
   created_at: string;
 };
 
-/**
- * API configs are edited rarely and read on every integration screen. Cached
- * behind the `api-configs` tag, which the write handlers invalidate.
- * Service-role read only — the cookie-based auth check stays outside.
- */
 export const readApiConfigs = unstable_cache(
   async (): Promise<ApiConfigRow[]> => {
     const admin = supabaseAdmin();
@@ -31,11 +26,6 @@ export const readApiConfigs = unstable_cache(
   { tags: ["api-configs"], revalidate: 300 },
 );
 
-/**
- * An API config as the browser sees it: never the stored key or the Easyship
- * webhook secret, only whether each is set. Anyone with `api-configs`, or any
- * script that ever ran in the Admin Panel, would otherwise read them in full.
- */
 export type ClientApiConfigRow = Omit<ApiConfigRow, "api_key"> & {
   api_key: "";
   api_key_set: boolean;
@@ -56,11 +46,6 @@ export function toClientApiConfig(row: ApiConfigRow): ClientApiConfigRow {
   return { ...row, config, api_key: "", api_key_set: Boolean(row.api_key) };
 }
 
-/**
- * An edit from the browser, which never held the secrets: a blank key keeps
- * the stored one, and a config without the webhook secret keeps the stored
- * secret. Clearing either is not done from this form.
- */
 export function keepStoredSecrets<T extends { api_key?: string; config?: Record<string, unknown> }>(
   existing: Pick<ApiConfigRow, "api_key" | "config">,
   updates: T,

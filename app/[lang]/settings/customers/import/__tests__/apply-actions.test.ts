@@ -3,13 +3,6 @@ import { parseShopifyCustomersCsv } from "@/lib/customer-migration/shopify-csv";
 import { applyPayload } from "@/lib/customer-migration/apply";
 import { exportCsv, FIVE_ROWS } from "@/lib/customer-migration/__tests__/fixtures";
 
-/**
- * The apply, finish and undo actions (slice 03): each checks
- * `customer-import`, writes only through its SQL function (the batch insert
- * apart), sends no PII back, and records one audit row per apply and per
- * undo, with counts only.
- */
-
 const BATCH = "00000000-0000-4000-8000-0000000000b1";
 
 const h = vi.hoisted(() => ({
@@ -219,7 +212,6 @@ describe("finishShopifyImport", () => {
         skipped_by_reason: { no_email: 1, invalid_email: 1 },
       },
     });
-    // The Staff member's own email is the actor; nothing about a customer, nor the file's name.
     expect(JSON.stringify(entry.after)).not.toMatch(/@|csv/);
   });
 

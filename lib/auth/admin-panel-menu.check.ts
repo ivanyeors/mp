@@ -1,6 +1,3 @@
-/**
- * Self-check: subscribe → open → callback fires once.
- */
 import assert from "node:assert/strict";
 import { openAdminPanelMenu, subscribeAdminPanelMenu } from "./admin-panel-menu";
 

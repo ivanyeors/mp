@@ -26,7 +26,6 @@ describe("filling color override resolution (default → override → cleared)",
     const rows = effectiveFillingColors(SUBTYPES, overrides);
     const overridden = rows.find((r) => r.subtype === "6D (Round)")!;
     expect(overridden).toMatchObject({ color: "#112233", overridden: true });
-    // shape is never touched by an override
     expect(overridden.shape).toBe(fillingVisual("6D (Round)").shape);
     for (const row of rows.filter((r) => r.subtype !== "6D (Round)")) {
       expect(row.overridden).toBe(false);
@@ -40,7 +39,6 @@ describe("filling color override resolution (default → override → cleared)",
     const row = cleared.find((r) => r.subtype === "6D (Round)")!;
     expect(row.color).toBe(fillingVisual("6D (Round)").defaultColor);
     expect(row.overridden).toBe(false);
-    // and the CSS variable disappears, so var(x, default) falls back
     expect(xrayColorVarStyle([])["--xray-fill-6d-round"]).toBeUndefined();
   });
 });

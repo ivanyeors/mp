@@ -16,19 +16,9 @@ export interface LandingSectionsListProps {
     bolsterFromPrice: string;
   };
   landingRatings?: LandingRatings;
-  /**
-   * Preview mode: mark hidden sections instead of omitting them (so the visibility
-   * toggle has a visible effect) and keep the reviews section off the paid Places API,
-   * which would otherwise be called on every debounced preview reload.
-   */
   preview?: boolean;
 }
 
-/**
- * The landing page's section list, shared by the public route and Preview mode so the
- * two cannot drift. The wrapper carries the slug as both `id` and `data-section`: the
- * anchor journey analytics records, and what the builder selects against.
- */
 export function LandingSectionsList({
   sections,
   messages,

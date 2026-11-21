@@ -3,15 +3,6 @@ import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { fakeSupabaseAdmin, type FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import type { SupportChatRow } from "@/lib/support/chat";
 
-/**
- * The website chat: a visitor proves their email with a 6-digit code before
- * the first message goes out; their messages post to the staff Telegram group,
- * threaded under the chat's first notice; a staff reply to any of them comes
- * back as the chat's next message; the transcript is emailed to the proved
- * address when the customer ends the chat, leaves it, or is away when staff
- * reply — once per new message, with no second code.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   sendGroupMessage: vi.fn(),
@@ -75,7 +66,6 @@ afterEach(() => {
 const messagesOf = (id: string) => h.db.support_chat_messages.filter((m) => m.chat_id === id);
 const chatRow = (id: string) => h.db.support_chats.find((c) => c.id === id) as unknown as SupportChatRow;
 
-/** A staff member's reply in the group to the Telegram message `replyTo`. */
 function staffUpdate(replyTo: number, text: string, messageId: number, name = "Darren") {
   return {
     message: {
@@ -90,7 +80,6 @@ function staffUpdate(replyTo: number, text: string, messageId: number, name = "D
 
 const noWait = { wait: async () => {} };
 
-/** A visitor's chat, started with the email their code proved. */
 const start = (body: string, opts: { now?: Date; name?: string } = {}) =>
   chat.startChat({ body, verifiedEmail: "jane@example.com", now: opts.now ?? T0, name: opts.name });
 
@@ -217,7 +206,6 @@ describe("staff replies from Telegram", () => {
     );
     expect(chatRow(c.id).transcript_message_count).toBe(2);
 
-    // Nothing new: nothing sent.
     await expect(chat.emailTranscriptIfNew(c.id, "left")).resolves.toBe("nothing_new");
     expect(sent).toHaveLength(1);
   });
@@ -228,7 +216,6 @@ describe("staff replies from Telegram", () => {
     const { chat: c } = await start("Hi", { now: new Date() });
     await chat.markChatLeft(c);
 
-    // The first handler records its reply, then (while it waits) the second arrives.
     await handleChatReplyUpdate(staffUpdate(100, "One sec", 300), {
       wait: () => handleChatReplyUpdate(staffUpdate(100, "Found it: 11am works", 301), noWait),
     });

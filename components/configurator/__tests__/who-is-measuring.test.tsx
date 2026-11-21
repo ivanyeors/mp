@@ -4,13 +4,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { WhoIsMeasuring } from "../who-is-measuring";
 
-/**
- * A Staff login is always Staff on the configurator, whatever customer account
- * it also has. A shared login where nobody at the device has chosen under
- * "Working as" is asked who is measuring on the start screen, before the Draft
- * exists, so the Draft is stamped `staff` and charges the Measurement service
- * (ADR 0024) like any other Staff session's.
- */
 const profiles = [
   { id: "p-jess", name: "Jess" },
   { id: "p-sam", name: "Sam" },

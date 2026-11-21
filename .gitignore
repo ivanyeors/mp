@@ -84,3 +84,6 @@ package-lock.json
 
 # Preview skill: logs, servers state and screenshots (.claude/skills/preview)
 /.preview/
+
+# verify.mjs writes the lint baseline through a temp file; one left by a killed run
+/eslint-suppressions.json.*.tmp

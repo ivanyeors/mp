@@ -7,15 +7,6 @@ import { formatAdminDateTime } from "@/lib/format/admin-date";
 import type { GoogleReviewsStatus } from "@/lib/reviews/status";
 import { ConnectionRow } from "./social-inbox-card";
 
-/**
- * Users & permissions → Telegram → Google Maps reviews: which way reviews
- * reach the measurements group, and what still stands in the way.
- *
- * The Business Profile API is the real connection: every review, and Post
- * reply publishes from Telegram. Until Google approves it, the Places API
- * stands in once a week, within a monthly read cap; its cards are answered on
- * Google Maps and marked replied (.claude/PRD-google-review-replies/OPS-CHECKLIST.md).
- */
 export function GoogleReviewsCard() {
   const [status, setStatus] = useState<GoogleReviewsStatus | null>(null);
   const [failed, setFailed] = useState(false);

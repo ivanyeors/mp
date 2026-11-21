@@ -1,15 +1,5 @@
 import { canonicalTikTokUrl, parseTikTokUrl, tiktokPostUrl } from "@/lib/tiktok/embed";
 
-/**
- * Turn whatever Staff paste into a stored TikTok post link, at save time.
- *
- * Share links from the app (vm./vt.tiktok.com, /t/…) are redirects, so they are
- * followed here, once, on the server; the page never makes that hop. The post
- * is then checked against TikTok's oEmbed endpoint, which answers only for a
- * public, embeddable post — a private or deleted video is refused before it
- * reaches the page as a broken player.
- */
-
 const TIMEOUT_MS = 8_000;
 const MAX_HOPS = 4;
 const USER_AGENT = "Mozilla/5.0 (compatible; link-check)";
@@ -18,9 +8,7 @@ export type ResolveResult =
   | {
       ok: true;
       id: string;
-      /** Canonical link to store and to send "Watch on TikTok" to. */
       url: string;
-      /** False when TikTok could not be asked; the link parsed but is unchecked. */
       verified: boolean;
     }
   | { ok: false; error: string };
@@ -42,13 +30,12 @@ async function followShortLink(start: string, fetchImpl: typeof fetch): Promise<
     const next = new URL(location, current).toString();
     const parsed = parseTikTokUrl(next);
     if (parsed?.kind === "post") return tiktokPostUrl(parsed);
-    if (parsed?.kind !== "short") return null; // e.g. redirected to the TikTok home page
+    if (parsed?.kind !== "short") return null;
     current = parsed.url;
   }
   return null;
 }
 
-/** True when TikTok's oEmbed answers for the post; null when TikTok could not be reached. */
 async function isEmbeddable(url: string, fetchImpl: typeof fetch): Promise<boolean | null> {
   try {
     const res = await fetchImpl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`, {

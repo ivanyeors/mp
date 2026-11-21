@@ -1,13 +1,6 @@
 import type { User, UserIdentity } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * How a Customer signs in (CRM slice 11): `account_providers` is written from
- * the signed-in user's own identities, sorted and once each, only when it
- * changed, by one conditional update that re-checks the login and the value it
- * read. No `auth.users` read and no `supabase.auth.admin` call.
- */
-
 type Update = { table: string; values: Record<string, unknown>; filters: [string, string, unknown][] };
 
 const h = vi.hoisted(() => ({
@@ -16,7 +9,6 @@ const h = vi.hoisted(() => ({
   updateResult: "matched" as "matched" | "none" | "error" | "throw",
 }));
 
-/** A `customers` / `orders` stand-in that records every update and its filters. */
 function fakeAdmin() {
   return {
     from(table: string) {
@@ -150,7 +142,6 @@ describe("touchAccountProviders", () => {
 });
 
 describe("linkCustomerToAuthUser records how they sign in", () => {
-  // A fresh visit, so the last-seen write stays out of the way.
   const linked = (account_providers: string[]) => ({
     id: "c1",
     email: "ana@x.test",
@@ -160,18 +151,15 @@ describe("linkCustomerToAuthUser records how they sign in", () => {
   });
 
   it("signing in with Google, then by email code, gives {email,google}; a later load writes nothing", async () => {
-    // First sign-in, with Google.
     h.customer = linked([]);
     await linkCustomerToAuthUser(user(["google"]));
     expect(providerWrites().map((u) => u.values.account_providers)).toEqual([["google"]]);
 
-    // Then by email code: Supabase adds the email identity to the same user.
     h.updates = [];
     h.customer = linked(["google"]);
     await linkCustomerToAuthUser(user(["google", "email"]));
     expect(providerWrites().map((u) => u.values.account_providers)).toEqual([["email", "google"]]);
 
-    // A later load with nothing new.
     h.updates = [];
     h.customer = linked(["email", "google"]);
     await linkCustomerToAuthUser(user(["email", "google"]));

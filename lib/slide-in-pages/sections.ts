@@ -5,15 +5,6 @@ import { HEADER_SLUG, type SlideInSectionContent } from "./content";
 import { HEADER_SECTION_TYPE } from "./fields";
 import { SLIDE_IN_PAGES, type SlideInPageKey } from "./pages";
 
-/**
- * Merging stored **Slide-in section** rows over a slide-in's code config.
- *
- * The config is the catalog: it alone decides which sections exist. A row only adjusts
- * one — its order, visibility and content — so a section with no row renders exactly as
- * the code says, and a row whose key the code no longer has is ignored.
- */
-
-/** A `slide_in_sections` row as stored, including any pending draft. */
 export interface SlideInSectionRow {
   id: string;
   page: string;
@@ -29,16 +20,13 @@ export interface SlideInSectionRow {
   updated_at?: string;
 }
 
-/** One section of a sub page as the builder lists it and the renderer orders it. */
 export interface SlideInSectionView {
   slug: string;
   section_type: string;
   position: number;
   visible: boolean;
   content: SlideInSectionContent;
-  /** What a publish would change on it; empty when it has no pending draft. */
   pending: DraftChangeKind[];
-  /** The pinned sheet header rather than a template section. */
   header: boolean;
 }
 
@@ -72,13 +60,6 @@ function view(
   };
 }
 
-/**
- * The sub page's sections in render order, header first. `mode` picks published state
- * (the live slide-in) or drafts applied (Preview mode and the builder).
- *
- * A section with no row sits at its config index; ties — a section added in code after
- * Staff reordered — fall back to config order, so it lands near where the code put it.
- */
 export function slideInSectionViews(
   page: SlideInPageKey,
   rows: readonly SlideInSectionRow[],
@@ -99,13 +80,11 @@ export function slideInSectionViews(
   return [{ ...header, visible: true }, ...sections];
 }
 
-/** A config section paired with its stored state, for the renderer. */
 export interface OrderedSlideSection {
   config: ProductSlideSectionConfig;
   view: SlideInSectionView;
 }
 
-/** Template sections in order, each with its config. Hidden ones are kept; callers filter. */
 export function orderedSlideSections(
   page: SlideInPageKey,
   views: readonly SlideInSectionView[],
@@ -120,23 +99,19 @@ export function orderedSlideSections(
   return out;
 }
 
-/** The section keys the builder may reorder, in config order. */
 export function reorderableSlugs(page: SlideInPageKey): string[] {
   return SLIDE_IN_PAGES[page].sections.map((s) => s.key);
 }
 
-/** Whether `slug` names something on this sub page (a section, or the header). */
 export function isSlideInSlug(page: SlideInPageKey, slug: string): boolean {
   return slug === HEADER_SLUG || SLIDE_IN_PAGES[page].sections.some((s) => s.key === slug);
 }
 
-/** The template type a slug renders with. */
 export function slideInSectionType(page: SlideInPageKey, slug: string): string | null {
   if (slug === HEADER_SLUG) return HEADER_SECTION_TYPE;
   return SLIDE_IN_PAGES[page].sections.find((s) => s.key === slug)?.type ?? null;
 }
 
-/** The header count and the Publish dialog's summary, for one sub page. */
 export function summariseSlideInPending(
   page: SlideInPageKey,
   rows: readonly SlideInSectionRow[],
@@ -164,9 +139,6 @@ export function summariseSlideInPending(
   return summary;
 }
 
-// --- Publish snapshots ------------------------------------------------------------
-
-/** One entry inside a sub page's **Publish snapshot**. */
 export interface SlideInSnapshotSection {
   slug: string;
   section_type: string;
@@ -179,11 +151,6 @@ function isDefaultState(row: Pick<SlideInSectionRow, "visible" | "content">): bo
   return row.visible && Object.keys(row.content ?? {}).length === 0;
 }
 
-/**
- * What restoring a snapshot would change on the live sub page, in the history panel's
- * shape. A section first overridden after the snapshot would go back to its default, so
- * it counts as changed; nothing is ever removed, since sections are code-owned.
- */
 export function diffSlideInSnapshot(
   snapshot: readonly SlideInSnapshotSection[],
   live: readonly SlideInSectionRow[],

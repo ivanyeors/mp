@@ -20,7 +20,6 @@ afterEach(() => {
   host.remove();
 });
 
-/** A message as the player posts it, from `source` (the player's own window, or another). */
 const post = (source: Window | null, type: string, value?: unknown) =>
   window.dispatchEvent(new MessageEvent("message", { origin: TIKTOK_PLAYER_ORIGIN, source, data: { "x-tiktok-player": true, type, value } }));
 

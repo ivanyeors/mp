@@ -12,16 +12,6 @@ import { chineseVersionOf } from "@/lib/email-campaigns/chinese-version";
 import type { CampaignContent, EmailBlock } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * The 中文 version in the campaign editor (PRD-campaign-email-editor slice
- * 17): ✨ Translate to Chinese puts the whole 中文 version in as one change
- * and opens 中文, which Undo takes back; in 中文 the words are edited and the
- * layout is English's; a block added or changed in English says so, with ✨
- * and *Keep*; *Remove the 中文 version*; a refused translation changes
- * nothing; the preview, and a test, in the language chosen. Nothing saves or
- * sends but Save and Send.
- */
-
 const actions = vi.hoisted(() => ({
   archiveCampaignAction: vi.fn(),
   checkCampaignReadiness: vi.fn(() => new Promise(() => undefined)),
@@ -68,7 +58,6 @@ const saved = (content: CampaignContent): Campaign => ({
 });
 const ON: AiWritingAvailability = { on: true, configured: true };
 
-/** The route's answers, in order; each request is kept. */
 let answers: { status?: number; body: unknown }[] = [];
 const requests: TranslateRequest[] = [];
 const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -77,7 +66,6 @@ const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
   if (!next) throw new Error("no answer scripted");
   return { ok: (next.status ?? 200) < 400, status: next.status ?? 200, json: async () => next.body };
 });
-/** The route's answer to TRANSLATE: the sample's Chinese, as the call would put it, checked. */
 const TRANSLATED = (() => {
   const made = translationFromAnswer(TRANSLATE, JSON.parse(translateAnswer()));
   if (!made.ok) throw new Error(made.problems.join("; "));
@@ -99,7 +87,6 @@ function mount(content: CampaignContent = ENGLISH, ai: AiWritingAvailability = O
   );
 }
 
-/** A button by its name: its words, or its aria-label. */
 const named = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.getAttribute("aria-label") === label || (!b.hasAttribute("aria-label") && b.textContent?.trim() === label)) ?? null;
 const language = () => document.querySelector<HTMLElement>("[role='radiogroup'][aria-label='Language'] [aria-checked='true']")?.textContent;
@@ -107,7 +94,6 @@ const toChinese = async () => click(await until(() => [...document.querySelector
 const badges = () => [...document.querySelectorAll("[data-block-badge]")].map((b) => b.textContent);
 const undo = () => press("z", { ctrl: true }, document.body);
 const isSaved = () => named("Save changes")!.disabled;
-/** What Save would write, as the editor sends it. */
 async function savedInput(): Promise<CampaignDraftInput> {
   await click(named("Save changes")!);
   await settle(10);
@@ -140,10 +126,8 @@ describe("✨ Translate to Chinese", () => {
     expect(requests[0]).toMatchObject({ only: null, lines: true, subject: CHINESE_SAMPLE_LINES.subject, campaignId: saved(ENGLISH).id });
     expect(requests[0].content.blocks.map((b) => b.id)).toEqual(ENGLISH.blocks.map((b) => b.id));
 
-    // Every word in Chinese, around the same blocks.
     expect(wordsOf("c-subject")).toBe("{first_name}，这个十二月睡得更清凉".replace("{first_name}", "First name"));
     expect(wordsOf("block-why-text")).toBe("为什么选择 FibreCool");
-    // Claude's words, until a person reads them (PRD decision 9).
     expect(new Set(badges())).toEqual(new Set(["Drafted with AI"]));
     expect(badges()).toHaveLength(Object.keys(TRANSLATED.translation.blocks).length);
     await until(() => lastPreview()?.[1].language === "zh-CN");
@@ -153,7 +137,6 @@ describe("✨ Translate to Chinese", () => {
     undo();
     await settle(20);
     expect(isSaved()).toBe(true);
-    // Still in 中文, now with nothing translated.
     expect(badges()).toContain("Not translated yet");
   });
 
@@ -161,7 +144,6 @@ describe("✨ Translate to Chinese", () => {
     mount();
     const generate = () => [...document.querySelectorAll<HTMLButtonElement>("button[aria-haspopup='dialog']")].find((b) => b.textContent?.includes("Generate"));
     expect((await until(generate)).getAttribute("aria-disabled")).toBeNull();
-    // The translation is still on its way.
     fetchMock.mockImplementationOnce(() => new Promise(() => undefined));
     await click(await until(() => named("Translate to Chinese")));
     const held = await until(() => (generate()?.getAttribute("aria-disabled") === "true" ? generate() : null));
@@ -217,7 +199,6 @@ describe("in 中文", () => {
     expect(document.querySelectorAll("[aria-label^='Actions for ']")).toHaveLength(0);
     expect(named("Generate")).toBeNull();
     expect(named("Suggest subject lines")).toBeNull();
-    // A button's words change; where it goes doesn't.
     const target = document.getElementById("block-pair-button-0-target") as HTMLButtonElement;
     expect(target.disabled).toBe(true);
     expect((document.getElementById("block-pair-button-0-label") as HTMLInputElement).value).toBe("定制您的 Mpillow");
@@ -230,7 +211,6 @@ describe("in 中文", () => {
     const input = await savedInput();
     const words = chineseVersionOf(input.content as CampaignContent)!.blocks;
     expect(words.why).toMatchObject({ type: "heading", text: "为什么选 FibreCool？" });
-    // The English is as it was.
     expect((input.content as CampaignContent).blocks).toEqual(CHINESE_SAMPLE_CONTENT.blocks);
   });
 

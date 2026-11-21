@@ -9,14 +9,12 @@ import { preloadTikTokPip, useTikTokPip } from "@/components/tiktok/tiktok-pip-p
 import { DEFAULT_TIKTOK_LABELS, fillLabel, type TikTokLabels, type TikTokVideo } from "@/lib/tiktok/types";
 import { cn } from "@/lib/utils";
 
-/** Fewer cards than this leave a gap in a wide band, so the set is repeated to fill it. */
 const MIN_CARDS_PER_HALF = 8;
 
 interface TikTokVideoMarqueeProps {
   videos: TikTokVideo[];
   labels?: TikTokLabels;
   direction?: "left" | "right";
-  /** Seconds each card takes to pass; the loop's length follows from the number of cards. */
   secondsPerCard?: number;
   className?: string;
 }
@@ -31,9 +29,7 @@ function VideoCard({
 }: {
   video: TikTokVideo;
   label: string;
-  /** A repeat that only fills the loop: hidden from assistive tech and the tab order. */
   hidden: boolean;
-  /** Its video is the one in the floating player. */
   playing: boolean;
   playingLabel: string;
   onOpen: (opener: HTMLElement) => void;
@@ -91,16 +87,6 @@ function VideoCard({
   );
 }
 
-/**
- * A slow, endless band of TikTok cover cards (the landing page's marquee
- * motion, `mp-marquee-track`). A card plays its post in the floating player
- * (`TikTokPip`), which stays in a corner while the visitor carries on; the
- * card playing is marked.
- *
- * Movement stops while the pointer or keyboard focus is on the band, while one
- * of its videos is playing, and from the visible pause button (WCAG 2.2.2).
- * With reduced motion it is a still row that scrolls sideways.
- */
 export function TikTokVideoMarquee({
   videos,
   labels = DEFAULT_TIKTOK_LABELS,
@@ -113,7 +99,6 @@ export function TikTokVideoMarquee({
 
   if (videos.length === 0) return null;
 
-  // The keyframes move the track by half its width, so it is two identical halves.
   const repeats = Math.max(1, Math.ceil(MIN_CARDS_PER_HALF / videos.length));
   const half = Array.from({ length: repeats }, () => videos).flat();
   const strip = [...half, ...half];

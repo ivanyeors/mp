@@ -7,11 +7,6 @@ import { listSlideInRows } from "@/lib/slide-in-pages/store";
 
 export const runtime = "nodejs";
 
-/**
- * GET /api/slide-in-sections/[page]
- * One sub page's sections with drafts applied, header first, and what a Publish would
- * ship. Staff-only: it carries unpublished copy.
- */
 export async function GET(_req: Request, { params }: { params: Promise<{ page: string }> }) {
   const denied = await requireAdmin("page-builder");
   if (denied) return denied;

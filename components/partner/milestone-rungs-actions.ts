@@ -5,13 +5,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 
-/**
- * Upsert one milestone rung (#79). Staff-only (assertAdmin) — the rung ladder is
- * invisible in the Partner Hub. One rung per tier (unique index), so a repeat tier
- * updates in place. A rung grants a perk and no money (ADR 0034: the agreement pays
- * the Schedule's flat commission and nothing else), so it saves no cash bonus and
- * no rate bump.
- */
 export async function upsertMilestoneRung(formData: FormData): Promise<void> {
   const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();

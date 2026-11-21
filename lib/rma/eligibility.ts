@@ -1,31 +1,19 @@
-/**
- * RMA eligibility (ADR 0011). Pure function over data only, so the customer UI
- * (to decide whether to show "Request a return") and the server insert (which
- * never trusts the client) share exactly one rule set.
- */
-
 export const DEFAULT_RETURN_WINDOW_DAYS = 30;
 
 export interface EligibilityOrder {
-  /** Return window is measured from delivery; null = not delivered yet. */
   delivered_at?: string | null;
-  /** `orders.order_status`; 'refunded' means fully refunded. */
   status?: string | null;
 }
 
 export interface EligibilityItem {
-  /** Quantity originally ordered for this line. */
   quantity: number;
-  /** `service` for a Service fee line (ADR 0024) — a service cannot be sent back. */
   kind?: string | null;
 }
 
 export interface EligibilityInput {
   order: EligibilityOrder;
   item: EligibilityItem;
-  /** Quantity of this line already tied up in a non-terminal RMA. */
   alreadyReturnedQty: number;
-  /** Quantity the customer wants to return. Defaults to 1 (UI "can I return?"). */
   requestedQty?: number;
   returnWindowDays: number;
   now: Date;
@@ -34,7 +22,6 @@ export interface EligibilityInput {
 export interface EligibilityResult {
   eligible: boolean;
   reason?: string;
-  /** Max quantity of this line still returnable (>= 0). */
   availableQty: number;
 }
 

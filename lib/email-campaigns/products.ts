@@ -1,23 +1,3 @@
-/**
- * A campaign's products as the shop sells them now (PRD-campaign-email-editor
- * slice 07, decision 3).
- *
- * A products block, or a product button, holds only Storefront product ids.
- * Every render (the preview, the test send and each batch of a wave) reads
- * them here, through the shop's own select, so the email shows the name, the
- * first photo and the price the shop shows at that moment: the price is the
- * cheapest active Variant's, which Costings sets (ADR 0001), and never a
- * number of the campaign's. A started campaign's choice of products is fixed
- * with the rest of its content; its prices and photos follow the shop.
- *
- * A product that is no longer **Listed** (archived to draft, its Variants
- * all off) or no longer exists is left out of what the renderer gets, and
- * named in `unlisted`: the readiness check before each wave, and each batch,
- * refuse to send a dead link.
- *
- * Server only: it reads the database. The client is passed in, so a test can
- * hand it a fake.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isListedShopProduct,
@@ -31,49 +11,38 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import type { Product, ProductImage, ProductVariant } from "@/lib/types/ecommerce";
 import { productsIn, type CampaignContent } from "./content";
 
-/** A product the email names that the shop does not sell now: its name, while it still exists. */
 export interface UnlistedProduct {
   productId: string;
   title: string | null;
 }
 
 export interface CampaignProducts {
-  /** Each Listed product, as the renderer takes it. */
   products: CampaignBlockProducts;
   unlisted: UnlistedProduct[];
-  /** The shop could not be read at all: why, in words for Staff. */
   error: string | null;
 }
 
 const NONE: CampaignProducts = { products: {}, unlisted: [], error: null };
 
-/** A product as the shop's select returns it: its columns, its Variants and its images. */
 export type ShopProductRow = Product & { product_variants: ProductVariant[] | null; product_images: ProductImage[] | null };
 type ProductRow = ShopProductRow;
 
-/** The shop's own columns (lib/ecommerce/products.ts), and each photo's Media Asset, whose email rendition the email shows. */
 const CAMPAIGN_PRODUCT_SELECT = `${PUBLIC_PRODUCT_COLUMNS}, product_variants(${PUBLIC_VARIANT_COLUMNS}), product_images(id, url, alt_text, position, media_asset_id)`;
 
 const reasonOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
-/** The photo the shop card shows first. */
 const firstImage = (r: ProductRow) => [...(r.product_images ?? [])].sort((a, b) => a.position - b.position)[0] ?? null;
 
-/** Its name as the shop shows it in `locale`. */
 const titleOf = (r: ProductRow, locale: Locale) => resolveProductContent(r, locale).title?.trim() || r.slug;
 
-/** A product as the editor's card and picker show it (slice 07): what the email will, with the shop's own photo. */
 export interface CampaignProductCard {
   id: string;
-  /** Null for a product that no longer exists. */
   title: string | null;
   photoUrl: string | null;
-  /** As the email writes it, `from SGD 39.00`; null when it is not Listed. */
   price: string | null;
   listed: boolean;
 }
 
-/** Pure — a shop row as the editor's card shows it. */
 export function shopProductCard(row: ProductRow, locale: Locale = DEFAULT_LOCALE): CampaignProductCard {
   const price = shopCardPrice(row.product_variants ?? []);
   const listed = Boolean(price) && isListedShopProduct(row);
@@ -86,7 +55,6 @@ export function shopProductCard(row: ProductRow, locale: Locale = DEFAULT_LOCALE
   };
 }
 
-/** Each of `ids` as the editor's card shows it, in order; one that no longer exists has no title. Throws when the shop cannot be read. */
 export async function readCampaignProductCards(admin: SupabaseClient, ids: readonly string[]): Promise<CampaignProductCard[]> {
   if (!ids.length) return [];
   const { data, error } = await admin.from("products").select(CAMPAIGN_PRODUCT_SELECT).in("id", [...ids]);
@@ -98,12 +66,6 @@ export async function readCampaignProductCards(admin: SupabaseClient, ids: reado
   });
 }
 
-/**
- * Each product `content` shows or links to, as the shop sells it now, with
- * its first photo as a Media Asset (whose email rendition the sender reads
- * with the images'). Never throws: a failed read is `error`, and the caller
- * says so. Content with no product reads nothing.
- */
 export async function readCampaignProducts(
   admin: SupabaseClient,
   content: CampaignContent | null,
@@ -116,7 +78,6 @@ export async function readCampaignProducts(
     if (error) throw new Error(error.message);
     const rows = new Map(((data ?? []) as ProductRow[]).map((r) => [r.id, r]));
 
-    // A photo added before the Media Library has only its address: its asset is the one hosted there.
     const unlinked = [...rows.values()].flatMap((r) => {
       const im = firstImage(r);
       return im && !im.media_asset_id && im.url ? [im.url] : [];
@@ -156,22 +117,14 @@ export async function readCampaignProducts(
   }
 }
 
-/** Pure — the Media Assets of the products' photos, whose email renditions the sender reads with the blocks' images. */
 export function campaignProductPhotos({ products }: CampaignProducts): string[] {
   return [...new Set(Object.values(products).flatMap((p) => (p.image ? [p.image.asset] : [])))];
 }
 
-/** Pure — one product the shop does not sell now, by name: what to do about it. */
 export function unlistedProductText({ title }: UnlistedProduct): string {
   return title ? `${title} is no longer in the shop: remove it or list it again` : "A product in the email is no longer in the shop: remove it";
 }
 
-/**
- * Pure — what stops a send for want of a product, or null: every one not in
- * the shop, by name. The check before each wave names the block each is in
- * (`campaignContentChecks`, slice 11): its waves can span days, and a product
- * can be un-listed between them.
- */
 export function campaignProductsProblem({ unlisted, error }: CampaignProducts): string | null {
   if (error) return error;
   return unlisted.length ? unlisted.map(unlistedProductText).join("; ") : null;

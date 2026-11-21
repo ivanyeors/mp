@@ -1,10 +1,3 @@
-/**
- * ADR 0017: an Assisted customisation sent from the questionnaire has no
- * finish until the customer picks one after assignment. The rule is one
- * predicate; these tests pin the predicate and the two places that must refuse
- * money or a second write on it.
- */
-
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { needsCustomerFinish } from "../needs-customer-finish";
@@ -18,7 +11,6 @@ describe("needsCustomerFinish", () => {
   });
 
   it("never reads an in-store or online Result as unfinished", () => {
-    // `manual` has no address because it was handed over at the counter.
     expect(needsCustomerFinish({ source: "manual", shipping_address: null })).toBe(false);
     expect(needsCustomerFinish({ source: "online_purchase", shipping_address: null })).toBe(false);
     expect(needsCustomerFinish({ source: null, shipping_address: null })).toBe(false);
@@ -38,7 +30,6 @@ describe("guards keyed on it", () => {
     const src = readFileSync("app/api/results/[id]/finish/route.ts", "utf8");
     expect(src).toMatch(/requireResultAccess\(row, input\.token \?\? null[,)]/);
     expect(src).toMatch(/row\.status !== "assigned" \|\| !needsCustomerFinish\(row\)/);
-    // The write itself is conditional, so two tabs cannot both finish.
     expect(src).toMatch(/\.eq\("status", "assigned"\)\s*\.is\("shipping_address", null\)/);
   });
 

@@ -2,38 +2,6 @@ import { createHash } from "node:crypto";
 import { campaignLedgerKey, composedCampaignBlocker, type CampaignAudience } from "../rules";
 import { inHoldout } from "../results";
 
-/**
- * An in-memory stand-in for the service-role client, answering exactly what
- * the campaign sender asks of Postgres:
- *  - the views `marketing_campaign_candidates` (`select`, `eq`, `in`,
- *    `order`, `range`; with each Customer's `locale`, which slice 17 counts)
- *    and `customer_campaign_wave_stats`, computed from the tables;
- *  - for the send limit, `customer_campaign_sends` (`in`, `gte`, `order`,
- *    `limit`, a `count: "exact", head: true` select) and `admin_audit_log`'s
- *    test sends;
- *  - the RPCs `claim_marketing_campaign_send` (with `last_name`, as
- *    20261030130000 returns it), `finish_campaign_send`, `mint_claim_link`
- *    and `points_balance`;
- *  - for a campaign's products (slice 07), `products` (`select`, `in`) with
- *    each row's Variants and images nested as the shop's select returns them,
- *    and `media_assets` (`in` on `hosted_url`);
- *  - for the fit checks and *Your pillow* (PRD-campaign-audiences slice 09),
- *    `admin_customer_overview` (each Customer's facts), `customer_purchase_lines`
- *    (the test's pillow lines) and `pillow_products`;
- *  - for kept sending (slice 10), `email_campaigns` (`eq`, `is`, `order`);
- *  - for the holdout (slice 11), each candidate's `holdout_bucket` (the md5
- *    of their id, as `campaign_holdout_bucket`), a campaign's `holdout`, and
- *    `neq` on the ledger;
- *  - for the sunset rule (slice 12), the overview's `unengaged` and a
- *    campaign's `includeUnengaged`.
- *
- * The claim mirrors the SQL (20261031162653): the wave check, the rule (here
- * `composedCampaignBlocker`, which campaign-rule-cases.json holds equal to
- * `marketing_campaign_blocker`), the holdout, and the unique (Customer,
- * template) key.
- * assert-01-email-campaigns.sql proves the real function.
- */
-
 type Row = Record<string, unknown>;
 
 export interface FakeCustomer {
@@ -41,17 +9,14 @@ export interface FakeCustomer {
   email: string;
   first_name?: string | null;
   last_name?: string | null;
-  /** What `points_balance` answers as available. */
   points?: number;
   locale?: string;
   marketing_email?: string;
   total_orders?: number;
   created_at?: string;
-  /** The overview's, for the fit checks (slice 09). */
   ship_country?: string | null;
   bought?: string[];
   last_purchase_at?: string | null;
-  /** The overview's `unengaged` (slice 12). */
   unengaged?: boolean;
 }
 
@@ -75,7 +40,6 @@ export interface FakeSend {
   last_error: string | null;
   bounced_at: string | null;
   complained_at: string | null;
-  /** SHA-256 hex of the send's click token (PRD-campaign-audiences slice 08). */
   click_token_hash?: string | null;
 }
 
@@ -83,37 +47,20 @@ export interface FakeWorld {
   customers: FakeCustomer[];
   migrated: FakeMigrated[];
   sends: FakeSend[];
-  /** `holdout`: its holdout is on (slice 11), so the claim holds a bucket under 10 out. */
   campaigns: { id: string; audience: CampaignAudience; archived?: boolean; holdout?: boolean; includeUnengaged?: boolean }[];
   claimLinks: { customer_id: string; token_hash: string; template: string }[];
-  /** `site_settings`, by key: the points settings a Campaign that mentions points is checked against. */
   settings: Record<string, string>;
-  /** `admin_audit_log` rows: test sends (`email_campaign.test`), which the send limit counts. */
   auditLog?: { action: string; created_at: string; after: Row | null }[];
-  /** Called inside each claim, before the rule runs: a test's chance to change the world. */
   onClaim?: (customerId: string) => void;
-  /** `products` rows, `product_variants` and `product_images` nested in each, as the shop's select returns them. */
   products?: Row[];
-  /** `media_assets` rows: their id and hosted URL. */
   mediaAssets?: { id: string; hosted_url: string }[];
-  /** Every table read, in order: what a test checks nothing else was touched with. */
   reads?: string[];
-  /**
-   * The view's `marketing_recent` by Customer (PRD-campaign-audiences slice
-   * 07): their marketing email of the last 30 days, newest first, as the SQL
-   * would count it. Given by a test, not worked out from `sends`, so fixtures
-   * dated near today never rest anyone by accident.
-   */
   recentMarketing?: Record<string, string[]>;
-  /** `customer_purchase_lines` pillow rows: `customer_id`, `product_type`, `tier`, `size`, `paid_at`, `order_item_id` (slice 09). */
   pillowLines?: Row[];
-  /** `pillow_products` rows: `id`, `kind`. */
   pillowProducts?: Row[];
-  /** `email_campaigns` rows, as the table holds them: what the daily job's list reads (PRD-campaign-audiences slice 10). */
   campaignRows?: Row[];
 }
 
-/** `campaign_holdout_bucket(id)`: the first 32 bits of the md5 of the id, mod 100. */
 export const holdoutBucketOf = (id: string): number => parseInt(createHash("md5").update(id).digest("hex").slice(0, 8), 16) % 100;
 
 export const emptyWorld = (): FakeWorld => ({ customers: [], migrated: [], sends: [], campaigns: [], claimLinks: [], settings: {} });
@@ -169,7 +116,6 @@ function waveStats(world: FakeWorld): Row[] {
   });
 }
 
-/** A chainable read over computed rows. */
 function query(rows: () => Row[]) {
   const filters: ((r: Row) => boolean)[] = [];
   let order: string | null = null;
@@ -248,9 +194,7 @@ export function fakeCampaignsClient(world: FakeWorld) {
       id = own.id;
     } else {
       if (own) return none("already_sent");
-      // A uuid, as the ledger mints: the unsubscribe link signs it (slice 08).
       id = `5e5d0000-0000-4000-8000-${String(++sendSeq).padStart(12, "0")}`;
-      // Slice 11: a holdout records the row and sends nothing.
       if (campaign.holdout && inHoldout(holdoutBucketOf(customerId))) {
         world.sends.push({
           id,
@@ -304,7 +248,6 @@ export function fakeCampaignsClient(world: FakeWorld) {
     const s = world.sends.find((x) => x.id === args.p_send_id);
     if (!s || s.status !== "pending") return { data: false, error: null };
     if (args.p_sent) {
-      // Slice 08: the click token's hash, kept with a successful send only (20261031152709).
       const hash = typeof args.p_click_token_hash === "string" && /^[0-9a-f]{64}$/.test(args.p_click_token_hash) ? args.p_click_token_hash : null;
       Object.assign(s, { status: "sent", provider_message_id: args.p_provider_message_id ?? null, click_token_hash: hash });
     }

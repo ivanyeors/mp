@@ -1,20 +1,3 @@
-/**
- * Reviews on every Customer (PRD customer-crm slice 12): the reads. Which
- * unlinked Google reviews have a suggested Customer, the Customers page's
- * Reviews tab, the Customer detail's Reviews card, and the counts the
- * Aftercare card and Telegram show.
- *
- * Read-only: nothing here links a review (README, seventh hazard). Linking,
- * unlinking and *Not them* are ./google-review-links, called only from the
- * routes that check `customers-edit`. The Google sync may import this file
- * (for the Telegram card's *Possible customer match* line) and never that one.
- *
- * Suggestions are computed when read: `google_review_match_candidates()`
- * (20261020134000) finds who could have written each review by timing,
- * prefiltered to a shared name token, and `suggestGoogleReviewMatches`
- * decides. Callers authorise (`customers`); the service role reads.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -39,12 +22,9 @@ import {
 } from "@/lib/crm/reviews";
 import { TELEGRAM_UPDATE_LINKS } from "@/lib/crm/telegram-updates";
 
-/** PostgREST answers at most this many rows a request; longer reads are paged. */
 const PAGE_ROWS = 1000;
-/** Review ids per candidate call. */
 const ID_BATCH = 100;
 
-/** One row of `google_review_match_candidates()`. */
 type CandidateRow = {
   google_review_id: string;
   customer_id: string;
@@ -58,7 +38,6 @@ type CandidateRow = {
   linked_elsewhere: boolean;
 };
 
-/** One row of `admin_google_reviews_unlinked`. */
 type UnlinkedRow = {
   id: string;
   star_rating: number | null;
@@ -75,7 +54,6 @@ const UNLINKED_SELECT =
 
 type Result<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-/** Every row of an ordered read, a page at a time, so none is dropped at PostgREST's row limit. */
 async function readAll<T>(label: string, page: (from: number, to: number) => Result<T>): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE_ROWS) {
@@ -95,7 +73,6 @@ function chunks<T>(items: readonly T[], size: number): T[][] {
 const displayName = (first: string | null, last: string | null) =>
   [first, last].filter((p) => p?.trim()).join(" ") || null;
 
-/** A review as the Reviews tab and card show it. */
 export function summarizeGoogleReview(row: UnlinkedRow): GoogleReviewSummary {
   return {
     id: row.id,
@@ -107,9 +84,6 @@ export function summarizeGoogleReview(row: UnlinkedRow): GoogleReviewSummary {
   };
 }
 
-// ─── Candidates and suggestions ──────────────────────────────────────────────
-
-/** The candidate rows, grouped by review. `reviewIds` null: every unlinked review. */
 async function loadCandidates(
   admin: SupabaseClient,
   opts: { reviewIds?: readonly string[]; customerId?: string },
@@ -157,7 +131,6 @@ const toCandidate = (r: CandidateRow): MatchCandidate => ({
   linkedElsewhere: r.linked_elsewhere,
 });
 
-/** Each review with its suggestions, those with none left out, newest first. */
 function suggest(reviews: readonly UnlinkedRow[], candidates: Map<string, CandidateRow[]>): ReviewToMatch[] {
   const out: ReviewToMatch[] = [];
   for (const row of reviews) {
@@ -175,22 +148,16 @@ function suggest(reviews: readonly UnlinkedRow[], candidates: Map<string, Candid
   return out.sort((a, b) => Date.parse(b.review.reviewedAt) - Date.parse(a.review.reviewedAt) || a.review.id.localeCompare(b.review.id));
 }
 
-/**
- * *Google reviews to match*: every unlinked review with at least one
- * suggestion, newest first. Anonymous and unnamed reviews never have one.
- */
 export async function listReviewsToMatch(admin: SupabaseClient): Promise<ReviewToMatch[]> {
   const candidates = await loadCandidates(admin, {});
   if (candidates.size === 0) return [];
   return suggest(await loadUnlinked(admin, [...candidates.keys()]), candidates);
 }
 
-/** How many reviews wait in *Google reviews to match*: the daily Telegram update's count. */
 export async function countReviewsToMatch(admin: SupabaseClient): Promise<number> {
   return (await listReviewsToMatch(admin)).length;
 }
 
-/** The suggestions for one unlinked review; empty once it is linked. */
 export async function suggestionsForReview(admin: SupabaseClient, reviewId: string): Promise<ReviewSuggestionView[]> {
   const candidates = await loadCandidates(admin, { reviewIds: [reviewId] });
   if (!candidates.has(reviewId)) return [];
@@ -198,11 +165,6 @@ export async function suggestionsForReview(admin: SupabaseClient, reviewId: stri
   return match?.suggestions ?? [];
 }
 
-/**
- * The Telegram Google review card's *Possible customer match* link: the
- * Reviews tab when the review has a suggestion, else null. It names nobody
- * (README, third hazard). Never throws: a card is never held up by it.
- */
 export async function possibleCustomerMatchLink(
   admin: SupabaseClient,
   reviewId: string,
@@ -216,7 +178,6 @@ export async function possibleCustomerMatchLink(
   }
 }
 
-/** {@link possibleCustomerMatchLink} with the service role and the site's origin, for the card senders. */
 export async function customerMatchLinkFor(reviewId: string): Promise<string | null> {
   try {
     return await possibleCustomerMatchLink(supabaseAdmin(), reviewId, getSiteOrigin());
@@ -225,16 +186,8 @@ export async function customerMatchLinkFor(reviewId: string): Promise<string | n
   }
 }
 
-// ─── The Reviews tab ─────────────────────────────────────────────────────────
-
 export const REVIEW_TAB_LIMIT = 20;
 
-/**
- * Customers → Reviews. *To match*: the reviews with a suggestion. *All
- * unlinked*: every review no Staff member has linked, newest first, each with
- * its suggestions when it has any, so a review from someone we never asked
- * can be linked by hand.
- */
 export async function readReviewTab(
   admin: SupabaseClient,
   opts: { scope: ReviewTabScope; page: number; limit?: number },
@@ -269,8 +222,6 @@ export async function readReviewTab(
   return { ok: true, scope: "unlinked", rows, page, limit, total: counts.unlinked, counts };
 }
 
-// ─── The Customer detail's Reviews card ──────────────────────────────────────
-
 type LinkRow = {
   google_review_id: string;
   how: "suggestion" | "manual";
@@ -303,12 +254,6 @@ type ShopRow = {
 
 const one = <T>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
-/**
- * One Customer's reviews: their Linked Google reviews (the whole review, our
- * reply state, who linked it and when), their Shop reviews, their Review
- * request (asked on, by which channel, and the link's first click), and the
- * unlinked Google reviews suggested for them.
- */
 export async function readCustomerReviews(admin: SupabaseClient, customerId: string): Promise<CustomerReviewsData> {
   const ledger = (table: "customer_emails" | "customer_whatsapp") =>
     admin
@@ -395,10 +340,6 @@ export async function readCustomerReviews(admin: SupabaseClient, customerId: str
   };
 }
 
-/**
- * What the Reviews tab needs to answer a Linked Google review. `listingUrl` is
- * the shop's reviews page, used when the review has no page of its own.
- */
 export function googleReviewAnswer(
   g: Pick<NonNullable<LinkRow["google_reviews"]>, "status" | "source" | "maps_uri" | "draft_reply" | "posted_reply" | "google_reply">,
   listingUrl: string | null,
@@ -415,7 +356,6 @@ export function googleReviewAnswer(
 
 type Send = { status: string; sent_at: string | null };
 
-/** *Asked on* is the earlier send of the two ledgers; a claim that never went out is not asked. */
 export function reviewRequestSummary(
   request: { first_clicked_at: string | null; click_count: number },
   sends: Array<Send & { channel: "email" | "whatsapp" }>,
@@ -431,7 +371,6 @@ export function reviewRequestSummary(
   };
 }
 
-/** Unlinked reviews whose suggestions include this Customer, with the reason. */
 async function possibleForCustomer(
   admin: SupabaseClient,
   customerId: string,
@@ -445,13 +384,6 @@ async function possibleForCustomer(
   });
 }
 
-// ─── Counts ──────────────────────────────────────────────────────────────────
-
-/**
- * Customers we asked for a review who have a Linked Google review: the
- * Aftercare card's *Google reviews linked to a customer we asked*. A `head`
- * count on the overview; nothing that names a customer leaves here.
- */
 export async function countLinkedReviewsOfAsked(admin: SupabaseClient): Promise<number> {
   const { count, error } = await admin
     .from("admin_customer_overview")
@@ -462,7 +394,6 @@ export async function countLinkedReviewsOfAsked(admin: SupabaseClient): Promise<
   return count ?? 0;
 }
 
-/** Google reviews Staff linked in `window`: the Weekly summary's line. */
 export async function countGoogleReviewsLinked(
   admin: SupabaseClient,
   window: { from: string; to: string },

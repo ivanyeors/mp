@@ -5,22 +5,10 @@ import type { CheckoutCodeContext, CheckoutCodeStatus } from "./shared";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Stable, so a page that reacts to the status does not re-run for nothing.
 const IDLE: CheckoutCodeStatus = { state: "idle" };
 const CHECKING: CheckoutCodeStatus = { state: "checking" };
 const CHECK_FAILED = "We couldn't check this code just now. It is checked again when you pay.";
 
-/**
- * What the one checkout code field currently means (ADR 0033), asked of
- * POST /api/checkout/code a moment after the shopper stops typing, and again
- * whenever the order it would go on changes: a discount follows the subtotal, so
- * the total on the page moves with it. A re-check for a changed order keeps the
- * last answer on screen until the new one arrives; only a new code reads
- * "checking".
- *
- * `context` null means there is nothing to price against yet (no quote); the
- * code waits until there is.
- */
 export function useCheckoutCode(
   code: string,
   context: CheckoutCodeContext | null,

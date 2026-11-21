@@ -68,7 +68,6 @@ describe("renderComposedCampaignEmail", () => {
     for (const hint of ["e.g. Sleep cooler", "Write your message.", "e.g. Shop &lt;the&gt; covers"]) expect(preview).toContain(hint);
     expect(preview.match(/border:1px dashed/g)).toHaveLength(3);
     expect(preview).toMatch(/<h1 class="mp-muted"[^>]*>e\.g\. Sleep cooler<\/h1>/);
-    // A button without words has no link to press, even in the preview.
     expect(preview).not.toContain('href="https://custom.mpillow.com/en-US/account"');
 
     const sent = renderComposedCampaignEmail(empty);

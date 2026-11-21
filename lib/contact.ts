@@ -1,26 +1,3 @@
-/**
- * Single source of truth for the PUBLIC WhatsApp number — the human sales line
- * customers chat to, shown on marketing, support, and privacy pages.
- *
- * Two different numbers are in play, deliberately:
- *
- *   - This one (+65 8780 5311) is staffed by a person. Customers message it and
- *     get a reply from sales.
- *   - The utility sender (whichever number `WHATSAPP_PHONE_NUMBER_ID` names) is
- *     an automated Cloud API line that sends appointment templates and handles the
- *     Confirm / Reschedule button replies. Nobody chats to it.
- *
- * So do NOT "keep them in sync" — they are separate on purpose. Never surface
- * the utility number in customer-facing copy, or people will start a
- * conversation nobody is reading.
- *
- * Override with `NEXT_PUBLIC_SUPPORT_WHATSAPP` (E.164 digits, no `+`). Next
- * inlines `NEXT_PUBLIC_*` at build time, so the reference below must stay
- * static — never index `process.env` dynamically, and remember a change needs a
- * redeploy to take effect.
- */
-
-/** The staffed sales line, used when the env override is unset. */
 export const DEFAULT_SUPPORT_WHATSAPP = "6587805311";
 
 function toDigits(raw: string | undefined): string {
@@ -28,15 +5,12 @@ function toDigits(raw: string | undefined): string {
   return digits || DEFAULT_SUPPORT_WHATSAPP;
 }
 
-/** E.164 digits with no leading `+` — the wa.me path segment. */
 export const SUPPORT_WHATSAPP_DIGITS = toDigits(
   process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP,
 );
 
-/** Click-to-chat link. */
 export const SUPPORT_WHATSAPP_URL = `https://wa.me/${SUPPORT_WHATSAPP_DIGITS}`;
 
-/** Human-readable form. SG mobiles group 4+4, e.g. `+65 8780 5311`. */
 export function formatWhatsAppDisplay(
   digits: string = SUPPORT_WHATSAPP_DIGITS,
 ): string {
@@ -49,15 +23,5 @@ export function formatWhatsAppDisplay(
 
 export const SUPPORT_WHATSAPP_DISPLAY = formatWhatsAppDisplay();
 
-/**
- * The mailbox Staff write to customers from, and who is copied (owner,
- * 2026-11-15; PRD-customer-page-journey decision 4). The Customer page's Email
- * button opens Gmail in this mailbox with the Cc filled in
- * (lib/crm/contact-links.ts). Nothing is sent by the platform from here, so
- * these are not sender addresses for transactional or campaign email.
- *
- * On a phone a link cannot choose the sender: the Gmail app writes from the
- * account it used last. The Cc is filled in on every device.
- */
 export const STAFF_MAILBOX = "sg@mpillow.com";
 export const STAFF_MAIL_CC = "admin@mpillow.com";

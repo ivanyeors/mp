@@ -9,22 +9,12 @@ import {
   type EngagementFacts,
 } from "@/lib/crm/engagement";
 
-/**
- * PRD-campaign-audiences slice 12: **Unengaged** is computed in SQL
- * (`customer_unengaged`, called by `admin_customer_overview`) and mirrored in
- * lib/crm/engagement.ts. This holds the latest migration's numbers to the
- * TypeScript's, so a threshold changed on one side fails here;
- * campaign-rule-cases.json runs both on the same cases
- * (lib/email-campaigns/__tests__/rules.test.ts and assert-01-email-campaigns.sql).
- */
-
 const dir = new URL("../../../supabase/migrations/", import.meta.url);
 const files = readdirSync(dir)
   .filter((f) => f.endsWith(".sql"))
   .sort()
   .map((f) => readFileSync(new URL(f, dir), "utf8").replace(/--.*$/gm, ""));
 
-/** The latest definition matching `re`, whitespace folded. */
 function latest(re: RegExp): string {
   const defs = files.flatMap((sql) => [...sql.matchAll(re)].map((m) => m[0]));
   expect(defs.length).toBeGreaterThan(0);
@@ -54,7 +44,6 @@ describe("customer_unengaged", () => {
 
   it("is read by the overview from the latest 6 campaign emails the provider accepted", () => {
     const view = latest(/create (?:or replace )?view (?:public\.)?admin_customer_overview\b[\s\S]*?;/gi);
-    // Later columns follow it (ADR 0042 m appended `last_purchase_dated_by_fitting`).
     expect(view).toContain("c.created_at, coalesce(en.sent, 0), coalesce(en.clicked, 0), now()) as unengaged,");
     expect(view).toContain(`order by s.sent_at desc, s.id desc limit ${UNENGAGED_AFTER_CAMPAIGNS}`);
     expect(view).toContain("and s.campaign_id is not null and s.status in ('sent', 'bounced', 'complained')");

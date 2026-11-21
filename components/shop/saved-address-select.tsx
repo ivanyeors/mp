@@ -24,7 +24,6 @@ export type HoldShippingAddress = {
   line1: string;
   line2: string;
   city: string;
-  /** Asked only where couriers need one (lib/shipping/states). */
   state?: string;
   postal_code: string;
   country: string;
@@ -42,7 +41,6 @@ export function toHoldShippingAddress(a: CustomerAddress): HoldShippingAddress {
   };
 }
 
-/** Prefill email + default saved address for signed-in shoppers; fields stay editable. */
 export function useSavedShippingPrefill(
   setEmail: Dispatch<SetStateAction<string>>,
   setAddress: Dispatch<SetStateAction<HoldShippingAddress>>,
@@ -73,9 +71,7 @@ export function useSavedShippingPrefill(
           }
         },
       )
-      .catch(() => {
-        /* anonymous — nothing to load */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };

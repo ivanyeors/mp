@@ -11,7 +11,6 @@ describe("CountryPicker", () => {
     for (const { label } of REGIONS) expect(html).toContain(label.replace("&", "&amp;"));
     expect(html).toContain("2 countries");
     expect(html).toMatch(/Southeast Asia<\/span><span[^>]*>2\/11</);
-    // Southeast Asia is open, so its countries are chips; Europe is closed.
     expect(html).toContain('aria-pressed="true" title="SG"');
     expect(html).not.toContain('title="FR"');
   });

@@ -94,8 +94,6 @@ function SortableCategoryRow({
   const { ref, isDragging, handleRef } = useSortable({ id: category.id, index });
   const [labels, setLabels] = useState(category.labels);
   const [key, setKey] = useState(category.key);
-  // Re-seed the draft only when the saved words change (a save, a reload), not
-  // when a visibility toggle hands over a copy of the same row.
   const [seen, setSeen] = useState(category);
   if (seen.labels !== category.labels || seen.key !== category.key) {
     setSeen(category);
@@ -131,7 +129,6 @@ function SortableCategoryRow({
             </span>
             <span className="text-xs text-muted-foreground">{category.key}</span>
           </div>
-          {/* Phones: the name opens the category, so the chevron's 44px goes to the name. */}
           <CollapsibleTrigger asChild>
             <button
               type="button"
@@ -208,7 +205,6 @@ function ItemEditor({
   const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState(item.slug);
   const [content, setContent] = useState(item.content);
-  // As in SortableCategoryRow: a visibility toggle keeps the open draft.
   const [seen, setSeen] = useState(item);
   if (seen.slug !== item.slug || seen.content !== item.content) {
     setSeen(item);
@@ -218,7 +214,6 @@ function ItemEditor({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      {/* Phones: a flat row (the list draws the dividers), and the question opens it. */}
       <div
         className={`flex items-center gap-2 rounded-md border px-3 py-2 max-md:rounded-none max-md:border-0 max-md:px-0 max-md:py-0.5 ${!item.visible ? "opacity-60" : ""}`}
       >
@@ -312,7 +307,6 @@ function ItemEditor({
   );
 }
 
-/** The `/api/faq/categories` + `/api/faq/items` payloads the page mounts with. */
 export type FaqInitialData = {
   categories: { ok: true; rows: CategoryRow[] };
   items: { ok: true; rows: ItemRow[] };
@@ -329,7 +323,6 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
   const [items, setItems] = useState<ItemRow[]>(initialData?.items.rows ?? []);
   const [loading, setLoading] = useState(!initialData);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
-  // The server already loaded categories and items; every edit still reloads.
   const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {

@@ -1,23 +1,11 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The Start panel's actions (PRD-campaign-email-editor slice 08): *A past
- * campaign* lists every campaign, archived ones too, newest first, and
- * picking one is Duplicate, which copies the email, who it goes to and its
- * name, never its sends, its waves or its lock; and the thumbnails are each
- * Starter as the real renderer draws it, on its placeholders.
- */
-
 const h = vi.hoisted(() => ({
-  /** The `email_campaigns` rows a list reads. */
   rows: [] as Record<string, unknown>[],
-  /** The one row `getCampaign` reads. */
   row: null as Record<string, unknown> | null,
   inserts: [] as Record<string, unknown>[],
-  /** Every table touched, each select's columns, and the list's filters, in order. */
   tables: [] as string[],
   selects: [] as string[],
   filters: [] as string[],
@@ -96,7 +84,6 @@ describe("A past campaign", () => {
     });
     expect(h.tables).toEqual(["email_campaigns"]);
     expect(h.selects).toEqual(["id, name, subject, created_at, locked_at, archived_at"]);
-    // Archived ones are not filtered out.
     expect(h.filters).toEqual(["order created_at desc", "limit 50"]);
   });
 
@@ -106,7 +93,6 @@ describe("A past campaign", () => {
       audience: "segment",
       segmentId: SEGMENT,
     });
-    // Sent in waves, then archived.
     h.row = { id: ID, ...campaignRowFromDraft(draft), created_at: "t", updated_at: "t", locked_at: "2026-10-22T00:00:00Z", archived_at: "2026-10-25T00:00:00Z" };
 
     expect(await duplicateCampaign(ID)).toEqual({ ok: true, id: "c-new" });
@@ -114,7 +100,6 @@ describe("A past campaign", () => {
     expect(h.inserts[0]).not.toHaveProperty("locked_at");
     expect(h.inserts[0]).not.toHaveProperty("archived_at");
     expect(h.inserts[0]).not.toHaveProperty("id");
-    // Nothing else is read or written: no ledger, no waves.
     expect(new Set(h.tables)).toEqual(new Set(["email_campaigns"]));
   });
 });
@@ -129,9 +114,7 @@ describe("the thumbnails", () => {
     const launch = res.previews[LAYOUT_STARTERS[0].id];
     for (const hint of [CONTENT_PLACEHOLDERS.image, CONTENT_PLACEHOLDERS.heading, CONTENT_PLACEHOLDERS.text, CONTENT_PLACEHOLDERS.products]) expect(launch).toContain(hint);
     expect(res.previews[INVITATION_STARTER.id]).toContain("Sign in and collect your points");
-    // The sample customer, as the preview greets.
     expect(launch).toContain("Hi Mei Ling,");
-    // Drawn from code alone: nothing read.
     expect(h.tables).toEqual([]);
   });
 });

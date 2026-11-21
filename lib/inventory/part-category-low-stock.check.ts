@@ -1,6 +1,3 @@
-/**
- * Run: npx tsx lib/inventory/part-category-low-stock.check.ts
- */
 import assert from 'node:assert/strict'
 import {
   collectLowStockCategories,
@@ -40,7 +37,6 @@ assert.ok(low.has('cover'), 'cover at 30/100 should be low')
 assert.ok(!low.has('filling'), 'filling at 100/30 baseline side should not be low as category')
 assert.ok(!low.has('packaging'))
 
-// Unused category in BOM must not flag
 const lowUnused = collectLowStockCategories({
   categories: ['accessories'],
   boms: [bom],

@@ -1,15 +1,6 @@
 import { JWT } from "google-auth-library";
 import type { EmailTransport, OutgoingEmail, TransportResult } from "./types";
 
-// ============================================================
-// Email transports (swappable providers)
-// ============================================================
-
-/**
- * Logs the email instead of sending it. Used in development and as a safe
- * fallback when no provider is configured, so lifecycle code can always call
- * the email module without crashing.
- */
 export class ConsoleTransport implements EmailTransport {
   readonly name = "console";
 
@@ -21,10 +12,6 @@ export class ConsoleTransport implements EmailTransport {
   }
 }
 
-/**
- * Resend (https://resend.com) transport via their REST API — no SDK dependency.
- * Selected automatically when RESEND_API_KEY is set.
- */
 export class ResendTransport implements EmailTransport {
   readonly name = "resend";
 
@@ -59,16 +46,6 @@ export class ResendTransport implements EmailTransport {
   }
 }
 
-/**
- * Gmail API transport (Google Workspace) via a service account with
- * domain-wide delegation. The service account impersonates `sender` (a real
- * Workspace mailbox) and sends through Gmail's REST API — no SMTP, no SDK
- * beyond google-auth-library for minting the access token.
- *
- * Setup: enable the Gmail API on a GCP project, create a service account + key,
- * then authorize its client ID for the `gmail.send` scope under
- * Admin console → Security → API controls → Domain-wide delegation.
- */
 export class GmailTransport implements EmailTransport {
   readonly name = "gmail";
   private readonly jwt: JWT;
@@ -80,10 +57,8 @@ export class GmailTransport implements EmailTransport {
   ) {
     this.jwt = new JWT({
       email: clientEmail,
-      // Env vars commonly store the key with literal "\n" — normalise to real newlines.
       key: privateKey.replace(/\\n/g, "\n"),
       scopes: ["https://www.googleapis.com/auth/gmail.send"],
-      // Impersonate the Workspace mailbox we send as.
       subject: sender,
     });
   }
@@ -118,13 +93,11 @@ export class GmailTransport implements EmailTransport {
   }
 }
 
-/** RFC 2047 encode a header value when it contains non-ASCII characters. */
 function encodeHeaderValue(value: string): string {
   if (/^[\x00-\x7F]*$/.test(value)) return value;
   return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
 }
 
-/** Headers every transport writes itself; `OutgoingEmail.headers` cannot set them. */
 const OWNED_HEADERS = new Set([
   "from",
   "to",
@@ -137,11 +110,6 @@ const OWNED_HEADERS = new Set([
   "content-transfer-encoding",
 ]);
 
-/**
- * `OutgoingEmail.headers` as checked (name, value) pairs. Throws on a name that
- * is not a plain header token, one the transport owns, or a value carrying a
- * line break: any of those could rewrite the message (header injection).
- */
 export function extraHeaders(headers: Record<string, string> | undefined): Array<[string, string]> {
   return Object.entries(headers ?? {}).map(([name, value]) => {
     if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(name)) throw new Error(`Invalid email header name: ${name}`);
@@ -151,14 +119,12 @@ export function extraHeaders(headers: Record<string, string> | undefined): Array
   });
 }
 
-/** An address header's value, one address or a list. A line break could add headers, so it throws. */
 function addressHeader(value: string | string[]): string {
   const list = typeof value === "string" ? [value] : value;
   if (list.some((address) => /[\r\n]/.test(address))) throw new Error("Email address has a line break in it");
   return list.join(", ");
 }
 
-/** Build a base64url-encoded MIME message for the Gmail API. Exported for tests. */
 export function buildRawMessage(email: OutgoingEmail): string {
   const boundary = `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
   const headers = [
@@ -191,17 +157,8 @@ export function buildRawMessage(email: OutgoingEmail): string {
   return Buffer.from(mime, "utf8").toString("base64url");
 }
 
-// Memoise the resolved transport so stateful providers (e.g. Gmail's cached
-// access token) are reused across sends within an instance.
 let cachedTransport: EmailTransport | null = null;
 
-/**
- * Resolve the configured transport from the environment. Provider selection
- * lives here so the rest of the module never reads provider env vars directly.
- *
- * Order: explicit EMAIL_PROVIDER override, else auto-detect
- * (Resend → Gmail → console fallback).
- */
 export function getDefaultTransport(): EmailTransport {
   if (cachedTransport) return cachedTransport;
   cachedTransport = resolveTransport();
@@ -231,20 +188,16 @@ function resolveTransport(): EmailTransport {
     return new GmailTransport(gmailEmail!, gmailKey!, gmailSender!);
   }
 
-  // Auto-detect.
   if (resendKey) return new ResendTransport(resendKey);
   if (gmailReady) return new GmailTransport(gmailEmail!, gmailKey!, gmailSender!);
   return new ConsoleTransport();
 }
 
-/** Reset the memoised transport (primarily for tests). */
 export function resetTransportCache(): void {
   cachedTransport = null;
 }
 
 export function getDefaultFromAddress(): string {
-  // For Gmail, the From must be the impersonated mailbox (or one of its
-  // verified aliases), so fall back to GMAIL_SENDER before the generic default.
   return (
     process.env.EMAIL_FROM ??
     process.env.GMAIL_SENDER ??

@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/** Staff profiles API (slice 07): create, rename, move, archive, restore; audited; no delete. */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   identity: null as { id: string; email: string } | null,
@@ -78,7 +76,7 @@ describe("profile writes", () => {
 
   it("creates under a login and audits it", async () => {
     const res = await POST(req("/api/staff", "POST", { memberId: OTHER, name: "Jess" }));
-    expect(res.status).toBe(201); // same name under another login is fine
+    expect(res.status).toBe(201);
     expect(h.db.admin_audit_log[0]).toMatchObject({
       action: "staff_profile.create",
       entity_type: "staff_profile",

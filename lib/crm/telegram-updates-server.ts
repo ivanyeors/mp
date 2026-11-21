@@ -25,15 +25,8 @@ import {
   loadWeeklySummaryCounts,
 } from "@/lib/crm/telegram-update-sources";
 
-/**
- * The server half of the Telegram updates (CRM slice 14): reading the
- * switches, the daily job chained onto `results-sla`, and *Send test*. The
- * wording is in `telegram-updates.ts`; the counts in `telegram-update-sources.ts`.
- */
-
 type Send = (text: string) => Promise<TelegramStatus>;
 
-/** The switches as stored. Throws when `site_settings` cannot be read. */
 export async function readTelegramUpdates(
   admin: SupabaseClient = supabaseAdmin(),
 ): Promise<TelegramUpdatesSettings> {
@@ -46,11 +39,6 @@ export async function readTelegramUpdates(
   return parseTelegramUpdates((data as { value?: string } | null)?.value);
 }
 
-/**
- * Whether the hold route posts its online Result notice. On unless switched
- * off — and on when the setting cannot be read, as before this switch existed:
- * the switch can silence the notice, but it can never break a hold.
- */
 export async function isOnlineResultNoticeOn(): Promise<boolean> {
   try {
     return (await readTelegramUpdates()).online_result_held.enabled;
@@ -59,12 +47,6 @@ export async function isOnlineResultNoticeOn(): Promise<boolean> {
   }
 }
 
-/**
- * Claims `type` for `period` by compare-and-set on `crm_telegram_last_sent`.
- * True means this call moved it, so this run is the one that sends; false means
- * the period was already claimed, here or by a run in flight. A lost race
- * re-reads and tries again, so a claim for another type is never overwritten.
- */
 export async function claimTelegramPeriod(
   admin: SupabaseClient,
   type: ScheduledTelegramUpdateType,
@@ -87,7 +69,6 @@ export async function claimTelegramPeriod(
         .from("site_settings")
         .insert({ key: CRM_TELEGRAM_LAST_SENT_KEY, value: step.next, updated_at });
       if (!insertErr) return true;
-      // Another run created the row first: read what it wrote.
       if (insertErr.code === "23505") continue;
       throw new Error(insertErr.message);
     }
@@ -100,25 +81,17 @@ export async function claimTelegramPeriod(
       .select("key");
     if (updateErr) throw new Error(updateErr.message);
     if (moved?.length) return true;
-    // The stored text changed under us: another run claimed something. Re-read.
   }
   throw new Error("crm_telegram_last_sent kept changing; nothing claimed");
 }
 
 export type ScheduledOutcome =
-  /** Posted. */
   | { status: "sent"; period: string }
-  /** Claimed, but Telegram refused or timed out. Not retried this period. */
   | { status: "failed"; period: string }
-  /** Switched off on the Customers page. */
   | { status: "off" }
-  /** The Weekly summary on a day other than its own. */
   | { status: "not_due" }
-  /** Its source does not exist yet (a seam in telegram-update-sources.ts). */
   | { status: "not_built" }
-  /** Zero to report, for a type that posts only when there are any. */
   | { status: "none" }
-  /** This period's message has gone already: a re-run sends nothing. */
   | { status: "already_sent"; period: string }
   | { status: "error"; error: string };
 
@@ -127,24 +100,10 @@ export type CrmTelegramRunSummary =
   | { ok: false; error: string }
   | ({ ok: true } & Record<ScheduledTelegramUpdateType, ScheduledOutcome>);
 
-/**
- * The daily job, chained onto the `results-sla` cron (about 10:00 SGT, ±1 hour
- * on Vercel Hobby). No third cron: ADR 0028 g, README fourth hazard.
- *
- * Each scheduled type goes at most once per period. It is counted first; a
- * type with nothing to send claims nothing, and one with something claims its
- * period by compare-and-set and only then sends, so a run repeated by hand, or
- * two runs at once, post it once. A claimed send that fails is not retried in
- * that period: at most once is the promise.
- *
- * With the switches unreadable nothing is sent, unlike the online Result
- * notice: a scheduled update can wait a day, and must not post while off.
- */
 export async function runCrmTelegramUpdates(
   admin: SupabaseClient,
   opts: { origin: string; now?: Date; send?: Send },
 ): Promise<CrmTelegramRunSummary> {
-  // Without a bot token sendTelegram posts nothing; claiming would burn the period.
   if (!opts.send && !process.env.TELEGRAM_BOT_TOKEN?.trim()) return { ok: true, skipped: "no bot token" };
   const send = opts.send ?? sendTelegram;
   const now = opts.now ?? new Date();
@@ -156,7 +115,6 @@ export async function runCrmTelegramUpdates(
     return { ok: false, error: `settings unreadable: ${e instanceof Error ? e.message : "failed"}` };
   }
 
-  /** Claim, then send: the one path every scheduled type posts through. */
   const post = async (type: ScheduledTelegramUpdateType, text: string): Promise<ScheduledOutcome> => {
     const period = periodFor(type, now);
     if (!(await claimTelegramPeriod(admin, type, period))) return { status: "already_sent", period };
@@ -197,19 +155,11 @@ export async function runCrmTelegramUpdates(
 
 export type TelegramTestResult = {
   ok: boolean;
-  /** The types posted, in the order they went. */
   sent: TelegramUpdateType[];
-  /** Types that are on but did not post. */
   failed: TelegramUpdateType[];
-  /** "skipped" when no bot token is configured. */
   telegram?: "skipped";
 };
 
-/**
- * *Send test*: each enabled type once, with sample numbers, marked TEST. No
- * count is read and no Result is touched, so no real customer data can appear;
- * nothing is claimed, so a test never stops the real update.
- */
 export async function sendTelegramUpdatesTest(
   settings: TelegramUpdatesSettings,
   opts: { origin: string; send?: Send },

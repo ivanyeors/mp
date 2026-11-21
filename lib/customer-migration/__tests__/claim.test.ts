@@ -13,24 +13,12 @@ import { CUSTOMER_EMAIL_MAX_ATTEMPTS } from "@/lib/email/customer-emails";
 import { EMAIL_REGISTRY } from "@/lib/email/registry";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 
-/**
- * The Claim as sign-in runs it (PRD-shopify-customer-migration slice 05), with
- * the Claim bonus (PRD-loyalty-points slice 05). The SQL itself (one
- * claimed_at and one bonus under a race, the window, earlier claimers,
- * partners, no write for a non-migrated Customer) is asserted against real
- * Postgres in supabase/tests/customer-migration/assert-05-claim.sql.
- */
-
 const CUSTOMER = { id: "cust-1", email: "wei.ling@example.com", first_name: "Wei Ling", locale: "en-US" };
 
 const BONUS = { points: 1000 };
 
 type RpcResult = { data: unknown; error: { message: string } | null };
 
-/**
- * rpc answers per function name; `from` serves the bonus read and records
- * every table touched, so a test can assert nothing else was read or written.
- */
 function fakeAdmin(rpc: Record<string, RpcResult | (() => never)>, bonus: unknown = BONUS) {
   const rpcCalls: Array<[string, Record<string, unknown>]> = [];
   const tables: string[] = [];
@@ -137,7 +125,6 @@ describe("claimOnSignIn", () => {
     let deferred: (() => Promise<unknown>) | null = null;
     const outcome = await claimOnSignIn(CUSTOMER, { admin, defer: (task) => (deferred = task) });
     expect(outcome.bonusGranted).toBe(true);
-    // Nothing is sent before the response.
     expect(rpcCalls.map(([fn]) => fn)).toEqual(["claim_migrated_customer"]);
     expect(deferred).not.toBeNull();
     await deferred!();

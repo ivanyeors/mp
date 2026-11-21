@@ -1,16 +1,3 @@
-/**
- * The Explore scene while the window is resized (owner's recording,
- * 2026-11-20): the picture flashed away to the plain gradient on nearly every
- * frame of a drag, because the canvas was resized (which empties it) after
- * that frame had been drawn. And a grown flower kept its old size when the
- * window turned to portrait or back.
- *
- * Needs the site running and Playwright's Chromium:
- *   .claude/skills/preview/preview start
- *   EXPLORE_URL=http://localhost:3100/en-US/explore npx tsx components/explore/explore-resize.check.ts
- * (`pnpm checks --live` runs it too; EXPLORE_URL defaults to the preview's.)
- */
-
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -30,10 +17,8 @@ async function open(url: string, viewport: { width: number; height: number }, op
   return page;
 }
 
-// Callbacks run in the page take no named inner functions: tsx would wrap them in a helper the page lacks.
 const twoFrames = (page: Page) => page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
 
-/** Every frame of a drag shows the scene, drawn 1:1 while the window moves and sharp once it stops. */
 async function drag() {
   const page = await open(URL, { width: 1440, height: 820 }, { dpr: 2 });
   await page.waitForTimeout(1000);
@@ -45,7 +30,6 @@ async function drag() {
     const ctx = probe.getContext("2d", { willReadFrequently: true })!;
     const seen: Seen[] = [];
     (window as unknown as { __seen: Seen[] }).__seen = seen;
-    // Made after the scene, so it runs last: what the canvas holds as the frame is shown.
     new ResizeObserver(() => {
       ctx.clearRect(0, 0, 8, 8);
       ctx.drawImage(canvas, 0, 0, 8, 8);
@@ -60,7 +44,6 @@ async function drag() {
     await page.setViewportSize({ width, height: 820 });
     await twoFrames(page);
   }
-  // The first entry is the observer's own first look, before any resize.
   const seen = (await page.evaluate(() => (window as unknown as { __seen: Seen[] }).__seen)).slice(1);
   assert.ok(seen.length >= widths.length - 1, `a frame was shown for each step of the drag (${seen.length})`);
   const blank = seen.filter((f) => f.blank).length;
@@ -77,12 +60,10 @@ async function drag() {
   console.log(`ok   drag: ${seen.length} frames, none empty; 1:1 while resizing, 2:1 after`);
 }
 
-/** A grown flower is the right size after the window turns: open in portrait, or open wide and turn, the same picture. */
 async function flowers() {
   const url = `${URL}?bloom=3&hour=10&rain=0`;
   const portrait = { width: 600, height: 900 };
   const clip = { x: 400, y: 600, width: 200, height: 250 };
-  // A still scene stops changing once its flowers are grown: wait for two shots alike.
   const grown = async (page: Page) => {
     let last = Buffer.alloc(0);
     for (let i = 0; i < 40; i += 1) {

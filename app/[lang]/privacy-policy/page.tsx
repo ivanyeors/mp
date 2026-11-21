@@ -11,13 +11,6 @@ import {
 
 const EFFECTIVE_DATE = "5 July 2026";
 
-/**
- * Customer accounts moved from Shopify (PRD-shopify-customer-migration slice
- * 07). A dated paragraph in copy the owner approves: hidden until the owner
- * sets the day the accounts moved here (slice 04 records it) and approves the
- * wording below. Move EFFECTIVE_DATE with it: section 13 promises a revised
- * date. Slice 10 drops the Shopify-as-processor sentence at cutover.
- */
 const SHOPIFY_MOVE_DATE: string | null = null;
 
 function shopifyMoveNotice(date: string): string[] {

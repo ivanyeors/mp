@@ -11,13 +11,6 @@ import {
   type CampaignContent,
 } from "../content";
 
-/**
- * The products block (PRD-campaign-email-editor slice 07): one to three
- * Storefront products by id, a layout and a button label. No name, photo or
- * price is ever the campaign's: the sender reads them from the shop at render.
- * And a button anywhere can go to one product's shop page.
- */
-
 const COVER = "3b7e1f2a-9c4d-4a6b-8e1f-5d2c3b4a6e7f";
 const NECK = "7c2a4e6b-1d3f-4b8a-9e2c-6f4d5a3b2c1e";
 const CASE = "9e4b6d8a-2f1c-4e3a-8b7d-1c2e3f4a5b6d";
@@ -39,7 +32,6 @@ describe("a products block", () => {
     expect(CampaignContentSchema.parse(one(products()))).toEqual(one(products()));
     expect(CampaignContentSchema.parse(one(products({ products: [COVER], layout: "rows" })))).toEqual(one(products({ products: [COVER], layout: "rows" })));
     expect(CampaignContentSchema.safeParse(one(products({ products: [COVER, NECK, CASE] }))).success).toBe(true);
-    // A price, a name or a photo copied in is refused: the shop's are read at send.
     for (const extra of [{ price: 39 }, { title: "FibreCool Cover" }, { image: { asset: COVER, alt: "x" } }]) {
       expect(CampaignContentSchema.safeParse(one(products(extra))).success, JSON.stringify(extra)).toBe(false);
       expect(CampaignContentPreviewSchema.safeParse(one(products(extra))).success, JSON.stringify(extra)).toBe(false);
@@ -60,7 +52,6 @@ describe("a products block", () => {
     expect(issues(one(emptyBlock("products", "p")))).toEqual([["blocks.0.products", "Choose a product."]]);
     expect(issues(one(products({ buttonLabel: " " })))).toEqual([["blocks.0.buttonLabel", "Give the button a label."]]);
     expect(issues(one(products({ buttonLabel: "Shop {first_name}" })))[0][0]).toBe("blocks.0.buttonLabel");
-    // The preview draws it as it is, on its placeholder.
     expect(CampaignContentPreviewSchema.safeParse(one(emptyBlock("products", "p"))).success).toBe(true);
   });
 
@@ -79,7 +70,6 @@ describe("a product button", () => {
     expect(CampaignContentSchema.safeParse(button({ target: "product", product: COVER })).success).toBe(true);
     expect(issues(button({ target: "product" }))).toEqual([["blocks.0.buttons.0.product", "Choose a product."]]);
     expect(issues(button({ target: "product", product: "" }))).toEqual([["blocks.0.buttons.0.product", "Choose a product."]]);
-    // The preview takes it before a product is chosen.
     expect(CampaignContentPreviewSchema.safeParse(button({ target: "product", product: "" })).success).toBe(true);
   });
 

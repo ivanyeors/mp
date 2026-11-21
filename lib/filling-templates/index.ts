@@ -1,5 +1,3 @@
-/** Filling Templates: filling-only Configure BOM templates, scoped to one or more sizes. */
-
 import { formatTemplateKeys, templateServesKey, type FillingKind } from "./keys";
 
 export * from "./keys";
@@ -8,15 +6,12 @@ export type FillingProductType = "pillow" | "bolster";
 
 export type FillingTemplateLike = {
   kind: string;
-  /** Primary size key — kept in step with the first member, never the authority. */
   key: string;
-  /** Every size this template serves. The authority for scope. */
   keys?: string[];
   role: string;
   is_active: boolean;
 };
 
-/** Product card scope for default filling validation (pillow size×tier or bolster length). */
 export type ProductCardKey =
   | { productType: "pillow"; size: string; tier: string }
   | { productType: "bolster"; length: string };
@@ -26,7 +21,6 @@ export type LineWithCategory = {
   category: string;
 };
 
-/** Reject any non-filling line. Pure — no I/O. */
 export function validateFillingOnlyLines(
   lines: LineWithCategory[],
 ): { ok: true } | { ok: false; error: string } {
@@ -36,7 +30,6 @@ export function validateFillingOnlyLines(
   return { ok: false, error: `Filling Templates may only include filling items (rejected item_id: ${ids})` };
 }
 
-/** Validate a template may be set as the default for a product card. Pure — no I/O. */
 export function validateDefaultFillingTemplate(
   template: FillingTemplateLike,
   productCard: ProductCardKey,
@@ -66,7 +59,6 @@ export function validateDefaultFillingTemplate(
   return { ok: true };
 }
 
-/** Active Filling Templates for a product type + size key. Pure — no I/O. */
 export function filterSelectableFillingTemplates<T extends FillingTemplateLike>(
   templates: T[],
   opts: { productType: FillingProductType; size: string },

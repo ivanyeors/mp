@@ -1,9 +1,3 @@
-/**
- * Slice 09: unpromoted Filling configuration ranking + Promote verification.
- * Pure — routes feed Result snapshots and catalog-template fingerprints in,
- * and write whatever comes out. Server-only (fingerprint uses node:crypto).
- */
-
 import {
   fingerprintPlacements,
   rowsToBolsterPlacements,
@@ -18,22 +12,17 @@ import {
 export type UnpromotedSnapshot = {
   resultId: string;
   fingerprint: string;
-  /** Product-card size key of the Result (assigned size wins over suggested). */
   scopeKey: string | null;
 };
 
 export type RankedUnpromoted = {
   fingerprint: string;
   count: number;
-  /** Any one Result carrying this mix — source of the placement rows. */
   representativeResultId: string;
 };
 
-/** Group in-scope snapshots by fingerprint, drop catalog-template mixes, order by count desc. */
 export function rankUnpromoted(opts: {
   snapshots: UnpromotedSnapshot[];
-  /** Fingerprints of ALL catalog templates in scope — inactive included, so
-   * re-promoting a deactivated template's mix never dupes the catalog. */
   templateFingerprints: Iterable<string>;
   scope: { key: string };
 }): RankedUnpromoted[] {
@@ -63,7 +52,6 @@ function verify<P extends AnyPlacement>(
   return { ok: true, placements };
 }
 
-/** Re-verify a representative Result's rows still hash to the promoted fingerprint. */
 export function verifyPromotedMix(
   rows: PillowPlacementRow[],
   fingerprint: string,
@@ -71,7 +59,6 @@ export function verifyPromotedMix(
   return verify(rowsToPillowPlacements(rows), fingerprint);
 }
 
-/** Mbolster variant (slice 13): own row schema — never the pillow enums. */
 export function verifyPromotedBolsterMix(
   rows: BolsterPlacementRow[],
   fingerprint: string,

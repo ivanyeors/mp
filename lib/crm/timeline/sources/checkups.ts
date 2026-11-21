@@ -5,13 +5,6 @@ import { AFTERCARE_GROUP } from "@/lib/crm/timeline/groups";
 import { cappedBatch } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 
-/**
- * Check-up reminders (CRM 08) on the Customer timeline (`customers`, like the
- * Aftercare card), under the Aftercare chip: *Check-up reminder sent (email,
- * WhatsApp)*, one per Order and milestone, linking to the Order. A Customer
- * gets at most one a year, so both ledgers' check-up rows are read whole.
- */
-
 type Row = Omit<CheckupSendRow, "channel">;
 
 export const checkupsAdapter: TimelineAdapter = {
@@ -35,7 +28,6 @@ export const checkupsAdapter: TimelineAdapter = {
       ...((emails.data ?? []) as Row[]).map((r) => ({ ...r, channel: "email" as const })),
       ...((whatsapp.data ?? []) as Row[]).map((r) => ({ ...r, channel: "whatsapp" as const })),
     ]);
-    // Everything was read, so nothing older is missing: no floor.
     return cappedBatch(entries, before, null);
   },
 };

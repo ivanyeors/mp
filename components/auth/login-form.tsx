@@ -21,17 +21,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/**
- * Shared Supabase Auth login form: Google, or an emailed link with a 6-digit
- * code. Signing in and signing up are the same steps; there is no password.
- *
- * Who it is for decides what happens after (lib/auth/sign-in-intent.ts):
- * `customer` (the default) makes their Customer and, with the box left
- * ticked, records `sign_in` consent once the address is proven; `staff` only
- * opens the Admin Panel; `partner` only opens the Partner Hub. The intent
- * rides in the link's return address, and the code step hands the same intent
- * to `finishSignIn`.
- */
 export function LoginForm({
   nextPath,
   initialEmail = "",
@@ -43,18 +32,12 @@ export function LoginForm({
   onStart,
 }: {
   nextPath: string;
-  /** Prefill email (e.g. from a Result hold submission). */
   initialEmail?: string;
   submitLabel?: string;
-  /** Who is signing in; by default, read from `nextPath`. */
   audience?: SignInAudience;
-  /** Customer only: show the marketing box, ticked by default. On by default for a customer. */
   consentBox?: boolean;
-  /** Customer only: consent already asked for elsewhere (the footer's sign-up), in place of the box. */
   consent?: SignUpConsent;
-  /** Open on the code step: the link was already sent (by the footer). */
   initialSent?: boolean;
-  /** Called as a sign-in starts (Google or the email), e.g. to remember the tab. */
   onStart?: () => void;
 }) {
   const emailFieldId = useId();
@@ -66,9 +49,7 @@ export function LoginForm({
   const [loading, setLoading] = useState<"google" | "email" | "verify" | null>(null);
   const [sent, setSent] = useState(initialSent && Boolean(initialEmail));
   const [error, setError] = useState<string | null>(null);
-  // Ticked by default (owner decision 1); recorded only once the address is proven.
   const [boxTicked, setBoxTicked] = useState(true);
-  // The intent the email was sent with: the code step finishes with the same one.
   const intentNow = (): SignInIntent => ({
     audience,
     next: nextPath,
@@ -77,12 +58,9 @@ export function LoginForm({
   });
   const [sentIntent, setSentIntent] = useState<SignInIntent | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
-  // Set when leaving the code step, so the chooser lands the caret on the email.
   const focusEmailRef = useRef(false);
-  // Whether we own a history entry for the code step (see the pushState effect).
   const pushedHistoryRef = useRef(false);
 
-  // Prefill can arrive after async Result load: a new one replaces the field.
   const [seenInitialEmail, setSeenInitialEmail] = useState(initialEmail);
   if (initialEmail !== seenInitialEmail) {
     setSeenInitialEmail(initialEmail);
@@ -95,9 +73,6 @@ export function LoginForm({
     setSent(false);
   }, []);
 
-  // The code step is a step, not a page. Give it its own history entry so the
-  // phone's Back gesture returns to Google / the email field instead of
-  // leaving the sign-in page entirely.
   useEffect(() => {
     if (!sent) return;
     window.history.pushState({ mpAuthStep: "code" }, "");
@@ -111,13 +86,11 @@ export function LoginForm({
     return () => window.removeEventListener("popstate", onPopState);
   }, [sent, leaveCodeStep]);
 
-  // In-page "back" pops our own entry when we pushed one, so the history stack
-  // never keeps a dead entry that swallows the next Back press.
   const backToMethods = (focusEmail: boolean) => {
     focusEmailRef.current = focusEmail;
     if (pushedHistoryRef.current) {
       pushedHistoryRef.current = false;
-      window.history.back(); // popstate handler clears the code step
+      window.history.back();
       return;
     }
     leaveCodeStep();
@@ -149,13 +122,10 @@ export function LoginForm({
     }
   };
 
-  // One request yields BOTH a magic link (emailRedirectTo) and a 6-digit token
-  // usable by verifyOtp. Used for the initial send and for "Resend code".
   const requestOtp = async () => {
     setError(null);
     setLoading("email");
     onStart?.();
-    // "Resend code" keeps the intent the first email was sent with.
     const intent = sent && sentIntent ? sentIntent : intentNow();
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -176,9 +146,6 @@ export function LoginForm({
     void requestOtp();
   };
 
-  // Cross-device alternative to clicking the link: verify the emailed code.
-  // On success the browser client persists the session to cookies; a full-page
-  // nav lets SSR read them and run existing per-destination role resolution.
   const verifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -194,17 +161,13 @@ export function LoginForm({
       setError(authErrorMessage(error));
       return;
     }
-    // The browser holds the session now; the server finishes as the link
-    // would (the Staff check, the Customer, the consent). Keep the spinner.
     const intent = sentIntent ?? intentNow();
     let destination = safeNextPath(nextPath, "/");
     try {
       destination = (
         await finishSignIn({ next: intent.next, as: intent.audience, consent: intent.consent, lang: intent.locale })
       ).destination;
-    } catch {
-      // Signed in either way; the next account page links the Customer.
-    }
+    } catch {}
     window.location.assign(safeNextPath(destination, "/"));
   };
 
@@ -249,8 +212,6 @@ export function LoginForm({
               value={code}
               onChange={(e) => {
                 setCode(e.target.value);
-                // A stale "token expired" line under a code they are retyping
-                // reads as a fresh rejection; drop it as soon as they edit.
                 if (error) setError(null);
               }}
               disabled={loading !== null}
@@ -285,8 +246,6 @@ export function LoginForm({
             {loading === "email" ? "Sending…" : "Resend code"}
           </button>
           <span aria-hidden="true">·</span>
-          {/* The address is baked into the sent code, so a typo is only fixable
-              by going back — make that its own affordance, not a guess. */}
           <button
             type="button"
             onClick={() => backToMethods(true)}

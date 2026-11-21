@@ -12,16 +12,6 @@ import {
   type GoogleReviewRow,
 } from "@/lib/reviews/google-reviews";
 
-/**
- * What a review manager can do to a Google review card: post the current
- * draft (or, for a review read through the Places API, record that they posted
- * it on Google Maps themselves), replace it with their own words, or skip.
- *
- * Every write is a guarded update on `status` (and on `draft_version` where
- * the draft matters), so two people tapping at once cannot both act, and a
- * Post never publishes a draft the tapper had not seen.
- */
-
 export type Actor = { telegramUserId: number; name: string };
 
 export type ActionFailure = {
@@ -61,10 +51,6 @@ async function explainMiss(id: string, expectedVersion?: number, action?: "post"
   return { ok: false, reason: "invalid", message: "Nothing changed — try again.", row };
 }
 
-/**
- * Step one of Post: claim the row (pending → posting) for the draft version the
- * tapper saw. Cheap and synchronous enough to answer the button tap with.
- */
 export async function claimGoogleReviewPost(
   id: string,
   version: number,
@@ -91,12 +77,6 @@ export async function claimGoogleReviewPost(
   return { ok: true, row: data as GoogleReviewRow };
 }
 
-/**
- * Mark replied, for a review read through the Places API: a review manager
- * posted the reply on Google Maps themselves. Records the draft they were
- * looking at as what was posted — the Places API cannot show us the reply, so
- * this is the only record of it.
- */
 export async function markGoogleReviewReplied(
   id: string,
   version: number,
@@ -125,7 +105,6 @@ export async function markGoogleReviewReplied(
   return { ok: true, row: data as GoogleReviewRow };
 }
 
-/** Step two of Post: send the claimed draft to Google and record the outcome. */
 export async function executeGoogleReviewPost(
   row: GoogleReviewRow,
   deps: { client?: BusinessProfileClient } = {},
@@ -173,7 +152,6 @@ export async function executeGoogleReviewPost(
   }
 }
 
-/** A review manager's own wording replaces the draft (and becomes what Post sends). */
 export async function setStaffDraft(
   row: GoogleReviewRow,
   text: string,

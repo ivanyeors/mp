@@ -1,7 +1,3 @@
-/**
- * Live DB smoke for slice 12 — GA staging + ga_client_id stitch.
- * Run: npx tsx --env-file=.env.local lib/analytics/journey/slice-12.smoke.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -29,7 +25,6 @@ async function cleanup() {
   if (insertedGaIds.length) {
     await db.from("analytics_ga_events").delete().in("id", insertedGaIds);
   }
-  // Fixture rows may have been inserted without capturing ids — delete by client_id tag window
   await db.from("analytics_ga_events").delete().eq("client_id", gaClientId);
   await db.from("analytics_events").delete().eq("visit_id", visitId);
   await db.from("analytics_visits").delete().eq("id", visitId);
@@ -37,12 +32,10 @@ async function cleanup() {
 }
 
 async function main() {
-  // AC: Admin graph does not query GA live (static + runtime path)
   const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
   const aggregatesSrc = readFileSync(join(root, "lib/analytics/journey/aggregates.ts"), "utf8");
   assert.doesNotMatch(aggregatesSrc, /analytics_ga|bigquery|googleapis|gtag/i);
 
-  // AC: Visitor stores ga_client_id via ingest set-if-null
   const ingest = await persistJourneyIngest(db, {
     visitorId,
     visitId,
@@ -60,7 +53,6 @@ async function main() {
   if (vErr) throw new Error(vErr.message);
   assert.equal(visitor.ga_client_id, gaClientId);
 
-  // Set-if-null: second ingest must not clobber
   const clobber = await persistJourneyIngest(db, {
     visitorId,
     visitId,
@@ -75,7 +67,6 @@ async function main() {
     .single();
   assert.equal(visitor2?.ga_client_id, gaClientId);
 
-  // AC: Fixture/export rows land in analytics_ga_events + stitch to Visitor
   const sync = await runGaSync(db, {
     rows: [
       {
@@ -121,7 +112,6 @@ async function main() {
     "unmatched GA client_id must remain unstitched",
   );
 
-  // AC: Admin journey still reads first-party aggregates only (smoke query succeeds)
   const graph = await loadPageTransitionsFromDb(db, {
     from: "2026-07-01T00:00:00.000Z",
     to: "2026-07-31T23:59:59.000Z",

@@ -3,16 +3,6 @@ import type { AdminContext } from "@/lib/auth/admin";
 import { actingProfile } from "@/lib/staff/working-as";
 import type { CustomerNote } from "@/lib/crm/note-rules";
 
-/**
- * Customer notes (CONTEXT.md; ADR 0028 (a)): dated, authored remarks by Staff
- * about a Customer, in `customer_notes`. Only the service role can read the
- * table, so every read and write goes through here from an Admin Panel route
- * or page that has already checked the caller.
- *
- * Notes are never edited; a correction is a new note. Deleting is soft, and
- * allowed to the author's login or to an Owner or Admin (`canDeleteNote`).
- */
-
 type NoteRow = {
   id: string;
   body: string;
@@ -23,7 +13,6 @@ type NoteRow = {
 
 const NOTE_COLUMNS = "id, body, author_profile_id, author_user_id, created_at";
 
-/** Resolves author names: the profile's name, else the login's email. */
 async function withAuthors(rows: NoteRow[]): Promise<CustomerNote[]> {
   const admin = supabaseAdmin();
   const profileIds = [...new Set(rows.map((r) => r.author_profile_id).filter((v): v is string => !!v))];
@@ -53,10 +42,6 @@ async function withAuthors(rows: NoteRow[]): Promise<CustomerNote[]> {
   }));
 }
 
-/**
- * A Customer's notes, newest first, without the deleted ones. With `page`, only
- * the newest `limit` at or before `before`: the Customer timeline's bounded read.
- */
 export async function listCustomerNotes(
   customerId: string,
   page?: { before: string | null; limit: number },
@@ -74,16 +59,10 @@ export async function listCustomerNotes(
   return withAuthors((data ?? []) as NoteRow[]);
 }
 
-/**
- * The Staff profile a note is written or deleted as: the one chosen under
- * "Working as", or the login's only profile when it has just one. Attribution
- * only.
- */
 export async function noteProfileFor(memberId: string): Promise<string | null> {
   return (await actingProfile(memberId))?.id ?? null;
 }
 
-/** Writes a note as the signed-in Member. The caller has checked the Customer exists. */
 export async function createCustomerNote(
   customerId: string,
   body: string,

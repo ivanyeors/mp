@@ -1,15 +1,3 @@
-// Deliberately does NOT pin NEXT_PUBLIC_SITE_URL at module scope.
-//
-// Every other suite that touches email or SEO sets it on line 1, which is why
-// no test could see the Vercel-host bug: the payment-due reminder shipped a
-// `mp-<hash>-ivanyeors-projects.vercel.app` link for months while the suite was
-// green. These cases exist to fail when the env var is the thing that is
-// missing.
-//
-// Every expected origin below is distinct from PROD_FALLBACK_ORIGIN on purpose.
-// An earlier draft reused the fallback string as the configured value, which
-// made the configured / forwarded / request-origin branches pass whether or not
-// the code consulted them at all.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -20,17 +8,13 @@ import {
   getSiteOrigin,
 } from "../site-url";
 
-/** Matches PROD_FALLBACK_ORIGIN — only ever asserted as a *fallback*. */
 const FALLBACK = "https://custom.mpillow.com";
-/** Allowlisted, and distinct from the fallback, so "configured wins" can fail. */
 const CONFIGURED = "https://configured.mpillow.com";
 const FORWARDED_HOST = "forwarded.mpillow.com";
-/** Off-domain: a forged Host header must never become a public link. */
 const HOSTILE_HOST = "attacker.example.com";
 const DEPLOYMENT_HOST = "mp-15j5vdlfc-ivanyeors-projects.vercel.app";
 const DEPLOYMENT_ORIGIN = `https://${DEPLOYMENT_HOST}`;
 
-/** NODE_ENV is typed readonly; these cases need the production branch. */
 const env = process.env as Record<string, string | undefined>;
 
 const KEYS = ["NEXT_PUBLIC_SITE_URL", "VERCEL_URL", "VERCEL_ENV", "NODE_ENV"] as const;
@@ -120,11 +104,9 @@ describe("getPublicOrigin", () => {
     expect(getPublicOrigin(cron({ "x-forwarded-host": HOSTILE_HOST }))).toBe(
       FALLBACK,
     );
-    // Same for a request that arrived addressed to the attacker's host.
     expect(getPublicOrigin(request(`https://${HOSTILE_HOST}/api/results/hold`))).toBe(
       FALLBACK,
     );
-    // ...and the lookalike suffix trick.
     expect(
       getPublicOrigin(cron({ "x-forwarded-host": "evil-mpillow.com" })),
     ).toBe(FALLBACK);
@@ -173,11 +155,6 @@ describe("getClientPublicOrigin", () => {
 });
 
 describe("auth-round-trip helpers keep the browser's own origin", () => {
-  // Both are intentionally NOT hardened against the deployment host. They feed
-  // authCallbackUrl / the Supabase redirectTo, and bouncing a half-finished PKCE
-  // exchange onto another domain would strand the verifier cookie — sign-in on a
-  // preview would break. NEXT_PUBLIC_SITE_URL is what keeps them canonical in
-  // production.
   it("getClientSiteOrigin stays on a preview deployment", () => {
     env.NODE_ENV = "production";
     setWindow(DEPLOYMENT_ORIGIN);

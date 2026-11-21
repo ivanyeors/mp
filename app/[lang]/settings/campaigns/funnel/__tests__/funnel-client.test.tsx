@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// jsdom gaps dnd-kit reads (ResizeObserver).
 import "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -7,15 +6,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { lifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import type { LifecycleStage } from "@/lib/crm/lifecycle-stage";
 import { buildFunnel, type FunnelCampaignFact, type FunnelFacts, type FunnelView } from "@/lib/email-funnel/model";
-
-/**
- * The Email funnel as a marketer's workspace (PRD-email-funnel slice 03; owner
- * 2026-11-18): *Add an email* and *Add a follow-up* link to exactly the
- * addresses New campaign reads (slice 06), with the locale; a Suggested
- * Playbook starts from itself, one whose words wait has no start; each card
- * shows its own render; and a flow whose follow-ups loop still draws every
- * card once.
- */
 
 const actions = vi.hoisted(() => ({
   renderFunnelEmails: vi.fn(async (keys: string[]) => ({
@@ -32,7 +22,6 @@ vi.mock("../arrange-actions", () => arrange);
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/en-US/settings/campaigns/funnel" }));
 vi.mock("../../thumbnail-frame", () => ({
-  // The frame as the page draws it, without a browser's layout: its HTML on an attribute.
   ThumbnailFrame: ({ html }: { html?: string | null }) => <div data-frame={html ?? "none"} />,
 }));
 
@@ -68,7 +57,6 @@ afterEach(() => {
   host?.remove();
 });
 
-/** An Owner's reach on these pages; a test narrows it to a role. */
 const OWNER = ["campaigns", "customers", "email-templates", "api-configs"];
 
 async function show(view: FunnelView, stage: LifecycleStage, permissions: string[] = OWNER) {
@@ -78,7 +66,6 @@ async function show(view: FunnelView, stage: LifecycleStage, permissions: string
   await act(async () => {
     root!.render(<FunnelClient view={view} initialStage={stage} locale="en-US" permissions={permissions} />);
   });
-  // The renders arrive after the page shows.
   await act(async () => {
     await Promise.resolve();
   });
@@ -97,17 +84,14 @@ describe("creating from the funnel", () => {
   it("offers a follow-up after each campaign at exactly /settings/campaigns/new?after=<id>:sent", async () => {
     await show(buildFunnel(facts), "at_risk");
     const links = [...host.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    // Between We miss you and its started follow-up, and at the end of the sequence.
     expect(links).toContain(`/en-US/settings/campaigns/new?after=${id(11)}:sent`);
     expect(links).toContain(`/en-US/settings/campaigns/new?after=${id(12)}:sent`);
-    // A started follow-up cannot be slotted in front of: no ?before= on this page.
     expect(links.some((h) => h?.includes("before="))).toBe(false);
   });
 
   it("starts a Suggested Playbook from itself, and gives one whose words wait no start at all", async () => {
     const view = buildFunnel(facts);
     await show(view, "at_risk");
-    // *Welcome back* is approved and not started here.
     const suggested = card("starter:playbook_welcome_back");
     expect(suggested?.textContent).toContain("Suggested");
     expect(hrefs(suggested)).toEqual(["/en-US/settings/campaigns/new?starter=playbook_welcome_back"]);
@@ -146,7 +130,6 @@ describe("the email cards", () => {
   it("draw every card once when follow-ups loop, whatever the view says", async () => {
     const view = buildFunnel(facts);
     const risk = view.stages.find((s) => s.stage === "at_risk")!;
-    // Force a loop the model never makes: the Playbook's campaign follows up its own follow-up.
     const playbook = risk.flow.find((f) => f.campaigns.some((c) => c.id === id(11)))!;
     playbook.after = { campaignId: id(12), did: "sent" };
     await show(view, "at_risk");
@@ -186,11 +169,9 @@ describe("the review of slice 03", () => {
       expect(links.filter((h) => /\/settings\/(customers|general|email-templates)/.test(h)), stage).toEqual([]);
       unmount();
     }
-    // The rows still name their emails, as words.
     await show(buildFunnel(withAutomatic), "new", ["campaigns"]);
     expect(host.textContent).toContain("Review request");
     unmount();
-    // An Owner gets the same rows as links.
     await show(buildFunnel(withAutomatic), "new");
     expect([...host.querySelectorAll("a")].some((a) => a.getAttribute("href") === "/en-US/settings/customers?view=settings")).toBe(true);
   });
@@ -281,7 +262,6 @@ describe("the second review of slice 03", () => {
       await act(async () => {
         await Promise.resolve();
       });
-      // The preview shows the subject the render brought (cut short to fit the inbox row).
       expect(dialog()?.textContent).toContain(`Subject of ${key}`.slice(0, 30));
       await act(async () => {
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
@@ -315,7 +295,6 @@ describe("the second review of slice 03", () => {
       expect(links.filter((h) => /\/settings\/(customers|general|email-templates)/.test(h)), stage).toEqual([]);
       unmount();
     }
-    // An Owner gets the settings link.
     await show(buildFunnel(withAutomatic), "new");
     await press("Preview Review request");
     const links = [...(dialog()?.querySelectorAll("a") ?? [])].map((a) => a.getAttribute("href") ?? "");
@@ -335,7 +314,6 @@ describe("the second review of slice 03", () => {
     expect(hrefs(item).some((h) => h?.startsWith("/en-US/settings/customers?"))).toBe(false);
     expect(hrefs(item)).toContain("/en-US/settings/customers");
     expect(item.querySelector("[data-segment-search]")).not.toBeNull();
-    // Its words never reach the page.
     expect(host.innerHTML).not.toMatch(/\btan\b/);
     expect(hrefs(item)).toContain(`/en-US/settings/campaigns/new?segment=${id(4)}`);
     unmount();

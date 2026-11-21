@@ -1,10 +1,3 @@
-/**
- * The Aftercare card's numbers (Customers → Settings, CRM slices 07 and 08).
- * Counts and settings only. Today's numbers are a dry run of the daily job, so
- * the card and the job can never disagree about who is due or why someone is
- * skipped.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { listOpenStopRequests } from "@/lib/aftercare/preferences";
 import { aftercareTemplateName, aftercareWhatsAppTransportConfigured } from "@/lib/whatsapp/aftercare-notify";
@@ -47,7 +40,6 @@ export async function readAftercareCard(
     countLinkedGoogleReviewsOfRequested(admin),
     listOpenStopRequests(admin),
     runCheckups(admin, { origin: opts.origin, now, dryRun: true }),
-    // Longer than the review request's 30: a booking follows a check-up by weeks.
     countCheckupSends(admin, since(90)),
   ]);
   return {

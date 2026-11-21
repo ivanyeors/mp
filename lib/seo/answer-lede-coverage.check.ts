@@ -1,9 +1,3 @@
-/**
- * Slice 08 self-check: answer lede coverage on commercial surfaces.
- * Fills missing/weak product seo_answer (idempotent), then asserts density + wiring.
- *
- * Run: npx tsx --env-file=.env.local lib/seo/answer-lede-coverage.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -19,7 +13,6 @@ import { zhCN } from "@/lib/i18n/messages/zh-CN";
 import type { LocalizedProductContent } from "@/lib/types/ecommerce";
 
 const ROOT = process.cwd();
-/** Roughly 60–120 English words; Chinese uses CJK char density. */
 const MIN_EN_WORDS = 50;
 const MIN_CJK = 70;
 
@@ -85,12 +78,10 @@ function extractIntroLede(pageSrc: string, locale: "en-US" | "zh-CN") {
   return block!.replace(/\\n/g, "\n").replace(/\\"/g, '"');
 }
 
-// --- No new TL;DR component ---
 assert.doesNotMatch(read("lib/seo/answer-lede.ts"), /tldr|TL;DR/i);
 const componentFiles = readdirSync(join(ROOT, "components"), { recursive: true }).map(String);
 assert.ok(!componentFiles.some((f) => /tldr/i.test(f)), "no new TL;DR component file");
 
-// --- Wiring: home / PDP / configs use existing answer-lede fields ---
 assert.match(read("components/sections/landing/hero-section.tsx"), /m\.home\.hero\.seoAnswer/);
 assert.match(read("app/[lang]/shop/[slug]/page.tsx"), /resolveAnswerLede/);
 assert.match(read("app/[lang]/shop/[slug]/product-detail-client.tsx"), /answerLede/);
@@ -98,10 +89,6 @@ assert.match(read("app/[lang]/mp-config/page.tsx"), /answerLede=\{intro\.lede\}/
 assert.match(read("app/[lang]/mbolster-config/page.tsx"), /answerLede=\{intro\.lede\}/);
 assert.match(read("components/seo/configurator-seo-intro.tsx"), /answerLede/);
 
-// --- Home i18n density ---
-// The home hero lede is a ≤4-line band over the product image (line-clamp-4, 28–40 words):
-// 54de7ec0 "enforce copy-fit standards" (CONTEXT.md "Copy fit"); #333 (6ee678f1) cut the
-// zh translation to match. Its zh floor scales the same way (70 × 28/50 ≈ 40, the isWeakZh line).
 const MIN_CJK_HOME = 40;
 const homeEn = enWords(enUS.home.hero.seoAnswer);
 assert.ok(
@@ -112,7 +99,6 @@ assert.match(read("components/sections/landing/hero-section.tsx"), /line-clamp-4
 const homeZh = cjkChars(zhCN.home.hero.seoAnswer);
 assert.ok(homeZh >= MIN_CJK_HOME, `home zh lede too thin (${homeZh} CJK chars, need ~${MIN_CJK_HOME}+)`);
 
-// --- Configurator shell density ---
 const mpSrc = read("app/[lang]/mp-config/page.tsx");
 const mbSrc = read("app/[lang]/mbolster-config/page.tsx");
 assertEnLede("mp-config", extractIntroLede(mpSrc, "en-US"));
@@ -120,7 +106,6 @@ assertZhLede("mp-config", extractIntroLede(mpSrc, "zh-CN"));
 assertEnLede("mbolster-config", extractIntroLede(mbSrc, "en-US"));
 assertZhLede("mbolster-config", extractIntroLede(mbSrc, "zh-CN"));
 
-// ConfiguratorSeoIntro still renders lede under H1 (crawlable)
 const introHtml = renderToStaticMarkup(
   createElement(ConfiguratorSeoIntro, {
     h1: "Customise Your Mpillow Pillow",
@@ -162,7 +147,6 @@ async function fillAndAssertProducts() {
       filled.push(row.slug);
     }
 
-    // Re-read path: assert dedicated seo_answer resolves
     const en = content["en-US"];
     const zh = content["zh-CN"];
     assert.ok(en?.seo_answer?.trim(), `${row.slug} missing en-US seo_answer`);

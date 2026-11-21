@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * Slice 07: an archived Staff profile cannot be newly picked as a Result's
- * "measured by", but a Result that already names it keeps it.
- */
-
 const h = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   upsert: vi.fn(),

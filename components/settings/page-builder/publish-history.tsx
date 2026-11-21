@@ -22,14 +22,6 @@ interface SnapshotRow {
   diff: SnapshotDiff;
 }
 
-/**
- * **Publish snapshot** history and restore.
- *
- * Restore stages the snapshot as the current **Section draft** rather than writing
- * published state, so a recovery is reviewed in Preview mode and ships through the same
- * Publish path as any other edit — which matters because a snapshot can reference a
- * Media Asset that has since been deleted.
- */
 export function PublishHistory({
   pending,
   onRestored,
@@ -40,9 +32,7 @@ export function PublishHistory({
 }: {
   pending: PendingSummary;
   onRestored: () => void;
-  /** List (GET) and restore (POST) for this page. Defaults to the landing page. */
   endpoint?: string;
-  /** Controlled open state, for opening the history from elsewhere (the phone ⋯ menu). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   triggerClassName?: string;
@@ -109,7 +99,6 @@ export function PublishHistory({
             </SheetDescription>
           </SheetHeader>
 
-          {/* Phones: room under the last version for the sheet's pinned close button. */}
           <div className="space-y-2 px-4 pb-6 max-md:pb-20">
             {rows === null && (
               <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>

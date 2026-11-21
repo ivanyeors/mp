@@ -7,7 +7,6 @@ import type { Locale } from "@/lib/i18n/locales";
 import type { ExploreContent, LandingSection } from "@/lib/types/landing-sections";
 import { EXPLORE_PATH } from "@/lib/routing/explore-route";
 
-/** A still of the Explore scene at dusk, taken from the page itself. */
 const EXPLORE_SCENERY = "/images/landing/explore-scenery.webp";
 
 interface ExploreSectionProps {
@@ -16,19 +15,12 @@ interface ExploreSectionProps {
   locale: Locale;
 }
 
-/**
- * The way to Explore from the home page (owner, 2026-11-18): a small card with
- * a still of its scenery, below the founder's note. The whole card is the
- * link. The copy holds before and after the launch, so it never needs
- * changing on the day.
- */
 export function ExploreSection({ section, messages: m, locale }: ExploreSectionProps) {
   const c = section.content as ExploreContent;
   const image = c.image || EXPLORE_SCENERY;
   const title = c.title ?? m.home.explore.title;
   const body = c.body ?? m.home.explore.body;
   const cta = c.buttonLabel ?? m.home.explore.cta;
-  // Staff's own image carries its own alt text; the default still has ours.
   const alt = c.alt ?? (c.image ? "" : m.home.explore.alt);
 
   return (
@@ -38,7 +30,6 @@ export function ExploreSection({ section, messages: m, locale }: ExploreSectionP
           href={`/${locale}${EXPLORE_PATH}`}
           className="group relative block overflow-hidden rounded-2xl border bg-[#1b1d45] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          {/* A phone shows the scenery clear above the words; a wider screen puts the words over its sky. */}
           <div className="relative aspect-[16/10] overflow-hidden sm:absolute sm:inset-0 sm:aspect-auto">
             <Image
               src={image}

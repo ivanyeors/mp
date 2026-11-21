@@ -15,24 +15,8 @@ import { ProductsField } from "../blocks/products-field";
 import type { IdeasOffer } from "./refine-state";
 import type { AiBrief, AiDraftRun } from "./use-ai-draft";
 
-/**
- * ✨ Generate's parts in the campaign editor (PRD-campaign-email-editor slice
- * 09), one module loaded after the page, not with it: the button with the
- * popover under it that takes the brief; the bar above the blocks while
- * Claude writes and after; and the subject and preview line ideas under
- * their fields, a draft's or ✨ Refine's (slice 10).
- */
-
-/** The goal picker's choice for none: a goal is optional. */
 const ANY = "any";
 
-/**
- * ✨ Generate's button and the popover under it (PRD-campaign-email-editor
- * slice 09): the brief, all of it optional (what the email is about, its
- * goal, up to three products from the shop) and, when the email has blocks,
- * whether the draft replaces them or goes below. The draft is written from the
- * subject; nothing is saved or sent.
- */
 export function GeneratePopover({
   open,
   onOpenChange,
@@ -43,15 +27,11 @@ export function GeneratePopover({
   onStop,
   onGenerate,
 }: {
-  /** The popover is open: the editor's, so another part of the page (slice 08's Start panel) can open it. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** What Claude writes from: the subject, or the campaign name. */
   title: string;
-  /** Why it can't run yet, or null. */
   blocker: string | null;
   hasBlocks: boolean;
-  /** While a draft is written, what Claude is doing. */
   working: string | null;
   onStop: () => void;
   onGenerate: (brief: AiBrief, mode: DraftMode) => void;
@@ -149,14 +129,8 @@ export function GeneratePopover({
   );
 }
 
-/** Past this, a subject may be cut off on a phone (PRD *Research*). */
 const SUBJECT_PHONE = 60;
 
-/**
- * The bar above the blocks: while Claude writes, its stage (*Reading your
- * brief…*, then *Writing the email…*) and Stop; after, *Keep*, *Try again*
- * and *Undo*, with Claude's notes; or why it failed.
- */
 export function DraftBar({
   run,
   onStop,
@@ -178,7 +152,6 @@ export function DraftBar({
       {run.status === "working" ? (
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
-          {/* The ✨ button announces each stage; this says it where the blocks arrive. */}
           <span className="min-w-0 flex-1">{DRAFT_STAGE_TEXT[run.stage]}</span>
           <Button type="button" variant="outline" size="sm" onClick={onStop}>
             <Square className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -232,7 +205,6 @@ export function DraftBar({
   );
 }
 
-/** Claude's subject or preview line ideas under their field: pressing one fills the field. */
 export function DraftIdeas({
   id,
   label,
@@ -245,18 +217,13 @@ export function DraftIdeas({
   moreReason = null,
 }: {
   id: string;
-  /** "Subject ideas", "Preview line ideas". */
   label: string;
   ideas: readonly string[];
   onPick: (idea: string) => void;
   onDismiss: () => void;
-  /** Mark ideas long enough to be cut off on a phone (subjects). */
   phoneWarning?: boolean;
-  /** An idea's length as its field counts it (slice 10: a Variable as the sample customer's words). */
   measure?: (idea: string) => number;
-  /** *More ideas* (slice 10): asks again, for others. */
   onMore?: () => void;
-  /** Why *More ideas* can't be pressed now, or null. */
   moreReason?: string | null;
 }) {
   return (
@@ -297,7 +264,6 @@ export function DraftIdeas({
   );
 }
 
-/** Ideas under a field: Claude's, to pick from, or why there are none. */
 export function IdeasPanel({
   id,
   label,
@@ -314,7 +280,6 @@ export function IdeasPanel({
   offer: IdeasOffer;
   phoneWarning?: boolean;
   measure?: (idea: string) => number;
-  /** Why *More ideas* can't run now (this ask or another is running), or null. */
   moreReason: string | null;
   onPick: (idea: string) => void;
   onMore: () => void;
@@ -334,7 +299,6 @@ export function IdeasPanel({
           )}
         </div>
       ) : null}
-      {/* The first ask's progress is the ✨ button's; More ideas keeps the last ones in view meanwhile. */}
       {offer.ideas.length ? (
         <DraftIdeas
           id={id}

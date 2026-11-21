@@ -173,7 +173,6 @@ type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "previe
 type SleepPosition = "side" | "stomach" | "other";
 type BolsterLength = "short" | "medium" | "long";
 
-/** RE slice 07: the bolster customize response also ships spatial placements + color overrides. */
 type ShopRecommendationData = Omit<
   RecommendationResponseData,
   "templates" | "available_fillings"
@@ -204,9 +203,7 @@ const FLOW_UI_LABEL: Record<RuleFlow, string> = {
   mbolster: "Mbolster",
 };
 
-/** Fallback capsule length until the recommendation resolves one. */
 const DEFAULT_BOLSTER_LENGTH: BolsterLength = "medium";
-/** An Mbolster on its own ships in one box. */
 const SHIPS_AS_MBOLSTER: PackageType[] = ["bolster"];
 
 function toNumber(value: string): number | null {
@@ -236,11 +233,6 @@ function normalizeStep(step: unknown): Step | null {
   return null;
 }
 
-/**
- * Arrived as step 2 of a Paired build (ADR 0026): the Mpillow's hand-off, read
- * synchronously so not even the first effect touches this device's standalone
- * Mbolster draft.
- */
 function pairedHandoffOnPage(): PairedHandoff | null {
   if (typeof window === "undefined") return null;
   if (new URLSearchParams(window.location.search).get("paired") !== "1") return null;
@@ -279,17 +271,9 @@ export function MbolsterConfigClient({
   measuredByStaff = false,
 }: {
   info: MbolsterConfigInfo;
-  /** Costings → Service fees (ADR 0024), for the Measurement service row. */
   servicePrices?: ServicePrices | null;
-  /** Staff are measuring this customer — the hold charges the Measurement service. */
   measuredByStaff?: boolean;
-  /** Staff-only x-ray filling editor on the bolster preview (slice 13). */
   staffAssist?: boolean;
-  /**
-   * Partner-assisted co-brand context (#78). Non-null → assisted run: co-brand
-   * finish panel, no add-on / upsell / filling-template surfaces, assist-priority
-   * attribution. null → guest/staff flow renders PIXEL-IDENTICAL (AC5).
-   */
   partner?: {
     code: string;
     name: string;
@@ -297,7 +281,6 @@ export function MbolsterConfigClient({
     description: string | null;
   } | null;
 }) {
-  // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -305,9 +288,7 @@ export function MbolsterConfigClient({
   const homeHref = withLocale("/", locale);
   const to = (href: string) => withLocale(href, locale);
   const isMobile = useIsMobile();
-  // The Staff compartment editor's panel, where XrayBolster portals its controls (off a phone).
   const [compartmentSlot, setCompartmentSlot] = React.useState<HTMLElement | null>(null);
-  // Phones: each step's Back / Continue render in the bottom bar's slot.
   const [mobileActionsSlot, setMobileActionsSlot] = React.useState<HTMLDivElement | null>(null);
   const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
   const [restoringHoldCancel, setRestoringHoldCancel] = React.useState(false);
@@ -320,9 +301,7 @@ export function MbolsterConfigClient({
     sleepPosition: null,
   });
   const [heightDraft, setHeightDraft] = React.useState("");
-  /** Step 2 of a Paired build: the pair so far, waiting for this page's answer. */
   const [paired, setPaired] = React.useState<PairedHandoff | null>(null);
-  /** Paired, already answered once: reopen on this page's customisation, not height. */
   const reopenPairedPreviewRef = React.useRef(false);
 
   const [shopRecommendation, setShopRecommendation] =
@@ -335,13 +314,9 @@ export function MbolsterConfigClient({
   const [holdPhone, setHoldPhone] = React.useState("");
   const [discoverySource, setDiscoverySource] = React.useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = React.useState("");
-  // The one optional code (ADR 0033): a partner's referral code or a discount
-  // code, checked against this bolster's goods; a discount moves the total.
   const [checkoutCode, setCheckoutCode] = React.useState("");
   const [codeStatus, setCodeStatus] = React.useState<CheckoutCodeStatus>({ state: "idle" });
   const [holdNotes, setHoldNotes] = React.useState("");
-  // The marketing email box on the contact step: ticked by default (owner,
-  // 2026-10-31; ADR 0039). A Paired build asks on its Mpillow, not here.
   const [marketingEmail, setMarketingEmail] = React.useState(true);
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
@@ -359,10 +334,7 @@ export function MbolsterConfigClient({
   } = useSavedShippingPrefill(setHoldEmail, setHoldAddress);
   const [shippingMethods, setShippingMethods] = React.useState<HoldShippingMethod[]>([]);
   const [selectedShippingId, setSelectedShippingId] = React.useState("");
-  /** Self-collect asks for no address: the server stores the studio's. */
   const selfCollect = isSelfCollectMethod(shippingMethods.find((m) => m.id === selectedShippingId));
-  // Each method priced for this Mbolster to this address — live courier rates
-  // with our markup — the same box the hold quotes (ADR 0032).
   const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
     methods: shippingMethods,
     address: holdAddress,
@@ -373,16 +345,11 @@ export function MbolsterConfigClient({
   const shippingStatus = selectedShippingOption?.status;
   const [holdSubmitting, setHoldSubmitting] = React.useState(false);
   const [routeBusy, setRouteBusy] = React.useState(false);
-  // Reference-photo session id (slice 04): bolster has no response record, so mint a UUID
-  // lazily, persist it (survives reload; Stripe cancel via the hold-cancel draft), reuse it as the hold's responseId
-  // so the resulting Result id equals the session id (gallery finds photos with no extra column).
   const [configSessionId, setConfigSessionId] = React.useState<string | null>(null);
   React.useEffect(() => {
     try {
       setConfigSessionId(window.localStorage.getItem(CONFIG_SESSION_KEY));
-    } catch {
-      // best-effort
-    }
+    } catch {}
   }, []);
   const ensureConfigSessionId = React.useCallback(() => {
     if (configSessionId) return configSessionId;
@@ -392,9 +359,7 @@ export function MbolsterConfigClient({
       : `${Date.now()}-${Math.random()}`;
     try {
       window.localStorage.setItem(CONFIG_SESSION_KEY, id);
-    } catch {
-      // best-effort
-    }
+    } catch {}
     setConfigSessionId(id);
     return id;
   }, [configSessionId]);
@@ -409,10 +374,8 @@ export function MbolsterConfigClient({
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
   const suggestedLength = (shopRecommendation?.bolster_variant ?? null) as BolsterLength | null;
 
-  // --- Staff assist (slice 13) — top-level so the session mix survives step navigation ---
   const [assistPlacements, setAssistPlacements] = React.useState<BolsterPlacement[]>([]);
   const [assistLoadedTemplate, setAssistLoadedTemplate] = React.useState<LoadedTemplate | null>(null);
-  // Filling items surfaced from the assist panel; the x-ray resolves colors/scale by subtype/size.
   const [assistItems, setAssistItems] = React.useState<FillingItem[]>([]);
   const [assistColorOverrides, setAssistColorOverrides] = React.useState<ColorOverrideRow[]>([]);
   const assistItemSubtypes = React.useMemo(
@@ -423,16 +386,11 @@ export function MbolsterConfigClient({
     () => new Map(assistItems.map((i) => [i.id, i.size])),
     [assistItems],
   );
-  // Slice 02 / 09: registry dimensions draw the capsule pack at true scale.
   const assistItemDims = React.useMemo(() => resolveItemDims(assistItems), [assistItems]);
-  // Slice 09: the physical fit of the session mix at the recommended length —
-  // one object for the x-ray, the hold confirm and the end-on cross-section.
   const assistBolsterFit = React.useMemo(
     () => fitBolster(assistPlacements, suggestedLength ?? DEFAULT_BOLSTER_LENGTH, { dims: assistItemDims }),
     [assistPlacements, suggestedLength, assistItemDims],
   );
-  // Same DB table either way — assist rows win once the Staff panel loads them,
-  // guests ride the shop customize response (RE slice 07).
   const shopColorOverrides = shopRecommendation?.color_overrides;
   const xrayColorVars = React.useMemo(
     () =>
@@ -441,20 +399,15 @@ export function MbolsterConfigClient({
       ),
     [assistColorOverrides, shopColorOverrides],
   );
-  // Kept only while the mix exactly matches the loaded template; the hold snapshot claims this.
   const sessionFillingTemplateId = React.useMemo(
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
-  // Length-based eligibility: a different recommended length invalidates the loaded mix.
   React.useEffect(() => {
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
   }, [suggestedLength]);
 
-  // --- RE slice 07: reveal + recommended-template derivation shared by the x-ray
-  // mount and the reveal card. Guest data rides the shop customize response —
-  // the client never fetches assist endpoints for guests.
   const previewRecord = parseRecommendationRecord(
     shopRecommendation?.recommendation_record ?? null,
   );
@@ -467,11 +420,7 @@ export function MbolsterConfigClient({
     (t) => String(t.id) === String(previewRecord?.templateId),
   );
   const guestPlacements = rowsToBolsterPlacements(recommendedTemplate?.placements ?? []);
-  // Staff start from the engine's Filling Template and edit from there. Once per
-  // length: emptying the bolster afterwards is a choice, not a gap to refill.
   const seededLengthRef = React.useRef<string | null>(null);
-  // Autosave (Paired build): the mix Staff built on an earlier visit to this
-  // step, waiting for the length it was built for.
   const restoreAssistRef = React.useRef<BolsterAssistDraft | null>(null);
   React.useEffect(() => {
     if (!staffAssist || !suggestedLength) return;
@@ -500,10 +449,7 @@ export function MbolsterConfigClient({
   const guestItemDims = resolveItemDims(
     (shopRecommendation?.available_fillings ?? []).map((f) => ({ id: f.item_id, name: f.name, subtype: f.subtype ?? null, size: f.size ?? null })),
   );
-  // The guest's fit of the recommended mix: read-only x-ray and cross-section.
   const guestBolsterFit = fitBolster(guestPlacements, suggestedLength ?? DEFAULT_BOLSTER_LENGTH, { dims: guestItemDims });
-  // Legacy-flat templates (no placements) keep the text mix summary.
-  // Assisted runs show LENGTH ONLY — no filling x-ray (AC3).
   const guestXray =
     !partnerAssisted && revealNow && previewMixMode(recommendedTemplate?.placements) === "xray";
   const xrayVisible = staffAssist || guestXray;
@@ -516,10 +462,6 @@ export function MbolsterConfigClient({
     return sum;
   }, [addons, selectedAddons]);
 
-  // Measurement service (ADR 0024): the shared rule, which charges Mbolster
-  // nothing today. Kept on the rule rather than skipped here, so the preview
-  // cannot drift from the hold if bolsters are ever priced. Null when owed but
-  // unpriced — the amount is withheld rather than understated.
   const serviceLines = React.useMemo<ServiceLine[] | null>(() => {
     try {
       return resultServiceLines(
@@ -532,24 +474,16 @@ export function MbolsterConfigClient({
   }, [measuredByStaff, servicePrices]);
 
   React.useEffect(() => {
-    // Paired build step 2: the hand-off decides the session. Only height is new;
-    // sleep position comes from the Mpillow, and contact and shipping are asked
-    // on the Mpillow page once both builds are done.
     const handoff = pairedHandoffOnPage();
     if (handoff) {
       const heightUnit = (handoff.bolster?.heightUnit as HeightUnit | undefined) ?? "in";
       const heightCm = handoff.bolster?.heightCm ?? "";
-      // Back here from details or the review: the step is being answered again,
-      // so the old answer goes — a review must never show a case changed since.
       const { choice, ...open } = handoff;
       setPaired(open);
       try {
         writePairedHandoff(window.sessionStorage, open);
-      } catch {
-        // private mode — the answers live in state for this visit
-      }
+      } catch {}
       reopenPairedPreviewRef.current = Boolean(choice?.bolster && heightCm);
-      // Read only by the Staff seeding below.
       restoreAssistRef.current = handoff.bolster?.assist ?? null;
       setConfigSessionId(handoff.companionId);
       setState({ step: "height", heightUnit, heightCm, sleepPosition: handoff.sleepPosition });
@@ -580,9 +514,7 @@ export function MbolsterConfigClient({
           setHeightDraft(displayHeight(heightUnit, heightCm));
         }
       }
-    } catch {
-      // best-effort
-    }
+    } catch {}
 
     const holdCancelled = isHoldCancelledQuery(window.location.search);
     const draft = readHoldCancelDraft(window.localStorage, "mbolster");
@@ -609,15 +541,10 @@ export function MbolsterConfigClient({
         if (sel.discoverySourceOther) setDiscoverySourceOther(sel.discoverySourceOther);
         if (sel.notes) setHoldNotes(sel.notes);
         setHoldAddress(sel.holdAddress);
-        // Back from a cancelled Checkout: the session id (and the reference photos
-        // on it) is still this customer's. Never on a plain revisit — after a
-        // completed hold that id is the previous customer's Result.
         if (holdCancelled && draft.responseId) {
           try {
             window.localStorage.setItem(CONFIG_SESSION_KEY, draft.responseId);
-          } catch {
-            // private mode — state alone carries it for this visit
-          }
+          } catch {}
           setConfigSessionId(draft.responseId);
         }
       } else {
@@ -639,19 +566,12 @@ export function MbolsterConfigClient({
   }, []);
 
   React.useEffect(() => {
-    // A paired run keeps its answers in the hand-off, below; this device's
-    // standalone Mbolster draft is never overwritten by it.
     if (pairedHandoffOnPage()) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // best-effort
-    }
+    } catch {}
   }, [state]);
 
-  // Step 2's answers as they stand, written into the hand-off so reopening the
-  // step shows the same Mbolster. Staff's mix autosaves with them; until one is
-  // loaded, the stored one is kept — it is the one about to be restored.
   const pairedAnswers = React.useMemo((): PairedBolsterAnswers => {
     const assist = !staffAssist
       ? undefined
@@ -681,13 +601,9 @@ export function MbolsterConfigClient({
     if (!paired) return;
     try {
       writePairedHandoff(window.sessionStorage, { ...paired, bolster: pairedAnswers });
-    } catch {
-      // private mode — the answers live in state for this visit
-    }
+    } catch {}
   }, [paired, pairedAnswers]);
 
-  // Persist hold-prep while on preview (covers Stripe cancel return). A paired
-  // run's Checkout returns to the Mpillow, so it writes nothing here.
   React.useEffect(() => {
     if (state.step !== "preview" || paired) return;
     try {
@@ -712,9 +628,7 @@ export function MbolsterConfigClient({
           holdAddress,
         },
       });
-    } catch {
-      // best-effort
-    }
+    } catch {}
   }, [
     state.step,
     state.heightUnit,
@@ -807,7 +721,6 @@ export function MbolsterConfigClient({
         ]),
     holdShippingCheck(shippingStatus),
   ], [
-    // The code never blocks; it is here because the checks read it.
     checkoutCode,
     selectedCase,
     holdEmail,
@@ -824,7 +737,6 @@ export function MbolsterConfigClient({
     selfCollect,
   ]);
 
-  // A paired Mbolster's contact, address and shipping are its Mpillow's.
   const pairedFields = React.useMemo(
     (): FieldCheck[] => holdFields.filter((f) => f.key === "case"),
     [holdFields],
@@ -894,14 +806,11 @@ export function MbolsterConfigClient({
     setSelectedCase(null);
     setSelectedAddons(new Set());
     setAddons([]);
-    // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     try {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem("mbolster_config_v3");
       clearHoldCancelDraft(window.localStorage, "mbolster");
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const confirmExit = () => {
@@ -918,19 +827,15 @@ export function MbolsterConfigClient({
 
   const exitConfirmed = () => {
     if (paired) {
-      // Leaving a paired run abandons the hand-off, not this device's own draft.
       try {
         clearPairedHandoff(window.sessionStorage);
-      } catch {
-        // private mode — nothing was stored
-      }
+      } catch {}
     } else {
       reset();
     }
     router.push(homeHref);
   };
 
-  /** Mobile → centered Dialog; desktop → toast (unchanged). */
   const requestExit = () => {
     if (isMobile) setExitDialogOpen(true);
     else confirmExit();
@@ -939,9 +844,7 @@ export function MbolsterConfigClient({
   const fetchBolsterRecommendation = React.useCallback(async (opts?: {
     preserveSelections?: boolean;
     stayOnStep?: boolean;
-    /** Height committed in the same click, before state has caught up. */
     heightCm?: number;
-    /** Where to land once it resolves (a paired run skips the length step). */
     nextStep?: Step;
   }) => {
     const height = opts?.heightCm ?? heightNum;
@@ -973,7 +876,6 @@ export function MbolsterConfigClient({
       if (!opts?.preserveSelections) {
         setSelectedCase(soleCaseId(data.components.cases));
       } else {
-        // Kept only while it is still cut for the length just recommended.
         setSelectedCase((prev) =>
           data.components.cases.some((c) => c.item_id === prev)
             ? prev
@@ -991,7 +893,6 @@ export function MbolsterConfigClient({
     }
   }, [heightNum, state.sleepPosition]);
 
-  // After hold-cancel restore: re-fetch recommendation, keep the case, stay on preview.
   React.useEffect(() => {
     if (!restoringHoldCancel || state.step !== "preview") return;
     if (!heightNum || !state.sleepPosition) {
@@ -1014,25 +915,19 @@ export function MbolsterConfigClient({
     fetchBolsterRecommendation,
   ]);
 
-  // Paired, answered before (Back from the Mpillow's details, or Edit on its
-  // review): straight back to this Mbolster's customisation, answers kept.
   React.useEffect(() => {
     if (!reopenPairedPreviewRef.current || !paired || !heightNum) return;
     reopenPairedPreviewRef.current = false;
     void fetchBolsterRecommendation({ heightCm: heightNum, preserveSelections: true, nextStep: "preview" });
   }, [paired, heightNum, fetchBolsterRecommendation]);
 
-  // Load bolster-specific add-ons + shipping when entering the purchase preview.
   React.useEffect(() => {
     if (state.step !== "preview") return;
 
-    // A restored hold cancel runs this first without a length, then again once
-    // the recommendation lands; the earlier list must not overwrite the later.
     let cancelled = false;
     const stale = () => {
       cancelled = true;
     };
-    // Assisted runs offer no add-ons (AC3) — skip the fetch entirely.
     if (!partnerAssisted) {
       const length = shopRecommendation?.bolster_variant ?? "";
       const qs = new URLSearchParams({ productType: "bolster" });
@@ -1050,15 +945,12 @@ export function MbolsterConfigClient({
         });
     }
 
-    // A paired Mbolster ships with its Mpillow: no shipping choice of its own.
     if (paired) return stale;
     const country = holdAddress.country || "SG";
     fetch(`${HOLD_SHIPPING_METHODS_PATH}&country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
       .then(async (d: { rows?: typeof shippingMethods }) => {
         let methods = d.rows ?? [];
-        // Fallback: methods may predate SG country tags. Only for Singapore —
-        // elsewhere it would offer methods that do not ship there.
         if (methods.length === 0 && country === "SG") {
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
@@ -1117,11 +1009,6 @@ export function MbolsterConfigClient({
     to,
   ]);
 
-  /**
-   * Paired build step 2 (ADR 0026): this Mbolster, or — on Skip — none, handed
-   * back to the Mpillow page, which asks for contact and shipping (step 3) and
-   * shows both builds before the one payment (step 4). Nothing is held here.
-   */
   const handlePairedChoice = (withBolster: boolean) => {
     if (!paired) return;
     let choice: PairedChoice = { bolster: null };
@@ -1135,7 +1022,6 @@ export function MbolsterConfigClient({
         setFieldErrors(errors);
         return;
       }
-      // Slice 09: a mix the bolster cannot fit is a confirm, never a block (ADR 0019).
       if (staffAssist && !confirmSaveWithBolsterFit(assistBolsterFit, "Hold")) return;
       const caseName = shopRecommendation?.components.cases.find((c) => c.item_id === selectedCase)?.name;
       const addonNames = addons.filter((a) => selectedAddons.has(a.item_id)).map((a) => a.name);
@@ -1203,7 +1089,6 @@ export function MbolsterConfigClient({
       setFieldErrors(errors);
       return;
     }
-    // Slice 09: a mix the bolster cannot fit is a confirm, never a block (ADR 0019).
     if (staffAssist && !confirmSaveWithBolsterFit(assistBolsterFit, "Hold")) return;
 
     setHoldSubmitting(true);
@@ -1212,7 +1097,6 @@ export function MbolsterConfigClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Reuse the reference-photo session id as the Result id when staff uploaded photos.
           ...(configSessionId ? { responseId: configSessionId } : {}),
           email: holdEmail.trim(),
           marketingEmail: !paired && marketingEmail,
@@ -1220,9 +1104,7 @@ export function MbolsterConfigClient({
           discoverySource,
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-          // Resolved and priced again by the hold; the page only asks.
           code: checkoutCodeToSend(checkoutCode, codeStatus),
-          // Assist priority (#78): server re-resolves this code → partner id.
           ...(partner ? { partnerAssistCode: partner.code } : {}),
           productType: "bolster",
           suggestedLength,
@@ -1235,7 +1117,6 @@ export function MbolsterConfigClient({
             { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
-          // Staff assist snapshot (slice 13): session mix + still-matching template claim.
           ...(staffAssist && assistPlacements.length > 0
             ? {
                 assistFilling: {
@@ -1254,21 +1135,11 @@ export function MbolsterConfigClient({
       if (!res.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-      // No Checkout comes back when an admin has switched authorization holds
-      // off; the status page is where the customer waits for Staff instead.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
-      // Shared in-store device: the session id is now this customer's Result id.
-      // Kept, the next customer's hold would be submitted onto it. It survives a
-      // cancelled Checkout through the hold-cancel draft instead (restored only on
-      // `hold_cancelled`). State is left alone: clearing it would re-run the draft
-      // effect and erase the id from the draft before the page unloads.
       try {
         window.localStorage.removeItem(CONFIG_SESSION_KEY);
-      } catch {
-        // private mode — nothing was stored
-      }
-      // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
+      } catch {}
       trackGaEventThen(
         {
           name: "generate_lead",
@@ -1318,16 +1189,13 @@ export function MbolsterConfigClient({
     return Boolean(r && isFlowRoutePending(r));
   })();
 
-  // Hold preview uses the same mp-config split layout (case, add-ons, shipping).
   if (state.step === "preview") {
-    // A paired run skipped the sleep and length steps, so Back is height.
     const backFromPreview = paired ? () => setState((s) => ({ ...s, step: "height" })) : goBack;
     const caseStock = preferenceStockFor(
       selectedCase,
       shopRecommendation?.components.cases ?? [],
     );
     const preferenceStocks = caseStock !== null ? [caseStock] : [];
-    // Product Builder overlay (slice 10): unmapped case → plain silhouette.
     const selectedOverlay =
       (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)
         ?.overlay ?? null;
@@ -1342,15 +1210,12 @@ export function MbolsterConfigClient({
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
     const goodsSubtotal = shopBasePrice + addonTotal;
     const bolsterBallpark = serviceLines ? goodsSubtotal + sumServiceLines(serviceLines) : null;
-    // A pair's code goes on its Mpillow, entered on the Mpillow page (ADR 0033).
     const codeContext: CheckoutCodeContext | null =
       paired || !shopRecommendation || !suggestedLength
         ? null
         : { flow: "customisation", build: { product_type: "bolster", length: suggestedLength }, goods: goodsSubtotal };
     const codeDiscount = paired ? 0 : checkoutCodeDiscount(codeStatus);
     const codeFreeShipping = !paired && checkoutCodeFreeShipping(codeStatus);
-    // Shipping joins the one price once it has one (free_above on goods alone).
-    // A pair's is chosen on the Mpillow page after this step, for both boxes.
     const shippingAmount = paired
       ? null
       : holdShippingAmount(selectedShippingOption, goodsSubtotal, codeFreeShipping);
@@ -1364,8 +1229,6 @@ export function MbolsterConfigClient({
           : bolsterBallpark - codeDiscount + (shippingAmount ?? 0);
 
     return (
-      // `overflow-x-clip`, not `-hidden`: hidden makes this box a scroll container,
-      // and the header would stick to it rather than the screen.
       <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-clip bg-background">
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
         <div
@@ -1413,7 +1276,6 @@ export function MbolsterConfigClient({
               </Button>
             )}
           </div>
-          {/* A Paired build's steps, at the top of every one of them. */}
           {paired ? <PairedStepperBar className="border-t" step={2} /> : null}
         </header>
 
@@ -1423,13 +1285,9 @@ export function MbolsterConfigClient({
             paired ? "min-h-[calc(100dvh-100px)]" : "min-h-[calc(100dvh-56px)]",
           )}
         >
-          {/* Left: product visual */}
-          {/* Below lg the stage flows at its natural height (same fix as mp-config):
-              a 40vh cap with overflow-hidden clipped the staff toolbox on phones. */}
           <div
             className={cn(
               "relative lg:sticky lg:overflow-hidden",
-              // Under the header, and the stepper bar when there is one.
               paired ? "lg:top-[100px] lg:h-[calc(100vh-100px)]" : "lg:top-[56px] lg:h-[calc(100vh-56px)]",
             )}
           >
@@ -1454,24 +1312,18 @@ export function MbolsterConfigClient({
                 />
               </>
             )}
-            {/* Desktop: the stage scrolls when Staff's controls make it taller than the screen (as mp-config's
-                does); `my-auto` keeps it centred while it fits, so a guest's stage is unchanged. */}
             <div className="relative z-10 flex flex-col p-4 max-md:px-3 lg:absolute lg:inset-0 lg:overflow-y-auto lg:overscroll-contain">
             <div className="my-auto flex w-full flex-col items-center gap-4 md:gap-6">
               <div
-                // Full column width (max 500px) below lg so the x-ray is tappable on phones.
                 className="relative w-full max-w-[500px] lg:w-[min(75vmin,500px)]"
-                // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
                 style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
               >
                 {(() => {
-                  // Long-pill silhouette; length follows the recommended Mbolster length.
                   const bolsterPath = bolsterCapsulePath(suggestedLength ?? DEFAULT_BOLSTER_LENGTH);
                   return (
                     <svg
                       className={cn(
                         "absolute inset-0 pointer-events-none",
-                        // x-ray art direction: shell desaturates so fillings read inside
                         xrayVisible && "opacity-80 saturate-50",
                       )}
                       viewBox="0 0 664 374"
@@ -1479,7 +1331,6 @@ export function MbolsterConfigClient({
                       preserveAspectRatio="xMidYMid meet"
                     >
                       <path d={bolsterPath} fill="white" />
-                      {/* Color overlay: the silhouette itself is the fabric. */}
                       {selectedOverlay?.color && (
                         <path d={bolsterPath} fill={selectedOverlay.color} />
                       )}
@@ -1516,10 +1367,8 @@ export function MbolsterConfigClient({
                     itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
                     itemDims={staffAssist ? assistItemDims : guestItemDims}
                     fit={staffAssist ? assistBolsterFit : guestBolsterFit}
-                    // Guests view, never edit: omitting these keeps the renderer read-only.
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
-                    // Staff off a phone: the compartment's controls in the panel under the capsule, off the art.
                     controlsSlot={staffAssist ? compartmentSlot : undefined}
                     className="absolute inset-0"
                   />
@@ -1530,8 +1379,6 @@ export function MbolsterConfigClient({
                   </div>
                 )}
               </div>
-              {/* Staff: the compartment editor (XrayBolster's controls), under the capsule at its width. Phones keep
-                  the controls in the frame. */}
               {staffAssist && xrayVisible && !isMobile && (
                 <XraySectionDock
                   dived="compartment"
@@ -1539,7 +1386,6 @@ export function MbolsterConfigClient({
                   className="flex w-full max-w-[500px] border-border/60 bg-background/70 shadow-xl backdrop-blur-xl lg:w-[min(75vmin,500px)]"
                 />
               )}
-              {/* Slice 09: the end-on cut under the capsule, Staff and guest, read-only. */}
               {xrayVisible && (
                 <BolsterCrossSection
                   fit={staffAssist ? assistBolsterFit : guestBolsterFit}
@@ -1550,7 +1396,6 @@ export function MbolsterConfigClient({
                 />
               )}
               {(() => {
-                // Guest x-ray replaces the text mix summary; legacy-flat templates keep it.
                 const mixLines = guestXray
                   ? []
                   : (recommendedTemplate?.lines ?? []).map((l) => {
@@ -1590,7 +1435,6 @@ export function MbolsterConfigClient({
                     <RecommendationReveal
                       reveal={revealNow}
                       sizeLabel={suggestedLength ? String(suggestedLength) : ""}
-                      // Assisted: LENGTH ONLY — drop the Filling Template surface (AC3).
                       templateName={partnerAssisted ? null : recommendedTemplate?.name ?? null}
                       mixLines={partnerAssisted ? [] : mixLines}
                     />
@@ -1619,7 +1463,6 @@ export function MbolsterConfigClient({
             </div>
           </div>
 
-          {/* Right: customization panel (case, add-ons, shipping) */}
           <div
             className={cn(
               "flex min-h-0 flex-col bg-background lg:border-l",
@@ -1708,7 +1551,6 @@ export function MbolsterConfigClient({
                       />
                     ))}
                   </div>
-                  {/* Staff are the advisor. */}
                   {!staffAssist && addons.some((a) => selectedAddons.has(a.item_id)) ? (
                     <AddonReviewNotice chargedAfterReview />
                   ) : null}
@@ -1813,9 +1655,6 @@ export function MbolsterConfigClient({
                   </span>
                 </div>
               ))}
-              {/* The Mpillow as step 1 showed it: goods, then its Measurement
-                  service on its own row — the fee is the Mpillow's, and stays
-                  in the pair's total while the Mbolster is customised. */}
               {paired
                 ? pairedPillowRows(paired.pillow).map((row) => (
                     <div key={row.key} className="mb-1 flex justify-between gap-4 text-sm">
@@ -1926,7 +1765,6 @@ export function MbolsterConfigClient({
   }
 
   return (
-    // `overflow-x-clip`, not `-hidden`, so the Paired stepper sticks to the screen.
     <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-clip bg-background">
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
@@ -1946,7 +1784,6 @@ export function MbolsterConfigClient({
       {state.step !== "welcome" && isMobile && (
         <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
       )}
-      {/* Step 2 of a Paired build: the stepper along the top, as on every step. */}
       {paired ? (
         <PairedStepperBar
           className={cn(
@@ -1963,7 +1800,6 @@ export function MbolsterConfigClient({
           state.step !== "welcome" && configuratorMobileCloseClearanceClassName,
         )}
       >
-        {/* A paired run's progress is the stepper above. */}
         {state.step !== "welcome" && !paired ? (
           <div className="mb-6">
             <Progress value={progressValue} aria-label="Mbolster customisation progress" />
@@ -2020,7 +1856,6 @@ export function MbolsterConfigClient({
 
             <div className="space-y-2">
               <div className="text-sm font-semibold text-muted-foreground">Mbolster</div>
-              {/* Not an h1: the page's one h1 is the crawlable intro in page.tsx. Not an h2 either: marketing pages force every h2 to 28px. */}
               <div role="heading" aria-level={2} className="text-4xl font-semibold tracking-tight leading-tight md:text-5xl">
                 Customise your Mbolster
               </div>
@@ -2044,8 +1879,6 @@ export function MbolsterConfigClient({
                 }
               />
             </div>
-            {/* "Have us measure you" (ADR 0024). Mbolster carries no measurement
-                fee, so the visit is simply offered. */}
             {!staffAssist && !measuredByStaff && !partnerAssisted ? (
               <p className="text-sm text-muted-foreground">
                 Prefer our team to measure you? Get it customised, adjusted and bring home immediately — no
@@ -2144,8 +1977,6 @@ export function MbolsterConfigClient({
                     const heightCm = normalizeHeightDraft(state.heightUnit, heightDraft)!;
                     setState((s) => ({ ...s, heightCm }));
                     setHeightDraft(displayHeight(state.heightUnit, heightCm));
-                    // Paired: sleep position came with the Mpillow, so straight to
-                    // the Mbolster's own customisation page.
                     if (paired) {
                       await fetchBolsterRecommendation({
                         heightCm: Number(heightCm),

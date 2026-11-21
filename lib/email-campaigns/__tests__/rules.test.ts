@@ -53,16 +53,8 @@ type Case = {
 };
 
 const DAY = 86_400_000;
-/** Each `engagement.stage`'s one purchase, in months before now, as the SQL assert inserts it. */
 const PURCHASE_MONTHS = { lead: null, new: 2, at_risk: 18, lapsed: 30 } as const;
 
-/**
- * Slice 12: the overview's `unengaged` for a case, through the TypeScript
- * twins (`lifecycleStage`, `isUnengaged`), from the rows the SQL assert
- * inserts: a purchase for the stage, the Customer's age, and every campaign
- * send of theirs the provider accepted, newest first (the case's `campaigns`,
- * its other campaigns in `recent`, and this one's `own`).
- */
 function unengagedOf(c: Case, now: Date): boolean {
   const e = c.customer.engagement;
   const months = e ? PURCHASE_MONTHS[e.stage] : null;
@@ -72,7 +64,6 @@ function unengagedOf(c: Case, now: Date): boolean {
     lastPurchaseAt,
     bookings: 0,
     lastBookingAt: null,
-    // The assert dates the consent 30 days ago.
     unsubscribedAt: c.customer.marketing_email === "unsubscribed" ? new Date(now.getTime() - 30 * DAY).toISOString() : null,
     lastPurchaseDeliveredAt: null,
   };
@@ -93,12 +84,6 @@ function unengagedOf(c: Case, now: Date): boolean {
   );
 }
 
-/**
- * The `marketing_recent` the view would give for a case's other email: every
- * campaign send but a failed or held-out one, and points-expiry reminders;
- * never an order email. The SQL assert inserts the raw rows instead, so the view's filter is
- * held to these too.
- */
 const recentOf = (c: Case, now: Date) =>
   (c.customer.recent ?? [])
     .filter((r) => (r.kind ?? "campaign") === "points_expiry" || ((r.kind ?? "campaign") === "campaign" && r.status !== "failed" && r.status !== "held_out"))
@@ -109,9 +94,7 @@ const CASES = JSON.parse(
 ) as { cases: Case[] };
 
 const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261021100000_email_campaigns.sql"), "utf8");
-/** The rule's latest definition: the rest period's (PRD-campaign-audiences slice 07). */
 const RULE_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261031144935_campaign_rest_period.sql"), "utf8");
-/** The rule's latest definition: slice 12 added `unengaged`. */
 const BLOCKER_MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101081436_campaign_unengaged.sql"), "utf8");
 
 const NOW = new Date("2026-10-31T04:00:00.000Z");
@@ -223,7 +206,6 @@ describe("placeholders, not prefilled words (PRD-campaign-email-editor slice 01)
         subject: "",
         preheader: null,
         body: "",
-        // Written in blocks, none yet (slice 03).
         content: { v: 1, blocks: [], fallbacks: {} },
         greeting: true,
         button: null,
@@ -442,7 +424,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
       subject: "{nickname} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.",
       preheader: "{points} is not a Variable: the Variables are {first_name}, {last_name}, {points_balance} and {your_pillow}.",
     });
-    // A legacy campaign's subject is its words, braces and all.
     expect(CampaignDraftSchema.safeParse({ ...FIRST_CAMPAIGN_DRAFT, subject: "{nickname}" }).success).toBe(true);
   });
 
@@ -471,7 +452,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
         "content.fallbacks.last_name": "Write what to say to a customer with no last name.",
       });
       expect(CampaignDraftSchema.safeParse({ ...withLast, content: { ...withLast.content, fallbacks: { last_name: "friend" } } }).success).toBe(true);
-      // In the subject, the preview line or a heading alike.
       const plain = { ...content, blocks: [text({ text: "Hello" })], fallbacks: {} };
       expect(issues({ ...draft, subject: "Points: {points_balance}", content: plain })).toEqual({
         "content.fallbacks.points_balance": "Write what to say to a customer with no points balance.",
@@ -487,7 +467,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
       expect(issues({ ...greet, content: { ...greet.content, fallbacks: { first_name: "" } } })).toEqual({
         "content.fallbacks.first_name": "Write what to say to a customer with no first name.",
       });
-      // Without the greeting, and nowhere else, the first name is unused: an empty fallback is no matter.
       expect(CampaignDraftSchema.safeParse({ ...greet, greeting: false, content: { ...greet.content, fallbacks: { first_name: "" } } }).success).toBe(true);
       expect(variablesInEmail({ ...greet, preheader: "{points_balance}" } as never)).toEqual(["first_name", "points_balance"]);
       expect(variablesInEmail({ ...FIRST_CAMPAIGN_DRAFT, subject: "{last_name}" })).toEqual([]);
@@ -518,7 +497,6 @@ describe("a block campaign (PRD-campaign-email-editor slice 03)", () => {
   });
 });
 
-// PRD-campaign-audiences slice 06.
 describe("leaving Segments out", () => {
   const SEG_A = "5e000000-0000-4000-8000-0000000000a1";
   const SEG_B = "5e000000-0000-4000-8000-0000000000b2";
@@ -535,7 +513,6 @@ describe("leaving Segments out", () => {
     const set = (...ids: string[]) => new Set(ids);
 
     it("only narrows: what comes out is what went in, less the left out, in order", () => {
-      // Every combination of 6 candidates and 2 exclusions drawn from 8 ids.
       const all = Array.from({ length: 8 }, (_, i) => `id-${i}`);
       for (let seed = 0; seed < 200; seed++) {
         const pick = (salt: number) => all.filter((_, i) => ((seed * 31 + salt * 17) >> i) & 1);
@@ -546,7 +523,6 @@ describe("leaving Segments out", () => {
         ];
         const { candidates: kept, leftOut } = excludeSegmentMembers(candidates, exclusions);
         const inputIds = candidates.map((x) => x.customerId);
-        // Never one that was not there; never one a left-out Segment holds.
         expect(kept.every((x) => inputIds.includes(x.customerId))).toBe(true);
         expect(kept.some((x) => exclusions.some((e) => e.customerIds.has(x.customerId)))).toBe(false);
         expect(kept.map((x) => x.customerId)).toEqual(inputIds.filter((x) => kept.some((k) => k.customerId === x)));
@@ -601,7 +577,6 @@ describe("leaving Segments out", () => {
   });
 });
 
-// PRD-campaign-audiences slice 07: the rest period.
 describe("restUntil", () => {
   const now = new Date("2026-10-31T04:00:00.000Z");
   const ago = (days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
@@ -614,10 +589,8 @@ describe("restUntil", () => {
   });
 
   it("rests someone with 4 in 30 days until the 4th most recent leaves the window", () => {
-    // Latest 8 days ago (the 7-day rest is over), 4th most recent 29 days ago: 1 day more.
     expect(restUntil([ago(8), ago(12), ago(20), ago(29)], now)).toBe(new Date(now.getTime() + 86_400_000).toISOString());
     expect(restUntil([ago(8), ago(12), ago(20)], now)).toBeNull();
-    // The 5th does not matter; the order given does not either.
     expect(restUntil([ago(29), ago(8), ago(40), ago(20), ago(12)], now)).toBe(new Date(now.getTime() + 86_400_000).toISOString());
   });
 
@@ -657,7 +630,6 @@ describe("planCampaignWave: resting", () => {
     expect(plan.selection.map((c) => c.customerId).sort()).toEqual(["a", "d"]);
     expect(plan.excluded).toEqual({ resting: 2, unsubscribed: 1 });
     expect(plan.failed).toBe(0);
-    // c rests until 2 days from now, b until 5: the first is c.
     expect(plan.restingUntil).toBe(new Date(now.getTime() + 2 * 86_400_000).toISOString());
   });
 

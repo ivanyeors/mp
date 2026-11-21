@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Campaign } from "@/lib/email-campaigns/rules";
 
-/**
- * A Segment chosen by this campaign's own history (PRD-campaign-audiences
- * slice 05): *got it*, *clicked it* or *got it, didn't click* holds only
- * people the campaign has already been sent, and nobody gets a campaign
- * twice, so as its Audience it would never send. Save refuses it on the
- * *Send to* field, and every wave plan refuses it too, since the Segment can
- * change after the campaign is saved. *Didn't get it* is who it has left.
- */
-
 const ID = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
 const OTHER = "6b2e4d3f-8c5a-4f7b-8d9e-1a2b3c4d5e6f";
 const SEGMENT = "5e000000-0000-4000-8000-0000000000d4";

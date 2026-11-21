@@ -1,9 +1,3 @@
-/**
- * Email a Staff order's Payment link (ADR 0048): the Payment request. Sending
- * renews the link for another 7 days, so a resend is also how Staff revive a
- * link that lapsed before the daily job cancelled its Order.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getEmailTransport } from "@/lib/email";
@@ -20,7 +14,6 @@ export type SendOutcome =
   | { ok: true; sentTo: string; expiresAt: string; url: string }
   | { ok: false; status: number; error: string };
 
-/** "Fri, 14 Nov 2026", in Singapore. */
 export function formatLinkExpiry(iso: string): string {
   return new Intl.DateTimeFormat("en-SG", {
     timeZone: "Asia/Singapore",
@@ -31,7 +24,6 @@ export function formatLinkExpiry(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** Where the order goes, as the email's address block reads it. */
 export function deliveryBlock(address: Record<string, unknown> | null): { heading: string; lines: string[] } {
   const a = (address ?? {}) as Record<string, string | null | undefined>;
   const collect = collectLocationOf(address);
@@ -39,7 +31,6 @@ export function deliveryBlock(address: Record<string, unknown> | null): { headin
     a.recipient,
     a.line1,
     a.line2 || null,
-    // A studio's address is one free-text line that already names the city.
     [collect ? null : a.city, a.state, a.postal_code].filter((v) => v && v !== "—").join(" "),
     collect ? null : a.country,
   ].filter((l): l is string => Boolean(l && String(l).trim()));
@@ -55,7 +46,6 @@ export async function sendPaymentRequest(
   const loaded = await loadPayLinkForOrder(admin, orderId);
   if (!loaded) return { ok: false, status: 404, error: "This order has no payment link." };
 
-  // Only an unpaid, open order can be asked for; an expired link is renewed.
   const state = payLinkState(loaded.order, loaded.link, now);
   if (state === "paid") return { ok: false, status: 409, error: "This order is already paid." };
   if (state === "closed") {
@@ -71,7 +61,6 @@ export async function sendPaymentRequest(
     ? await admin.from("customers").select("first_name").eq("id", fresh.order.customer_id).maybeSingle()
     : { data: null };
   const delivery = deliveryBlock(fresh.order.shipping_address);
-  // The words Staff saved on Email templates, or the defaults (never throws).
   const copy = await loadEmailCopy(PAYMENT_REQUEST_EMAIL_COPY);
   const rendered = renderPaymentRequestEmail(
     {

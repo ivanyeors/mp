@@ -39,8 +39,6 @@ describe("parsePaymentReminderSettings", () => {
       results_payment_reminder_first_days: "0",
       results_payment_reminder_interval_days: "0",
     });
-    // 0 days to the first chase is a real choice; a 0-day interval would mail
-    // the customer on every daily tick until the cap.
     expect(s.firstDelayDays).toBe(0);
     expect(s.intervalDays).toBe(1);
   });
@@ -89,12 +87,10 @@ describe("planPaymentReminder", () => {
   });
 
   it("does not skip a reminder the daily cron arrives late for", () => {
-    // Cron missed a day; the chase was due at day 3 and this tick is day 4.
     expect(planPaymentReminder(fresh, D, day(4))).toBe("remind");
   });
 
   describe("notAfter (the Authorization hold's death)", () => {
-    // Submitted day 0, hold dies day 7, assigned day 0 for arithmetic clarity.
     const holdDies = day(7);
 
     it("sends the chases that land while the hold is alive", () => {
@@ -109,8 +105,6 @@ describe("planPaymentReminder", () => {
         remindersSent: 1,
         notAfter: holdDies,
       };
-      // Due day 6 — before the hold dies — but the cron is running on day 8.
-      // Accept would 502 on captureHold, so this must not go out.
       expect(planPaymentReminder(held, D, day(8))).toBe("none");
     });
 
@@ -121,21 +115,17 @@ describe("planPaymentReminder", () => {
         remindersSent: 2,
         notAfter: holdDies,
       };
-      // Next would be day 9, after the hold dies on day 7.
       expect(nextReminderDue(held, D)).toBeNull();
       expect(planPaymentReminder(held, D, day(9))).toBe("none");
     });
 
     it("leaves a no-hold Result unbounded", () => {
-      // No deadline, so a late cron still chases — there is no dead hold to
-      // make the promise false, only an unpaid balance.
       expect(planPaymentReminder(fresh, D, day(30))).toBe("remind");
       const late = { ...fresh, lastReminderAt: day(20), remindersSent: 1 };
       expect(planPaymentReminder(late, D, day(23))).toBe("remind");
     });
 
     it("is the deadline, not the lateness, that stops a held Result", () => {
-      // Same state, same late tick — only notAfter differs.
       const late = { ...fresh, lastReminderAt: day(20), remindersSent: 1 };
       expect(planPaymentReminder(late, D, day(23))).toBe("remind");
       expect(

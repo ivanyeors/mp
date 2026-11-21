@@ -9,12 +9,6 @@ import {
   templateParamCount,
 } from "@/lib/whatsapp/aftercare-templates";
 
-/**
- * The two aftercare templates (CRM slice 13). The copy is approved by the owner
- * word for word on 2026-10-20, so it is pinned here: an edit fails this test
- * rather than reaching Meta. A real change needs the owner and a new name.
- */
-
 describe("the approved copy", () => {
   it("aftercare_review_request", () => {
     expect(AFTERCARE_REVIEW_TEMPLATE).toEqual({

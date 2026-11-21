@@ -3,11 +3,6 @@
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
-/**
- * Phones: the Record a payout form stays behind one button per partner, so the
- * page is a list of partners rather than a form per partner. From `md` the form
- * is always shown, as before.
- */
 export function RecordPayoutToggle({ partnerName, children }: { partnerName: string; children: ReactNode }) {
     const [open, setOpen] = useState(false);
     return (

@@ -5,14 +5,6 @@ import { runReplaceEverywhere, type ReplaceInput } from "@/lib/media/replace";
 
 export const runtime = "nodejs";
 
-/**
- * POST /api/media/replace
- * Body: { oldUrl, newUrl, oldAssetId?, newAssetId? }
- *
- * Swaps references across blogs, landing slots (+ dual-write asset ids),
- * landing sections, products, categories, partners, partners page.
- * Does not touch order_items snapshots.
- */
 export async function POST(req: Request) {
   const denied = await requireAdmin("media");
   if (denied) return denied;
@@ -44,7 +36,6 @@ export async function POST(req: Request) {
     };
 
     const summary = await runReplaceEverywhere(input);
-    // Swaps touch landing site_settings rows and partner logos.
     invalidateTag("site-settings");
     invalidateTag("locations");
     return NextResponse.json({ ok: true, summary });

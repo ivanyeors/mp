@@ -1,10 +1,5 @@
 "use client";
 
-/**
- * Error page for every public route without its own (account, results,
- * configurators, partner hub, checkout confirmation). Production errors carry
- * only a digest, never the server's message, so nothing internal is shown.
- */
 export default function LocaleError({
   error,
   reset,

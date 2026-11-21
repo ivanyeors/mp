@@ -1,7 +1,3 @@
-/**
- * Slice 06 self-check: flow-route upsell wiring + pre-Stripe gate.
- * Run: npx tsx lib/rules-engine/slice-06.check.ts
- */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -21,7 +17,6 @@ import type { RecommendationRecord } from "./recommendation-record";
 const ROOT = process.cwd();
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 
-// --- Lib modules exist ---
 for (const rel of [
   "lib/rules-engine/carry-over.ts",
   "lib/rules-engine/journey.ts",
@@ -31,7 +26,6 @@ for (const rel of [
   assert.ok(existsSync(join(ROOT, rel)), `${rel} exists`);
 }
 
-// --- Carry-over + journey behavior ---
 assert.deepEqual(
   carryOverAnswers("mbolster", "premium-mpillow", { height_cm: 170 }),
   {},
@@ -73,7 +67,6 @@ assert.equal(
   true,
 );
 
-// --- Configurator wiring ---
 const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.match(bolster, /UpsellCard/);
 assert.match(bolster, /assertPreStripeRouteResolved/);

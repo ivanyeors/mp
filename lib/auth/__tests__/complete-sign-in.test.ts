@@ -3,12 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { completeSignIn, type CompleteSignInDeps } from "../complete-sign-in";
 import type { SignInIntent } from "../sign-in-intent";
 
-/**
- * The one place a sign-in finishes (PRD-campaign-audiences slice 03): Staff
- * only into the Admin Panel, partners as before, customers made at once and
- * their consent recorded only now that the address is proven.
- */
-
 const user = { id: "auth-1", email: "ann@example.com", email_confirmed_at: "2026-11-01T00:00:00Z" } as User;
 const intent = (over: Partial<SignInIntent>): SignInIntent => ({
   audience: "customer",

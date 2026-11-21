@@ -57,7 +57,6 @@ describe("Customer notes rules", () => {
     const staff = { userId: "u1", grantsAll: false };
     expect(canDeleteNote(staff, { authorUserId: "u1" })).toBe(true);
     expect(canDeleteNote(staff, { authorUserId: "u2" })).toBe(false);
-    // A note moved from customers.notes has no author.
     expect(canDeleteNote(staff, { authorUserId: null })).toBe(false);
     expect(canDeleteNote({ userId: "u9", grantsAll: true }, { authorUserId: null })).toBe(true);
   });

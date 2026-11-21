@@ -13,7 +13,6 @@ const ok = (r: NormaliseResult) => {
   return r;
 };
 
-/** A raw row with a usable email, so each case varies one thing. */
 const raw = (over: ShopifyRawRow = {}): ShopifyRawRow => ({
   email: "row@example.com",
   totalOrders: "0",

@@ -21,7 +21,6 @@ import {
 } from "@/lib/customer-migration/preview";
 import { buyer, exportCsv, FIVE_ROWS, FIVE_ROWS_MATCHES, SHOPIFY_EXPORT_HEADER } from "./fixtures";
 
-/** What the server action does, minus the auth check and the database read. */
 function fakeServer(existing: ExistingLookup = NO_EXISTING) {
   const calls: IndexedRawRow[][] = [];
   const preview = vi.fn<PreviewChunkFn>(async (rows) => {
@@ -69,7 +68,6 @@ describe("runShopifyPreview: the 5-row fixture", () => {
     const { run } = await done(exportCsv(FIVE_ROWS), existingFromMatches(FIVE_ROWS_MATCHES));
     expect(run.summary.skipReasons).toEqual({ no_email: 1, invalid_email: 1 });
     expect(run.summary.repairs).toEqual({ zip_repaired: 1 });
-    // Ana (create: 2 orders, yes) and Ben (merge: 0 orders, no).
     expect(run.summary).toMatchObject({ buyers: 1, nonBuyers: 1, consented: 1, notConsented: 1 });
   });
 
@@ -96,7 +94,6 @@ describe("runShopifyPreview: the 5-row fixture", () => {
 describe("runShopifyPreview: a 5,000-row fixture", () => {
   const rows = Array.from({ length: 5000 }, (_, n) =>
     buyer(n + 1, {
-      // Long cells keep each chunk honest about its size.
       "Default Address Address2": `Unit ${n} `.padEnd(120, "x"),
       Note: "A long staff note that stays in the browser. ".repeat(20),
     }),
@@ -125,7 +122,6 @@ describe("runShopifyPreview: a 5,000-row fixture", () => {
   it("skips both copies of an email that falls in two different chunks", async () => {
     const dupes = rows.slice(0, 600).map((r, n) => (n === 599 ? { ...r, Email: "BUYER1@example.com" } : r));
     const { run, calls } = await done(exportCsv(dupes));
-    // The server saw them in different chunks, so neither chunk could tell.
     expect(calls[0].some((r) => r.i === 0)).toBe(true);
     expect(calls[0].some((r) => r.i === 599)).toBe(false);
     expect(run.previews[0]).toEqual({ i: 0, outcome: "skip", reason: "duplicate_email_in_file", repairs: [] });

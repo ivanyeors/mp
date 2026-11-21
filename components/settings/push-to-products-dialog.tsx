@@ -29,14 +29,6 @@ import {
 
 const money = (cents: number | null) => (cents == null ? "Not set" : formatCurrency(cents / 100));
 
-/**
- * The price check before an inventory family becomes a Storefront product.
- * It shows each size being pushed with its cost, MSRP and margin from
- * Costings, and the push waits until Staff confirm them. A size Costings has
- * not finished holds the push back and points at Costings instead. The server
- * repeats the check against the prices confirmed here, so a price that
- * changed in Costings meanwhile is never published unseen.
- */
 export function PushToProductsDialog({
   family,
   open,
@@ -51,7 +43,6 @@ export function PushToProductsDialog({
   return (
     <Dialog open={open && family !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        {/* Mounted only while open, so the confirmation starts unticked every time. */}
         {family ? <PushForm family={family} onOpenChange={onOpenChange} onPushed={onPushed} /> : null}
       </DialogContent>
     </Dialog>
@@ -104,7 +95,6 @@ function PushForm({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // A price that moved in Costings means the list on screen is stale.
         if (json.reason === "changed") onPushed?.();
         throw new Error(json.error ?? "Couldn't push to Products.");
       }

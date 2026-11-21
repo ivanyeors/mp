@@ -1,20 +1,11 @@
-/**
- * Fitting imports as the Admin Panel lists them (ADR 0042 e). Pure: the page
- * reads `fitting_import_batches` on the server and hands these views to the
- * browser. A batch holds counts and who ran it, never a customer's email or
- * name.
- */
 import { countsFrom, reconcile, type BatchCounts, type Reconciliation } from "./apply";
 import type { DateOrder } from "./google-form-csv";
 
-/** What an undo did, or would do (`preview_fitting_import_undo` / `undo_fitting_import`). */
 export type UndoCounts = {
   fittingsRemoved: number;
-  /** Created by the batch, never signed in to, referenced by nothing: deleted. */
   customersRemoved: number;
   customersKept: number;
   keptSignedIn: number;
-  /** Bought, booked, noted, fitted in another import or otherwise referenced since. */
   keptReferenced: number;
 };
 
@@ -37,7 +28,6 @@ export type FittingBatchView = BatchCounts & {
   fileName: string;
   sha256: string;
   dateOrder: DateOrder;
-  /** The Staff profile working at the device, else the Member's login, else null. */
   runBy: string | null;
   createdAt: string;
   appliedAt: string | null;
@@ -53,19 +43,16 @@ export function batchState(b: Pick<FittingBatchView, "appliedAt" | "rolledBackAt
   return "stopped";
 }
 
-/** A stopped batch that has every row but did not reconcile: shown in red, never quietly accepted. */
 export function batchMismatch(b: FittingBatchView): Reconciliation | null {
   if (batchState(b) !== "stopped") return null;
   const r = reconcile(b);
   return r.complete && !r.reconciles ? r : null;
 }
 
-/** The batch a picked file belongs to, by SHA-256, unless it was undone. */
 export function batchForFile(history: readonly FittingBatchView[], sha256: string): FittingBatchView | null {
   return history.find((b) => b.sha256 === sha256 && batchState(b) !== "undone") ?? null;
 }
 
-/** One `fitting_import_batches` row, as the page selects it. */
 export type FittingBatchRow = {
   id: string;
   file_name: string;

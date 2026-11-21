@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * POST /api/readjustments/checkout — a charged re-adjustment (ADR 0024).
- *
- * Every dollar is an Order: the route holds the slot, writes a pending Order with
- * one Service fee line, and opens Checkout for the server's amount — never one
- * from the body. A Stripe failure releases the hold and cancels the Order.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -186,7 +178,6 @@ describe("POST /api/readjustments/checkout", () => {
 
     const session = h.createSession.mock.calls[0][0];
     expect(session).toMatchObject({ amount: 30, orderId: "orders-1", bookingId: "readjustment_bookings-1" });
-    // Canonical origin + locale prefix; the booking id is what the page reads back.
     expect(session.successUrl).toMatch(/\/en-US\/appointments\/confirmed\?booking=readjustment_bookings-1$/);
     expect(session.expiresAt.getTime()).toBeGreaterThanOrEqual(Date.now() + 30 * 60 * 1000);
   });
@@ -238,7 +229,6 @@ describe("POST /api/readjustments/checkout", () => {
   });
 });
 
-// PRD-campaign-audiences slice 02: the marketing email box, ticked by default.
 describe("POST /api/readjustments/checkout — the marketing email box", () => {
   it("records it for the signed-in Customer, as appointment, with the fee's Order", async () => {
     expect((await post({ marketing_email: true })).status).toBe(200);

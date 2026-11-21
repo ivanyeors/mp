@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
+import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { getApiErrorMessage } from "@/lib/utils";
 import { useBuilder } from "./BuilderProvider";
-
-// ─── Config Warm Start Handler ──────────────────────────────
 
 export function ConfigLoader() {
   const builder = useBuilder();
@@ -15,13 +14,7 @@ export function ConfigLoader() {
   const configId = searchParams.get("config");
   const heightParam = searchParams.get("height");
   const positionParam = searchParams.get("position");
-  // The params each warm start last tried. A load runs once per set of params:
-  // a failure sends the visitor to Preferences instead of retrying forever, and
-  // Strict Mode's second effect run does not ask twice.
-  const triedBolster = useRef<string | null>(null);
-  const triedConfig = useRef<string | null>(null);
 
-  // Handle direct bolster params from mbolster-config redirect
   const loadBolsterDirect = useCallback(async (height: number, position: string) => {
     builder.setIsLoadingRecommendation(true);
     builder.goToStep("recommendation");
@@ -53,17 +46,15 @@ export function ConfigLoader() {
     }
   }, [builder]);
 
-  useEffect(() => {
-    if (heightParam && positionParam && !builder.configLoaded) {
-      const key = `${heightParam}:${positionParam}`;
-      if (triedBolster.current === key) return;
-      triedBolster.current = key;
-      const h = parseInt(heightParam, 10);
-      if (h >= 80 && h <= 250) {
-        loadBolsterDirect(h, positionParam);
-      }
+  const bolsterWarmStart =
+    heightParam && positionParam && !builder.configLoaded ? `${heightParam}:${positionParam}` : null;
+  useOncePerKey(bolsterWarmStart, () => {
+    if (!heightParam || !positionParam) return;
+    const h = parseInt(heightParam, 10);
+    if (h >= 80 && h <= 250) {
+      loadBolsterDirect(h, positionParam);
     }
-  }, [heightParam, positionParam, builder.configLoaded, loadBolsterDirect]);
+  });
 
   const loadConfig = useCallback(async (id: string) => {
     builder.setConfigId(id);
@@ -137,12 +128,7 @@ export function ConfigLoader() {
     }
   }, [builder]);
 
-  useEffect(() => {
-    if (configId && !builder.configLoaded && triedConfig.current !== configId) {
-      triedConfig.current = configId;
-      loadConfig(configId);
-    }
-  }, [configId, builder.configLoaded, loadConfig]);
+  useOncePerKey(configId && !builder.configLoaded ? configId : null, loadConfig);
 
   return null;
 }

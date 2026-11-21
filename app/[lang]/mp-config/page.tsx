@@ -44,9 +44,7 @@ type Props = {
     assist?: string;
     result?: string;
     token?: string;
-    /** `1` → Staff re-configuration of an existing Result (lib/results/staff-edit). */
     edit?: string;
-    /** A guest's own Draft, reopened from its continue link with `token` (ADR 0050). */
     draft?: string;
   }>;
 };
@@ -64,10 +62,6 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
   const staffEditRequested = editFlag === "1";
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  // Staff assist gate: existing Staff check (admin_users / bootstrap). Guests get null.
-  // Partner-assist (#78) is INDEPENDENT of staff auth — it comes from the ?partner
-  // URL code, re-resolved server-side (never a client-supplied id).
-  // The Assist link (?assist=) is a THIRD, independent axis — see the prop below.
   const [offer, faq, staffCtx, partner, assistStaff, resumeFinish, staffEdit, resumeDraft] =
     await Promise.all([
       getConfiguratorOfferRange("pillow"),
@@ -75,29 +69,15 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       getAdminContext(),
       partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
       assistCode ? getStaffByAssistCode(assistCode) : Promise.resolve(null),
-      // Finish link from the "choose your finish" email (ADR 0017). Null for
-      // anything not openable, which falls through to the ordinary configurator.
       resultId && !staffEditRequested
         ? loadResumeFinish(resultId, resultToken)
         : Promise.resolve(null),
-      // Staff re-configuration of a live Result. Staff-gated inside the loader,
-      // and null for anything not editable — a guest following this link lands
-      // on the ordinary configurator and learns nothing about the Result.
       staffEditRequested ? loadStaffEditResult(resultId) : Promise.resolve(null),
-      // Continue link (ADR 0050): the guest's own Draft, by its access token.
-      // Null for anything else, which opens the ordinary configurator.
       draftId && !resultId && !staffEditRequested
         ? loadResumeDraft(draftId, resultToken)
         : Promise.resolve(null),
     ]);
-  // Service fees (ADR 0024). The preview shows the Measurement service only when
-  // the server will charge it: a live Result says who measured; a new session on a
-  // Staff device is stamped `staff` when its Draft is created, measured by the
-  // profile at the device — the one chosen under "Working as", or a personal
-  // login's only profile (`actingProfile`, the same rule the Draft create uses).
   const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
-  // A reopened Draft says who measured it too: one Staff measured in the studio
-  // and the guest finishes at home still carries the Measurement service.
   const liveResultId = staffEdit || resumeFinish ? resultId : resumeDraft?.id;
   const measuring = !liveResultId && staffCtx ? await actingProfile(staffCtx.memberId) : null;
   const measuredByStaff = liveResultId
@@ -108,23 +88,13 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         .maybeSingle()
         .then(({ data }) => data?.measured_by_type === "staff")
     : Boolean(measuring);
-  // A Staff login is always Staff here, the customer account it may also have
-  // notwithstanding. On a shared login where nobody at this device has chosen
-  // under "Working as", the start screen asks who is measuring before the Draft
-  // exists, so the Draft is stamped `staff` like any other Staff session's.
-  // Partner runs and Assist links are someone else's session: never asked.
   const measurerProfiles =
     staffCtx && !liveResultId && !measuring && !partner && !assistStaff
       ? await memberProfiles(staffCtx.memberId)
       : [];
   const pickMeasurer = measurerProfiles.length > 1 ? measurerProfiles : null;
-  // A signed-in Customer who already has a pillow is asked who this one is for.
-  // Not on a Staff device or an Assist link, where the account at the device is
-  // not the buyer, and not on a reopened Result.
-  // The account at a Staff device is not the buyer.
   const customer = staffCtx ? null : await loadSignedInCustomer();
   const pillowOwner = !assistStaff && !staffEdit && !resumeFinish ? await loadSignedInPillowOwner(customer) : null;
-  // The review's promises: the free Re-adjustment and the points this order earns.
   const [readjustmentPolicy, pointsPerDollar] = await Promise.all([
     loadReadjustmentPolicy(supabaseAdmin()).catch(() => DEFAULT_READJUSTMENT_POLICY),
     readEarnRateToPromise(supabaseAdmin(), customer?.id ?? null),
@@ -148,15 +118,11 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
 
   return (
     <>
-      {/* Crawlable SEO shell; UI lives in the What-to-Expect (i) dialog */}
       <div className="sr-only">
         <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
         <PageFaqSection surfaceKey="mp-config" locale={locale} />
       </div>
       {staffEdit ? (
-        // Staff editing a live Result: the full assist editor (x-ray, size×tier,
-        // Filling Template) over a build that already exists, saving back to the
-        // Result instead of submitting a new hold.
         <MpConfigClient
           info={info}
           staffEdit={staffEdit}
@@ -166,9 +132,6 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
           measuredByStaff={measuredByStaff}
         />
       ) : resumeFinish ? (
-        // The customer's finish, not a new session: no assist chrome, no Assist
-        // link, no partner. Even on a Staff device the fillings stay read-only —
-        // Staff change them on the Result, not here.
         <MpConfigClient
           info={info}
           resumeFinish={resumeFinish}
@@ -178,23 +141,9 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       ) : (
       <MpConfigClient
         info={info}
-        // Assist edits a live Result — size, tier, filling mix — so it needs the
-        // `results` permission, not mere back-office membership. `viewer` is the
-        // read-only role and must not reach the editor.
         staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         canViewResults={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
-        // Assist link (PRD staff-assisted-customisation). Deliberately NOT merged
-        // into `staffAssist` above: that gate governs the x-ray editor and turns
-        // on a Staff SESSION, while a customer holding a link has no admin_users
-        // row at all (getAdminContext() is null for them). Collapsing the two
-        // would hand the editor to every customer holding a link. This prop only
-        // travels back to the server on save, where the code is re-resolved and
-        // the Draft Result stamped `source = 'staff_assisted'`.
         assistCode={assistStaff?.code ?? null}
-        // Email first (ADR 0049): anyone on no Admin Panel login is a guest,
-        // and their first question asks their email, so the Draft Result Staff
-        // see in Results is one they can follow up. A Staff device, an Assist
-        // link opened on one included, asks the shopper's email at the end.
         askEmailFirst={!staffCtx}
         resumeDraft={resumeDraft}
         pillowOwner={pillowOwner}

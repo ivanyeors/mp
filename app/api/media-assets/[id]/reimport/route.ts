@@ -5,7 +5,6 @@ import { ImportDriveError, reimportImageFromDrive } from "@/lib/media-assets/imp
 
 export const runtime = "nodejs";
 
-/** POST /api/media-assets/[id]/reimport — re-download image from Drive, replace hosted bytes. */
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },

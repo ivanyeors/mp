@@ -1,9 +1,3 @@
-/**
- * Ending one member of a Paired build (ADR 0026) — decline, cancel, expiry,
- * delete. Loads the partner and asks `endingPlan` what the shared hold and the
- * partner should do, so no route can release a hold the other Result still
- * needs, or leave an Mbolster behind once its Mpillow has gone.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
 import { getEmailTransport } from "@/lib/email";
@@ -26,9 +20,7 @@ export type EndingRow = {
 };
 
 export type LoadedEndingPlan = EndingPlan & {
-  /** What releasing frees: the whole intent, which for a pair covers both. */
   intentAmount: number | null;
-  /** The partner as it stood before this ending. */
   partner: { id: string; status: string | null } | null;
 };
 
@@ -47,7 +39,6 @@ export async function loadEndingPlan(
     .from("mp_config_responses")
     .select("id, status, authorized_amount")
     .eq("paired_build_id", row.paired_build_id);
-  // A companion whose anchor row is gone reads as one whose anchor has ended.
   const partner = pickPartner(
     (members ?? []).map((m) => ({ ...m, id: String(m.id), status: m.status as string | null })),
     row.id,
@@ -62,10 +53,6 @@ export async function loadEndingPlan(
   };
 }
 
-/**
- * End the partner the plan names, in the same status. Conditional on it still
- * being `held` or `assigned`, so a partner that moved on meanwhile is left alone.
- */
 export async function cascadeEnding(
   admin: SupabaseClient,
   plan: EndingPlan,
@@ -80,12 +67,6 @@ export async function cascadeEnding(
   if (error) console.error("Paired build cascade failed", plan.cascadeTo, error);
 }
 
-/**
- * Why this Mbolster can no longer be dropped on its own, or null. Once money has
- * moved for the whole pair — a Balance payment paid, or the shared hold captured
- * by an Accept that then failed — dropping it would leave the customer paying for
- * a build that is not on the Order. Accept the pair; refund the line after.
- */
 export async function companionLockReason(
   admin: SupabaseClient,
   row: EndingRow,
@@ -108,13 +89,6 @@ export async function companionLockReason(
   return null;
 }
 
-/**
- * Tell the customer when their Mbolster ends on its own (Staff, or the SLA) while
- * the Mpillow carries on: never a "hold released" email, since the Mpillow still
- * needs it. If the Mbolster was still being built and the Mpillow is already
- * assigned, the Mpillow's "ready" email was held back waiting for it — this is
- * that email now. Best-effort.
- */
 export async function notifyCompanionRemoved(
   admin: SupabaseClient,
   opts: {

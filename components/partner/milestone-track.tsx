@@ -10,13 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-/**
- * The gamified milestone spine — the first thing a partner sees on the hub (#79).
- * Self-contained async server component: fetches its own data. Shows a goal-gradient
- * progress bar ("X pillows to your next reward"), current tier + perks, a "top N%"
- * percentile chip (NO leaderboard / ranked list), and a surprise-gift note at the
- * latest rung crossing. Self-purchases are unattributed so they never move the bar.
- */
 export async function MilestoneTrack({ partnerId }: { partnerId: string }) {
   const d = await loadMilestoneDashboard(supabaseAdmin(), partnerId);
 
@@ -55,7 +48,6 @@ export async function MilestoneTrack({ partnerId }: { partnerId: string }) {
           <Progress value={d.progressPercent} />
         </div>
 
-        {/* Endowed start — always stated with its reason (AC2). */}
         <p className="text-xs text-muted-foreground">
           Includes a head start of {d.endowedUnits} sales ({d.endowedReason}).
         </p>

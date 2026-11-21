@@ -5,11 +5,6 @@ import { useState } from "react";
 import { ShieldAlert, X } from "lucide-react";
 import { deniedPageLabel } from "@/lib/auth/permissions";
 
-/**
- * "You don't have access to <page>" on the Admin Panel home, after a page
- * guard sent a Member here with `?denied=<key>` (their role lacks that page,
- * or lost it mid-session). An unknown key shows nothing.
- */
 export function AccessDeniedNotice() {
   const params = useSearchParams();
   const label = deniedPageLabel(params?.get("denied"));

@@ -7,12 +7,6 @@ import { zhCN } from "@/lib/i18n/messages/zh-CN";
 import { SLIDE_IN_PAGE_KEYS, SLIDE_IN_PAGES } from "@/lib/slide-in-pages/pages";
 import { slideInSectionViews, type SlideInSectionRow } from "@/lib/slide-in-pages/sections";
 
-/**
- * Every sub page renders through the shared section renderer, in Preview mode and live
- * (CONTEXT.md — **Slide-in section**). A template that throws takes the whole sheet down,
- * so each page is rendered here in full, with and without Staff overrides.
- */
-
 const nav = vi.hoisted(() => ({ pathname: "/en-US/page-builder-preview/basic-mpillow" }));
 vi.mock("next/navigation", () => ({
   usePathname: () => nav.pathname,

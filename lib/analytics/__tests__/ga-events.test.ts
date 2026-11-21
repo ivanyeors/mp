@@ -56,7 +56,7 @@ describe("ga-events", () => {
     expect(next).toHaveBeenCalledTimes(1);
 
     const next2 = vi.fn();
-    win.gtag = vi.fn(); // callback never fires (blocked request)
+    win.gtag = vi.fn();
     trackGaEventThen({ name: "begin_checkout", params: { value: 10, currency: "SGD", items: [] } }, next2, 800);
     expect(next2).not.toHaveBeenCalled();
     vi.advanceTimersByTime(800);

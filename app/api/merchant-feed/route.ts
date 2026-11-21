@@ -7,11 +7,6 @@ import { localeUrl } from "@/lib/seo/locale-url";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Google Merchant Center scheduled fetch (PRD-search-visibility slice 13):
- *   GET /api/merchant-feed?token=<MERCHANT_FEED_TOKEN>  → tab-separated product feed.
- * The token keeps the full catalog dump off the open web; unset → 404.
- */
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token");
   if (!secretMatches(process.env.MERCHANT_FEED_TOKEN?.trim(), token)) {
@@ -20,7 +15,6 @@ export async function GET(req: Request) {
 
   const products: FeedProduct[] = [];
   for (let page = 1; page <= 20; page++) {
-    // Pillows and bolsters included: they are listed per size, landing on their product page.
     const { products: batch, total } = await getProducts({ status: "active", shopCatalogOnly: false, limit: 100, page });
     for (const p of batch) {
       const content = resolveProductContent(p, DEFAULT_LOCALE);

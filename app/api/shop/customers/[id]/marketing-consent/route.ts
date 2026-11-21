@@ -9,21 +9,6 @@ import { UnsubscribeAnswerSchema, recordUnsubscribeReason } from "@/lib/marketin
 
 export const runtime = "nodejs";
 
-/**
- * A Customer's Marketing consent (PRD-shopify-customer-migration slice 07):
- * the state, its source and date, and every change. Seeing it needs
- * `customers`.
- *
- * Staff read consent and do not set it, so the history stays the customer's
- * own. The one exception is a support request to stop: POST unsubscribes, with
- * source `support`, and needs `customers-edit`. There is no way here to
- * subscribe anyone.
- *
- * Staff may record why the customer asked (PRD-crm-retention-loop slice 11),
- * optional, after the unsubscribe has taken effect: it never holds it up, and
- * a failure to record it is logged, not an error.
- */
-
 const UnsubscribeSchema = z
   .object({
     action: z.literal("unsubscribe"),
@@ -79,7 +64,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
   }
 
-  // Why they asked, when Staff say: their latest unsubscribe's answer, if it has none yet.
   if (parsed.data.reason) {
     const answer = UnsubscribeAnswerSchema.parse({ reason: parsed.data.reason, text: parsed.data.text });
     await recordUnsubscribeReason(admin, id, answer).catch((e: unknown) =>

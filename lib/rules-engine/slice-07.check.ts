@@ -1,7 +1,3 @@
-/**
- * RE slice 07 self-check: read-only x-ray on the completed preview + fallback.
- * Run: npx tsx lib/rules-engine/slice-07.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +6,6 @@ import { previewMixMode } from "./preview-xray";
 
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), "utf8");
 
-// --- Fallback selection: spatial → x-ray, legacy-flat → text -----------------
 assert.equal(
   previewMixMode([{ section: "left", sub_section: "front", slot: 1, item_id: 1 }]),
   "xray",
@@ -20,7 +15,6 @@ assert.equal(previewMixMode([]), "text", "legacy-flat template keeps the text mi
 assert.equal(previewMixMode(null), "text", "missing placements keep the text mix");
 assert.equal(previewMixMode(undefined), "text", "no template keeps the text mix");
 
-// --- Renderer read-only mode flag: no items/onPlacementsChange → no editing ---
 for (const rel of ["components/spatial/xray-pillow.tsx", "components/spatial/xray-bolster.tsx"]) {
   assert.match(
     read(rel),
@@ -29,7 +23,6 @@ for (const rel of ["components/spatial/xray-pillow.tsx", "components/spatial/xra
   );
 }
 
-// --- mp-config: one shared mount, guests view but never edit ------------------
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.equal(mp.match(/<XrayPillow/g)?.length, 1, "one renderer, two consumers (shared mount)");
 assert.match(mp, /previewMixMode\(guestPlacements\) === "xray"/, "fallback selection via previewMixMode");
@@ -41,7 +34,6 @@ assert.match(mp, /onPlacementsChange=\{staffAssist \? setAssistPlacements : unde
 assert.match(mp, /rowsToPillowPlacements\(tpl\?\.placements \?\? \[\]\)/, "recommended template rows drive the guest render");
 assert.match(mp, /const mixLines = guestXray/, "text mix suppressed only while the x-ray shows");
 
-// --- mbolster-config: bolster variant, same way -------------------------------
 const mb = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.equal(mb.match(/<XrayBolster/g)?.length, 1, "one bolster renderer, two consumers");
 assert.match(mb, /previewMixMode\(recommendedTemplate\?\.placements\) === "xray"/, "bolster fallback selection via previewMixMode");
@@ -52,12 +44,10 @@ assert.match(mb, /onPlacementsChange=\{staffAssist \? setAssistPlacements : unde
 assert.match(mb, /rowsToBolsterPlacements\(recommendedTemplate\?\.placements \?\? \[\]\)/, "bolster template rows drive the guest render");
 assert.match(mb, /const mixLines = guestXray/, "bolster text mix suppressed only while the x-ray shows");
 
-// --- Graceful degradation: the legacy text path is intact, no renderer fork ---
 const reveal = read("components/rules-engine/recommendation-reveal.tsx");
 assert.match(reveal, /mixLines\.map/, "legacy text mix summary still renders");
 assert.doesNotMatch(reveal, /Xray/, "reveal component stays visual-agnostic — no renderer fork");
 
-// --- Guest data contract: placements + colors ship on guest-reachable routes --
 const customize = read("app/api/shop/customize/route.ts");
 assert.match(customize, /filling_template_placements/, "pillow placements ship to the preview");
 assert.match(customize, /bolster_template_placements/, "bolster placements ship to the preview");

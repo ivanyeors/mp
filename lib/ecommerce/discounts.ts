@@ -19,37 +19,19 @@ export interface CouponLineItem {
   lineTotal: number;
 }
 
-/** The signed-in shopper's Customer, from the session. */
 export type CouponAccount = { customerId: string; email: string };
 
 export interface ValidateCouponOptions {
-  /** The email typed at checkout. */
   customerEmail?: string;
-  /**
-   * The signed-in shopper's Customer, from the session (never a request
-   * body). A coupon with a per-customer limit, or bound to one Customer, is
-   * usable only with it, checking out under its own email.
-   */
   account?: CouponAccount | null;
   lineItems?: CouponLineItem[];
-  /**
-   * Results that must not count as a use of the coupon: the one being
-   * (re)submitted, which is about to carry it.
-   */
   excludeResultIds?: string[];
 }
 
-/** Longest code worth a database round trip. Admin codes are capped at 100. */
 export const COUPON_CODE_MAX_LENGTH = 100;
 
-/**
- * Result statuses that still hold a coupon: submitted, not yet an Order. Their
- * use is counted at Accept, when the Order is paid; until then they count here,
- * or one limited code could be held by any number of customisations.
- */
 const LIVE_RESULT_STATUSES = ["held", "assigned", "accepted"];
 
-/** Resolve which subtotal the coupon applies to (full cart vs scoped items). */
 export function resolveCouponDiscountBase(
   subtotal: number,
   appliesTo: Coupon["applies_to"],
@@ -123,7 +105,6 @@ export type CouponUseOrder = {
   paid_at: string | null;
 };
 
-/** Pure — prior paid, non-cancelled orders using this coupon for the customer. */
 export function countCustomerCouponUses(
   orders: CouponUseOrder[],
   couponId: string,
@@ -147,7 +128,6 @@ export function exceedsPerCustomerLimit(uses: number, perCustomerLimit: number |
   return perCustomerLimit !== null && uses >= perCustomerLimit;
 }
 
-/** How many distinct orders two lookups found between them. */
 async function distinctOrderCount(
   lookups: Array<PromiseLike<{ data: Array<{ id: string }> | null }>>,
 ): Promise<number> {
@@ -155,10 +135,6 @@ async function distinctOrderCount(
   return new Set(results.flatMap((r) => (r.data ?? []).map((row) => row.id))).size;
 }
 
-/**
- * The account's paid, non-cancelled orders with this coupon: by its Customer,
- * and by its email for guest orders placed under that address before.
- */
 async function fetchCustomerCouponUseCount(couponId: string, account: CouponAccount): Promise<number> {
   const paid = () =>
     supabaseAdmin()
@@ -173,15 +149,8 @@ async function fetchCustomerCouponUseCount(couponId: string, account: CouponAcco
   ]);
 }
 
-/** Why a per-customer or account-bound code was refused to a guest. */
 export const COUPON_SIGN_IN_ERROR = "Sign in with your account email to use this code";
 
-/**
- * Shop orders carrying this coupon whose Checkout is still open: unpaid,
- * pending, and younger than a Checkout Session (one hour). Each can still be paid, so
- * each counts against the limit; otherwise N checkouts opened before paying
- * any all pass a usage_limit = 1 check.
- */
 async function fetchPendingOrderCouponUseCount(couponId: string, account?: CouponAccount): Promise<number> {
   const open = () =>
     supabaseAdmin()
@@ -198,13 +167,6 @@ async function fetchPendingOrderCouponUseCount(couponId: string, account?: Coupo
   ]);
 }
 
-/**
- * Customisations carrying this coupon that have not become an Order yet. Only
- * Results that really entered the money path count: a card authorised
- * (`payment_intent_id`), or submitted with no card at all (`authorized_amount`
- * null — an Assisted customisation, or holds switched off). A Checkout opened
- * and abandoned holds nothing, so it cannot use up a code nobody paid with.
- */
 async function fetchLiveResultCouponUseCount(
   couponId: string,
   options: Pick<ValidateCouponOptions, "customerEmail" | "excludeResultIds">,
@@ -230,11 +192,6 @@ async function fetchLiveResultCouponUseCount(
   return (authorised.count ?? 0) + (noCard.count ?? 0);
 }
 
-/**
- * The active coupon with exactly this code, or null. Exact match: every write
- * (POST/PATCH /api/shop/coupons) stores the code upper-cased, and `ilike` would
- * read `%`/`_` in the input as wildcards.
- */
 export async function findActiveCoupon(code: string): Promise<Coupon | null> {
   const normalized = code.toUpperCase().trim();
   if (!normalized || normalized.length > COUPON_CODE_MAX_LENGTH) return null;
@@ -262,7 +219,6 @@ export async function validateCoupon(
   return checkCoupon(coupon, subtotal, productIds, categoryIds, options);
 }
 
-/** Whether a coupon already found applies to this order, and what it takes off. */
 export async function checkCoupon(
   coupon: Coupon,
   subtotal: number,
@@ -279,17 +235,12 @@ export async function checkCoupon(
     return { valid: false, error: "This code has expired" };
   }
 
-  // A code limited per customer, or bound to one Customer (a Welcome-back
-  // voucher), is counted per account, so it needs the account: signed in and
-  // checking out under its own email. Counted by typed email, a new address
-  // was a new customer.
   const account = options?.account ?? null;
   if (coupon.per_customer_limit !== null || coupon.customer_id) {
     const typed = options?.customerEmail?.trim().toLowerCase();
     if (!account || (typed && typed !== account.email.trim().toLowerCase())) {
       return { valid: false, error: COUPON_SIGN_IN_ERROR };
     }
-    // Someone else's voucher reads exactly like a code that does not exist.
     if (coupon.customer_id && coupon.customer_id !== account.customerId) {
       return { valid: false, error: "This code isn't valid" };
     }
@@ -341,20 +292,10 @@ export async function checkCoupon(
   return { valid: true, coupon, discount_amount: discountAmount };
 }
 
-/**
- * Atomically bump a coupon's usage, enforcing its `usage_limit` in the same
- * statement (prod-hardening slice 09). Returns whether the increment applied:
- * `false` means the cap was already reached — by a parallel checkout, since the
- * pre-payment check in `checkCoupon` passed. The payment has already been
- * captured by the time this runs, so callers log and move on; they never fail
- * on `false`.
- */
 export async function incrementCouponUsage(couponId: string): Promise<boolean> {
   const admin = supabaseAdmin();
   const { data, error } = await admin.rpc("increment_coupon_usage", { coupon_id: couponId });
   if (!error) {
-    // The capped RPC returns the new usage_count, or null when the limit was
-    // already reached and no row changed.
     return data != null;
   }
 
@@ -377,7 +318,6 @@ export async function incrementCouponUsage(couponId: string): Promise<boolean> {
   return (updated?.length ?? 0) > 0;
 }
 
-/** Takes one redemption back on a full refund, never below zero, atomically. */
 export async function decrementCouponUsage(couponId: string): Promise<void> {
   const { error } = await supabaseAdmin().rpc("decrement_coupon_usage", { p_coupon_id: couponId });
   if (error) throw new Error(`Coupon usage not decremented for ${couponId}: ${error.message}`);

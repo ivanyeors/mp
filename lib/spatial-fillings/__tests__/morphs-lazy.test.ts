@@ -3,13 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MorphKey } from "@/lib/spatial-fillings/morphs";
 import type { ShapeId } from "@/lib/spatial-fillings/visuals";
 
-/**
- * The pair table used to be built in a module-load IIFE, so importing anything
- * from morphs.ts ran flubber interpolation during hydration even on pages that
- * never morph a shape. It is lazy now — this file mocks flubber so "did any
- * interpolation run?" is directly observable.
- */
-
 const interpolateSpy = vi.fn((from: string, to: string) => {
   void from;
   void to;
@@ -18,7 +11,6 @@ const interpolateSpy = vi.fn((from: string, to: string) => {
 
 vi.mock("flubber", () => ({ interpolate: (...args: [string, string]) => interpolateSpy(...args) }));
 
-// Two shapes, so the pair table is non-empty and the loop actually has work.
 vi.mock("@/components/spatial/xray-assets", () => ({
   FILLING_SHAPE_PATHS: {
     pouch: "M0 0 L40 0 L40 40 L0 40 Z",
@@ -54,7 +46,6 @@ describe("SHAPE_MORPHS preparation is lazy", () => {
     const { getShapeMorph } = await import("@/lib/spatial-fillings/morphs");
     expect(interpolateSpy).not.toHaveBeenCalled();
 
-    // Same-shape swap short-circuits before the table is ever needed.
     expect(getShapeMorph("pouch", "pouch")).toBeNull();
     expect(interpolateSpy).not.toHaveBeenCalled();
 

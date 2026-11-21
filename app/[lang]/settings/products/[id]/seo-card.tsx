@@ -17,16 +17,8 @@ import { PRODUCT_SEO_TARGETS, PRODUCT_TITLE_BRAND, PRODUCT_TITLE_SUFFIX, countWo
 import type { LocalizedProductContent } from "@/lib/types/ecommerce";
 import { GenerateSeo, Meter, SeoOfferView, type ContentMap, type Offer } from "./product-ai";
 
-/**
- * The product editor's SEO card: the slug, then one tab per language
- * (`PRODUCT_LOCALES`, so a new language gets its own tab), each with what a
- * search result shows of the page, its three fields measured as search
- * results cut them, and ✨ Generate SEO for that language.
- */
-
 type SeoResult = Extract<ProductAiResult, { kind: "seo" }>;
 
-/** `text` cut to `max` letters wide, as a search result cuts it. */
 function clampWidth(text: string, max: number): string {
   if (displayWidth(text) <= max) return text;
   let out = "";
@@ -39,7 +31,6 @@ function clampWidth(text: string, max: number): string {
 
 const siteHost = () => (process.env.NEXT_PUBLIC_SITE_URL || "https://custom.mpillow.com").replace(/^https?:\/\//, "").replace(/\/$/, "");
 
-/** What a search result shows of the page in this language: its real title and description, as the page renders them. */
 function SearchPreview({ locale, slug, c }: { locale: Locale; slug: string; c: LocalizedProductContent }) {
   const name = c.seo_title?.trim() || c.title?.trim() || slug;
   const title = productPageTitle(name);
@@ -77,7 +68,6 @@ export function SeoCard({
 }: {
   slug: string;
   onSlug: (slug: string) => void;
-  /** Set by inventory: shown, not edited. */
   slugLocked: boolean;
   content: ContentMap;
   update: (locale: Locale, field: keyof LocalizedProductContent, value: string) => void;
@@ -191,7 +181,6 @@ export function SeoCard({
               ) : null}
             </div>
             <Tabs value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-              {/* The strip takes what the button leaves, and turns into a menu when the languages outgrow it. */}
               <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <TabsList aria-label="Language">

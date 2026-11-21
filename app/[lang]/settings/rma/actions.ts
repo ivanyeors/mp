@@ -11,10 +11,6 @@ import { applyRmaTransition } from "@/lib/rma/transition";
 import { rmaRefundAmount } from "@/lib/rma/refund";
 import { getSiteSettings } from "@/lib/site-settings";
 
-/**
- * Save the staff-only internal note on an RMA request (slice 04). Audit-logged
- * proving mutation; deliberately does NOT append a status event.
- */
 export async function saveAdminNote(rmaId: string, note: string) {
   const actor = await assertAdmin("returns");
   const admin = supabaseAdmin();
@@ -47,11 +43,6 @@ export async function saveAdminNote(rmaId: string, note: string) {
   return { ok: true };
 }
 
-// ------------------------------------------------------------
-// Lifecycle transitions (slices 05–06)
-// ------------------------------------------------------------
-
-/** Staff-only wrapper: assert permission, apply the transition, re-throw on illegal. */
 async function staffTransition(opts: {
   rmaId: string;
   to: Parameters<typeof applyRmaTransition>[1]["to"];
@@ -86,16 +77,10 @@ export async function sendInstructions(rmaId: string) {
   return staffTransition({ rmaId, to: "instructions_sent", emailMessage: message });
 }
 
-/** instructions_sent → received. Staff acknowledge the goods arrived. No email. */
 export async function markReceived(rmaId: string) {
   return staffTransition({ rmaId, to: "received" });
 }
 
-/**
- * received → completed for exchange/replacement, capturing outbound tracking.
- * Refund returns settle via {@link issueRmaRefund} instead (webhook-driven), so
- * this refuses a refund resolution.
- */
 export async function completeReturn(rmaId: string, trackingNumber: string, trackingUrl: string) {
   const admin = supabaseAdmin();
   const { data: r } = await admin
@@ -116,12 +101,6 @@ export async function completeReturn(rmaId: string, trackingNumber: string, trac
   });
 }
 
-/**
- * received (refund resolution) → issue the refund through the EXISTING Stripe
- * refund + money-ledger webhook. No new money path: `refundPayment` carries
- * `rma_request_id` in metadata, and the `charge.refunded` webhook advances the
- * RMA to `refunded` when the refund settles. The RMA stays `received` until then.
- */
 export async function issueRmaRefund(rmaId: string) {
   const actor = await assertAdmin("returns");
   const admin = supabaseAdmin();
@@ -170,7 +149,7 @@ export async function issueRmaRefund(rmaId: string) {
   const refund = await refundPayment({
     paymentIntentId: order.payment_reference,
     ...(isFull ? {} : { amount }),
-    idempotencyKey: `rma_refund_${rmaId}`, // one refund per RMA; re-clicks dedupe at Stripe
+    idempotencyKey: `rma_refund_${rmaId}`,
     reason: "requested_by_customer",
     metadata: { order_id: order.id, rma_request_id: rmaId },
   });
@@ -195,8 +174,6 @@ export async function issueRmaRefund(rmaId: string) {
   return { ok: true, amount };
 }
 
-// Form adapters (bound with rmaId in the detail page). Trailing FormData is what
-// React passes to a <form action>; adapters without inputs ignore it.
 export async function approveRmaForm(rmaId: string, _formData: FormData) {
   await approveRma(rmaId);
 }
@@ -220,7 +197,6 @@ export async function issueRmaRefundForm(rmaId: string, _formData: FormData) {
   await issueRmaRefund(rmaId);
 }
 
-/** Form adapter: unwraps the textarea value and delegates to {@link saveAdminNote}. */
 export async function saveAdminNoteForm(rmaId: string, formData: FormData) {
   await saveAdminNote(rmaId, String(formData.get("note") ?? ""));
 }

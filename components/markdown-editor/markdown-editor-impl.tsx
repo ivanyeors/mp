@@ -14,18 +14,6 @@ import { cn } from "@/lib/utils";
 import { PRODUCT_BODY_STYLE } from "./body-style";
 import type { MarkdownEditorProps } from "./markdown-editor";
 
-/**
- * The product body's editor (loaded on its own by `MarkdownEditor`, so TipTap
- * is in no page's first load). Two ways to write the same Markdown:
- *
- * - **Visual**: TipTap with only what the shop renders (product-markdown.ts),
- *   a toolbar of those, and the words styled as the product page shows them.
- *   Each change is written back out as Markdown.
- * - **Markdown**: the text itself. A body holding something Visual can't
- *   show (a table, an image) opens here, and Visual stays off until it's
- *   gone, so nothing is ever dropped by switching.
- */
-
 type Mode = "visual" | "markdown";
 
 const TOOL =
@@ -33,7 +21,6 @@ const TOOL =
 
 const SEPARATOR = <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-border" />;
 
-/** An address a body's link may go to: the web, a page of this site, or an email. */
 const LINK = /^(?:https?:\/\/\S+|\/\S*|mailto:\S+@\S+)$/i;
 
 const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -43,7 +30,6 @@ function LinkPopover({ editor, open, onOpenChange, children }: { editor: Editor;
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverAnchor asChild>{children}</PopoverAnchor>
       <PopoverContent align="start" className="w-80 space-y-2 p-3" onOpenAutoFocus={(e) => e.preventDefault()}>
-        {/* Made each time it opens, so it starts from the link under the cursor. */}
         <LinkForm editor={editor} onDone={() => onOpenChange(false)} />
       </PopoverContent>
     </Popover>
@@ -134,7 +120,6 @@ function Toolbar({ editor, onLink }: { editor: Editor; onLink: () => void }) {
     }),
   });
   const mod = isMac() ? "⌘" : "Ctrl+";
-  // The words keep their selection while a tool is pressed.
   const keep = (e: MouseEvent) => e.preventDefault();
   const tool = (label: string, shortcut: string | null, pressed: boolean | null, icon: ReactNode, run: () => void, disabled = false) => (
     <button
@@ -184,7 +169,6 @@ function VisualEditor({
   describedBy,
   end,
 }: Pick<MarkdownEditorProps, "value" | "onChange" | "placeholder" | "id"> & { labelledBy?: string; describedBy?: string; end: ReactNode }) {
-  // What this editor last emitted or was given: a value equal to it is already on screen.
   const shown = useRef(value);
   const latest = useRef(onChange);
   useEffect(() => {
@@ -195,7 +179,6 @@ function VisualEditor({
 
   const editor = useEditor({
     extensions,
-    // Bold written the way CommonMark prints as stars shows as bold here, and is saved so the shop renders it too.
     content: fixEmphasisFlanking(value),
     contentType: "markdown",
     immediatelyRender: false,
@@ -229,7 +212,6 @@ function VisualEditor({
     },
   });
 
-  // A value from outside (✨ Write's draft, Undo after it): the words change to it.
   useEffect(() => {
     if (!editor || editor.isDestroyed || value === shown.current) return;
     shown.current = value;
@@ -257,7 +239,6 @@ export default function MarkdownEditorImpl({ value, onChange, placeholder, id, c
   const [mode, setMode] = useState<Mode>(() => (unsupported.length ? "markdown" : "visual"));
   const noteId = useId();
   const hintId = useId();
-  // Words that arrive with something Visual can't show (pasted into Markdown, say) keep it in Markdown.
   const visualOff = unsupported.length > 0;
   const shownMode: Mode = visualOff ? "markdown" : mode;
   const why = visualOff ? `This body has ${listInWords(unsupported)}, which the visual editor can't show.` : null;

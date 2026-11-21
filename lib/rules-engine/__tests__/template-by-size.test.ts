@@ -4,11 +4,6 @@ import { validateForPublish } from "../validate";
 import { premiumSampleInputs } from "../fixtures";
 import type { RuleGraphJson, TemplateBySizeNode } from "../types";
 
-/**
- * ADR 0027: an "any" Combine ORs its branches, and a size-keyed Template output
- * lets the size the graph resolved pick the template — so nothing before it
- * branches on size. Shoulder → size; sleep position → which template family.
- */
 function graph(): RuleGraphJson {
   return {
     nodes: [

@@ -19,11 +19,6 @@ import { OPEN_BOOK_APPOINTMENT_EVENT } from "@/lib/book-appointment";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
-/**
- * Mount once in the root layout: listens for openBookAppointment() and shows the
- * pill overlay (a modal Dialog, not a drawer). Picking a pill navigates to the
- * full page route — so opening from a learn-more slide-in never stacks drawers.
- */
 export function BookAppointmentOverlay() {
   const { m } = useI18n();
   const router = useRouter();
@@ -40,7 +35,6 @@ export function BookAppointmentOverlay() {
   const lang = isSupportedLocale(seg) ? seg : DEFAULT_LOCALE;
   const t = m.slides.bookAppointment;
 
-  // Not part of the page content Staff are previewing.
   if (isPageBuilderPreviewRoute(stripLocale(pathname ?? "/"))) return null;
 
   return (
@@ -57,8 +51,6 @@ export function BookAppointmentOverlay() {
             router.push(`/${lang}/appointments?type=${type}`);
           }}
         />
-        {/* The dialog box is transparent, so give it an explicit dismiss
-            instead of relying on a backdrop tap. */}
         <DialogClose asChild>
           <OverlayDismissButton
             variant="inline"

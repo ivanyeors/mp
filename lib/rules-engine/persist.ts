@@ -65,11 +65,6 @@ export async function saveDraft(
   return row(data);
 }
 
-/**
- * Published versions, newest first, WITHOUT the graph JSONB: the version
- * picker only needs metadata, and every graph was previously shipped to the
- * browser on each workbench load. Use {@link getPublishedVersion} for one.
- */
 export async function listVersions(flow: RuleFlow): Promise<RuleGraphSummary[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
@@ -149,9 +144,6 @@ export async function publishDraft(
   return { ok: true, published: row(data) };
 }
 
-/**
- * Copy a published version into the draft without mutating history.
- */
 export async function restoreToDraft(
   flow: RuleFlow,
   versionId: string,
@@ -160,7 +152,6 @@ export async function restoreToDraft(
   const published = await getPublishedVersion(flow, versionId);
   if (!published) return { error: "Published version not found" };
 
-  // Deep-copy JSON so draft edits cannot alias into history.
   const copy = structuredClone(published.graph);
   return saveDraft(flow, copy, authorId);
 }

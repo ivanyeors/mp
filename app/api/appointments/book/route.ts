@@ -25,14 +25,9 @@ const BookSchema = z.object({
   email: z.string().email(),
   appointment_type: z.enum(["customisation", "readjustment"]).default("customisation"),
   language_preference: z.enum(LANGUAGE_PREFERENCES).default("none"),
-  /**
-   * The marketing email box, ticked by default (ADR 0039; PRD-campaign-audiences
-   * slice 02). Absent, as from a booking tab opened before it, is unticked.
-   */
   marketing_email: z.boolean().optional(),
 });
 
-/** POST /api/appointments/book → create GCal event + pending reminder row. */
 export async function POST(req: Request) {
   let parsed: z.infer<typeof BookSchema>;
   try {
@@ -44,8 +39,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // A re-adjustment is booked against one purchase by a signed-in Customer and
-  // may be charged (ADR 0024) — never anonymously through this route.
   if (parsed.appointment_type === "readjustment") {
     return NextResponse.json(
       { error: "Sign in to book a re-adjustment", code: "readjustment_requires_sign_in" },
@@ -61,8 +54,6 @@ export async function POST(req: Request) {
   const phone = normalizePhone(parsed.phone);
   if (!phone) return NextResponse.json({ error: "Invalid phone" }, { status: 400 });
 
-  // Each booking sends a calendar invite and a paid WhatsApp template to the
-  // address and number given, so cap the recipient as well as the caller.
   const limited = await tooManyRequests(
     [
       { bucket: "booking-ip", key: clientIp(req), windowMs: 60 * 60_000, max: 10 },
@@ -78,7 +69,6 @@ export async function POST(req: Request) {
   if (!location.address) {
     return NextResponse.json({ error: "Location has no address" }, { status: 400 });
   }
-  // A stale deep link / open tab can still submit a location staff switched off.
   if (!location.bookable) {
     return NextResponse.json(
       { error: "This location is not taking bookings right now" },
@@ -95,8 +85,6 @@ export async function POST(req: Request) {
   const stored: Record<string, string> = {};
   for (const row of data ?? []) stored[row.key] = row.value;
   const settings = parseAppointmentSettings(stored);
-  // Only a time the slot picker offers: one appointment long, on the grid, in
-  // the future. Without it one request could block the calendar for a month.
   if (!isOfferableSlot(parsed.start_iso, parsed.end_iso, settings)) {
     return NextResponse.json({ error: "That time is not a bookable slot" }, { status: 400 });
   }
@@ -122,9 +110,6 @@ export async function POST(req: Request) {
       notes: languagePreferenceNotes(parsed.language_preference),
     });
 
-    // The marketing email box (ADR 0039), once the visit is on the calendar:
-    // finds or creates the Customer by the email given. Subscribes someone
-    // nobody has asked, never one who unsubscribed; never stops the booking.
     await recordBoxConsentByEmail(admin, parsed.email, parsed.marketing_email === true, "appointment");
 
     return NextResponse.json({ ok: true, eventId, contact });

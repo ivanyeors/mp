@@ -1,7 +1,3 @@
-/**
- * Slice 08 self-check: Publish snapshot history and restore-into-draft.
- * Run: npx tsx --env-file=.env.local lib/page-builder/history.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +16,6 @@ function row(over: Partial<LandingSectionRow> = {}): LandingSectionRow {
   };
 }
 
-// --- Diff tells neighbouring snapshots apart and says what restoring would do ---
 const snap = [
   { slug: "hero", section_type: "hero", position: 0, visible: true, content: { title: "A" } },
 ];
@@ -38,21 +33,17 @@ assert.deepEqual(
 assert.match(describeSnapshotDiff({ changed: [], missing: [], added: [] }), /Matches the live page/);
 assert.match(describeSnapshotDiff({ changed: ["a"], missing: [], added: [] }), /would change/);
 
-// A pending draft must not make a snapshot look different from what is published.
 assert.deepEqual(
   diffSnapshot(snap, [row({ slug: "hero", content: { title: "A" }, draft_content: { title: "Z" } })]).changed,
   [],
   "the diff compares published content, not the pending draft",
 );
 
-// --- Migration ---
 const file = readdirSync(join(ROOT, "supabase/migrations")).find((f) => f.includes("landing_restore_snapshot"));
 assert.ok(file, "the restore migration exists");
 const sql = read(join("supabase/migrations", file));
 assert.match(sql, /create or replace function public\.restore_landing_snapshot/, "restore is a database function");
 assert.match(sql, /draft_content  = en\.content/, "restore writes the draft layer");
-// Scoped to the restore function: this migration also carries a corrected
-// publish_landing_draft, which legitimately does write published content.
 const restoreBody = sql.slice(sql.indexOf("create or replace function public.restore_landing_snapshot"));
 assert.doesNotMatch(
   restoreBody.replace(/--.*$/gm, ""),
@@ -63,7 +54,6 @@ assert.match(sql, /perform public\.discard_landing_draft\(\)/, "restoring replac
 assert.match(sql, /set draft_deleted = true/, "sections added after the snapshot are staged for removal");
 assert.match(sql, /revoke all on function public\.restore_landing_snapshot/, "not callable by anon");
 
-// --- API ---
 const api = readCode("app/api/landing-sections/history/route.ts");
 assert.match(api, /requireAdminContext\("page-builder"\)/, "history is staff-only");
 assert.match(api, /order\("published_at", \{ ascending: false \}\)/, "newest first");
@@ -71,7 +61,6 @@ assert.match(api, /rpc\("restore_landing_snapshot"/, "restore calls the database
 assert.match(api, /landing_section\.restore_snapshot/, "a restore is audited");
 assert.match(api, /LIST_LIMIT/, "the listing is bounded by the retention limit");
 
-// --- UI confirms before replacing a draft, using the design system ---
 const ui = read("components/settings/page-builder/publish-history.tsx");
 assert.match(ui, /Restore this version\?/, "restore asks for confirmation");
 assert.match(ui, /discarding \$\{pending\.total\}/, "the confirm names how many pending changes are lost");
@@ -82,26 +71,20 @@ assert.match(ui, /does not change the live site|until you publish/, "restore is 
 
 console.log("landing-history self-check ok");
 
-// --- Adversarial-review regressions (slice 08) ---
-
-// Restore must stage only what actually differs, or "Latest" reports the whole page.
 assert.match(
   sql,
   /and \(s\.content  is distinct from en\.content/,
   "restore stages only sections that differ",
 );
 
-// Slug is unique but not stable across delete/recreate, so type must match too.
 assert.match(sql, /and s\.section_type = en\.section_type/, "restore matches type as well as slug");
 
-// A built-in added by a future migration must not be destroyed by an older snapshot.
 assert.match(
   sql,
   /s\.section_type in \(\s*'custom_text_image'/,
   "only builder-creatable types can be staged for removal by a restore",
 );
 
-// The publish snapshot must record post-compaction positions.
 assert.match(sql, /create or replace function public\.publish_landing_draft/, "publish is corrected here");
 const publishBody = sql.slice(sql.indexOf("create or replace function public.publish_landing_draft"));
 const compactAt = publishBody.indexOf("row_number() over");
@@ -114,11 +97,9 @@ assert.ok(
 );
 assert.match(publishBody, /'position', s\.position/, "the snapshot records final positions");
 
-// Repo convention: grant explicitly rather than relying on a platform default.
 assert.match(sql, /grant execute on function public\.restore_landing_snapshot\(uuid\) to service_role/);
 assert.match(sql, /grant execute on function public\.publish_landing_draft\(text\) to service_role/);
 
-// A restore replaces the whole draft, so the open inspector must not survive it.
 const shellSrc = read("app/[lang]/settings/page-builder/page-builder-client.tsx");
 assert.match(shellSrc, /onRestored=\{resetAndRefresh\}/, "restore closes the inspector");
 assert.match(shellSrc, /onDiscarded=\{resetAndRefresh\}/, "discard closes the inspector");

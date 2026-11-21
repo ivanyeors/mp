@@ -4,15 +4,6 @@ import { purchaseLine } from "@/lib/crm/purchase-lines";
 import type { OrderLineRow } from "@/lib/readjustment/purchases";
 import { reviewFakeDb, type ReviewFakeDb } from "./review-request-fake-db";
 
-/**
- * The Check-up reminder job (CRM slice 08) against an in-memory database: who
- * gets one (Premium Mpillow only), on which channel (email needs Marketing
- * consent), at most once per milestone per Order per channel through the two
- * ledgers, and the fee as Costings gives it at send time — or nothing at all
- * when it cannot be read. The ledgers' unique keys, which the fake enforces,
- * are the guarantee, never timing.
- */
-
 const h = vi.hoisted(() => ({
   whatsapp: [] as Array<{ to: string; template: string; params: string[]; urlButtonParam?: string }>,
 }));
@@ -30,7 +21,6 @@ const { runCheckups } = await import("@/lib/aftercare/checkup-server");
 const { runAftercareMessages } = await import("@/lib/aftercare/job");
 const { setEmailTransport } = await import("@/lib/email");
 
-/** Wednesday 21 October 2026, 10:00 SGT: the cron's usual time. */
 const NOW = new Date("2026-10-21T02:00:00.000Z");
 const ORIGIN = "https://custom.mpillow.test";
 const SUPPORT = "support@mpillow.test";
@@ -68,8 +58,6 @@ type Row = Record<string, unknown>;
 let db: ReviewFakeDb;
 let admin: ReturnType<typeof reviewFakeDb>;
 
-// ─── Fixture lines ───────────────────────────────────────────────────────────
-
 const PILLOWS = new Map([
   [1, { size: "M", kind: "premium" }],
   [2, { size: "M", kind: "basic" }],
@@ -103,27 +91,17 @@ const result = (id: string, productType: "pillow" | "bolster", tier: string | nu
   customization_snapshot: { result_id: `r-${id}`, product_type: productType, assigned_tier: tier },
 });
 
-/** Every Order, its Customer, and its lines. */
 const ORDERS: Array<{ id: string; customer: string; lines: OrderLineRow[]; over?: Row }> = [
-  // A Premium Mpillow bought with a Basic Mpillow and an Mbolster: one check-up, for the Premium line.
   { id: "o-ann", customer: "ann", lines: [shop("ann-basic", 2), bolster("ann-bolster"), shop("ann-premium", 1)] },
-  // A Premium Mpillow from a Result; email without consent, WhatsApp opted in.
   { id: "o-ben", customer: "ben", lines: [result("ben-premium", "pillow", "premium")] },
-  // No check-up: a Basic Mpillow, an Mbolster, a pillow of unknown tier.
   { id: "o-cat", customer: "cat", lines: [shop("cat-basic", 2)] },
   { id: "o-dan", customer: "dan", lines: [bolster("dan-bolster")] },
   { id: "o-eve", customer: "eve", lines: [shop("eve-unknown", 3), result("eve-unknown-2", "pillow", null)] },
-  // Re-adjusted in May: skipped.
   { id: "o-fay", customer: "fay", lines: [shop("fay-premium", 1)] },
-  // Paid long ago, never marked delivered: counted, not sent.
   { id: "o-gus", customer: "gus", lines: [shop("gus-premium", 1)], over: { delivered_at: null } },
-  // Unsubscribed and not on WhatsApp: no channel.
   { id: "o-hal", customer: "hal", lines: [shop("hal-premium", 1)] },
-  // A Paired build: a Custom Mpillow and a Custom Mbolster on one Order, each from its own Result snapshot.
   { id: "o-jo", customer: "jo", lines: [result("jo-bolster", "bolster", null), result("jo-pillow", "pillow", "premium")] },
-  // Delivered in June: not a year yet.
   { id: "o-kim", customer: "kim", lines: [shop("kim-premium", 1)], over: { delivered_at: "2026-06-01T02:00:00.000Z" } },
-  // Returned: no longer owned.
   { id: "o-lee", customer: "lee", lines: [{ ...shop("lee-premium", 1), returned_quantity: 1 }] },
 ];
 
@@ -186,7 +164,6 @@ beforeEach(() => {
       delivered_at: "2025-10-10T02:00:00.000Z",
       ...o.over,
     })),
-    // The view, row for row as its TypeScript twin classifies each line (CRM 04's parity check).
     customer_purchase_lines: ORDERS.flatMap((o) =>
       o.lines.map((l) => ({ customer_id: o.customer, order_id: o.id, order_item_id: l.id, ...purchaseLine(l, PILLOWS) })),
     ),
@@ -220,7 +197,7 @@ describe("who gets a check-up, and how", () => {
       enabled: true,
       blocked: null,
       fee: "S$30",
-      candidates: 4, // ann, ben, hal, jo
+      candidates: 4,
       reachable: 3,
       sent: { email: 2, whatsapp: 1 },
       failed: { email: 0, whatsapp: 0 },
@@ -239,11 +216,9 @@ describe("who gets a check-up, and how", () => {
     await run();
     const reached = new Set([...(db.customer_emails ?? []), ...(db.customer_whatsapp ?? [])].map((r) => r.customer_id));
     for (const id of ["cat", "dan", "eve", "lee", "kim"]) expect(reached.has(id), id).toBe(false);
-    // Ann's Order holds a Basic Mpillow and an Mbolster too: one check-up, booking the Premium line.
     const ann = emails.find((e) => e.to === "ann@order.test")!;
     expect(ann.text).toContain(`${ORIGIN}/en-US/appointments?type=readjustment&item=ann-premium`);
     expect(ann.text).not.toMatch(/Basic Mpillow|Mbolster/);
-    // A Paired build: one check-up for the Order, for its Custom Mpillow.
     expect(emails.filter((e) => e.to === "jo@order.test")).toHaveLength(1);
     expect(emails.find((e) => e.to === "jo@order.test")!.text).toContain("item=jo-pillow");
   });
@@ -257,9 +232,6 @@ describe("who gets a check-up, and how", () => {
 });
 
 describe("Marketing consent: the email needs it, WhatsApp does not", () => {
-  // CONSENT. This pins the one marked line in decideCheckupEmail. If the owner
-  // drops it after counsel, Ben and Hal get the email here, and the second
-  // test is unchanged.
   it("emails nobody whose Marketing consent is not subscribed; Ben, who opted in to WhatsApp, still gets that", async () => {
     await run();
     expect(emailTo()).not.toContain("ben@order.test");
@@ -295,7 +267,7 @@ describe("at most once per milestone per Order, per channel", () => {
     expect(ledgerKeys("customer_whatsapp")).toHaveLength(1);
 
     const tomorrow = await run({ now: new Date("2026-10-22T02:00:00.000Z") });
-    expect(tomorrow.candidates).toBe(1); // Hal, still unreachable
+    expect(tomorrow.candidates).toBe(1);
     expect(emails).toHaveLength(2);
     expect(h.whatsapp).toHaveLength(1);
   });
@@ -307,7 +279,6 @@ describe("at most once per milestone per Order, per channel", () => {
     expect(ledgerKeys("customer_emails")).toEqual([
       "ann|aftercare.checkup_12m|o-ann|sent",
       "ann|aftercare.checkup_24m|o-ann|sent",
-      // Fay's re-adjustment is over a year old now, and Kim's pillow a year old.
       "fay|aftercare.checkup_24m|o-fay|sent",
       "jo|aftercare.checkup_12m|o-jo|sent",
       "jo|aftercare.checkup_24m|o-jo|sent",
@@ -391,7 +362,6 @@ describe("switched off", () => {
     const report = await run();
     expect(emailTo()).toEqual(["jo@order.test"]);
     expect(h.whatsapp).toEqual([]);
-    // Ann, and Ben and Hal, whose consent is never reached: the allowlist is checked first.
     expect(report.emailSkipped).toEqual({ not_allowed_outside_production: 3 });
   });
 });

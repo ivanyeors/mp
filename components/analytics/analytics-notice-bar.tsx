@@ -23,17 +23,12 @@ function readStoredFlag(): string | null {
 // ponytail: no `storage` listener: Got it in another tab hides the bar here on the next navigation (a re-render reads the flag again), as before.
 const subscribeNever = () => () => {};
 
-/** Disclosure-only bottom bar (Got it dismiss). Collection stays always-on via JourneyTracker. */
 export function AnalyticsNoticeBar() {
   const pathname = usePathname() ?? "/";
-  // Got it, this mount. Covers blocked storage, where the flag can't be saved.
   const [dismissed, setDismissed] = useState(false);
-  // "1" on the server and while hydrating, so the first paint has no bar.
   const stored = useSyncExternalStore(subscribeNever, readStoredFlag, () => "1");
   const visible = !dismissed && stored !== "1" && !isAdminJourneyPath(pathname);
 
-  // Publish how much of the bottom corner the bar takes, so the chat bubble
-  // (components/support/support-chat-window.tsx) sits above it, not over "Got it".
   const barRef = useRef<HTMLDivElement>(null);
   const pinRef = useScreenBottomPin();
   useEffect(() => {
@@ -59,17 +54,11 @@ export function AnalyticsNoticeBar() {
   const dismiss = () => {
     try {
       localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // still hide this Visit
-    }
+    } catch {}
     setDismissed(true);
   };
 
   return (
-    // pointer-events only on the bar — rest of viewport stays clickable (configurator/checkout)
-    // desktop: right side (clears center dock); mobile: above the dock (--app-dock-clearance)
-    // and above a step's or the cart's action bar (--mobile-bottom-bar-height)
-    // bottom: 0, kept on the screen's edge on iOS after a keyboard (useScreenBottomPin)
     <div
       ref={pinRef}
       className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--screen-pin-offset,0px)*-1)] z-40 flex justify-center p-3 pb-[calc(0.75rem+max(var(--safe-bottom),var(--app-dock-clearance),var(--mobile-bottom-bar-height,0px)))] md:justify-end md:pb-[calc(0.75rem+var(--safe-bottom))]"

@@ -27,11 +27,6 @@ type SlaSettingsForm = {
   authHoldEnabled: boolean;
 };
 
-/**
- * Customer payment reminders — a different question from the SLA above, which
- * is about how long an operator may sit on a submission. These chase the
- * customer once the build is priced and waiting to be paid for.
- */
 type PaymentReminderForm = {
   enabled: boolean;
   firstDelayDays: number;
@@ -58,7 +53,6 @@ export function ReviewSlaSection() {
     authHoldEnabled: true,
   });
   const [reminders, setReminders] = useState<PaymentReminderForm>(REMINDER_DEFAULTS);
-  // Reminders to a guest who stopped customising (ADR 0050): on by default.
   const [draftReminders, setDraftReminders] = useState(true);
   const [slaLoading, setSlaLoading] = useState(true);
   const [slaSaving, setSlaSaving] = useState(false);
@@ -144,8 +138,6 @@ export function ReviewSlaSection() {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border p-4 max-md:p-0">
-      {/* One header target: the chevron trigger stretches over the whole row (56px on
-          phones, with a pressed tint); the InfoTip sits above it. */}
       <div className="relative flex items-center gap-1.5 rounded-lg transition-colors has-[[data-slot=collapsible-trigger]:active]:bg-press max-md:min-h-14 max-md:px-4">
         <h2 className="text-sm font-medium">Review SLA</h2>
         <InfoTip label="About Review SLA" className="z-10">

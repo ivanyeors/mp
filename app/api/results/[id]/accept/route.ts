@@ -40,10 +40,8 @@ import { scheduleAutoLabel } from "@/lib/shipping/schedule-labels";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** What the Order's email reads when the Result has none. Never a Customer. */
 const NO_EMAIL = "unknown@example.com";
 
-/** The Result's email when it can name a Customer: an address, and not the fallback. */
 function customerEmailOf(email: string | null | undefined): string | null {
   const e = email?.trim().toLowerCase();
   return e && e !== NO_EMAIL && /^[^\s@]+@[^\s@]+$/.test(e) ? e : null;
@@ -51,7 +49,6 @@ function customerEmailOf(email: string | null | undefined): string | null {
 
 const BodySchema = z.object({
   token: z.string().uuid().optional(),
-  /** Checkout session id from a completed top-up payment. */
   topupSessionId: z.string().min(1).optional(),
 });
 
@@ -83,8 +80,6 @@ export async function POST(
   const allowed = await authorizeResultAccess(requested, token);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  // A Paired build is accepted as one, on its anchor (ADR 0026). Both share an
-  // access token, so the check above already covered the anchor too.
   const row = isCompanion(requested)
     ? (
         await admin
@@ -97,8 +92,6 @@ export async function POST(
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const id = row.id as string;
 
-  // Idempotent: already captured. Checked before the order_id guard, which used to
-  // shadow it, so a repeat accept gets the Order it already made rather than a 400.
   if (row.status === "captured") {
     return NextResponse.json({ ok: true, status: "captured", orderId: row.order_id });
   }
@@ -110,9 +103,6 @@ export async function POST(
     );
   }
 
-  // Not payable until the customer has picked cover, case and shipping (ADR 0017).
-  // Beyond the wrong price, a null address below would make the Order be born
-  // `delivered`, as if it had been handed over at the counter.
   if (needsCustomerFinish(row)) {
     return NextResponse.json(
       { error: "Choose your cover, case and shipping first", code: "needs_finish" },
@@ -132,9 +122,6 @@ export async function POST(
     return NextResponse.json({ error: acceptLife.error }, { status: 400 });
   }
 
-  // The companion comes along when it is assigned, is left out once it has
-  // ended, and blocks Accept while it is still being built: the shared hold can
-  // be captured only once.
   const companions = isAnchor(row)
     ? ((
         await admin
@@ -144,7 +131,6 @@ export async function POST(
           .neq("id", id)
       ).data ?? [])
     : [];
-  // One hold, one Mbolster: two in play is a state to stop on, not to guess at.
   if (liveCompanions(companions, id).length > 1) {
     return NextResponse.json(
       { error: "This order has changed. Please contact us to complete it.", code: "pair_conflict" },
@@ -196,11 +182,6 @@ export async function POST(
     );
   }
 
-  // One intent authorised the whole pair; each row quotes only its own build.
-  // No intent means no card was ever authorised (an abandoned or refused hold
-  // Checkout), whatever authorized_amount says: nothing can be captured, so the
-  // whole total is a Balance payment. Crediting the quote here created an
-  // Order marked paid in full for only the shortfall.
   const authorized = !row.payment_intent_id
     ? null
     : isAnchor(row)
@@ -217,14 +198,7 @@ export async function POST(
         : mateBuild.pricing.total
       : 0;
   const finalAmount = mate ? round2(anchorFinal + mateFinal) : anchorFinal;
-  // No Authorization hold is not "unsellable" — it means the whole total is a
-  // Balance payment (ADR 0016). planCapture reads 0 as exactly that and returns a
-  // top_up plan with nothing to capture from a hold, so both kinds of Result take
-  // one settlement path from here down.
   const plan = planCapture(finalAmount, authorized ?? 0);
-  // The fees this sale actually charges: a Result priced before Service fees
-  // existed keeps its stored total, so its Order must not list a fee line nobody
-  // paid for (ADR 0024).
   const chargedServiceLines = quotedServiceLines(
     row.final_amount != null ? Number(row.final_amount) : null,
     build.pricing,
@@ -238,7 +212,6 @@ export async function POST(
           mateBuild.serviceLines,
         )
       : [];
-  /** Each build that becomes a line on the one Order. */
   const members = [
     { row, build, finalAmount: anchorFinal, serviceLines: chargedServiceLines },
     ...(mate && mateBuild?.ok
@@ -250,18 +223,13 @@ export async function POST(
     (t, m) => t + m.build.pricing.goods + sumServiceLines(m.serviceLines),
     0,
   );
-  // The discount code kept at hold (ADR 0033). The Mpillow carries a pair's.
   const couponHolder = members.find((m) => m.row.coupon_id || m.row.coupon_code)?.row ?? null;
   const orderDiscount = round2(members.reduce((t, m) => t + m.build.pricing.discount, 0));
   let topUpPaid = 0;
-  /** Second PaymentIntent when the final total outgrew the hold. Ledgered separately. */
   let topUpPaymentIntentId: string | null = null;
 
   if (plan.kind === "top_up") {
     if (!topupSessionId && row.topup_payment_intent_id && row.topup_paid_at) {
-      // The customer paid a top-up and never made it back (tab closed, redirect
-      // lost). The webhook persisted the intent, so settle with it rather than
-      // charging a second time. Amount comes from Stripe, not a stored column.
       const stripe = getStripe();
       const intent = await stripe.paymentIntents.retrieve(row.topup_payment_intent_id);
       const paidMajor = (intent.amount_received ?? 0) / 100;
@@ -323,11 +291,6 @@ export async function POST(
     }
   }
 
-  // A Paired build's Balance payment was taken for the pair as it stood then.
-  // If the pair has changed since — the Mbolster removed while a Checkout was
-  // open — what was paid no longer matches anything Accept could settle, and
-  // settling it anyway records money that is not on the Order. Stop for a human:
-  // the row stays `assigned` with `topup_paid_at`, which the queue flags.
   if (isAnchor(row)) {
     const paidBalance =
       topUpPaid > 0 ||
@@ -345,12 +308,6 @@ export async function POST(
     }
   }
 
-  // Claim the Result before anything moves money or writes an Order. Every check
-  // above read the row and then acted, so a double click or two racing requests
-  // both passed and each made an Order, a commission and a stock deduction. Only
-  // the request whose conditional update flips `assigned` → `accepted` goes on.
-  // `accepted` is the lifecycle's own in-between state, already refused by decline
-  // and cancel and skipped by the SLA cron, so no new status or column is needed.
   const { data: claimed, error: claimErr } = await admin
     .from("mp_config_responses")
     .update({ status: acceptLife.status })
@@ -373,11 +330,9 @@ export async function POST(
       { status: 409 },
     );
   }
-  // Hand the claim back when this attempt fails before an Order exists, so accept
-  // can be retried. ponytail: no staleness takeover. A request that dies outright
-  // keeps the claim, because a takeover cannot tell "died before the Order insert"
-  // from "died after it" and would bring the duplicate Order straight back. That
-  // Result stays `accepted` with no order_id and needs a human.
+  // ponytail: no staleness takeover. A request that dies outright keeps the claim, because a
+  // takeover cannot tell "died before the Order insert" from "died after it" and would bring the
+  // duplicate Order straight back. That Result stays `accepted` with no order_id and needs a human.
   const releaseClaim = async () => {
     const { error } = await admin
       .from("mp_config_responses")
@@ -388,8 +343,6 @@ export async function POST(
     if (error) console.error("Failed to release accept claim", id, error);
   };
 
-  // The companion is claimed behind its anchor. Only this request holds the
-  // anchor, so a miss means Staff moved the companion meanwhile; hand both back.
   if (mate) {
     const { data: mateClaimed, error: mateClaimErr } = await admin
       .from("mp_config_responses")
@@ -409,15 +362,6 @@ export async function POST(
 
   const holdCaptureAmount = plan.kind === "capture" ? plan.amount : plan.holdCapture;
 
-  // Capture is not the last write in this route, so a failure after it used to
-  // strand the money: a retry re-entered capture on an already-captured intent and
-  // 502'd forever. Ask Stripe what actually happened first — a succeeded intent
-  // means a previous attempt captured and died downstream, so skip straight to
-  // rebuilding the Order. This is what makes the whole route retryable.
-  //
-  // A Result with no hold has nothing to capture: the Balance payment above
-  // already charged the card in full. Skip rather than calling Stripe with a null
-  // intent id, which is how this would turn into that same 502 loop.
   if (holdCaptureAmount > 0 && row.payment_intent_id) {
     try {
       const stripe = getStripe();
@@ -428,10 +372,6 @@ export async function POST(
         typeof intent.amount_received === "number" &&
         intent.amount_received !== Math.round(holdCaptureAmount * 100)
       ) {
-        // A previous attempt captured a different amount than this one would:
-        // the build changed in between. Recording this attempt's amount would
-        // ledger less (or more) than Stripe took. Keep the claim — the row reads
-        // accept_interrupted for a human — rather than write a wrong Order.
         return NextResponse.json(
           {
             error: "Payment was already taken for a different total. Our team will settle it with you.",
@@ -452,9 +392,6 @@ export async function POST(
       status: "accepted",
       filling_template_id: row.filling_template_id,
       payment_intent_id: row.payment_intent_id,
-      // The lifecycle's sole remaining guard against an Order with no money
-      // behind it. For a no-hold Result this is the only thing asserting the
-      // customer actually paid.
       balance_paid: topUpPaid > 0,
     },
     { action: "capture" },
@@ -464,8 +401,6 @@ export async function POST(
     return NextResponse.json({ error: captureLife.error }, { status: 500 });
   }
 
-  // What actually charged. Pure and unit-tested, because a wrong charge row here
-  // is silent until someone refunds (lib/results/settlement.ts).
   const settlement = settleResult({
     holdCaptureAmount,
     holdIntentId: row.payment_intent_id,
@@ -473,10 +408,6 @@ export async function POST(
     topUpIntentId: topUpPaymentIntentId,
   });
 
-  // When Stripe took each payment, by Stripe's clock: the hold's capture just
-  // above (or by an earlier attempt), and a Balance payment the customer may
-  // have made long before this Accept ran. The sale is made when the last of
-  // them landed, so that is the Order's paid_at and each ledger row's time.
   const chargedAt = await Promise.all(
     settlement.charges.map(async (c) => {
       if (!c.stripeObjectId) return null;
@@ -501,19 +432,8 @@ export async function POST(
   }) as Record<string, unknown>;
 
   const now = nowIso;
-  // In-store Results carry no shipping address — that is exactly why the placeholder
-  // above exists. Those are handed over at the counter, so capture *is* delivery.
-  // Everything else still has to be built and shipped, and must not be born
-  // "delivered": `delivered_at` anchors the RMA return window (lib/rma/eligibility)
-  // and partner commission release (lib/commissions/ledger).
   const inStoreHandover = row.source === "manual" || row.shipping_address == null;
 
-  // Every Order has a Customer when the Result has an email (PRD-loyalty-points
-  // slice 03): points are earned by a Customer, and a guest, assisted or
-  // in-store Result names none. Resolved from the email as shop checkout does,
-  // so the points wait on that email until its owner signs in. Best-effort: the
-  // money is captured by now, so a failure leaves the Order without a Customer
-  // (and without points) rather than failing the sale.
   let customerId: string | null = (row.customer_id as string | null) ?? null;
   const customerEmail = customerId ? null : customerEmailOf(row.customer_email);
   if (customerEmail) {
@@ -533,7 +453,6 @@ export async function POST(
       status: inStoreHandover ? "delivered" : "confirmed",
       currency: row.currency ?? "SGD",
       subtotal: orderSubtotal,
-      // A Paired build's Mbolster ships with its Mpillow, so its shipping is 0.
       shipping_amount: round2(members.reduce((t, m) => t + m.build.pricing.shipping, 0)),
       tax_amount: round2(members.reduce((t, m) => t + m.build.pricing.tax, 0)),
       discount_amount: orderDiscount,
@@ -544,14 +463,10 @@ export async function POST(
       payment_method: "stripe",
       payment_reference: settlement.paymentReference,
       paid_at: paidAt,
-      // Only the in-store path has no later "mark delivered" step; a shipped order
-      // gets its delivered_at from the Orders fulfilment flow.
       delivered_at: inStoreHandover ? now : null,
       amount_captured: settlement.amountCaptured,
-      // Referral attribution carried from the Result (#74). One partner per order.
       partner_id: row.partner_id,
       ref_code: row.ref_code,
-      // Carry the attribution source too (#80) so the hub can mask link/code rows.
       attribution_source: row.attribution_source,
     })
     .select("id, order_number")
@@ -565,13 +480,10 @@ export async function POST(
     );
   }
 
-  // One goods line per build, each with its own service lines (ADR 0024) and its
-  // own snapshot, so a Paired build's Order reads as the two builds it is.
   const orderItemIds: string[] = [];
   let itemsErr: string | null = null;
   for (const m of members) {
     const productType = productTypeOf(m.row);
-    // Null template id = diverged custom mix; the Result snapshot rows carry the fillings.
     const { data: fillingTpl } = m.row.filling_template_id
       ? await admin
           .from("bom_templates")
@@ -598,7 +510,6 @@ export async function POST(
         services: memberSubtotal - m.build.pricing.goods,
         subtotal: memberSubtotal,
       },
-      // The snapshot is customer-readable: price and name only, never cost.
       serviceLines: m.serviceLines.map((l) => ({ ...l, costPrice: null })),
     });
 
@@ -620,8 +531,6 @@ export async function POST(
             ? `${m.row.assigned_size} · ${m.row.assigned_tier} tier`
             : m.row.assigned_length,
         quantity: 1,
-        // Goods only. Service fees are their own lines below (ADR 0024), so the
-        // Order's lines still sum to its subtotal and nothing ships a service.
         unit_price: m.build.pricing.goods,
         total_price: m.build.pricing.goods,
         unit_cost: m.build.cogs,
@@ -636,9 +545,6 @@ export async function POST(
     }
     orderItemIds.push(orderItem.id as string);
 
-    // The Measurement service, when Staff measured (ADR 0024): its own line, never
-    // shipped, never stock-deducted, never returnable. Written before the ledger so
-    // a failure here still rolls the whole Order back below.
     if (m.serviceLines.length > 0) {
       const { error: serviceErr } = await admin.from("order_items").insert(
         m.serviceLines.map((l) => ({
@@ -664,24 +570,15 @@ export async function POST(
   }
 
   if (itemsErr) {
-    // order_items cascade with the Order, so one delete undoes both inserts.
     const { error: rollbackErr } = await admin.from("orders").delete().eq("id", order.id);
-    // An Order we could not delete must not be joined by a second one on retry:
-    // keep the claim so the Result shows as accept_interrupted for a human.
     if (!rollbackErr) await releaseClaim();
     return NextResponse.json({ error: itemsErr }, { status: 500 });
   }
 
-  // The code's use is counted now that it is a paid Order, as shop checkout
-  // counts one at payment. Until now the live Result held the use (ADR 0033).
-  // Once: the Order above is created once per Result, and a retry that finds it
-  // returns before here. Best-effort — the money is captured.
   if (couponHolder?.coupon_id) {
     try {
       const counted = await incrementCouponUsage(couponHolder.coupon_id as string);
       if (!counted) {
-        // Redeemed after the code was used up: the money is captured, so a
-        // human decides whether to recover the discount.
         await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
         await addOrderTimelineEvent(
           order.id,
@@ -695,10 +592,6 @@ export async function POST(
     }
   }
 
-  // The Visit this sale came from (ADR 0007), for a Result the shopper held
-  // online: found through the email they gave at the hold, since Staff accept
-  // from their own browser. An in-store or Assisted Result came from no Visit.
-  // Once, as above, and never fails the accept.
   if (row.source === "online_purchase") {
     await recordPaidOrderVisit(admin, {
       orderId: order.id as string,
@@ -707,12 +600,6 @@ export async function POST(
     });
   }
 
-  // Record what we actually charged as ledger rows. Without these the order has no
-  // `charge` row at all, so summarize() reads captured = 0 and *any* refund
-  // satisfies `refunded >= captured` — flipping a partially-refunded Result order
-  // to fully refunded, zeroing amount_captured and voiding partner commissions.
-  // A topped-up order charges two intents; both must be ledgered or a full refund
-  // asks Stripe for more than the hold intent ever captured.
   try {
     for (const [i, charge] of settlement.charges.entries()) {
       await recordLedgerEntry(admin, order.id, {
@@ -726,24 +613,16 @@ export async function POST(
     }
     await rollupOrderMoney(admin, order.id);
   } catch (e) {
-    // Money is captured and the Order exists — never fatal. Flag it instead so the
-    // row surfaces as stuck rather than silently carrying a broken refund ceiling.
     await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
     console.error("Ledger write failed after capture", e);
   }
 
-  // The partner's commission for an attributed order (ADR 0034): flat, once per
-  // Qualifying Sale, and only when it holds a customised premium pillow. The hold
-  // fixed the amount the day the customer paid; a Result without one is priced on
-  // today's terms. Best-effort: money is already captured and the order exists, so
-  // a commission-write failure is logged, never fatal.
   if (row.partner_id) {
     let qualifies = false;
     try {
       qualifies = await createHeldCommissionsForOrder(admin, {
         orderId: order.id,
         partnerId: row.partner_id,
-        // Null for shipped orders: release is dated from real delivery, not capture.
         deliveredAt: inStoreHandover ? now : null,
         amount: row.partner_commission == null ? null : Number(row.partner_commission),
         items: members.map((m, i) => ({
@@ -760,16 +639,11 @@ export async function POST(
     } catch (e) {
       console.error("Commission creation failed after capture", e);
     }
-    // Milestone progress (#79): counts Qualifying Sales. Best-effort — the money is
-    // already captured, so a milestone failure is logged, never fatal.
     try {
       await applyMilestoneProgress(admin, row.partner_id);
     } catch (e) {
       console.error("Milestone progress failed after capture", e);
     }
-    // Referral-earned email (#84): fires once per Qualifying Sale (entity_id =
-    // order id). delivered_at is stamped at in-store handover, so release is dated.
-    // Best-effort — never break capture.
     if (qualifies) {
       try {
         await sendReferralEarnedEmail(admin, {
@@ -783,10 +657,6 @@ export async function POST(
     }
   }
 
-  // Deduct inventory only after successful capture (US37): each build's lines, as
-  // frozen on its order line above. Retried here; if every attempt fails the
-  // Order is flagged and Staff deduct it from the Order page. The money is
-  // captured, so this never fails the Accept.
   await deductOrderStockOrFlag(admin, order.id, 3);
 
   await admin.from("order_timeline").insert({
@@ -798,7 +668,6 @@ export async function POST(
     metadata: { result_id: id, ...(mate ? { paired_result_id: mate.id } : {}) },
   });
 
-  // Every member points at the one Order, each keeping its own final amount.
   for (const m of members) {
     const { error: updateErr } = await admin
       .from("mp_config_responses")
@@ -815,9 +684,6 @@ export async function POST(
     }
   }
 
-  // The courier label Staff print for the box (ADR 0044), on the courier the
-  // customer's method picks. After the Result points at the Order, which is how
-  // the label finds that method; after the response, so it never slows Accept.
   if (!inStoreHandover) scheduleAutoLabel(admin, order.id as string);
 
   return NextResponse.json({

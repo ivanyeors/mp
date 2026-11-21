@@ -7,18 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * The image and hero blocks in the campaign editor (PRD-campaign-email-editor
- * slice 05), as Staff use them: choose a photo from the Media Library, which
- * makes its email copy and prefills its alt text, override or mark it
- * decorative, link it, and Save it by asset id; keep or drop a hero's parts;
- * and click a block in the preview to select its card (slice 04's seam).
- */
-
 const PHOTO = "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f";
 const RENDITION = { assetId: PHOTO, url: `https://mpillow.supabase.co/storage/v1/object/public/media/email/${PHOTO}.jpg`, width: 1200, height: 800, hasAlpha: false };
 
-// The Media Library's picker, as if Staff chose an image in it (the photo, unless a test picks another).
 const picker = vi.hoisted(() => ({ assetId: "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f" }));
 vi.mock("@/components/ui/image-picker", () => ({
   ImagePicker: ({ onSelect, children }: { onSelect: (s: { assetId: string; url: string; alt?: string | null }) => void; children: ReactNode }) => (
@@ -99,7 +90,6 @@ const button = (label: string) => [...document.querySelectorAll("button")].find(
 const card = (n: number) => document.querySelectorAll<HTMLElement>("li[data-block-id]")[n];
 const savedContent = () => actions.saveCampaign.mock.calls.at(-1)![1].content!;
 const addBlock = (label: string) => choose(button("Add block")!, label);
-/** *Choose an image*, once the picker has loaded. */
 const chooseImage = async () => {
   const b = await until(() => (button("Choose an image")?.disabled === false ? button("Choose an image") : null));
   await click(b);
@@ -168,7 +158,6 @@ describe("an image block", () => {
     await chooseImage();
     expect(button("Getting it ready for email…")).not.toBeNull();
 
-    // While it is made: the alt text typed, the title changed, a block deleted.
     const image = card(2);
     const alt = image.querySelector<HTMLInputElement>('input[id$="-alt"]')!;
     typeField(alt, "A cover on a made bed");
@@ -216,7 +205,6 @@ describe("a hero", () => {
     mount(draftWith(CONTENT));
     await addBlock("Hero");
     const hero = card(1);
-    // The heading and the line are one-line words that take Variables (slice 13).
     expect(hero.querySelector('[aria-label="Hero heading"]')).not.toBeNull();
     expect(hero.querySelector('[aria-label="Hero line"]')).not.toBeNull();
     expect(hero.querySelector('input[aria-label="Hero button: label"]')).not.toBeNull();
@@ -263,7 +251,6 @@ describe("the preview", () => {
     mount(draftWith(content));
     const frame = await until(() => document.querySelector<HTMLIFrameElement>('iframe[title="Email preview"]'));
     await settle(100);
-    // jsdom draws no srcdoc: put the server's email into the frame's document, as a browser would.
     const doc = frame.contentDocument!;
     doc.body.innerHTML = new DOMParser().parseFromString(html, "text/html").body.innerHTML;
 
@@ -273,7 +260,6 @@ describe("the preview", () => {
     await act(async () => doc.querySelector<HTMLElement>('[data-block-id="hero"] h1')!.click());
     expect(card(0).dataset.selected).toBe("true");
     expect(card(1).dataset.selected).toBeUndefined();
-    // The selected block is outlined in the email too.
     expect(doc.querySelector('[data-block-id="hero"]')!.classList.contains("mp-editor-selected")).toBe(true);
   });
 });

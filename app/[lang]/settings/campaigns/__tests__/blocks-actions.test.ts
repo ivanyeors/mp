@@ -1,22 +1,13 @@
-// Deterministic origin before anything imports the email shell.
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { CampaignDraftInput } from "@/lib/email-campaigns/rules";
 
-/**
- * A block campaign through the page's actions (PRD-campaign-email-editor
- * slice 03): Save stores its blocks and nothing else of the email, refuses a
- * crafted payload by field, Preview renders it for the sample customer, and
- * Duplicate copies the blocks as they are.
- */
-
 const h = vi.hoisted(() => ({
   inserts: [] as Record<string, unknown>[],
   updates: [] as Record<string, unknown>[],
   row: null as Record<string, unknown> | null,
-  /** `site_settings`: points are live unless a test says otherwise. */
   settings: [] as { key: string; value: string }[],
   tests: [] as unknown[][],
 }));
@@ -29,7 +20,6 @@ vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: vi.fn(async () => ({ id
 vi.mock("@/lib/email-campaigns/setup", () => ({ campaignSenderSetup: () => ({ origin: "https://custom.mpillow.com" }) }));
 vi.mock("@/lib/email-campaigns/sender", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email-campaigns/sender")>()),
-  // What a test send is filled with, without sending it.
   sendCampaignTest: async (...args: unknown[]) => {
     h.tests.push(args);
     return { sent: ["me@mpillow.com"], failed: [] };
@@ -190,7 +180,6 @@ describe("Points balance (slice 13)", () => {
     h.row = { id, ...campaignRowFromDraft(CampaignDraftSchema.parse(withFallback)), created_at: "t", updated_at: "t", locked_at: null, archived_at: null };
     expect(await saveCampaign(id, { ...withFallback, name: "Renamed" })).toEqual({ ok: true, id });
     expect(h.updates).toEqual([expect.objectContaining({ table: "email_campaigns", name: "Renamed" })]);
-    // A campaign without it never reads the points settings.
     h.settings = [];
     expect(await saveCampaign(null, INPUT)).toEqual({ ok: true, id: "c-new" });
   });

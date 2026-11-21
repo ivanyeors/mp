@@ -13,11 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { withdrawApplication } from "@/app/[lang]/partner/apply/actions";
 
-/**
- * "Withdraw application" on the under-review screen. Asks first, and says
- * plainly that withdrawing deletes the application, so joining later means
- * applying again. Success redirects to the application form.
- */
 export function WithdrawApplication({ lang }: { lang: string }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +21,6 @@ export function WithdrawApplication({ lang }: { lang: string }) {
   function withdraw() {
     setError(null);
     startTransition(async () => {
-      // Reached only on failure (success redirects server-side).
       const res = await withdrawApplication(lang);
       if (res?.error) setError(res.error);
     });

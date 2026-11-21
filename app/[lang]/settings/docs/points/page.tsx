@@ -10,11 +10,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Documentation → Mpillow Points (PRD-loyalty-points; ADR 0030): the whole
- * programme in plain words, with the live settings. If they can't be read it
- * says so and shows the defaults.
- */
 export default async function PointsGuidePage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

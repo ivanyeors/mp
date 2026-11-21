@@ -1,10 +1,3 @@
-/**
- * The Draft reminder job (ADR 0050): the IO around ./index. Runs daily,
- * chained onto `results-sla`. A manual re-run is safe: each reminder is
- * claimed in `customer_emails` (customer, template, Draft) before it is sent,
- * so nobody gets the same one twice.
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAftercareEmailAllowed } from "@/lib/aftercare/channels";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
@@ -34,7 +27,6 @@ import {
   type DraftReminderStep,
 } from "./index";
 
-/** At most this many sent a run; the rest stay due for the next, inside their window. */
 export const DRAFT_REMINDER_BATCH = 100;
 const PAGE = 1000;
 const CHUNK = 150;
@@ -43,7 +35,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export type DraftReminderReport = {
   ok: true;
   enabled: boolean;
-  /** Set when nothing could be sent at all, and why. */
   blocked?: "unsubscribe_not_configured";
   sent: Record<DraftReminderStep, number>;
   failed: number;
@@ -98,7 +89,6 @@ export async function runDraftReminders(
   const enabled = parseDraftRemindersEnabled((setting as { value?: string } | null)?.value);
   const report = emptyReport(enabled);
   if (!enabled) return report;
-  // Sent like a campaign: no Unsubscribe link, no reminder.
   if (!unsubscribeConfigured()) return { ...report, blocked: "unsubscribe_not_configured" };
 
   const since = new Date(ctx.now.getTime() - DRAFT_REMINDER_HORIZON_DAYS * DAY_MS).toISOString();
@@ -119,7 +109,6 @@ export async function runDraftReminders(
   const draftIds = drafts.map((d) => d.id);
   const firstStarted = drafts.reduce((min, d) => (d.created_at < min ? d.created_at : min), drafts[0].created_at);
 
-  // A Result started since the Draft and then held, paid or submitted: they went on.
   const results = await readAll<{ customer_email: string | null; created_at: string }>("results", () =>
     admin
       .from("mp_config_responses")
@@ -158,7 +147,6 @@ export async function runDraftReminders(
     sentByDraft.set(row.entity_id, set);
   }
 
-  // As campaigns are: an address one bounced from, or that reported one as spam, is left alone.
   const bounced = await readIn<{ customer_id: string; status: string | null; bounced_at: string | null; complained_at: string | null }>(
     "suppression",
     customers.map((c) => c.id),
@@ -188,7 +176,6 @@ export async function runDraftReminders(
 
   const copy = await loadEmailCopy(DRAFT_REMINDER_EMAIL_COPY, { admin });
   const replyTo = getSupportInbox();
-  // The header's mail fallback takes a bare address, not "Name <address>".
   const mailto = emailAddressOf(replyTo) ?? undefined;
   for (const { draft, email, customerId, reminder } of planned.slice(0, DRAFT_REMINDER_BATCH)) {
     const links = unsubscribeLinks(customerId, { origin: ctx.origin });

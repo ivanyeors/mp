@@ -6,15 +6,7 @@ import { defaultEmailCopy } from "@/lib/email/copy";
 import { ORDER_EMAIL_COPY } from "@/lib/email/templates";
 import { sampleOrder, sampleOrderWithPoints } from "@/lib/email/__fixtures__/samples";
 
-/** Amounts are formatted with no-break spaces; compare them as plain ones. */
 const plain = (s: string) => s.replace(/\u00a0|\u202f/g, " ");
-
-/**
- * The order emails with points (PRD-loyalty-points slices 03 and 04): points
- * used are their own line, apart from the coupon, and the confirmation says
- * what the order will earn, with a sign-in line for a guest. An order with
- * no points reads exactly as before.
- */
 
 describe("points used", () => {
   it("splits the discount: the coupon, then the points, each its own line", () => {

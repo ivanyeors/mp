@@ -10,25 +10,13 @@ import { emailTemplateForStatus } from "./lifecycle";
 import { dispatchRmaEmail, type RmaEmailData } from "@/lib/email/rma";
 import { voidCommissionsForRma } from "@/lib/commissions/ledger";
 
-/**
- * Apply one RMA lifecycle transition (ADR 0011). Shared by the admin server
- * actions (`actorType: 'staff'`) and the Stripe webhook that settles a refund
- * (`actorType: 'system'`), so validation, the timeline event, the audit row, and
- * the lifecycle email are wired in exactly one place.
- *
- * Never throws for an illegal transition — returns `{ ok:false, skipped:true }`
- * so the webhook can no-op on redelivery while callers that treat it as user
- * error re-throw. DB failures still throw.
- */
 export interface ApplyRmaTransitionOpts {
   rmaId: string;
   to: RmaStatus;
   actorType: RmaActor;
-  /** Admin actor for audit attribution; null for system/webhook. */
   actor?: { userId: string; email: string } | null;
   reason?: string | null;
   emailMessage?: string | null;
-  /** Extra column updates applied with the status change (e.g. tracking). */
   patch?: Record<string, unknown>;
 }
 
@@ -85,9 +73,6 @@ export async function applyRmaTransition(
     .eq("id", opts.rmaId);
   if (updErr) throw new Error(updErr.message);
 
-  // A refund resolution reverses the sale: void the commission for exactly this
-  // RMA's order_items (#77). Only `refunded` reaches here — exchange/replacement
-  // settle to `completed`, leaving their commissions held/released. Idempotent.
   if (opts.to === "refunded") {
     await voidCommissionsForRma(admin, opts.rmaId);
   }

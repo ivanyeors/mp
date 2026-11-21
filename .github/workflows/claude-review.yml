@@ -8,21 +8,46 @@ name: claude review
 # skips and the job passes. Billed per review, so it runs when a pull request
 # is opened, reopened or marked ready, not on every push. Add the
 # `claude-review` label to review again after more commits.
+#
+# With AUTO_MERGE_CODE on (auto-merge.yml), it also reviews every push, and
+# every change of base branch: a pull request merges itself only on a
+# "Verdict: clean at <sha> against <default branch>" comment for the exact
+# head that merges. A stacked pull request's review saw only its own delta,
+# so a retarget to main needs a new review. With the switch off, a push or a
+# retarget runs nothing here, as before. Without the key nothing posts a
+# verdict, so nothing merges itself.
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review, labeled]
-
-concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+    types: [opened, reopened, ready_for_review, labeled, synchronize, edited]
 
 jobs:
   review:
     if: >-
       github.event.pull_request.draft == false &&
       github.actor != 'dependabot[bot]' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'claude-review')
+      (github.event.action != 'labeled' || github.event.label.name == 'claude-review') &&
+      (github.event.action != 'synchronize' || vars.AUTO_MERGE_CODE == 'on') &&
+      (github.event.action != 'edited' || (github.event.changes.base && vars.AUTO_MERGE_CODE == 'on'))
+
+    # A newer review of the same pull request replaces one in progress. Only a
+    # run that will review joins that group: every other run (a push or
+    # retarget with the switch off, an unrelated label, a title edit) gets a
+    # group of its own, so it cannot cancel a review in progress. Before this,
+    # the group was at workflow level, so such a run cancelled the review and
+    # then skipped its own job, and the pull request went unreviewed. The
+    # condition is the job's `if:` above, repeated; keep the two the same.
+    concurrency:
+      group: >-
+        claude-review-${{ github.event.pull_request.number }}-${{
+        (github.event.pull_request.draft == false &&
+        github.actor != 'dependabot[bot]' &&
+        (github.event.action != 'labeled' || github.event.label.name == 'claude-review') &&
+        (github.event.action != 'synchronize' || vars.AUTO_MERGE_CODE == 'on') &&
+        (github.event.action != 'edited' || (github.event.changes.base && vars.AUTO_MERGE_CODE == 'on')))
+        && 'review' || github.run_id }}
+      cancel-in-progress: true
+
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -50,13 +75,23 @@ jobs:
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
+            HEAD SHA: ${{ github.event.pull_request.head.sha }}
+            BASE BRANCH: ${{ github.event.pull_request.base.ref }}
 
-            Review this pull request. Read CLAUDE.md first; read the PRD issue it links, if any.
-            Get the change with `gh pr diff`.
+            Review this pull request against BASE BRANCH. Read CLAUDE.md first; read the PRD
+            issue it links, if any. Get the change with `gh pr diff`.
 
             Report only problems that affect correctness: a requirement it misses, a broken
             invariant from CONTEXT.md, an ADR or docs/data-flows/, a missing or wrong check for
             something it changes, or a security problem. Skip style, naming and formatting.
+
+            Also report what gets past a check without doing what it asks: a lint baseline
+            (eslint-suppressions.json) whose total for any rule grew; a cast or a `ponytail:`
+            comment standing in for the work; a new hook in hooks/, or a file moved into
+            components/ui/, that exists only to get one caller past the effect ban; a property
+            test that restates the function it tests, so it cannot fail; and a correction fixed
+            in prose (CLAUDE.md, a comment, a doc) where a lint rule, test, check or hook was
+            possible.
 
             Before you post a finding, try to disprove it by reading the surrounding code. Post
             it only if you can state the inputs or state that produce the wrong result.
@@ -64,8 +99,18 @@ jobs:
             Then say which rung of the risk ladder in CLAUDE.md this is (docs and copy only,
             ordinary, or money), and for money, whether the second check is recorded.
 
-            Post inline comments for specific lines, and one summary with `gh pr comment`.
-            If you found nothing, the summary says so in one line.
+            Post every inline comment for specific lines first. Then post exactly one summary
+            with `gh pr comment`, and post it last: nothing after it, no second summary. Its
+            first line is exactly one of these two, with nothing before or after it on that
+            line, using HEAD SHA and BASE BRANCH from above:
+
+                Verdict: clean at <HEAD SHA> against <BASE BRANCH>
+                Verdict: findings at <HEAD SHA> against <BASE BRANCH>
+
+            "clean" only when you found nothing; any finding, inline or in the summary,
+            is "findings". A pull request merges itself only on a clean verdict for the
+            head it merges, against the default branch. If you found nothing, the rest of
+            the summary says so in one line.
           claude_args: >-
             --max-turns 30
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"

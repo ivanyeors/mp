@@ -35,15 +35,6 @@ import { PRODUCT_SEO_TARGETS, countWords, displayWidth, fitOf, productPageTitle,
 import type { LocalizedProductContent } from "@/lib/types/ecommerce";
 import { cn } from "@/lib/utils";
 
-/**
- * The product editor's ✨: *Write with Claude* in the Content card and
- * *Generate SEO* in the SEO card, each for the language tab it is pressed
- * in (lib/ecommerce/ai-product-shape.ts). What Claude writes is offered in
- * that tab, beside what is there, with *Use*, *Try again* and *Discard*:
- * nothing changes until Staff press Use, and nothing is saved until they
- * press Save.
- */
-
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 
 export type ContentMap = Record<string, LocalizedProductContent>;
@@ -57,7 +48,6 @@ export type Offer<R> =
 
 type Kind = ProductAiRequest["kind"];
 
-/** The words on screen, as an ask sends them. */
 export function aiContent(content: ContentMap): Partial<Record<Locale, ProductAiContent>> {
   const out: Partial<Record<Locale, ProductAiContent>> = {};
   for (const [locale, c] of Object.entries(content)) {
@@ -73,7 +63,6 @@ export function aiContent(content: ContentMap): Partial<Record<Locale, ProductAi
   return out;
 }
 
-/** One ask of each kind at a time: a new one stops the last. Stop and Discard clear it. */
 export function useProductAi(productId: string) {
   const [description, setDescription] = useState<Offer<DescriptionResult> | null>(null);
   const [seo, setSeo] = useState<Offer<SeoResult> | null>(null);
@@ -123,11 +112,6 @@ export function useProductAi(productId: string) {
   return { description, seo, run, clear };
 }
 
-// ---------------------------------------------------------------------------
-// Small parts
-// ---------------------------------------------------------------------------
-
-/** A row of choices, one picked: a radio group drawn as a segmented control. */
 function Segmented<T extends string>({
   label,
   value,
@@ -139,7 +123,6 @@ function Segmented<T extends string>({
   value: T;
   options: readonly { value: T; label: string }[];
   onChange: (v: T) => void;
-  /** Why an option can't be picked now, by value. */
   why?: Partial<Record<T, string | null>>;
 }) {
   const labelId = useId();
@@ -198,7 +181,6 @@ const FIT_CLASS: Record<Fit, string> = {
   long: "text-amber-700 dark:text-amber-400",
 };
 
-/** "34/60", or "62 words": coloured by whether it fits. */
 export function Meter({ n, range, unit, title }: { n: number; range: Range; unit?: string; title?: string }) {
   const fit = fitOf(n, range);
   return (
@@ -211,18 +193,12 @@ export function Meter({ n, range, unit, title }: { n: number; range: Range; unit
   );
 }
 
-/** The ✨ button while AI writing is on; why not, when Claude's credentials aren't set. */
 function aiOff(ai: AiWritingAvailability): string | null {
   return ai.configured ? null : AI_WRITING_NO_CREDENTIALS;
 }
 
 const hasWords = (s: string | undefined) => Boolean(s?.trim());
 
-/**
- * Where a ✨ popover may sit: clear of the screen's edges and, on a phone, of
- * the page's sticky Save bar at the bottom, scrolling inside itself when it
- * doesn't fit, so its button is never under the bar.
- */
 function popoverRoom() {
   let bottom = 8;
   if (typeof window !== "undefined" && !window.matchMedia("(min-width: 768px)").matches) {
@@ -234,11 +210,6 @@ function popoverRoom() {
 
 const POPOVER_SCROLL = "max-h-(--radix-popover-content-available-height) overflow-y-auto overscroll-contain";
 
-// ---------------------------------------------------------------------------
-// ✨ Write with Claude
-// ---------------------------------------------------------------------------
-
-/** The choice Write opens on: translate an empty tab when there's English to start from, improve one with words, else fresh. */
 function defaultMode(locale: Locale, content: ContentMap): DescriptionMode {
   const here = content[locale];
   if (hasWords(here?.body) || hasWords(here?.description)) return "improve";
@@ -246,10 +217,6 @@ function defaultMode(locale: Locale, content: ContentMap): DescriptionMode {
   return "new";
 }
 
-/**
- * *✨ Write with Claude* and its choices, for the tab it is in. The editor
- * keys it by language, so each tab starts from what suits its own words.
- */
 export function WriteWithClaude({
   ai,
   locale,
@@ -377,10 +344,6 @@ export function WriteWithClaude({
   );
 }
 
-// ---------------------------------------------------------------------------
-// An offer, in its tab
-// ---------------------------------------------------------------------------
-
 function OfferFrame({ label, notes, children, actions }: { label: ReactNode; notes?: string; children: ReactNode; actions: ReactNode }) {
   const id = useId();
   return (
@@ -415,7 +378,6 @@ function Working({ what }: { what: string }) {
   );
 }
 
-/** A part of an offer Staff can take or leave: its box, its label, and its words. */
 function OfferPart({ label, checked, onChecked, meter, children }: { label: string; checked: boolean; onChecked: (v: boolean) => void; meter?: ReactNode; children: ReactNode }) {
   const id = useId();
   return (
@@ -525,10 +487,6 @@ export function DescriptionOfferView({
     </OfferFrame>
   );
 }
-
-// ---------------------------------------------------------------------------
-// ✨ Generate SEO
-// ---------------------------------------------------------------------------
 
 export function GenerateSeo({
   ai,

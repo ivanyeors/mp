@@ -26,13 +26,6 @@ function formatDay(ymd: string): string {
   );
 }
 
-/**
- * Partner Hub "Your commission" (ADR 0034, agreement clause 7). Shows the
- * Commission Pool Staff set, what the partner takes per qualifying sale, and any
- * change waiting for the day after the next Payout Date. The partner may take
- * less than the pool; whether what they leave reaches their customers is
- * Mpillow's call (clause 5.1), shown here but never editable here.
- */
 export async function CommissionChoiceCard({ partnerId }: { partnerId: string }) {
   const { data } = await supabaseAdmin()
     .from("partners")
@@ -46,7 +39,6 @@ export async function CommissionChoiceCard({ partnerId }: { partnerId: string })
   const takes = commissionInEffect(terms, today);
   const customersGet = customerDiscountInEffect(terms, today);
   const waitingFrom = terms.nextChoiceFrom && terms.nextChoiceFrom > today ? terms.nextChoiceFrom : null;
-  // What the waiting pick pays once it starts: never above the pool.
   const waitingTakes = waitingFrom ? Math.min(terms.nextChoice ?? terms.pool, terms.pool) : null;
 
   return (

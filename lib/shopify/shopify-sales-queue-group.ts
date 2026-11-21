@@ -14,7 +14,6 @@ export type ShopifyOrderGroup<T extends ShopifyQueueGroupLine> = {
   lines: T[]
 }
 
-/** Group flat queue rows by Shopify order id; newest orders first. */
 export function groupShopifyQueueByOrder<T extends ShopifyQueueGroupLine>(
   rows: T[],
 ): ShopifyOrderGroup<T>[] {

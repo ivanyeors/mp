@@ -7,11 +7,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-/**
- * Partner Hub "remaining self-purchase allowance" (#82, AC5). Renders nothing when
- * the feature is off for this partner (no rate / zero cap). Read-only — the rate
- * and cap are admin-set; the partner only sees what's left.
- */
 export async function SelfPurchaseAllowanceCard({ partnerId }: { partnerId: string }) {
   const a = await loadSelfPurchaseAllowance(partnerId);
   if (!a.kind || a.amount <= 0 || a.unitCap <= 0) return null;

@@ -1,9 +1,5 @@
 import type { Coupon } from "@/lib/types/ecommerce";
 
-/**
- * Pure discount math — testable without DB, and safe in the browser: a page
- * that reprices a customisation shows its discount code with this (ADR 0033).
- */
 export function computeCouponDiscountAmount(
   coupon: Pick<Coupon, "discount_type" | "discount_value" | "max_discount">,
   discountBase: number,

@@ -3,10 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MIN_RATE_BASE, dayLabel, returningHeadline, type Cohort, type ReturningSummary } from "@/lib/crm/returning-customers";
 
 const n = (v: number) => v.toLocaleString("en-SG");
-/** The count, and its share when the cohort may show one. */
 const cell = (count: number, rate: number | undefined) => (rate == null ? n(count) : `${n(count)} (${rate}%)`);
 
-/** The most closed months shown, newest first. */
 const SHOWN = 12;
 
 function CohortRow({ c }: { c: Cohort }) {
@@ -23,7 +21,6 @@ function CohortRow({ c }: { c: Cohort }) {
   );
 }
 
-/** A group's heading row, across the table. */
 function GroupRow({ children }: { children: React.ReactNode }) {
   return (
     <tr>
@@ -34,16 +31,8 @@ function GroupRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * *Returning customers* (PRD-crm-retention-loop slice 06): the scorecard's
- * headline, of first-time customers each month, how many came back within 12
- * months for a re-adjustment or a second purchase. Every rate shows its
- * counts; a cohort still inside its 12 months, or under 20 people, shows
- * counts only.
- */
 export function ReturningCustomersCard({ summary }: { summary: ReturningSummary }) {
   const newest = [...summary.cohorts].reverse();
-  // Months that have had their full year, with their rates; then those still inside it, counts only.
   const closed = newest.filter((c) => !c.open).slice(0, SHOWN);
   const open = newest.filter((c) => c.open);
   const rows = [...closed, ...open];

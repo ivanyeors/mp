@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Costings build costs: the route hands the page every active Filling Template with
- * its Size membership and its Derived pack list, read from the placement tables the
- * browser cannot see. Placements win over legacy flat lines (ADR 0008).
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -68,7 +62,6 @@ beforeEach(() => {
       { template_id: 3, key: "short" },
     ],
     bom_template_lines: [
-      // Stale flat lines on a placed template: ignored, placements are the truth.
       { template_id: 1, item_id: 99, quantity: 7 },
       { template_id: 2, item_id: 55, quantity: 4 },
     ],
@@ -109,9 +102,7 @@ describe("GET /settings/costings/builds", () => {
       ]),
     });
     expect((byId.get(1) as { pack: unknown[] }).pack).toHaveLength(2);
-    // No placements: the legacy flat lines are the pack list.
     expect(byId.get(2)).toMatchObject({ keys: ["M"], pack: [{ itemId: 55, count: 4 }] });
-    // Bolsters read their own placement table.
     expect(byId.get(3)).toMatchObject({ kind: "bolster", pack: [{ itemId: 67, count: 2 }] });
   });
 

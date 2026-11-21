@@ -1,16 +1,8 @@
 // @vitest-environment jsdom
-// matchMedia, ResizeObserver and the act flag, which jsdom leaves out.
 import "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-/**
- * The Admin Panel sidebar's badges (Results queue, Customers follow-ups) are
- * read again on each navigation. A navigation also re-reads the Member's
- * permissions, which used to hand the badge effects a new array and make them
- * read every badge a second time.
- */
 
 let pathname = "/en-US/settings";
 vi.mock("next/navigation", () => ({
@@ -85,7 +77,6 @@ describe("badge reads per navigation", () => {
     pathname = "/en-US/settings/orders";
     await act(async () => render());
     await settle();
-    // The navigation reads once before the new permissions land; none after.
     expect(count("queue-counts")).toBe(2);
     pathname = "/en-US/settings/inventory";
     await act(async () => render());

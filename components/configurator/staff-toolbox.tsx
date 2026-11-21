@@ -10,31 +10,19 @@ export type { ToolOption };
 
 export type ToolSpec = {
   id: string;
-  /** Micro-label above the value; also the chip's accessible name. */
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   value: string;
   options: readonly ToolOption[];
   onSelect?: (value: string) => void;
-  /** Shown when nothing is selected, or when `options` is empty. */
   placeholder?: string;
   disabled?: boolean;
-  /** A value the surface derives rather than one staff pick — no popover. */
   readOnly?: boolean;
-  /** "segmented" wraps short options into pills; "list" stacks long names. */
   layout?: "segmented" | "list";
 };
 
 export type ToolboxStatus = { label: string; tone: "synced" | "edited" };
 
-/**
- * Staff toolbox: a floating instrument rail for the configurator stage.
- *
- * Tools are data, not markup — each entry renders the same chip (icon,
- * micro-label, current value) that opens a picker, so a new control is one
- * more array entry and the rail wraps to a second row on its own. Shared by
- * the pillow and bolster staff panels.
- */
 export function StaffToolbox({
   tools,
   status,
@@ -43,18 +31,12 @@ export function StaffToolbox({
   children,
 }: {
   tools: ToolSpec[];
-  /** Right-hand state pill (template sync), when there is one. */
   status?: ToolboxStatus | null;
-  /** Trailing action for the rail (e.g. save the edited mix). */
   action?: React.ReactNode;
-  /** Width override for a host that lays the rail out itself (the pillow stage spans its column). */
   className?: string;
-  /** Slot for whatever the panel owns beyond the rail (e.g. its confirm gate). */
   children?: React.ReactNode;
 }) {
   return (
-    // Full width on phones so the chips share the row evenly and stay tappable;
-    // fits its content from md up unless the host sizes it.
     <div className={cn("w-full max-w-xl md:w-fit", className)}>
       <div
         className={cn(
@@ -123,9 +105,6 @@ function ToolChip({ tool }: { tool: ToolSpec }) {
     </>
   );
 
-  // 44px tap floor on phones (max-md:min-h-11), matching the app's button sizes.
-  // Content-sized basis so a chip grows to its value and wraps to the next row
-  // before it truncates; a fixed basis cut "Premium" and "Filling Template" short.
   const chipClass =
     "flex min-w-[6.5rem] flex-auto items-center gap-2 rounded-xl px-2.5 py-1.5 text-left max-md:min-h-11";
 

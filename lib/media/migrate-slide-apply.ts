@@ -1,7 +1,3 @@
-/**
- * Apply helpers for slide/ambassadors `/public` → Media Asset migration (slice 17).
- */
-
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -100,7 +96,6 @@ export async function loadSlideMigrationContext(): Promise<{
   return { plan, existingByTag, diskMap };
 }
 
-/** Dry-run = plan only. Apply = ingest/reuse + write resolved JSON map. */
 export async function applySlideMigration(opts?: {
   dryRun?: boolean;
 }): Promise<ApplySlideMigrationResult> {

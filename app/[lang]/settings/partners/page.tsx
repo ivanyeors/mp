@@ -5,11 +5,6 @@ import PartnersSettingsPage from "./partners-client";
 
 export const runtime = "nodejs";
 
-/**
- * The Work With Us row and the locations table are read on the server (the
- * same payloads `/api/partners-page` and `/api/partners` return) so the page
- * mounts populated instead of fetching after hydration.
- */
 export default async function PartnersSettingsRoute({
   params,
 }: {
@@ -24,9 +19,6 @@ export default async function PartnersSettingsRoute({
     listAdminLocationRows().catch(() => null),
   ]);
 
-  // A failed locations read must not look like "no partners". The client takes
-  // `initialData` as one unit, so on failure it is left undefined and both of
-  // the client's mount fetches run as they did before.
   return (
     <PartnersSettingsPage
       initialData={

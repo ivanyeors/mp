@@ -1,24 +1,7 @@
 "use client";
 
-/**
- * Fit feedback shared by the three editing surfaces (X-ray pillow UX slice 04,
- * ADR 0019): the one confirm a save or a hold asks when a cell cannot close
- * even fully compressed. Advisory, never blocking — the same posture as the
- * Spatially authored warning. It reads the host's fit object; nothing is
- * recomputed.
- *
- * There is no banner above the x-ray any more (Ivan, 1-11-2026), and nothing
- * turns red: a cell that cannot close shows as its pieces' dashed outline in
- * the x-ray and hatching in the cut, the amber dot on its Section tab, the
- * dive's gauge and warning, and this confirm.
- */
-
 import { bolsterFitMessage, fitMessage, overCells, type BolsterFit, type PillowFit } from "@/lib/spatial-fillings/fit";
 
-/**
- * One confirm, never a block: true when the save may go ahead. `action` is the
- * verb on the button ("Hold", "Save", "Save assignment").
- */
 export function confirmSaveWithOverCells(fit: PillowFit | null | undefined, action: string): boolean {
   if (!fit) return true;
   const over = overCells(fit);
@@ -29,7 +12,6 @@ export function confirmSaveWithOverCells(fit: PillowFit | null | undefined, acti
   );
 }
 
-/** The Mbolster's one confirm (slice 09): true when the save may go ahead; asks only when the pack cannot fit even fully squeezed. */
 export function confirmSaveWithBolsterFit(fit: BolsterFit | null | undefined, action: string): boolean {
   if (!fit || fit.status !== "over") return true;
   return window.confirm(`The ${fit.length} Mbolster cannot fit this mix:\n${bolsterFitMessage(fit)}\n\n${action} anyway?`);

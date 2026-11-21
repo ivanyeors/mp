@@ -1,10 +1,3 @@
-/**
- * Replace-everywhere (slice 15): swap hosted_url (+ optional Asset id) across
- * known consumers. Order item snapshots are never touched.
- *
- * Landing dual-write: slot URL stays at `landing_*`; Asset id at `landing_*_asset_id`.
- */
-
 export const LANDING_ASSET_ID_SUFFIX = "_asset_id";
 
 export function landingAssetIdKey(slotKey: string): string {
@@ -31,7 +24,6 @@ export type ReplaceSummary = {
   blogInline: number;
   landingSlots: string[];
   landingSections: number;
-  /** The landing page's sub pages (CONTEXT.md — **Slide-in section**). */
   slideInSections: number;
   productImages: number;
   productVariants: number;
@@ -55,7 +47,6 @@ export function emptyReplaceSummary(): ReplaceSummary {
   };
 }
 
-/** Deep-replace URL strings and media_asset_id fields. */
 export function replaceJsonRefs(
   value: unknown,
   input: ReplaceInput,
@@ -145,7 +136,6 @@ export type ReplacePlanRows = {
     media_asset_id?: string | null;
   }>;
   partnersPages?: Array<{ id: string; content: unknown }>;
-  /** Must remain unchanged — snapshots are historical. */
   orderItems?: Array<{ id: string; image_url: string | null }>;
 };
 
@@ -164,10 +154,6 @@ function swapAssetId(
   return id === input.oldAssetId ? input.newAssetId : id;
 }
 
-/**
- * Pure planner: returns updated consumer rows + summary.
- * orderItems are copied through unchanged (never scanned for replace).
- */
 export function planReplaceEverywhere(
   rows: ReplacePlanRows,
   input: ReplaceInput,
@@ -229,7 +215,6 @@ export function planReplaceEverywhere(
         s.value = s.value.replaceAll(input.oldUrl, input.newUrl);
         if (!summary.landingSlots.includes(s.key)) summary.landingSlots.push(s.key);
 
-        // Dual-write companion id when we know the new Asset
         if (input.newAssetId) {
           const idKey = landingAssetIdKey(s.key);
           const existing = byKey.get(idKey);
@@ -249,8 +234,6 @@ export function planReplaceEverywhere(
   if (rows.landingSections) {
     out.landingSections = rows.landingSections.map((section) => {
       const r = replaceJsonRefs(section.content, input);
-      // A pending Section draft holds its own copy of the content, so it must be
-      // rewritten too — otherwise the next Publish would quietly revert the replacement.
       const d =
         section.draft_content == null
           ? { changed: false, value: section.draft_content }
@@ -262,7 +245,6 @@ export function planReplaceEverywhere(
 
   if (rows.slideInSections) {
     out.slideInSections = rows.slideInSections.map((section) => {
-      // Drafts too, for the same reason as Landing sections.
       const r = replaceJsonRefs(section.content, input);
       const d = replaceJsonRefs(section.draft_content, input);
       if (r.changed || d.changed) summary.slideInSections++;
@@ -361,7 +343,6 @@ export function planReplaceEverywhere(
   return { rows: out, summary };
 }
 
-/** Load consumers, plan, persist. Never reads or writes order_items. */
 export async function runReplaceEverywhere(
   input: ReplaceInput,
 ): Promise<ReplaceSummary> {
@@ -478,7 +459,6 @@ export async function runReplaceEverywhere(
     if (error) throw new Error(error.message);
     if (!contentSame) slideInChanged = true;
   }
-  // Live sub pages are served from a cache; a replaced published image must show now.
   if (slideInChanged) {
     const { invalidateTag } = await import("@/lib/cache/invalidate");
     const { SLIDE_IN_SECTIONS_TAG } = await import("@/lib/slide-in-pages/store");

@@ -12,11 +12,6 @@ import {
 } from "@/lib/social-inbox/cards";
 import { inboxPreviewCard } from "@/lib/social-inbox/preview";
 
-/**
- * Message cards: the header names the platform and person, the footer always
- * says how to answer, and the card always fits what Telegram will deliver.
- */
-
 const lines = (text: string) => text.split("\n");
 
 describe("renderInboxCard", () => {

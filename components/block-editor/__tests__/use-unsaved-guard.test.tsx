@@ -5,12 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LEAVE_UNSAVED, useUnsavedGuard, type UnsavedGuard } from "../use-unsaved-guard";
 
-/**
- * Save stays explicit (PRD-campaign-email-editor decision 4): ⌘S saves,
- * leaving with unsaved changes asks first, and a crashed tab's changes are
- * offered back, onto the version they were made from only.
- */
-
 const KEY = "test:draft";
 let guard: UnsavedGuard<{ words: string }>;
 let setWords: (w: string) => void = () => undefined;
@@ -30,7 +24,6 @@ function Page({ base = "v1", saved = "saved", onSave }: { base?: string; saved?:
 let root: Root | null = null;
 function mount(props: Parameters<typeof Page>[0] = {}) {
   const host = document.createElement("div");
-  // A link to another page of the site, as the app's own links are.
   const away = Object.assign(document.createElement("a"), { id: "away", href: "/en-US/settings/other", textContent: "Away" });
   document.body.append(host, away);
   root = createRoot(host);
@@ -64,7 +57,6 @@ describe("useUnsavedGuard", () => {
       window.dispatchEvent(e);
       return e.defaultPrevented;
     };
-    /** Whether the guard stopped the link. Let through, the browser's own navigation is stopped here: jsdom has none. */
     const follow = () => {
       const link = document.getElementById("away")!;
       let reached = false;
@@ -99,7 +91,6 @@ describe("useUnsavedGuard", () => {
     mount();
     await settle();
     expect(guard.recovered).toMatchObject({ value: { words: "half written" }, at: kept.at });
-    // While it is offered, the copy stays, so a second crash still has it.
     await settle(600);
     expect(window.localStorage.getItem(KEY)).not.toBeNull();
     let restored: { words: string } | null = null;
@@ -131,11 +122,9 @@ describe("useUnsavedGuard", () => {
     mount({ base: "v1" });
     await settle();
     expect(guard.recovered?.value).toEqual({ words: "before the crash" });
-    // Staff leave the offer and go on writing: a second crash must not lose that.
     act(() => setWords("written since"));
     await settle(600);
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toMatchObject({ base: "v1", value: { words: "written since" } });
-    // The older copy can still be taken back on this visit.
     expect(guard.recovered?.value).toEqual({ words: "before the crash" });
   });
 
@@ -144,7 +133,6 @@ describe("useUnsavedGuard", () => {
     mount({ base: "v1" });
     await settle();
     act(() => setWords("written since"));
-    // Save: the words are now the saved ones, on a new version.
     act(() => root!.render(<Page base="v2" saved="written since" />));
     await settle(600);
     expect(guard.recovered).toBeNull();

@@ -2,23 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useEffectEvent, useReducer, type RefObject } from "react";
 
-/**
- * Undo and Redo over any value (PRD-campaign-email-editor slice 04): the
- * whole email, a block list, a form. Every change is a step, at least
- * {@link HISTORY_LIMIT} of them are kept, and a burst of typing in one field
- * is one step, so ⌘Z takes back a sentence, not a letter. A drag, a paste, a
- * Clear all or an AI result is one step of its own, an AI result streamed in
- * over many changes included (`hold`).
- */
-
-/** How many steps Undo can go back. */
 export const HISTORY_LIMIT = 100;
-/** Typing that pauses for less than this stays one step. */
 export const BURST_MS = 1000;
 
 interface Step<T> {
   value: T;
-  /** This step's number: never reused, so a page can tell whether the present is still a step it made. */
   n: number;
 }
 
@@ -26,7 +14,6 @@ export interface HistoryState<T> {
   past: Step<T>[];
   present: Step<T>;
   future: Step<T>[];
-  /** The burst the present step belongs to, while typing goes on. */
   burst: string | null;
   at: number;
   next: number;
@@ -43,13 +30,11 @@ export function initialHistory<T>(value: T, limit = HISTORY_LIMIT): HistoryState
   return { past: [], present: { value, n: 0 }, future: [], burst: null, at: 0, next: 1, limit };
 }
 
-/** Pure — the history after one action. */
 export function historyReducer<T>(s: HistoryState<T>, a: HistoryAction<T>): HistoryState<T> {
   switch (a.type) {
     case "set": {
       const value = typeof a.next === "function" ? (a.next as (prev: T) => T)(s.present.value) : a.next;
       if (Object.is(value, s.present.value)) return s;
-      // The same field, still being typed in (or a held burst, however long it takes): the same step, with nothing to redo.
       if (a.burst && a.burst === s.burst && (a.hold || a.now - s.at < a.burstMs)) {
         return { ...s, present: { ...s.present, value }, future: [], at: a.now };
       }
@@ -80,20 +65,12 @@ export function historyReducer<T>(s: HistoryState<T>, a: HistoryAction<T>): Hist
 
 export interface EditorHistory<T> {
   value: T;
-  /**
-   * One change: its own step, or with `burst`, the same step as the change
-   * before it in that burst. With `hold` too, the burst has no time limit: an
-   * AI result streaming in block by block stays one step until any other
-   * change (an Undo, or typing elsewhere) starts a new one.
-   */
   set: (next: T | ((prev: T) => T), opts?: { burst?: string; hold?: boolean }) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  /** The present step's number: a change, an Undo and a Redo each move it. */
   step: number;
-  /** Starts over from `value`, with nothing to undo or redo. */
   reset: (value: T) => void;
 }
 
@@ -128,7 +105,6 @@ export function useEditorHistory<T>(
 
 const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-/** Pure — what a key press asks of the history: ⌘Z and ⇧⌘Z (Ctrl on Windows, where Ctrl+Y redoes too). */
 export function historyKey(e: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">, mac = isMac()): "undo" | "redo" | null {
   const mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   if (!mod || e.altKey) return null;
@@ -138,13 +114,6 @@ export function historyKey(e: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" 
   return null;
 }
 
-/**
- * ⌘Z and ⇧⌘Z for a history, anywhere inside `within` or with nothing
- * focused. The browser's own undo in a field is replaced, so there is one
- * history, not one per field; a field inside `[data-own-undo]` (one that is
- * not part of what the history holds) keeps the browser's. Off while
- * `enabled` is false.
- */
 export function useHistoryKeys(
   history: Pick<EditorHistory<unknown>, "undo" | "redo">,
   { enabled = true, within }: { enabled?: boolean; within?: RefObject<HTMLElement | null> } = {},
@@ -168,10 +137,6 @@ export function useHistoryKeys(
   }, [enabled, within]);
 }
 
-/**
- * Pure — the burst a field's change belongs to: the field itself while it is
- * typed in, none for a paste or a drop, which is a step of its own.
- */
 export function typingBurst(e: { nativeEvent: Event }, field: string): string | undefined {
   const kind = (e.nativeEvent as InputEvent).inputType ?? "";
   return kind.startsWith("insertFromPaste") || kind === "insertFromDrop" ? undefined : field;

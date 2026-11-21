@@ -98,7 +98,6 @@ const PORT_R = 4;
 const NODE_W = 156;
 const NODE_H = 92;
 const NODE_W_EXP = 304;
-/** KPI chrome above page dig-in (path + prospects + drop bar). */
 const EXP_KPI_H = 96;
 const EXP_CONV_TOP = 10;
 const EXP_BOTTOM_PAD = 8;
@@ -107,9 +106,7 @@ const WORLD_H = 400;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 3;
 const PAN_NUDGE = 40;
-/** Below this pane width the graph opens at actual size instead of fitted. */
 const NARROW_W = 640;
-/** Finger travel before a touch stops being a tap and starts a pan. */
 const TOUCH_SLOP = 8;
 
 const edgeTooltipStyles: CSSProperties = {
@@ -164,7 +161,6 @@ function stubChrome(path: string, views: number): JourneyTransitionNode {
   };
 }
 
-/** Focused section view for one page (Houdini-style dive). */
 function toDiveDisplay(
   pagePath: string,
   nodes: JourneyTransitionNode[],
@@ -218,10 +214,6 @@ function isTypingTarget(el: EventTarget | null) {
 type LayoutNode = JourneyTransitionNode & { x: number; y: number };
 type PosMap = Record<string, { x: number; y: number }>;
 type Camera = { x: number; y: number; k: number };
-/**
- * What a finger came down on, kept until it moves (a pan) or lifts (a tap). A
- * tap inside an open node's panel is left to the panel's own buttons.
- */
 type TouchTap = {
   kind: "canvas" | "node" | "edge" | "panel";
   path: string | null;
@@ -257,8 +249,6 @@ function canExpandNode(path: string) {
   );
 }
 
-/** Dig-in body height so the expanded node can grow to fit (no inner scroll). */
-/** One ranked member row: label line + share bar. */
 const GROUP_ROW_H = 30;
 
 function groupBlockH(detail: JourneyGroupDetail | null): number {
@@ -266,7 +256,6 @@ function groupBlockH(detail: JourneyGroupDetail | null): number {
   return Math.max(1, detail.members.length) * GROUP_ROW_H;
 }
 
-/** Entry source / group node dig-in: the breakdown plus one action button. */
 function groupDigInH(detail: JourneyGroupDetail | null): number {
   const chrome = 30 + 16;
   if (!detail) return chrome + 90;
@@ -277,9 +266,9 @@ function pageDigInH(
   detail: JourneyNodeDetail | null,
   groupDetail: JourneyGroupDetail | null,
 ): number {
-  const chrome = 30 + 16; // title bar + padding
+  const chrome = 30 + 16;
   if (!detail) return chrome + 120 + (groupDetail ? groupBlockH(groupDetail) + 24 : 0);
-  let h = chrome + 48; // median dwell hero
+  let h = chrome + 48;
   const block = (body: number) => 14 + body + 10;
   if (groupDetail) h += block(groupBlockH(groupDetail));
   h += block(
@@ -297,7 +286,7 @@ function pageDigInH(
       ? 16
       : detail.returnTimeline.length * 26,
   );
-  return h + 12; // slack so foreignObject never clips
+  return h + 12;
 }
 
 function convertedDigInH(detail: JourneyConvertedDetail | null): number {
@@ -322,8 +311,6 @@ function expandedNodeBox(
       : kind === "entry"
         ? groupDigInH(groupDetail)
         : pageDigInH(detail, groupDetail);
-  // Only page nodes keep their KPI face when expanded; the rest give it all
-  // to the dig-in, so they must not reserve the gap above it.
   const digInTop = kind === "page" ? EXP_KPI_H : EXP_CONV_TOP;
   const totalH = digInTop + digInH + EXP_BOTTOM_PAD;
   return { hw: NODE_W_EXP / 2, hh: totalH / 2, digInTop, digInH };
@@ -360,11 +347,6 @@ function fitCamera(laid: LayoutNode[], vw: number, vh: number): Camera {
   return { x, y, k };
 }
 
-/**
- * The first view of the graph. Fitted into a phone-width pane the nodes shrink
- * to 40px chips with 3px text, so a narrow pane opens at actual size on the
- * entry column instead; Fit still shows the whole graph.
- */
 function openCamera(laid: LayoutNode[], vw: number, vh: number): Camera {
   const fit = fitCamera(laid, vw, vh);
   if (vw >= NARROW_W || fit.k >= 1 || laid.length === 0) return fit;
@@ -377,13 +359,11 @@ function openCamera(laid: LayoutNode[], vw: number, vh: number): Camera {
     minY = Math.min(minY, n.y - hh);
     maxY = Math.max(maxY, n.y + hh);
   }
-  // The toolbar floats over the top 60px of the pane; start the graph below it.
   const top = 68;
   const y = Math.max(top, (vh - (maxY - minY)) / 2) - minY;
   return { x: 16 + PORT_R - minX, y, k: 1 };
 }
 
-/** Cubic noodle from source out-port to target in-port. */
 function cubicEdgePath(
   ax: number,
   ay: number,
@@ -410,7 +390,6 @@ function edgeKey(e: JourneyTransitionEdge) {
   return `${e.from}->${e.to}:${e.country ?? ""}:${e.dashed ? "re" : "s"}`;
 }
 
-/** Semantic base hue: drop-off / converted / return / forward. */
 function edgeHueVar(e: JourneyTransitionEdge): string {
   if (isEntryNode(e.from)) return "var(--chart-4)";
   if (e.to === DROP_OFF) return "var(--destructive)";
@@ -438,7 +417,6 @@ function edgeTrafficStroke(
   };
 }
 
-/** Accent for node left rail from drop-off severity. */
 function dropAccentClass(dropOffPct: number): string {
   if (dropOffPct >= 50) return "fill-destructive";
   if (dropOffPct >= 25) return "fill-[var(--chart-1)]";
@@ -469,7 +447,6 @@ function SvgText({
   );
 }
 
-/** Compact node body — primary KPI + drop bar + one meta line. */
 function NodeCardBody({
   n,
   hw,
@@ -485,7 +462,6 @@ function NodeCardBody({
   selected: boolean;
   isDropOff: boolean;
   isConverted: boolean;
-  /** Share of all aggregated entries; only set on Entry source nodes. */
   entrySharePct?: number;
 }) {
   const isPort = isDivePort(n.path);
@@ -704,8 +680,6 @@ function DigInShell({
     <div
       className="flex h-full cursor-default flex-col overflow-hidden rounded-md bg-card text-foreground"
       onPointerDown={(ev) => {
-        // A finger still pans and pinches across an open panel; the graph
-        // leaves a tap here to the panel's buttons.
         if (ev.pointerType !== "touch") ev.stopPropagation();
       }}
     >
@@ -727,7 +701,6 @@ function DigInShell({
   );
 }
 
-/** Ranked members behind an aggregated node — the list and its share bars. */
 function GroupBreakdown({
   detail,
   empty,
@@ -767,7 +740,6 @@ function GroupBreakdown({
   );
 }
 
-/** Title for a breakdown block: what it lists and how many. */
 function groupTitle(detail: JourneyGroupDetail | null, fallback: string) {
   if (!detail || detail.members.length === 0) return fallback;
   const n = detail.members.length;
@@ -775,7 +747,6 @@ function groupTitle(detail: JourneyGroupDetail | null, fallback: string) {
   return `${n} ${noun}${n === 1 ? "" : "s"} · ${detail.total} visits`;
 }
 
-/** Entry source node dig-in: what it aggregates, plus the matching filter. */
 function ExpandedEntryDigIn({
   source,
   detail,
@@ -819,7 +790,6 @@ function ExpandedEntryDigIn({
   );
 }
 
-/** In-node dig-in body (HTML inside foreignObject). */
 function ExpandedPageDigIn({
   detailPath,
   detail,
@@ -829,7 +799,6 @@ function ExpandedPageDigIn({
 }: {
   detailPath: string;
   detail: JourneyNodeDetail | null;
-  /** Set when this node is a collapsed group (`/blog/*`). */
   groupDetail: JourneyGroupDetail | null;
   locale: Locale;
   onClose: () => void;
@@ -1080,14 +1049,12 @@ function JourneyGraph({
   detailsByPath: Map<string, JourneyNodeDetail>;
   convertedDetailByPath: Map<string, JourneyConvertedDetail>;
   groupDetailByPath: Map<string, JourneyGroupDetail>;
-  /** Entry source the graph is currently filtered to, for the dig-in action. */
   activeEntrySource: string | null;
   locale: Locale;
   divePath: string | null;
   expandablePaths: string[];
   onDive: (path: string) => void;
   onExitDive: () => void;
-  /** Click an aggregated Entry source node to filter the journey by it. */
   onPickEntrySource: (source: string) => void;
   filterPanel: ReactNode;
   filterChips: ReactNode;
@@ -1107,7 +1074,6 @@ function JourneyGraph({
   const [fittedKey, setFittedKey] = useState("");
   const [hoverEdgeKey, setHoverEdgeKey] = useState<string | null>(null);
   const [draggingNode, setDraggingNode] = useState(false);
-  /** The node under a finger that has not moved yet, tinted as pressed. */
   const [pressedPath, setPressedPath] = useState<string | null>(null);
   const coarse = useMediaQuery("(pointer: coarse)");
   const cameraRef = useRef(camera);
@@ -1138,21 +1104,18 @@ function JourneyGraph({
     origX: number;
     origY: number;
   } | null>(null);
-  // Touch has no space bar or middle button: one finger pans from anywhere,
-  // two fingers pinch, and a touch that never moves is a tap on what it hit.
   const touchRef = useRef<{
     pts: Map<number, { x: number; y: number }>;
     tap: TouchTap | null;
     pan: { x: number; y: number; camX: number; camY: number } | null;
     pinch: { d0: number; k0: number; wx: number; wy: number } | null;
-    /** Aborting it removes the gesture's window listeners. */
     listeners: AbortController;
   } | null>(null);
   const onTapRef = useRef<(tap: TouchTap) => void>(() => {});
 
   useEffect(() => {
     setOverrides(loadPositions(posKey));
-    setFittedKey(""); // refit after persisted positions apply
+    setFittedKey("");
   }, [posKey]);
 
   useEffect(() => {
@@ -1312,14 +1275,11 @@ function JourneyGraph({
     [toPane],
   );
 
-  // pointercancel lands here too: the browser took a vertical swipe to scroll
-  // the page, so the touch ends without a tap.
   const onTouchEnd = useCallback(
     (ev: PointerEvent) => {
       const t = touchRef.current;
       if (!t || !t.pts.delete(ev.pointerId)) return;
       if (t.pts.size > 0) {
-        // Lifting one finger of a pinch carries on as a pan from the other.
         const [rest] = [...t.pts.values()];
         const cam = cameraRef.current;
         t.pinch = null;
@@ -1356,10 +1316,6 @@ function JourneyGraph({
     };
   });
 
-  /**
-   * An open node is 304px wide about its centre, so on a phone one near the
-   * edge opens half off-screen: pan until it is in view, below the toolbar.
-   */
   function revealExpanded(path: string) {
     const n = byPath.get(path);
     if (!n || viewport.w >= NARROW_W) return;
@@ -1404,7 +1360,6 @@ function JourneyGraph({
       if (kind === "node") setPressedPath(path);
       return;
     }
-    // A second finger turns the gesture into a pinch about the fingers' midpoint.
     const [a, b] = [...t.pts.values()];
     const m = toPane((a.x + b.x) / 2, (a.y + b.y) / 2);
     t.tap = null;
@@ -1484,9 +1439,7 @@ function JourneyGraph({
     setOverrides({});
     try {
       localStorage.removeItem(posKey);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
     setFittedKey("");
     const next = divePath
       ? (layoutDiveGraph(nodes, WORLD_W, WORLD_H) as LayoutNode[])
@@ -1519,7 +1472,6 @@ function JourneyGraph({
     hideTooltip();
   }
 
-  // Non-passive wheel so we can preventDefault (page scroll)
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -1647,7 +1599,6 @@ function JourneyGraph({
     <div ref={shellRef} className={shellClass} tabIndex={0}>
       <div ref={paneRef} className="relative min-w-0 flex-1 overflow-hidden">
       <div className="pointer-events-none absolute inset-x-2 top-[calc(0.5rem+var(--safe-top))] z-30 flex flex-col gap-2">
-        {/* Outside a dive the breadcrumb is one inert word; phones keep the room. */}
         <nav
           className={`pointer-events-auto flex min-h-8 flex-wrap items-center gap-1 rounded-md border bg-background/95 px-2 py-1 text-xs shadow-sm ${divePath ? "" : "max-md:hidden"}`}
           aria-label="Journey breadcrumb"
@@ -1801,7 +1752,6 @@ function JourneyGraph({
             if (!a || !b) return null;
             const aExp = selectedSet.has(a.path) && canExpandNode(a.path);
             const bExp = selectedSet.has(b.path) && canExpandNode(b.path);
-            // Edge routing needs the half-width only, which is fixed per state.
             const { hw: aHw } = nodeHalfSize(aExp);
             const { hw: bHw } = nodeHalfSize(bExp);
             const isBack = a.x > b.x;
@@ -1840,7 +1790,6 @@ function JourneyGraph({
                     showEdgeTooltip(e, ev.clientX, ev.clientY);
                   }}
                   onPointerLeave={(ev) => {
-                    // A lifted finger "leaves" right after the tap that opened the tooltip.
                     if (ev.pointerType !== "touch") clearEdgeTooltip();
                   }}
                 />
@@ -2008,7 +1957,6 @@ function JourneyGraph({
                       className="flex size-full cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground active:bg-press"
                       aria-label="Dive into sections"
                       onPointerDown={(ev) => {
-                        // Touch joins the graph's gesture (a pinch can start here).
                         if (ev.pointerType === "touch") return;
                         ev.stopPropagation();
                         ev.preventDefault();
@@ -2224,7 +2172,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
     [entrySource, visitorCohort, selectedCountries, includeConverted, groupPaths],
   );
 
-  // Entry-column shape is graph-only — the dig-in action takes cohort filters.
   const entryArgs = useMemo(
     () => ({ entryNodes: showEntryNodes, entryTopN }),
     [showEntryNodes, entryTopN],
@@ -2239,7 +2186,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
         to,
         ...filterArgs,
         ...entryArgs,
-        // When diving, fetch expanded section children; page view stays page-only.
         expandPath: divePath,
       });
       if (!res.ok) {
@@ -2283,7 +2229,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
     };
   }, [divePath, rawNodes, rawEdges]);
 
-  // Dig-in fetch separate from graph — node click must not reload nodes/edges.
   useEffect(() => {
     const paths = detailPaths.filter((p) => canExpandNode(p));
     if (paths.length === 0) {
@@ -2293,7 +2238,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
       return;
     }
     let cancelled = false;
-    // One call for every selected node, so one database read serves them all.
     void getProspectJourneyNodeDetails({
       paths,
       from,
@@ -2364,7 +2308,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
     setEntryTopN(DEFAULT_ENTRY_TOP_N);
   }
 
-  /** Click an Entry source node: "Other" widens the tail, a real source filters. */
   function onPickEntrySource(source: string) {
     if (!source) return;
     if (source === OTHER_ENTRY) {

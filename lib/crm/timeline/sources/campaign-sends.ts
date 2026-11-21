@@ -4,22 +4,6 @@ import { MARKETING_GROUP } from "@/lib/crm/timeline/groups";
 import { joinBatches, readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter, TimelineEntry } from "@/lib/crm/timeline/types";
 
-/**
- * Campaign emails (migration slice 08; `customer_campaign_sends`) on the
- * Customer timeline, under the Marketing chip beside consent changes, gated
- * by `customers` like the rest of the Customer's own facts.
- *
- * Three dated facts, one stream each: the send the provider accepted
- * (`sent_at`; a send that failed or is still in flight reached nobody and is
- * not shown), and the webhook's bounce and complaint (`bounced_at`,
- * `complained_at`). The send's current status is its pill. The Claim link
- * the email carried is the claim-links source's entry, at its first click.
- * A campaign Staff wrote (PRD-email-marketing; `campaign:<id>`) is named by
- * its campaign name. Its first counted **Campaign click** on a site link
- * (`first_clicked_at`, PRD-campaign-audiences slice 08) is a fourth: it shows
- * the link came from that email, not who opened it.
- */
-
 type SendRow = {
   id: string;
   template: string;

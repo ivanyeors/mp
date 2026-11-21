@@ -2,13 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { layoutRuleGraph, type LayoutEdge, type LayoutPos } from "@/lib/rules-engine/layout";
 
-/**
- * The pre-Kahn implementation, kept here only as an oracle: ranks came from a
- * bounded Bellman-Ford relaxation (n² guard). `layoutRuleGraph` now ranks with a
- * single topological sweep, so these two must agree byte-for-byte — including on
- * disconnected nodes, dangling edges and cycles, where the guard (not
- * convergence) decides the answer.
- */
 const COL_GAP = 280;
 const ROW_GAP = 120;
 const PAD = 40;
@@ -244,7 +237,6 @@ describe("layoutRuleGraph ranks match the reference relaxation", () => {
 });
 
 describe("layoutRuleGraph matches the reference on random graphs", () => {
-  /** Deterministic LCG so a failure is reproducible. */
   function rng(seed: number) {
     let s = seed >>> 0;
     return () => {
@@ -263,7 +255,6 @@ describe("layoutRuleGraph matches the reference on random graphs", () => {
       for (let k = 0; k < m; k++) {
         const a = Math.floor(next() * n);
         const b = Math.floor(next() * n);
-        // 1-in-10 edges dangle off the node list, exercising the id filter.
         edges.push({
           source: next() < 0.1 ? "ghost" : ids[a]!,
           target: next() < 0.1 ? "ghost" : ids[b]!,

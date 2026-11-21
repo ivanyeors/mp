@@ -24,16 +24,6 @@ import {
 } from "@/lib/aftercare/review-request";
 import type { AftercareCardData, AftercareSettingsPatch } from "@/lib/aftercare/settings";
 
-/**
- * Customers → Settings → Aftercare (CRM slices 07 and 08): for the Review
- * request and the Check-up reminder, the settings, what went out recently,
- * and today's plan with every skip by reason; and open STOP requests on
- * WhatsApp.
- *
- * Everyone with `customers` sees it. Without `customers-edit` it is read-only;
- * the API refuses the same changes, so this only spares a button that would
- * fail.
- */
 export function AftercareSettingsCard({
   canEdit,
   initialData,
@@ -70,7 +60,6 @@ export function AftercareSettingsCard({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "Couldn't save.");
       toast.success("Saved");
-      // Today's plan depends on the window, so read the card again.
       const next = await fetchAftercareCard().catch(() => null);
       setData((d) => next ?? (d ? { ...d, settings: payload.settings } : d));
     } catch (e) {
@@ -97,7 +86,6 @@ export function AftercareSettingsCard({
         </p>
       ) : (
         <>
-          {/* Keyed by the saved settings, so the fields start again from what was saved. */}
           <ReviewRequestSection
             key={JSON.stringify(data.settings.reviewRequests)}
             data={data}
@@ -118,11 +106,6 @@ export function AftercareSettingsCard({
   );
 }
 
-/**
- * The Check-up reminder (CRM slice 08): its switch and period, the fee it
- * states today, what went out in the last 90 days and the bookings that
- * followed, and today's plan with every skip by reason.
- */
 function CheckupSection({
   data,
   canEdit,
@@ -425,14 +408,12 @@ function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
-/** Whether anything goes out today, and if not, why. */
 function statusLine(today: ReviewRequestReport): string {
   if (today.blocked === "disabled") return "Off: nothing is sent. The numbers below are what would go today.";
   if (today.blocked === "no_review_url") return "No usable Google review link (https), so nothing is sent.";
   return "On: due customers are asked in the daily run, at about 10:00 SGT.";
 }
 
-/** Whether a check-up goes out today, and if not, why. */
 function checkupStatusLine(today: CheckupReport): string {
   if (today.blocked === "disabled") return "Off: nothing is sent. The numbers below are what would go today.";
   if (today.blocked === "no_fee") return "No re-adjustment fee to state, so nothing is sent today.";

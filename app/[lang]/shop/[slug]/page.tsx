@@ -9,7 +9,6 @@ import type { Product } from "@/lib/types/ecommerce";
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
-  /** `?variant=<id>` preselects a size (Merchant Center landing links, PRD-search-visibility slice 13). */
   searchParams: Promise<{ variant?: string | string[] }>;
 }
 
@@ -30,7 +29,6 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
     description: content.description,
   });
 
-  // Fetch related products from the same category
   let relatedProducts: Product[] = [];
   if (product.category_id) {
     const { products } = await getProducts({
@@ -43,7 +41,6 @@ export default async function ProductDetailPage({ params, searchParams }: Props)
       .slice(0, 4);
   }
 
-  // Accordion in client slot; FAQPage JSON-LD emitted from layout (crawlable script tag)
   const pageFaqSet = await getPageFaq(productSurfaceKey(product.id), locale);
 
   return (

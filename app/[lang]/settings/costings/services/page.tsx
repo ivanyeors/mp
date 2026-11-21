@@ -7,13 +7,6 @@ import ServiceFeesClient from "./services-client";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Costings → Service fees (ADR 0024). Guarded by `costings` like its parent page:
- * services are priced in Costings, so whoever may set an MSRP may set a fee.
- *
- * A failed read renders an error rather than the seed values — presenting
- * defaults as the saved prices would let an operator save them over real ones.
- */
 export default async function ServiceFeesPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

@@ -5,14 +5,12 @@ import { updateStaffProfile } from "@/lib/staff/admin";
 
 export const runtime = "nodejs";
 
-// One change per request, so each lands in the Audit Log as its own action.
 const ChangeSchema = z.union([
   z.object({ name: z.string().trim().min(1, "Name is required").max(120, "Name is too long") }).strict(),
   z.object({ memberId: z.string().uuid() }).strict(),
   z.object({ archived: z.boolean() }).strict(),
 ]);
 
-/** Rename, move to another login, archive or restore a Staff profile. There is no delete. */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let ctx;
   try {

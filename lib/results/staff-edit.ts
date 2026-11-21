@@ -1,25 +1,3 @@
-/**
- * Staff re-configuration of a live Result.
- *
- * Until now a **Result** could only be configured on its way in: the customer
- * (or Staff, through an **Assist link**) answered the configurator, and Staff
- * confirmed size×tier and the filling mix on the Result detail page — once,
- * while the row was still `held`. After **Assign** the whole build froze, and
- * "the customer wants a Satin cover instead" had no move at all short of
- * cancelling the Result and making them configure again.
- *
- * Rather than grow a second editor inside the Admin Panel, Staff are sent back
- * to the configurator they already know — `/mp-config?result=<id>&edit=1` —
- * seeded from the Result. The pickers, the x-ray, the pricing preview and the
- * size-change recheck are the same components the customer used, so there is
- * exactly one place where a pillow is composed.
- *
- * What comes back is written by `POST /api/results/[id]/reconfigure`, which
- * reprices through `loadAssignedBuild` — the same function Accept charges from
- * — so an edit can never leave the stored `final_amount` describing the old
- * build.
- */
-
 import { getAdminContext } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -27,7 +5,6 @@ import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { resultCouponOf, type ResultCoupon } from "@/lib/results/discount";
 
-/** The two open states. Anything else has either not begun or already settled. */
 const EDITABLE_STATUSES = ["held", "assigned"] as const;
 
 export type StaffEditableRow = {
@@ -40,17 +17,6 @@ export type StaffEditableVerdict =
   | { ok: true }
   | { ok: false; reason: string };
 
-/**
- * Whether a Result may still be re-configured. Pure, and shared by the page
- * loader and the write route so the button and the route cannot disagree about
- * what is editable.
- *
- * `held` and `assigned` are the open states (`lib/result-lifecycle`): nothing
- * has been captured, so repricing is free. `accepted` is deliberately excluded
- * — the customer is mid-payment, and a repriced build would move the number
- * under an open Stripe Checkout. An `order_id` means the money already landed
- * and the Order, not the Result, is where a change belongs.
- */
 export function staffEditableResult(row: StaffEditableRow): StaffEditableVerdict {
   if (row.order_id) {
     return { ok: false, reason: "This Result is already an Order — change it there" };
@@ -61,9 +27,6 @@ export function staffEditableResult(row: StaffEditableRow): StaffEditableVerdict
       reason: `Cannot re-configure a Result that is ${row.status ?? "still a draft"}`,
     };
   }
-  // Mbolster composes through its own schema and its own configurator; this
-  // route reopens the Mpillow one, so a bolster Result is left to the existing
-  // Admin Panel assignment card rather than silently opened in the wrong editor.
   if ((row.product_type ?? "pillow") !== "pillow") {
     return { ok: false, reason: "Only Mpillow Results can be re-configured here" };
   }
@@ -72,11 +35,9 @@ export function staffEditableResult(row: StaffEditableRow): StaffEditableVerdict
 
 export type StaffEditPreference = { item_id: number; category: "cover" | "case" };
 
-/** Everything the configurator needs to reopen a live Result as Staff. */
 export type StaffEditResult = {
   id: string;
   status: "held" | "assigned";
-  /** Assigned when Staff already confirmed one, else the engine's suggestion. */
   size: "XS" | "S" | "M" | "L" | "XL";
   tier: "basic" | "premium";
   measurements: Record<string, unknown>;
@@ -84,37 +45,22 @@ export type StaffEditResult = {
   phone: string;
   discoverySource: string;
   discoverySourceOther: string;
-  /** Cover/case already on the Result — re-selected in the pickers, not defaulted. */
   preferences: StaffEditPreference[];
   addonItemIds: number[];
-  /** Shipping method SLUG (the column's own shape); mapped to an id client-side. */
   shippingMethodSlug: string | null;
   shippingAddress: Record<string, unknown> | null;
-  /** The Staff-composed mix, loaded straight into the x-ray editor. */
   placements: PillowPlacementRow[];
-  /** Still-matching catalog template, so an untouched mix keeps its link. */
   fillingTemplateId: number | null;
-  /** The placed Items — a neck support is not in the shop's filling list. */
   items: FillingItem[];
   currency: string;
-  /** Card hold, when one was taken. The edit never moves it; Accept settles the delta. */
   authorizedAmount: number | null;
   finalAmount: number | null;
-  /** The discount code the Result was held with (ADR 0033); a re-configure keeps it. */
   coupon: ResultCoupon | null;
 };
 
 type PrefLine = { item_id: number; quantity: number; category: string };
 type AddonLine = { item_id: number; quantity: number };
 
-/**
- * `/mp-config?result=<id>&edit=1`. Returns null for anything the caller may not
- * re-configure, so the page falls through to the ordinary configurator and a
- * stale or forged link shows nothing about the Result.
- *
- * Staff-only, and narrowed to `results`: `viewer` carries read-only access and
- * must not reach an editor that rewrites a customer's build and its price.
- */
 export async function loadStaffEditResult(
   id: string | undefined,
 ): Promise<StaffEditResult | null> {
@@ -135,8 +81,6 @@ export async function loadStaffEditResult(
 
   const size = (row.assigned_size ?? row.suggested_size) as StaffEditResult["size"] | null;
   const tier = (row.assigned_tier ?? row.suggested_tier) as StaffEditResult["tier"] | null;
-  // Without a size×tier there is no Composed sellable to price or offer options
-  // for; the Admin Panel's assignment card is where that first gets chosen.
   if (!size || !tier) return null;
 
   const { data: placements } = await admin

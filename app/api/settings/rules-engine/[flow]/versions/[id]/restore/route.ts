@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ flow: string; id: string }> };
 
-/** POST copy published version into draft without mutating history. */
 export async function POST(_req: Request, ctx: Ctx) {
   let authorId: string | null = null;
   try {

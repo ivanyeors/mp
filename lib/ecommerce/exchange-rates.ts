@@ -2,7 +2,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 const BASE_CURRENCY = "SGD";
 
-// Hardcoded fallback rates in case DB and API are both unavailable
 const FALLBACK_RATES: Record<string, number> = {
   MYR: 3.45,
   USD: 0.74,
@@ -13,7 +12,6 @@ const FALLBACK_RATES: Record<string, number> = {
   BND: 1.0,
 };
 
-// Currencies with 0 decimal places
 const ZERO_DECIMAL_CURRENCIES = new Set(["IDR", "JPY", "KRW", "VND"]);
 
 export interface ExchangeRates {
@@ -22,10 +20,6 @@ export interface ExchangeRates {
   updated_at: string;
 }
 
-/**
- * Read cached exchange rates from Supabase.
- * Falls back to hardcoded rates if DB is unavailable.
- */
 export async function getExchangeRates(base = BASE_CURRENCY): Promise<ExchangeRates> {
   try {
     const admin = supabaseAdmin();
@@ -60,9 +54,6 @@ export async function getExchangeRates(base = BASE_CURRENCY): Promise<ExchangeRa
   }
 }
 
-/**
- * Fetch latest rates from the free Open Exchange Rate API and upsert into Supabase.
- */
 export async function refreshExchangeRates(): Promise<void> {
   const res = await fetch(`https://open.er-api.com/v6/latest/${BASE_CURRENCY}`, {
     next: { revalidate: 0 },
@@ -93,10 +84,6 @@ export async function refreshExchangeRates(): Promise<void> {
   }
 }
 
-/**
- * Convert an amount from one currency to another using provided rates.
- * Rates should be keyed by currency code with values relative to the base currency.
- */
 export function convertPrice(
   amount: number,
   fromCurrency: string,
@@ -105,7 +92,6 @@ export function convertPrice(
 ): number {
   if (fromCurrency === toCurrency) return amount;
 
-  // Convert from source to base, then base to target
   const fromRate = fromCurrency === BASE_CURRENCY ? 1 : rates[fromCurrency];
   const toRate = toCurrency === BASE_CURRENCY ? 1 : rates[toCurrency];
 
@@ -117,9 +103,6 @@ export function convertPrice(
   return roundForCurrency(converted, toCurrency);
 }
 
-/**
- * Round an amount to the appropriate number of decimals for a given currency.
- */
 export function roundForCurrency(amount: number, currency: string): number {
   const decimals = ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2;
   const factor = Math.pow(10, decimals);

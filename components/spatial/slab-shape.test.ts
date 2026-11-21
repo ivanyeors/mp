@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath } from "./slab-shape";
 
-/** Every coordinate pair in a path, for bounds checks. */
 const points = (d: string) => {
   const ns = [...d.replace(/[A-Za-z]/g, " ").matchAll(/-?[\d.]+/g)].map((m) => Number(m[0]));
   const out: [number, number][] = [];
@@ -42,7 +41,6 @@ describe("puffyPath", () => {
   });
 
   it("crowns less when the pouch is spread or squeezed", () => {
-    // The shoulder (the end of the first curve) sits lower under the top the fuller the pouch.
     const shoulderY = (puff: number) => points(puffyPath(box, puff).split("C")[1])[2][1];
     expect(shoulderY(1)).toBeGreaterThan(shoulderY(0.3));
     expect(shoulderY(0.3)).toBeGreaterThan(box.y);
@@ -68,7 +66,6 @@ describe("squish: a pressed face flattens, a free one domes", () => {
   });
 
   it("rounds a free end and blunts one pressed against a neighbour or the case", () => {
-    // The shoulder sits closer to the end of the box when that end is pressed.
     const free = endX(puffyPath(box, 1));
     const blunt = endX(puffyPath(box, 1, { top: false, front: false, back: true }));
     expect(blunt).toBeGreaterThan(free);
@@ -78,7 +75,6 @@ describe("squish: a pressed face flattens, a free one domes", () => {
 
 describe("pouchPath: in the pillow", () => {
   const box = { x: 10, y: 20, w: 200, h: 40 };
-  // A 200 × 100 case with a slanted front: x from 30 at the top to 0 at the bottom.
   const shell = shellPolygon("M30 0 L200 0 L200 100 L0 100 Z", { tx: 0, ty: 0, sx: 1, sy: 1 });
 
   it("is the plain cushion, exact cubics, when nothing bends or presses it", () => {
@@ -99,7 +95,6 @@ describe("pouchPath: in the pillow", () => {
   it("is pressed into the case: every point stays a margin inside the slanted wall", () => {
     const d = pouchPath({ x: 0, y: 50, w: 120, h: 40 }, 1, { shell: { polygon: shell, margin: 3 } });
     expect(d).not.toBe(puffyPath({ x: 0, y: 50, w: 120, h: 40 }, 1));
-    // The wall: x = 30 − 0.3 y. Each anchor (every third number pair of a C) is at least ~3 units right of it.
     const anchors = d.split(/(?=[CZ])/).flatMap((seg) => {
       const p = points(seg);
       return p.length ? [p[p.length - 1]] : [];

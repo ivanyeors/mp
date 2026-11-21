@@ -11,14 +11,7 @@ import {
 } from "@/lib/reviews/draft-reply";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 
-// No key saved on General: the environment decides.
 vi.mock("@/lib/settings/api-configs", () => ({ readApiConfigs: async () => [] }));
-
-/**
- * The drafting call is one Messages request. These pin its shape — model,
- * effort, the server-side fallback opt-in, the review fenced off as data — and
- * how each way it can end turns into a draft or a reason there is none.
- */
 
 const review = {
   starRating: 2,
@@ -77,9 +70,7 @@ describe("draftReviewReply", () => {
     expect(recovery).toMatch(/re-adjustment visit/);
     expect(recovery).toMatch(/Always ask them to message us on WhatsApp at \+65 8780 5311/);
     expect(recovery).toMatch(/No promotion/);
-    // The staffed sales line only — never the automated appointment sender.
     expect(REVIEW_REPLY_SYSTEM_PROMPT).not.toContain("8809 7571");
-    // Compensation stays out of every public reply, recovery included.
     expect(REVIEW_REPLY_SYSTEM_PROMPT).toMatch(/No discounts, vouchers, refunds, free items or any other incentive or compensation/);
   });
 
@@ -117,7 +108,6 @@ describe("draftReviewReply", () => {
       update: { previousRating: 5, previousReply: "Thank you, Ben!" },
     });
     expect(draftInputFor({ ...row, reopened_at: null }).update).toBeNull();
-    // Places shows no replies, so the one marked replied is what we said.
     expect(draftInputFor({ ...row, source: "places", google_reply: null, posted_reply: "Thanks, Ben!" }).update).toEqual({
       previousRating: 5,
       previousReply: "Thanks, Ben!",

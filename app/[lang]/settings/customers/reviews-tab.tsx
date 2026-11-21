@@ -14,19 +14,6 @@ const SCOPE_LABELS: Record<ReviewTabScope, string> = {
     unlinked: "All unlinked",
 };
 
-/**
- * The Customers page's Reviews tab (CRM slice 12): *Google reviews to match*.
- *
- * Google never says who wrote a review, so the CRM suggests a Customer from
- * the name and the timing of a Review request or a delivery, and a Staff
- * member decides: *Link* or *Not them* on each suggestion, or *Find
- * customer…* to link one by hand. Nothing is linked without that click.
- *
- * *To match* lists the reviews with a suggestion (what the daily Telegram
- * update counts); *All unlinked* every review nobody has linked, newest first.
- * Seeing it needs `customers`; the buttons render only for `customers-edit`.
- * The list is kept in `?scope=`.
- */
 export function ReviewsTab({ canEdit, initialScope = "to-match" }: { canEdit: boolean; initialScope?: ReviewTabScope }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -35,11 +22,8 @@ export function ReviewsTab({ canEdit, initialScope = "to-match" }: { canEdit: bo
     const [data, setData] = useState<ReviewTabData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    /** Bumped by *Try again*: the same list, read again. */
     const [attempt, setAttempt] = useState(0);
 
-    // One read per scope, page and attempt. A superseded read sets nothing; the
-    // caller marks the list loading when it changes what is asked for.
     useEffect(() => {
         let current = true;
         fetch(`/api/settings/customers/google-reviews?scope=${scope}&page=${page}`)
@@ -81,7 +65,6 @@ export function ReviewsTab({ canEdit, initialScope = "to-match" }: { canEdit: bo
         window.history.replaceState(null, "", url);
     };
 
-    /** A linked review leaves both lists; a rejected suggestion leaves its review. */
     const settle = (reviewId: string, customerId: string | null) =>
         setData((d) => {
             if (!d) return d;

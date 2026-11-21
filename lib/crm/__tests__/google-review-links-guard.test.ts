@@ -3,22 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { codeOf, importClosure } from "./import-closure";
 
-/**
- * No code path links a Google review to a Customer without a Staff action
- * (CRM README, seventh hazard; ADR 0028 (k)). Google gives a review a display
- * name and never an email, and a name is not an identity.
- *
- *  - In SQL, the one statement that inserts into `customer_google_reviews` is
- *    `link_google_review()`, no trigger writes it, and only the service role
- *    may run it.
- *  - In the app, only lib/crm/google-review-links.ts calls it, and only the
- *    Admin Panel routes under app/api/settings/customers/google-reviews import
- *    that file. They check `customers-edit` (the Customers write guard,
- *    lib/auth/__tests__/customers-write-guard.test.ts, scans them).
- *  - Nothing the Google sync runs reaches that file: not the sync itself, the
- *    Pub/Sub webhook, either cron, the Telegram handler or the backfill script.
- */
-
 const LINKS_MODULE = "lib/crm/google-review-links.ts";
 const LINK_ROUTES = "app/api/settings/customers/google-reviews/";
 
@@ -101,7 +85,6 @@ describe("the app: only a Staff action links", () => {
       "scripts/google-reviews-backfill.ts",
     ];
     const reached = importClosure(entries);
-    // The sync does read suggestions, for the card's *Possible customer match* line.
     expect(reached).toContain("lib/crm/google-review-match-server.ts");
     expect(reached).not.toContain(LINKS_MODULE);
     for (const f of reached) {

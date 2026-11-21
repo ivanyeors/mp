@@ -1,34 +1,6 @@
-/**
- * In-memory stand-in for `supabaseAdmin()` that answers the query the code
- * actually builds. `ilike` is real SQL ILIKE (backslash escapes, `%`, `_`, and
- * PostgREST's rewrite of every `*` to `%`), `like` the same but case-sensitive,
- * and
- * `eq` is exact, so a wildcard in user input matches here exactly as it would in
- * Postgres — tests fail for the real reason, not because a call shape changed.
- * Same technique as lib/auth/__tests__/partner.test.ts.
- *
- * A to-one embed in the select list (`role:admin_roles(...)`) is resolved
- * through the `<alias>_id` column, or the column named by a `!column` hint
- * (`member:admin_users!admin_user_id(...)`), as PostgREST does through the
- * foreign key. An `!inner` embed (`orders!inner(...)`, keyed by the singular
- * table name's `_id` column when it has no alias) drops rows it does not match,
- * and a filter on `orders.customer_id` reads the embedded row, as PostgREST's
- * embedded filters do.
- *
- * `lt`/`lte`/`gt`/`gte` compare two ISO timestamps as instants, to the
- * microsecond, as Postgres compares timestamptz: `…:00Z` and `…:00.000000Z`
- * are the same time. Two numbers compare as numbers. Anything else compares as
- * strings.
- * `filter(col, "imatch", re)` is a case-insensitive regex match.
- * `overlaps` (`&&`, given an array or a quoted array literal such as
- * `{"premium"}`) and `contains` (`@>`) read an array column. `range(from, to)`
- * returns that slice, and the exact count is of every matching row, as
- * PostgREST counts.
- */
 type Row = Record<string, unknown>;
 export type FakeDb = Record<string, Row[]>;
 
-/** An ISO timestamp as a sortable UTC string with six fraction digits, or null. */
 function instant(value: string): string | null {
   const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})$/.exec(value);
   if (!m) return null;
@@ -52,7 +24,6 @@ export function likeMatch(pattern: string, value: unknown, opts: { caseSensitive
   return new RegExp(`^${re}$`, opts.caseSensitive ? "s" : "is").test(value);
 }
 
-/** The elements of a Postgres array literal (`{"a","b\"c"}` or `{a,b}`), as strings. */
 function pgArrayElements(literal: string): string[] {
   const body = literal.trim().replace(/^\{/, "").replace(/\}$/, "");
   const out: string[] = [];
@@ -85,11 +56,6 @@ const asElements = (val: unknown): string[] => (Array.isArray(val) ? val.map(Str
 
 type Embed = { alias: string; table: string; fk: string; inner: boolean };
 
-/**
- * `alias:table(...)`, `alias:table!fk(...)` and `[alias:]table!inner(...)`. An
- * unaliased embed is read only with `!inner`, so a select that never relied on
- * one keeps returning the rows it always did.
- */
 function parseEmbeds(cols: string): Embed[] {
   const out: Embed[] = [];
   for (const m of cols.matchAll(/(?:(\w+):)?(\w+)((?:!\w+)*)\(/g)) {
@@ -112,12 +78,10 @@ export function fakeSupabaseAdmin(db: FakeDb) {
       let head = false;
       let inserted: Row | null = null;
       let embeds: Embed[] = [];
-      // Each `order` adds a key after the ones before it, as PostgREST's `order=a,b` does.
       const sorts: { col: string; asc: boolean }[] = [];
       let limit: number | null = null;
       let range: [number, number] | null = null;
       const embedded = (row: Row, e: Embed): Row | null => (db[e.table] ?? []).find((o) => o.id === row[e.fk]) ?? null;
-      // `orders.customer_id` reads the embedded `orders` row.
       const value = (row: Row, col: string): unknown => {
         const dot = col.indexOf(".");
         if (dot < 0) return row[col];
@@ -156,7 +120,6 @@ export function fakeSupabaseAdmin(db: FakeDb) {
         filters.push((r) => {
           const v = value(r, col);
           if (v == null) return false;
-          // Two numbers compare as numbers, as a numeric column does.
           if (typeof v === "number" && typeof val === "number") return test(v, val);
           const [a, b] = [String(v), String(val)];
           const ta = instant(a);
@@ -228,7 +191,6 @@ export function fakeSupabaseAdmin(db: FakeDb) {
           db[table] = [...(db[table] ?? []), inserted];
           return q;
         },
-        // PostgREST: single() errors unless exactly one row; maybeSingle() only on >1.
         single: () => {
           const r = rows();
           return Promise.resolve(

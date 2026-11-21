@@ -15,13 +15,6 @@ import {
   staffOrderAdmin,
 } from "./harness";
 
-/**
- * A Staff order end to end, below the routes (ADR 0048): priced from the
- * database, written pending with its Payment link, emailed, opened as a Stripe
- * Checkout for exactly its stored total, and cancelled by the daily sweep once
- * its link has expired unpaid.
- */
-
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
@@ -160,7 +153,6 @@ describe("quoteStaffOrder — every amount from the database", () => {
       ["service", "Re-adjustment service", 30, 1],
     ]);
     expect(q).toMatchObject({ goodsSubtotal: 78, servicesSubtotal: 30, subtotal: 108, shippingAmount: 0, total: 108 });
-    // A Self-collect address: the studio's, the customer as recipient, the marker.
     expect(q.shippingAddress).toMatchObject({
       recipient: "Ada Tan",
       line1: "200 Middle Road #01-02",
@@ -194,7 +186,6 @@ describe("quoteStaffOrder — every amount from the database", () => {
   });
 
   it("charges a flat method on the goods alone: a service does not reach free shipping", async () => {
-    // Goods 78 + a 40 measurement = 118, over the 100 threshold; the goods alone are not.
     const q = await quoted({
       goods: [{ variant_id: EAR_PAD, quantity: 2 }],
       services: [{ key: "measurement_premium", quantity: 1 }],
@@ -393,7 +384,6 @@ describe("openStaffOrderCheckout — Pay on the link", () => {
 
   it("loses a race gracefully: its own session is closed and the winner's is used", async () => {
     const created = await made();
-    // Another press installs cs_9 between our read and our write.
     h.sessions.set("cs_9", { id: "cs_9", status: "open", url: "https://checkout.stripe.com/c/pay/cs_9" });
     h.onCreate = () => {
       order(created.orderId).stripe_session_id = "cs_9";

@@ -1,5 +1,3 @@
-/** Load assembled build + stock + pricing for an assigned Result. */
-
 import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-assembly";
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
@@ -40,33 +38,12 @@ export type AssignedBuildRow = {
   addon_lines: unknown;
   shipping_method: string | null;
   shipping_address: unknown;
-  /** A live method's rate, quoted when the shipping was chosen (ADR 0032). */
   shipping_rate: number | string | null;
   currency: string | null;
-  /** Who measured — decides the Measurement service fee (ADR 0024). */
   measured_by_type: string | null;
-  /** The discount code's terms kept at hold (ADR 0033); null without one. */
   coupon_terms: unknown;
 };
 
-/**
- * The columns a caller must select before it can hand a row to
- * `loadAssignedBuild`.
- *
- * Every route that prices a Result used to spell this out by hand — finish,
- * request-payment and reorder each kept a copy, written in three different
- * sessions. Nothing had drifted yet, but the failure mode if it ever did is the
- * bad kind: a missing column arrives as `undefined`, which prices a DIFFERENT
- * build at a plausible number rather than throwing. Silent wrong money.
- *
- * It stays a literal, and is not derived from a key map, because the Supabase
- * client parses this string AT THE TYPE LEVEL to infer the row it returns.
- * Anything it cannot read as a literal — `Object.keys(...).join()`, for
- * instance — collapses the whole query's result type to a ParserError, which
- * costs more safety than the duplication ever did.
- *
- * `_NoMissingBuildColumns` below is what keeps it honest instead.
- */
 export const ASSIGNED_BUILD_COLUMNS =
   "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, shipping_rate, currency, measured_by_type, coupon_terms, paired_build_id" as const;
 
@@ -80,12 +57,6 @@ type SplitCols<S extends string> = S extends `${infer Head},${infer Tail}`
   ? TrimCol<Head> | SplitCols<Tail>
   : TrimCol<S>;
 
-/**
- * Compile-time completeness check. Add a field to `AssignedBuildRow` without
- * adding it to the string above and this becomes that field's name instead of
- * `never`, and the assignment below stops compiling — here, rather than in
- * whichever route silently mispriced.
- */
 type _NoMissingBuildColumns = Exclude<
   keyof AssignedBuildRow,
   SplitCols<typeof ASSIGNED_BUILD_COLUMNS>
@@ -99,15 +70,10 @@ export type AssignedBuildOk = {
   lines: BuildLine[];
   cogs: number;
   pricing: PriceResultOutput;
-  /** Service fees on this build (the Measurement service when Staff measured). */
   serviceLines: ServiceLine[];
-  /** Composed sellable MSRP for the assigned size×tier / length — the pillow/bolster
-   * BASE price (excludes preference + add-on MSRPs). Commission base (#77). */
   basePrice: number;
   shortages: ReturnType<typeof findStockShortages>;
   nameByItem: Map<number, string>;
-  /** Spatial Result snapshot rows (empty when the Result predates the spatial model).
-   * Pillow cell rows or bolster slot rows, per product type. */
   fillingPlacements: Array<PillowPlacementRow | BolsterPlacementRow>;
 };
 
@@ -121,19 +87,11 @@ export async function loadAssignedBuild(
   admin: SupabaseClient,
   row: AssignedBuildRow,
   opts?: {
-    /**
-     * Price a mix that is not (yet) the stored snapshot. Staff re-configuration
-     * quotes the build it is about to write, so a price Costings refuses leaves
-     * the Result untouched instead of half-saved.
-     */
     fillingPlacements?: Array<PillowPlacementRow | BolsterPlacementRow>;
   },
 ): Promise<AssignedBuildOk | AssignedBuildErr> {
   const productType = (row.product_type as "pillow" | "bolster" | null) ?? "pillow";
 
-  // Fillings: the Result's spatial snapshot is the truth when present (ADR 0008);
-  // the assigned template's flat lines are the legacy fallback. Bolster snapshots
-  // live in their own table (own schema — slot rows only).
   const isBolster = productType === "bolster";
   let fillingPlacements: Array<PillowPlacementRow | BolsterPlacementRow>;
   if (opts?.fillingPlacements) {
@@ -190,7 +148,6 @@ export async function loadAssignedBuild(
   }
 
   const composedBomRaw = composed.sellable.bomLines;
-  // Stock commit and COGS consume this flatten (snapshot rows win, template lines fall back).
   const fillPack = derivePackList(fillingPlacements, tplLines);
   const fillItemIds = fillPack.map((l) => l.item_id);
   const allItemIds = [
@@ -242,7 +199,6 @@ export async function loadAssignedBuild(
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  // `placementKind` tells a placed neck support from a filling: both go inside.
   const fillingTemplateLines = fillPack.map((l) => {
     const item = itemById.get(l.item_id);
     return { item_id: l.item_id, quantity: l.count, category: item ? placementKind(item) : "unknown" };
@@ -259,8 +215,6 @@ export async function loadAssignedBuild(
 
   const shortages = findStockShortages(assembled.lines, onHandByItem, nameByItem);
 
-  // One pricing rule, shared with the hold quote, the status page and the preview:
-  // the Costings row for the chosen case family, moved only by what differs from it.
   const familyByItem = new Map<number, string | null>(
     (items ?? []).map((i) => [
       i.id as number,
@@ -275,8 +229,6 @@ export async function loadAssignedBuild(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    // Add-ons, plus each Ear Comfort Pad placed inside: a placed neck support is
-    // in the pillow's MSRP, like the fillings, but an ear pad adds its own.
     addonLines: [
       ...addonLines.map((l) => ({
         msrp: msrpByItem.get(l.item_id) ?? null,
@@ -298,7 +250,6 @@ export async function loadAssignedBuild(
     return { ok: false, error: e instanceof Error ? e.message : "Service fees could not be priced" };
   }
   const services = sumServiceLines(serviceLines);
-  // The discount code kept at hold, off the goods priced now (ADR 0033).
   const coupon = resultCouponPricing(row.coupon_terms, goods.subtotal);
 
   let shippingAmount = 0;
@@ -311,14 +262,11 @@ export async function loadAssignedBuild(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      // A Paired build's Mbolster rides in its Mpillow's shipment (ADR 0026).
       shippingAmount =
         shipsWithAnchor(row) || coupon.freeShipping
           ? 0
           : resultShippingAmount(shippingRow as ShippingMethod, row.shipping_rate, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
-      // Free shipping is earned by goods; tax is due on goods and services alike,
-      // less the discount.
       taxAmount = computeTax(
         { subtotal: goods.subtotal + services, shippingAmount, discountAmount: coupon.discount },
         taxRule,

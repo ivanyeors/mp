@@ -3,21 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendChatCodeEmail } from "@/lib/email/support-chat";
 import { OTP_TTL_MS, generateOtpCode, hashOtp, isOtpExpired, otpExpiry, verifyOtpCode } from "@/lib/partner-backup-email";
 
-/**
- * The 6-digit code a visitor without an account gets by email before their
- * first chat message goes out. It proves the address the chat's transcripts
- * will go to, so the chat never emails anyone who didn't ask for it.
- *
- * It is not a sign-in: no auth user, no session (accounts only come from
- * signing in, ADR 0029). The code is minted, hashed and emailed here, the way
- * a partner's backup email is verified (lib/partner-backup-email.ts). A
- * visitor who wants an account signs in with Supabase's own code instead, in
- * the same step of the chat.
- */
-
-/** Wrong guesses a code survives; a 6-digit code can't be brute-forced in 5. */
 export const CHAT_CODE_MAX_ATTEMPTS = 5;
-/** Codes one address can be sent per window, so the chat can't flood an inbox. */
 export const CHAT_CODES_PER_EMAIL = 3;
 const PER_EMAIL_WINDOW_MS = 10 * 60_000;
 const KEEP_CODES_MS = 24 * 60 * 60_000;
@@ -71,7 +57,6 @@ export async function issueChatCode(rawEmail: string, now: Date = new Date()): P
     await sendChatCodeEmail(email, code, OTP_TTL_MS / 60_000);
   } catch (err) {
     console.error("[support/chat] code email failed:", err instanceof Error ? err.message : err);
-    // A code that never arrived shouldn't count against the address.
     await admin.from("support_chat_codes").delete().eq("id", id);
     return { ok: false, reason: "send_failed" };
   }
@@ -83,7 +68,6 @@ export type RedeemCodeResult =
   | { ok: false; reason: "wrong"; attemptsLeft: number }
   | { ok: false; reason: "expired" | "too_many_tries" };
 
-/** Checks a code and, when it is right, uses it up. Returns the address it proves. */
 export async function redeemChatCode(codeId: string, code: string, now: Date = new Date()): Promise<RedeemCodeResult> {
   if (!UUID.test(codeId)) return { ok: false, reason: "expired" };
   const admin = supabaseAdmin();
@@ -96,8 +80,6 @@ export async function redeemChatCode(codeId: string, code: string, now: Date = n
   const row = data as CodeRow | null;
   if (!row || row.used_at || isOtpExpired(row.expires_at, now)) return { ok: false, reason: "expired" };
 
-  // Every guess takes one of the code's tries before it is checked, with a
-  // conditional update, so guesses sent at once can't share a try.
   let attempts = row.attempts;
   for (let round = 0; ; round++) {
     if (attempts >= CHAT_CODE_MAX_ATTEMPTS || round === 5) return { ok: false, reason: "too_many_tries" };

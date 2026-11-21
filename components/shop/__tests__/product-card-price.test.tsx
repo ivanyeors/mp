@@ -2,13 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
-/**
- * The shop card's price and an email's products block's price
- * (PRD-campaign-email-editor slice 07) are one rule, `shopCardPrice`: the
- * cheapest active Variant's price, *From* when it has more than one, and its
- * compare-at struck through only when it is above it.
- */
-
 vi.mock("@/lib/shop/cart-context", () => ({ useCart: () => ({ addItem: () => undefined }) }));
 vi.mock("@/lib/shop/currency-context", () => ({ useCurrency: () => ({ currency: "SGD", convertFromBase: (n: number) => n }) }));
 
@@ -28,13 +21,11 @@ const product = (variants: ProductVariant[]) =>
     images: [],
   }) as unknown as Product;
 
-/** The card's price line, as it reads. */
 const cardPrice = (variants: ProductVariant[]) => {
   const html = renderToStaticMarkup(<ProductCard product={product(variants)} />);
   const words = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   return words.slice(words.indexOf("FibreCool Cover") + "FibreCool Cover".length).trim();
 };
-/** The email's, for the same product. */
 const emailPrice = (variants: ProductVariant[]) =>
   shopProductCard({ ...product(variants), product_variants: variants, product_images: [] } as never).price;
 

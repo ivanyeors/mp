@@ -1,12 +1,9 @@
-/** Google shows roughly the first 155–160 characters of a meta description. */
 export const MAX_META_DESCRIPTION_CHARS = 155;
 
-/** Shorter than this, site audits call a description too thin to fill a search snippet. */
 export const MIN_META_DESCRIPTION_CHARS = 110;
 
 const ENTITIES: Record<string, string> = { "&amp;": "&", "&nbsp;": " ", "&quot;": '"', "&#39;": "'", "&lt;": "<", "&gt;": ">" };
 
-/** Markdown/MDX → one line of plain text: drops headings, images, tags and emphasis; keeps link text. */
 export function markdownToPlainText(markdown: string): string {
   return markdown
     .split("\n")
@@ -22,7 +19,6 @@ export function markdownToPlainText(markdown: string): string {
     .trim();
 }
 
-/** Cut at the last word boundary that fits, adding an ellipsis; text that already fits is returned as is. */
 export function clampAtWord(text: string, max: number): string {
   if (text.length <= max) return text;
   const cut = text.slice(0, max - 1);
@@ -31,11 +27,6 @@ export function clampAtWord(text: string, max: number): string {
   return head.replace(/[\s,;:.–—-]+$/, "") + "…";
 }
 
-/**
- * A page's meta description: the hand-written one when there is one (left as
- * written, so staff see their own copy), else the answer lede, else the
- * opening of the body, clamped. 75 of 91 imported posts have no description.
- */
 export function resolveMetaDescription(fields: {
   description?: string | null;
   seo_answer?: string | null;
@@ -47,7 +38,6 @@ export function resolveMetaDescription(fields: {
   return clampAtWord(derived, MAX_META_DESCRIPTION_CHARS);
 }
 
-/** Imported posts open with headings flattened to bare lines ("Introduction"); skip those. */
 function dropLeadingLabels(body: string): string {
   const lines = body.split("\n");
   let start = 0;

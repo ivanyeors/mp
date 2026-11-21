@@ -134,15 +134,6 @@ function buildPillowMpConfigData(
   };
 }
 
-/**
- * Auto-create mp_config_responses from customized order items.
- *
- * Called after a successful checkout (Stripe webhook).
- * For each order item with a customization_id, creates an mp_config_response
- * linked to the order, populated with the customer's customization preferences.
- *
- * Idempotent: skips if a response already exists for the order_id + order_item_id.
- */
 export async function createMpConfigFromCustomization(
   orderId: string,
   orderItems: OrderItemForSync[],
@@ -153,7 +144,6 @@ export async function createMpConfigFromCustomization(
   const customizedItems = orderItems.filter((item) => item.customization_id);
   if (customizedItems.length === 0) return;
 
-  // Check for existing responses for this order (idempotency)
   const { data: existing } = await admin
     .from("mp_config_responses")
     .select("order_item_id")
@@ -164,7 +154,6 @@ export async function createMpConfigFromCustomization(
   for (const item of customizedItems) {
     if (existingItemIds.has(item.id)) continue;
 
-    // Fetch customization config
     const { data: config } = await admin
       .from("customization_configs")
       .select("pillow_product_id, product_type, bolster_variant, llm_metadata, summary, filling_lines, config_lines, cover_variant, case_variant, total_addon_price")
@@ -190,7 +179,6 @@ export async function createMpConfigFromCustomization(
       continue;
     }
 
-    // Fetch pillow product for size/kind
     const { data: product } = await admin
       .from("pillow_products")
       .select("size, kind")

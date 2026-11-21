@@ -1,10 +1,3 @@
-/**
- * The top view and the cut draw one recipe from one settle (linked views,
- * 7-11-2026): wherever a pouch is put — by either view's writer or by any
- * stored offset — its front ↔ back extent is the same in both, to the view's
- * rounding. Before, a top-view nudge into an occupied neighbour, a stiff
- * pouch's nudge into an empty one and every deeper Layer drew 10–30 mm apart.
- */
 import { describe, expect, it } from "vitest";
 
 import { placeAlongAt } from "@/lib/dnd/slab-drag";
@@ -25,7 +18,7 @@ const pouch = (lengthMm: number, thicknessMm: number, minThicknessMm: number): R
 const DIMS = new Map<number, ResolvedDims>([
   [1, pouch(80, 45, 25)],
   [2, pouch(140, 45, 25)],
-  [3, pouch(80, 45, 45)], // stiff: no fabric give
+  [3, pouch(80, 45, 45)],
 ]);
 const at = (subSection: SubSection, slot: number, itemId: number, row = 0, offsetYMm?: number): PillowPlacement => ({
   section: "center",
@@ -36,7 +29,6 @@ const at = (subSection: SubSection, slot: number, itemId: number, row = 0, offse
   ...(offsetYMm === undefined ? {} : { offsetYMm }),
 });
 
-/** Every piece's front ↔ back extent as each view draws it, mm from the Section's front. */
 function bothViews(placements: PillowPlacement[], size: PillowSize = "M") {
   const fit = fitPillow(placements, { size, dims: DIMS });
   const stage = stageGeometry(size);
@@ -51,7 +43,6 @@ function bothViews(placements: PillowPlacement[], size: PillowSize = "M") {
   });
 }
 
-/** The two views agree within the hair a pouch keeps from a cell's edge (1 view unit) and the view's rounding. */
 function expectInSync(placements: PillowPlacement[], size: PillowSize = "M") {
   for (const v of bothViews(placements, size)) {
     expect(Math.abs(v.top[0] - v.cut[0]), `${v.key} front edge: top ${v.top[0]} / cut ${v.cut[0]}`).toBeLessThan(1.5);
@@ -62,9 +53,9 @@ function expectInSync(placements: PillowPlacement[], size: PillowSize = "M") {
 describe("the top view and the cut draw every pouch in the same place", () => {
   it("whatever offset is stored, even one past the pouch's room", () => {
     for (const off of [-80, -40, -15, 0, 15, 40, 80]) {
-      expectInSync([at("front", 1, 1), at("middle", 1, 1, 0, off)]); // front occupied
-      expectInSync([at("middle", 1, 3, 0, off), at("back", 1, 1)]); // stiff, front empty
-      expectInSync([at("front", 1, 2), at("middle", 1, 2, 0, off)]); // long pouches
+      expectInSync([at("front", 1, 1), at("middle", 1, 1, 0, off)]);
+      expectInSync([at("middle", 1, 3, 0, off), at("back", 1, 1)]);
+      expectInSync([at("front", 1, 2), at("middle", 1, 2, 0, off)]);
       expectInSync([at("front", 1, 1), at("middle", 1, 1, 0, off)], "L");
     }
   });

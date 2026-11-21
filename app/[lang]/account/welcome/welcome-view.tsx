@@ -9,12 +9,6 @@ import type { WelcomeAccount, WelcomePageData } from "@/lib/customer-migration/w
 import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 
-/**
- * The welcome page's three screens (PRD-shopify-customer-migration slice 06).
- * The state is chosen by `selectWelcomeState`; this only renders it. The
- * signed-out screen embeds `LoginForm` exactly as the Result status page does,
- * returning here, so the visitor still signs in with Google or the code.
- */
 export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePageData }) {
   const { state } = data;
 
@@ -35,7 +29,6 @@ export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePag
             nextPath={welcomePath(locale, state.returnToken)}
             initialEmail={state.prefillEmail}
             submitLabel="Email me a sign-in code"
-            // Their consent came with the import (ADR 0039); this screen only signs them in.
             consentBox={false}
           />
         </div>
@@ -44,7 +37,6 @@ export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePag
   }
 
   if (state.kind === "wrong_account") {
-    // The token's Customer is not this visitor: nothing of theirs is shown.
     const back = welcomePath(locale, state.returnToken);
     return (
       <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 py-16">
@@ -57,8 +49,6 @@ export function WelcomeView({ locale, data }: { locale: Locale; data: WelcomePag
           </p>
         </div>
         <div className="mt-8 space-y-3">
-          {/* Signs out and comes back here, where the form is prefilled. Not
-              /account/login?reauth=1: that is the Partner Hub's session cap. */}
           <form action={`/auth/signout?next=${encodeURIComponent(back)}`} method="post">
             <Button type="submit" className="w-full">
               Use another account

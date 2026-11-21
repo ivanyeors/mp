@@ -10,11 +10,6 @@ const SyncProductSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  // Staff-only: the sole remaining caller is the Admin Panel product editor,
-  // which already sits behind requireAdminPage("products"). Ungated, anyone with
-  // a product id could force Stripe Product/Price writes and burn API quota.
-  // scripts/stripe-sync-all.ts used to POST here; it now calls
-  // syncProductToStripe() directly and needs no running app at all.
   const denied = await requireAdmin("products");
   if (denied) return denied;
 
@@ -30,7 +25,6 @@ export async function POST(req: Request) {
       ok: true,
       stripeProductId: result.stripeProductId,
       variant_count: result.variants.length,
-      // The editor applies these in place, so "No Stripe ID" clears without a reload.
       variants: result.variants,
     });
   } catch (err) {

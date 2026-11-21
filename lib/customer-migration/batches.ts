@@ -1,21 +1,10 @@
-/**
- * Import batches as the Admin Panel lists them (PRD-shopify-customer-migration,
- * slice 03). Pure: the page reads `customer_import_batches` on the server and
- * hands these views to the browser. A batch holds counts and who ran it, never
- * a customer's email or name.
- */
 import { reconcile, type BatchCounts, type Reconciliation } from "./apply";
 
-/** What an undo did, or would do (`preview_shopify_import_undo` / `undo_shopify_import`). */
 export type UndoCounts = {
-  /** Created by the batch, unclaimed, referenced by nothing: deleted. */
   removed: number;
-  /** Merged into an existing Customer: its migrated_customers row and the import's address deleted. */
   unlinked: number;
   kept: number;
-  /** Signed in or Claimed since. */
   keptClaimed: number;
-  /** Bought, booked, reviewed or otherwise referenced since. */
   keptReferenced: number;
 };
 
@@ -24,9 +13,7 @@ export type ImportBatchView = BatchCounts & {
   fileName: string;
   sha256: string;
   withAddresses: boolean;
-  /** YYYY-MM-DD */
   exportedAt: string;
-  /** The Staff profile working at the device, else the Member's login, else null. */
   runBy: string | null;
   createdAt: string;
   appliedAt: string | null;
@@ -42,18 +29,12 @@ export function batchState(b: Pick<ImportBatchView, "appliedAt" | "rolledBackAt"
   return "stopped";
 }
 
-/** A stopped batch that has every row but did not reconcile: shown in red, never quietly accepted. */
 export function batchMismatch(b: ImportBatchView): Reconciliation | null {
   if (batchState(b) !== "stopped") return null;
   const r = reconcile(b);
   return r.complete && !r.reconciles ? r : null;
 }
 
-/**
- * The batch a picked file belongs to, by SHA-256: an applied one (the file is
- * not imported twice) or a stopped one (the file continues it). An undone
- * batch frees its file.
- */
 export function batchForFile(history: readonly ImportBatchView[], sha256: string): ImportBatchView | null {
   return history.find((b) => b.sha256 === sha256 && batchState(b) !== "undone") ?? null;
 }
@@ -72,7 +53,6 @@ export function readUndoCounts(v: unknown): UndoCounts | null {
   };
 }
 
-/** One `customer_import_batches` row, as the page selects it. */
 export type ImportBatchRow = {
   id: string;
   file_name: string;

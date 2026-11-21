@@ -6,12 +6,6 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 
-/**
- * Set a partner's self-purchase rate + unit cap (#82). Staff-only (assertAdmin) —
- * lives beside the Partner Commissions editor, invisible in the Partner Hub.
- * Per-partner ONLY (no DEFAULT): the discount is a partner-specific perk. A zero
- * cap turns the feature off for that partner.
- */
 export async function upsertSelfPurchaseRate(formData: FormData): Promise<void> {
   const actor = await assertAdmin("partner-commissions");
   const admin = supabaseAdmin();

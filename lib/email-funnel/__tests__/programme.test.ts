@@ -7,11 +7,6 @@ import { EMAIL_REGISTRY } from "@/lib/email/registry";
 import { PLAYBOOK_DRAFTS, PLAYBOOK_STARTERS } from "@/lib/email-campaigns/starters";
 import { daysWords, FUNNEL_PROGRAMME, funnelProgramme, STAGE_ENTRIES, stepsOfStage, type AutomaticStep } from "../programme";
 
-/**
- * The designed programme (PRD-email-funnel, *The programme*): each step names
- * what really exists, and its timings are the sending code's.
- */
-
 const step = (id: string) => {
   const s = FUNNEL_PROGRAMME.find((x) => x.id === id);
   if (!s) throw new Error(`no step ${id}`);
@@ -38,7 +33,6 @@ describe("the programme", () => {
 
   it("times the draft reminders by DRAFT_REMINDERS: 1 day, 1 week, 1 month", () => {
     const s = step("lead.draft_reminders") as AutomaticStep;
-    // Both sides pinned: a change to either alone fails here.
     expect(DRAFT_REMINDERS.map((r) => r.afterDays)).toEqual([1, 7, 30]);
     expect(s.afterDays).toEqual([1, 7, 30]);
     expect(s.afterDays).toEqual(DRAFT_REMINDERS.map((r) => r.afterDays));

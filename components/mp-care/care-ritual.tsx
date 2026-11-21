@@ -15,7 +15,6 @@ type Ritual = {
   body: ReactNode;
 };
 
-/** One numbered step inside the yearly whole-pillow wash. */
 function YearlyStep({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
     <li className="flex gap-3">
@@ -33,10 +32,6 @@ function YearlyStep({ n, title, children }: { n: number; title: string; children
   );
 }
 
-/**
- * The care ritual: what to do daily, weekly, monthly and yearly, on one
- * timeline. The washing video sits in the yearly whole-pillow wash.
- */
 export function MpCareRitual({ readjustHref }: { readjustHref: string }) {
   const rituals: Ritual[] = [
     {

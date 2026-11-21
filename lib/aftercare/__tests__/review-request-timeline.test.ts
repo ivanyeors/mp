@@ -2,13 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { reviewRequestTimelineEntries } from "@/lib/aftercare/review-request-timeline";
 import { reviewFakeDb, type ReviewFakeDb } from "./review-request-fake-db";
 
-/**
- * The Review request on the Customer timeline (CRM slice 07, through slice
- * 03's adapter registry): *Review requested (email, WhatsApp)*, then *Review
- * link clicked*. The route test (timeline-route.test.ts) shows it merged with
- * every other source and gated by `customers`.
- */
-
 const h = vi.hoisted(() => ({ db: {} as Record<string, Array<Record<string, unknown>>> }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => reviewFakeDb(h.db as ReviewFakeDb) }));
 
@@ -91,7 +84,6 @@ describe("the review requests adapter", () => {
       ],
       customer_emails: [
         { customer_id: "ann", template: "aftercare.review_request", entity_id: "ann", status: "sent", sent_at: "2026-10-20T02:00:01.000Z" },
-        // Another email to the same Customer is not this adapter's.
         { customer_id: "ann", template: "account.claim_bonus", entity_id: "ann", status: "sent", sent_at: "2026-10-01T00:00:00.000Z" },
       ],
       customer_whatsapp: [],

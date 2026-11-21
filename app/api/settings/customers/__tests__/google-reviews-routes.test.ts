@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Customers → Reviews (CRM slice 12): seeing Google reviews to match needs
- * `customers`; *Link*, *Not them* and *Unlink* need `customers-edit`. A
- * review is linked to at most one Customer: a second link is refused with the
- * current one shown. Every action is audited with ids, never the review's
- * text. Real permission checks through the shared fake admin; the SQL
- * functions are faked in memory (lib/crm/__tests__/google-review-fake.ts).
- */
-
 const h = vi.hoisted(() => ({ db: {} as FakeDb, identity: null as { id: string; email: string } | null }));
 
 vi.mock("@/lib/auth/user", () => ({
@@ -47,7 +38,6 @@ const signIn = (roleId: string) => {
   h.db.admin_users = [
     { id: `m-${roleId}`, email: `${roleId}@x.test`, role_id: roleId, is_active: true, auth_user_id: `auth-${roleId}` },
   ];
-  // One profile under the login: it is who linked.
   h.db.mp_staff = [{ id: PROFILE, name: "Jess", admin_user_id: `m-${roleId}`, archived_at: null }];
 };
 
@@ -151,7 +141,6 @@ describe("linking, unlinking and Not them need customers-edit", () => {
       }),
     ]);
     expect(JSON.stringify(h.db.admin_audit_log)).not.toContain("slept");
-    // Gone from the list once linked, and on the Customer's card.
     expect(await (await getList()).json()).toMatchObject({ counts: { toMatch: 0, unlinked: 1 } });
     expect(await (await getCard(JANE)).json()).toMatchObject({ google: [{ id: R_JANE, linkedBy: "Jess", comment: COMMENT }] });
   });

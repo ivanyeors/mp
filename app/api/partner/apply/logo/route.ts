@@ -6,14 +6,6 @@ import { assertLogoAllowed, saveApplicantLogo, LogoRefusedError } from "@/lib/pa
 
 export const runtime = "nodejs";
 
-/**
- * Upload the logo for a Partner application (multipart: `file`), before the
- * application exists. Optimizes + stores it under the signed-in user's own
- * applicant folder in the public media bucket and returns the public url; the
- * apply form sends that url with the application, and approval puts it on the
- * partner's /our-partners listing. Only for a signed-in user who has not
- * applied yet: a partner (any status) changes their logo in Partner Hub.
- */
 export async function POST(req: Request) {
   const user = await getAuthUser();
   if (!user?.email) return NextResponse.json({ error: "Sign in to apply." }, { status: 401 });

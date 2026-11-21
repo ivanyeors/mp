@@ -4,10 +4,6 @@ import { getFaqPageData, stripMarkdownForSchema } from "@/lib/faq";
 
 export const runtime = "nodejs";
 
-/**
- * Public FAQ read endpoint.
- * GET /api/faq?locale=en-US&format=json|text
- */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const localeParam = searchParams.get("locale") ?? DEFAULT_LOCALE;

@@ -1,58 +1,26 @@
-/**
- * Spatial filling placements (ADR 0008): where each filling piece goes.
- * Pure + browser-safe — no I/O, no node builtins (fingerprinting lives in index.ts).
- */
-
 import { isEarPadItem, isNeckSupportItem } from "./filling-groups";
 
 export type Section = "left" | "center" | "right";
 export type SubSection = "front" | "middle" | "back";
 
-/**
- * One Mpillow piece: cell (Section × sub-section) + slot + inventory item.
- * `row` is the piece's LAYER within the cell (the view is top-down): 0 = top
- * (front), increasing = deeper into the pillow. Pieces SHARE a layer — several
- * at the same depth lie side by side across the cell — so `row` is no longer
- * distinct per cell. undefined = layer 0, the single-layer default every recipe
- * written before layers carries. Visual only: the pack list ignores it, so it
- * stays out of the fingerprint.
- */
 export type PillowPlacement = {
   section: Section;
   subSection: SubSection;
   slot: number;
   itemId: number;
   row?: number;
-  /**
-   * Insert order (CONTEXT.md): the 1-based step at which this piece goes into
-   * its Section when the pillow is assembled; sub-sections and layers ignored.
-   * undefined = not authored, which sorts last. Assembly only: out of the pack
-   * list and the fingerprint, like `row`.
-   */
   insertOrder?: number;
-  /**
-   * Fine position (X-ray pillow UX slice 08): how far, in mm, the pouch sits
-   * from its home in the cell — +x toward the right of the pillow, +y toward
-   * the back — in Size M millimetres, like every pouch dimension (the other
-   * Sizes scale it, `sizeFactors`). undefined = at home (centred in the free space). Across,
-   * the layout clamps it to the cell; front ↔ back, to the Section, so it may
-   * overhang its cell (the editor re-homes it to the sub-section its centre is
-   * in). Visual only: out of the pack list and the fingerprint, like `row`.
-   */
   offsetXMm?: number;
   offsetYMm?: number;
 };
 
-/** A fine offset's bound, mm: the DB check and the validator share it. */
 export const MAX_OFFSET_MM = 200;
 
-/** One Mbolster piece: single compartment, slot ≥ 1, no cap in v1. */
 export type BolsterPlacement = {
   slot: number;
   itemId: number;
 };
 
-/** Snake_case API/DB row shape for pillow placements. */
 export type PillowPlacementRow = {
   section: string;
   sub_section: string;
@@ -64,7 +32,6 @@ export type PillowPlacementRow = {
   offset_y_mm?: number | null;
 };
 
-/** Snake_case API/DB row shape for bolster placements. */
 export type BolsterPlacementRow = {
   slot: number;
   item_id: number;
@@ -72,11 +39,6 @@ export type BolsterPlacementRow = {
 
 export type PackLine = { item_id: number; count: number };
 
-/**
- * Layers: a cell is up to five depth planes, each holding up to five pieces
- * side by side. The slot key is unique per CELL, so the cell cap is the product
- * — the DB `slot between 1 and 25` check and the API bounds both derive from it.
- */
 export const MAX_LAYERS_PER_CELL = 5;
 export const MAX_PIECES_PER_LAYER = 5;
 export const MAX_PIECES_PER_CELL = MAX_LAYERS_PER_CELL * MAX_PIECES_PER_LAYER;
@@ -84,12 +46,6 @@ export const MAX_PIECES_PER_CELL = MAX_LAYERS_PER_CELL * MAX_PIECES_PER_LAYER;
 export const SECTIONS: readonly Section[] = ["left", "center", "right"];
 export const SUB_SECTIONS: readonly SubSection[] = ["front", "middle", "back"];
 
-/**
- * One cell's pieces grouped into Layers, top→deep (`row`, absent = layer 0),
- * with the numbering COMPACTED so a hole left by a deleted layer never reads
- * as an empty one. The layout and the fit model group with this so they can
- * never disagree about which pieces share a plane. Pieces keep their order.
- */
 export function cellLayerGroups(pieces: readonly PillowPlacement[]): PillowPlacement[][] {
   const byLayer = new Map<number, PillowPlacement[]>();
   for (const piece of pieces) {
@@ -103,7 +59,6 @@ export function cellLayerGroups(pieces: readonly PillowPlacement[]): PillowPlace
 
 type Validation = { ok: true } | { ok: false; error: string };
 
-/** Map snake_case API/DB rows into lib placements (validate afterwards). */
 export function rowsToPillowPlacements(rows: PillowPlacementRow[]): PillowPlacement[] {
   return rows.map((r) => ({
     section: r.section as Section,
@@ -117,7 +72,6 @@ export function rowsToPillowPlacements(rows: PillowPlacementRow[]): PillowPlacem
   }));
 }
 
-/** Map lib placements back to snake_case API/DB rows (inverse of rowsToPillowPlacements). */
 export function pillowPlacementsToRows(placements: PillowPlacement[]): PillowPlacementRow[] {
   return placements.map((p) => ({
     section: p.section,
@@ -131,39 +85,25 @@ export function pillowPlacementsToRows(placements: PillowPlacement[]): PillowPla
   }));
 }
 
-/** Map snake_case API/DB rows into lib bolster placements (validate afterwards). */
 export function rowsToBolsterPlacements(rows: BolsterPlacementRow[]): BolsterPlacement[] {
   return rows.map((r) => ({ slot: r.slot, itemId: r.item_id }));
 }
 
-/** Map lib bolster placements back to snake_case API/DB rows (inverse of rowsToBolsterPlacements). */
 export function bolsterPlacementsToRows(placements: BolsterPlacement[]): BolsterPlacementRow[] {
   return placements.map((p) => ({ slot: p.slot, item_id: p.itemId }));
 }
 
-/**
- * What an Item is to the validators below: "filling", "neck_support" for a
- * Cervical Neck Support accessory, "ear_pad" for an Ear Comfort Pad (both
- * placeable, and priced inside the pillow), else its category.
- */
 export function placementKind(item: { category: string; name: string }): string {
   if (isNeckSupportItem(item)) return "neck_support";
   if (isEarPadItem(item)) return "ear_pad";
   return item.category;
 }
 
-/** What a premium-only accessory is called when a basic pillow or a bolster refuses it. */
 const ACCESSORY_NAME: Readonly<Record<string, string>> = {
   neck_support: "A Cervical Neck Support",
   ear_pad: "An Ear Comfort Pad",
 };
 
-/**
- * A neck support or an ear pad is for premium pillows only: never a bolster,
- * never a basic pillow. `tier` is omitted where it is not known yet (a Filling
- * Template is scoped by size alone), and the Result that uses it re-checks
- * with its tier.
- */
 function assertFillingItem(
   itemId: number,
   itemCategories: ReadonlyMap<number, string>,
@@ -179,13 +119,6 @@ function assertFillingItem(
   return null;
 }
 
-/**
- * Validate cell addresses, slot range, unique (section, subSection, slot),
- * layer range, the per-layer piece cap, and placeable items only (`itemCategories`
- * holds placementKind values). The per-cell cap
- * follows from the slot range plus slot uniqueness; the per-layer cap has to be
- * counted, because a layer is a group of slots rather than a slot of its own.
- */
 export function validatePillowPlacements(
   placements: PillowPlacement[],
   itemCategories: ReadonlyMap<number, string>,
@@ -215,7 +148,6 @@ export function validatePillowPlacements(
         return { ok: false, error: `Offset ${axis} must be an integer −${MAX_OFFSET_MM}…${MAX_OFFSET_MM} mm (got ${v})` };
       }
     }
-    // `row: undefined` and `row: 0` are the same layer — count them together.
     const layerKey = `${p.section}/${p.subSection}/${p.row ?? 0}`;
     const inLayer = (perLayer.get(layerKey) ?? 0) + 1;
     if (inLayer > MAX_PIECES_PER_LAYER) {
@@ -234,7 +166,6 @@ export function validatePillowPlacements(
   return { ok: true };
 }
 
-/** Validate slot ≥ 1, unique slots, filling items only. No piece cap for Mbolster in v1. */
 export function validateBolsterPlacements(
   placements: BolsterPlacement[],
   itemCategories: ReadonlyMap<number, string>,
@@ -260,12 +191,10 @@ function tally(entries: Array<[number, number]>): PackLine[] {
     .sort((a, b) => a.item_id - b.item_id);
 }
 
-/** Flatten placements to the derived pack list (item_id × count), sorted by item_id. */
 export function flattenToPackList(placements: Array<{ itemId: number }>): PackLine[] {
   return tally(placements.map((p) => [p.itemId, 1]));
 }
 
-/** Pack list for a template: placements are the truth when present, else legacy flat lines. */
 export function derivePackList(
   placementRows: Array<{ item_id: number }>,
   lines: Array<{ item_id: number; quantity: number }>,
@@ -276,7 +205,6 @@ export function derivePackList(
 
 export type AnyPlacement = PillowPlacement | BolsterPlacement;
 
-/** Internal canonical form: cells sorted, item ids within each cell sorted — slot numbering dropped. */
 export function canonicalizePlacements(placements: AnyPlacement[]): Array<[string, number[]]> {
   const cells = new Map<string, number[]>();
   for (const p of placements) {
@@ -290,7 +218,6 @@ export function canonicalizePlacements(placements: AnyPlacement[]): Array<[strin
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
-/** True iff both hold the same multiset of items per cell (slot numbering/order ignored). */
 export function placementsExactMatch(a: AnyPlacement[], b: AnyPlacement[]): boolean {
   return JSON.stringify(canonicalizePlacements(a)) === JSON.stringify(canonicalizePlacements(b));
 }

@@ -38,7 +38,6 @@ const render = () => act(() => (root ??= createRoot(host)).render(<AnalyticsNoti
 const gotIt = () =>
   act(() => [...host.querySelectorAll("button")].find((b) => b.textContent === "Got it")!.click());
 
-/** localStorage that throws, as in some private modes. */
 function blockStorage() {
   vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
     throw new Error("blocked");

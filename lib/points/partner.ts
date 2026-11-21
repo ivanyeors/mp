@@ -1,10 +1,3 @@
-/**
- * Rule (r) (ADR 0030): is this Customer a partner? `is_partner_customer()` in
- * SQL is the answer the earn job, the Claim and Staff adjustments use; this
- * is the same rule for code that already holds the rows, and
- * __tests__/partner.test.ts holds the two equal. A partner holds no points.
- */
-
 export interface PartnerMatchRow {
   auth_user_id: string | null;
   email: string;
@@ -15,10 +8,6 @@ export interface PartnerMatchRow {
 
 const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
 
-/**
- * Pure — whether any approved partner row holds the Customer's login, their
- * email, or (verified) their backup email; emails compared without case.
- */
 export function isPartnerMatch(
   customer: { auth_user_id: string | null; email: string },
   partners: readonly PartnerMatchRow[],

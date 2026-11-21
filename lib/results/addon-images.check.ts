@@ -1,21 +1,15 @@
-/**
- * Slice 12 self-check: item → primary-image resolution + left-preview wiring.
- * Run: npx tsx lib/results/addon-images.check.ts
- */
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 
 import { resolveAddonImageUrls } from "./addon-images";
 
-// Resolution: image-kind assets with hosted URLs resolve; everything else drops out.
 const urls = resolveAddonImageUrls(
   [
     { id: 1, primary_media_asset_id: "a" },
-    { id: 2, primary_media_asset_id: "b" }, // video asset — no card image
-    { id: 3, primary_media_asset_id: "c" }, // image without hosted_url
-    { id: 4, primary_media_asset_id: null }, // no link — falls back to text row
+    { id: 2, primary_media_asset_id: "b" },
+    { id: 3, primary_media_asset_id: "c" },
+    { id: 4, primary_media_asset_id: null },
     { id: 5, primary_media_asset_id: "missing" },
   ],
   [
@@ -26,8 +20,6 @@ const urls = resolveAddonImageUrls(
 );
 assert.deepEqual([...urls.entries()], [[1, "https://cdn/x.jpg"]]);
 
-// Wiring: the addons API serves image_url, and every configurator surface
-// renders the shared cards + selected previews under the silhouette.
 const read = (...p: string[]) => readFileSync(join(process.cwd(), ...p), "utf8");
 
 const route = read("app", "api", "results", "addons", "route.ts");
@@ -47,7 +39,6 @@ for (const client of [
   assert.match(src, /<AddonOptionButton/, `${client.at(-1)} must render add-on option cards`);
 }
 
-// /mp-basic shares the mp-config page — same surface, same cards.
 assert.match(read("app", "[lang]", "mp-basic", "page.tsx"), /mp-config\/page/);
 
 console.log("addon-images.check: all assertions passed");

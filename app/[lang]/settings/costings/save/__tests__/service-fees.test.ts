@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * Costings → Service fees (ADR 0024): the save route writes service_prices and the
- * complimentary rule, audits the change, and — because nothing projects services
- * into storefront variants or Shopify — never runs the variant/Shopify sync.
- */
-
 const h = vi.hoisted(() => ({
   servicePrices: [] as Array<{ key: string; msrp: string; cost_price: string | null; currency: string }>,
   siteSettings: [] as Array<{ key: string; value: string }>,
@@ -142,7 +136,6 @@ describe("Costings → Service fees save", () => {
     [{ services: [{ key: "measurement_basic", msrpCents: -1, costCents: null }] }, "services.0.msrpCents"],
     [{ services: [{ key: "doorstep", msrpCents: 25000, costCents: null }] }, "services.0.key"],
     [{ services: [{ key: "readjustment", msrpCents: null, costCents: null }] }, "services.0.msrpCents"],
-    // Stripe's floor: a standalone re-adjustment charge under $0.50 can't be taken.
     [{ services: [{ key: "readjustment", msrpCents: 30, costCents: null }] }, "services.0.msrpCents"],
     [{ readjustmentPolicy: { freeVisits: 11, freeWindowDays: 60 } }, "readjustmentPolicy.freeVisits"],
     [{ readjustmentPolicy: { freeVisits: 1, freeWindowDays: 366 } }, "readjustmentPolicy.freeWindowDays"],

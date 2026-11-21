@@ -5,11 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { XrayEditor } from "../xray-editor";
 
-/**
- * The host hears of every dive change (its cut and Section editor follow the
- * dive): diving into a Section, switching Section, and leaving the dive.
- */
-
 let root: Root | null = null;
 function mount(onDiveChange: (s: string | null) => void) {
   const host = document.createElement("div");
@@ -33,7 +28,6 @@ describe("XrayPillow dive → host", () => {
   it("tells the host each Section dived into, and null when the dive ends", () => {
     const onDiveChange = vi.fn();
     mount(onDiveChange);
-    // Before any dive the host holds no dive, whether or not it was told so.
     expect(onDiveChange.mock.calls.every(([s]) => s === null)).toBe(true);
     onDiveChange.mockClear();
 

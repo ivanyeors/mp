@@ -5,12 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProductRow, ProductsInitialData } from "../products-client";
 
-/**
- * The Products list's filters and pager: one request per change, page 1 after a
- * filter changes, the newest answer wins, and the selection clears whenever the
- * rows are replaced or the type changes.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/products",
   useRouter: () => ({ push: vi.fn() }),
@@ -18,7 +12,6 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/settings/shop-listing-toggles", () => ({ ShopListingToggles: () => null }));
 vi.mock("@/components/settings/inventory-push-sheet", () => ({ InventoryPushSheet: () => null }));
 vi.mock("../categories-manager", () => ({ CategoriesManager: () => null }));
-// Radix Select needs pointer capture jsdom lacks; a native select calls the same onValueChange.
 vi.mock("@/components/ui/select", () => ({
   Select: ({ value, onValueChange, children }: { value: string; onValueChange: (v: string) => void; children: ReactNode }) => (
     <select value={value} onChange={(e) => onValueChange(e.target.value)}>
@@ -51,7 +44,6 @@ const initialData: ProductsInitialData = {
   categories: { ok: true, rows: [{ id: "cat1", slug: "pillows", content: { "en-US": { name: "Pillows" } } }] },
 };
 
-/** Each products request, in order, answered when the test says. */
 let requests: { params: URLSearchParams; answer: (rows: ProductRow[], total?: number) => Promise<void> }[];
 
 let root: Root | null = null;
@@ -76,7 +68,6 @@ beforeEach(async () => {
   document.body.append(host);
   root = createRoot(host);
   act(() => root!.render(<ProductsClient initialData={initialData} stripeMode="test" />));
-  // The search box's debounce also runs once on mount and sets page 1 after 350ms.
   await settle(400);
 });
 afterEach(async () => {

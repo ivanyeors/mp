@@ -16,25 +16,20 @@ describe("sla-reminders", () => {
   });
 
   it("adds working days skipping weekends (UTC)", () => {
-    // Friday 2026-07-03 → +1 working day = Monday 2026-07-06
     const fri = new Date(Date.UTC(2026, 6, 3, 10, 0, 0));
     expect(addWorkingDays(fri, 1).toISOString().slice(0, 10)).toBe("2026-07-06");
-    // Monday → +5 working days = next Monday
     const mon = new Date(Date.UTC(2026, 6, 6, 10, 0, 0));
     expect(addWorkingDays(mon, 5).toISOString().slice(0, 10)).toBe("2026-07-13");
   });
 
   it("expires at min(SLA, auth − buffer) so capture never needs a dead hold", () => {
-    const heldAt = new Date(Date.UTC(2026, 6, 6, 12, 0, 0)); // Mon
+    const heldAt = new Date(Date.UTC(2026, 6, 6, 12, 0, 0));
     const settings = { ...DEFAULT_SLA_SETTINGS, workingDays: 5 };
     const deadline = expiryDeadline(heldAt, settings);
     const auth = authExpiresAt(heldAt);
     expect(auth.getTime() - heldAt.getTime()).toBe(STRIPE_AUTH_HOLD_DAYS * 24 * 60 * 60 * 1000);
-    // Must be strictly before auth expiry
     expect(deadline.getTime()).toBeLessThan(auth.getTime());
-    // Default buffer leaves room for a once-daily Hobby cron (±1h jitter)
     expect(DEFAULT_SLA_SETTINGS.authExpiryBufferHours).toBeGreaterThanOrEqual(48);
-    // Long SLA still cannot outrun auth buffer
     const longSla = expiryDeadline(heldAt, { ...settings, workingDays: 20 });
     expect(longSla.getTime()).toBe(
       auth.getTime() - DEFAULT_SLA_SETTINGS.authExpiryBufferHours * 60 * 60 * 1000,
@@ -89,7 +84,6 @@ describe("sla-reminders", () => {
 
 describe("planHeldTick — a Result with no Authorization hold", () => {
   const settings = { ...DEFAULT_SLA_SETTINGS, opsEmail: "ops@mpillow.com" };
-  // Far past any expiry deadline: a hold would have been released long ago.
   const heldAt = new Date("2026-01-01T09:00:00.000Z");
   const now = new Date("2026-06-01T09:00:00.000Z");
 

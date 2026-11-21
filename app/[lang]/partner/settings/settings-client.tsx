@@ -28,7 +28,6 @@ import { checkPayoutImage } from "@/lib/payout-upload/limits";
 type Profile = {
   name: string;
   description: string;
-  /** Website or social page, as typed; the server normalises it to a link. */
   website: string;
   logo_url: string | null;
 };
@@ -54,10 +53,8 @@ export function PartnerSettingsClient({
 }: {
   whatsappNumber: string;
   initialProfile: Profile;
-  /** Whether the listing shows on /our-partners (`partners.visible`, Staff's switch). */
   listed: boolean;
   partnersPageHref: string;
-  /** Their main location, then their other clinics. */
   initialLocations: { main: Place; branches: Place[] };
   backupEmail: { email: string | null; verified: boolean; pending: string | null };
   paymentDetails: PaymentDetails;
@@ -92,7 +89,6 @@ export function PartnerSettingsClient({
       const json = await res.json().catch(() => null);
       if (res.ok && json?.ok) {
         toast.success("Profile saved. Your public listing is updated.");
-        // New clinics now have ids, so a second save updates them rather than adding them again.
         setLocations((prev) => toLocationDrafts(prev[0] ?? {}, json.branches ?? []));
       } else {
         toast.error(json?.error ?? "Save failed");
@@ -111,7 +107,6 @@ export function PartnerSettingsClient({
         </p>
       </div>
 
-      {/* Profile */}
       <Card>
         <CardHeader>
           <CardTitle>Public profile</CardTitle>
@@ -199,16 +194,12 @@ export function PartnerSettingsClient({
         </CardContent>
       </Card>
 
-      {/* Payout details */}
       <PayoutDetailsCard initial={paymentDetails} />
 
-      {/* Backup email */}
       <BackupEmailCard initial={backupEmail} />
 
-      {/* Notifications */}
       <NotificationsCard initialOptIn={notifyWhatsapp} />
 
-      {/* Support */}
       <Card>
         <CardHeader>
           <CardTitle>Support</CardTitle>
@@ -232,7 +223,7 @@ function NotificationsCard({ initialOptIn }: { initialOptIn: boolean }) {
   const [busy, setBusy] = useState(false);
 
   async function toggle(next: boolean) {
-    setOptIn(next); // optimistic
+    setOptIn(next);
     setBusy(true);
     try {
       const res = await fetch("/api/partner/notify", {
@@ -244,7 +235,7 @@ function NotificationsCard({ initialOptIn }: { initialOptIn: boolean }) {
       if (res.ok && json?.ok) {
         toast.success(next ? "WhatsApp updates on." : "WhatsApp updates off.");
       } else {
-        setOptIn(!next); // revert
+        setOptIn(!next);
         toast.error(json?.error ?? "Could not update preference");
       }
     } catch {

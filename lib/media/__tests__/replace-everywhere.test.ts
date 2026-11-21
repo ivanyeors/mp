@@ -125,7 +125,6 @@ describe("replace-everywhere (slice 15)", () => {
       "en-US": { heroImage: NEW_URL, media_asset_id: NEW_ID },
     });
 
-    // AC: order snapshots unchanged
     expect(rows.orderItems?.[0].image_url).toBe(OLD_URL);
   });
 
@@ -140,7 +139,6 @@ describe("replace-everywhere (slice 15)", () => {
     expect(summary.landingSlots).toEqual(["landing_marquee"]);
     expect(summary.productImages).toBe(1);
     expect(rows.settings?.[0].value).toBe(NEW_URL);
-    // Companion id created only when newAssetId provided
     expect(rows.settings?.some((s) => s.key === "landing_marquee_asset_id")).toBe(false);
   });
 

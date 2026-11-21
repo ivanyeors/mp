@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { renderContactSheet } from "@/lib/email/contact-sheet";
 import { isEmailPreviewAllowed } from "@/lib/email/preview-guard";
 
-// Every template on one page. A static segment, which Next resolves ahead of
-// the sibling [id] dynamic route, so there is no collision with a template
-// whose id happened to be "all".
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {

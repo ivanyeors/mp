@@ -2,26 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { escapeLikePattern } from "@/lib/supabase/like-pattern";
 import { normaliseResultEmail } from "@/lib/results/owner";
 
-/**
- * Which Customer a Result belongs to, for the Admin Panel's *Open customer*
- * link (PRD-crm-retention-loop slice 02).
- *
- * The Result's `customer_id` when that Customer still exists; when it does
- * not, or the Result has none, the Customer whose email is the Result's,
- * ignoring case and surrounding whitespace, as `lib/results/owner.ts` compares
- * them. `customers.email` is unique on `lower(email)`, so the email names at
- * most one; anything but
- * exactly one row links nothing rather than a guess. A failed read links
- * nothing too: the link is a convenience, never a reason to fail the page.
- */
 export async function customerIdForResult(
   admin: SupabaseClient,
   row: { customer_id?: string | null; customer_email?: string | null },
 ): Promise<string | null> {
   if (row.customer_id) {
     const { data, error } = await admin.from("customers").select("id").eq("id", row.customer_id).maybeSingle();
-    // A failed read is not "no such Customer": matching by email then could
-    // name someone else when the Result's email differs from its Customer's.
     if (error) return null;
     if (data) return (data as { id: string }).id;
   }

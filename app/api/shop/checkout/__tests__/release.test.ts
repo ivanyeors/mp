@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * Going back from the on-page payment step (ADR 0053) closes that Order's
- * Checkout and gives back its points at once, so a resubmit can spend them.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   sessionStatus: "open" as string,

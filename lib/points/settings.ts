@@ -1,9 +1,3 @@
-/**
- * The points settings (PRD-loyalty-points slice 02): `site_settings` rows the
- * owner edits on Settings → Discounts → Points. `points_settings()` in SQL
- * reads the same keys with the same defaults, and `points_milestones()` reads
- * the milestone ladder (slice 09) as `parseMilestones` does.
- */
 import { z } from "zod";
 import { MAX_MILESTONES, formatMilestones, parseMilestones, type PointsMilestone } from "./milestones";
 
@@ -20,31 +14,23 @@ export const POINTS_SETTING_KEYS = {
 
 export interface PointsSettings {
   enabled: boolean;
-  /** ISO timestamp; null until the owner sets it. */
   launchAt: string | null;
   earnPerDollar: number;
   minRedeem: number;
-  /** 0 to 1: the most of the products' price points may pay. */
   maxShare: number;
   claimBonus: number;
   claimBonusMonths: number;
-  /** The bonus milestones, lowest first; empty for none (slice 09). */
   milestones: PointsMilestone[];
 }
 
 export const POINTS_DEFAULTS: PointsSettings = {
   enabled: false,
   launchAt: null,
-  // ADR 0030 decision 3, amended 2026-11-08: 1 point per S$1 (was 3), so
-  // 1% back at 100 points = S$1.
   earnPerDollar: 1,
   minRedeem: 500,
   maxShare: 0.5,
   claimBonus: 1000,
   claimBonusMonths: 3,
-  // A missing or malformed ladder is none, never a default one: a bonus is
-  // only granted on a ladder that was saved. The migration seeds
-  // SEEDED_MILESTONES as the starting ladder.
   milestones: [],
 };
 
@@ -53,7 +39,6 @@ const num = (v: string | undefined, ok: (n: number) => boolean, fallback: number
   return Number.isFinite(n) && ok(n) ? n : fallback;
 };
 
-/** Pure — the settings from `site_settings` rows; a missing or malformed one reads as its default. */
 export function pointsSettingsFromRows(rows: readonly { key: string; value: string | null }[]): PointsSettings {
   const get = (k: string) => rows.find((r) => r.key === k)?.value ?? undefined;
   const launch = get(POINTS_SETTING_KEYS.launchAt)?.trim();
@@ -69,22 +54,15 @@ export function pointsSettingsFromRows(rows: readonly { key: string; value: stri
   };
 }
 
-/** Pure — points are on and their launch has passed: customers earn and spend. */
 export function pointsLive(s: Pick<PointsSettings, "enabled" | "launchAt">, now: Date = new Date()): boolean {
   return s.enabled && s.launchAt !== null && Date.parse(s.launchAt) <= now.getTime();
 }
 
-/**
- * Pure — the Profile's Points card: the balance once points are live, "coming
- * soon" before the launch, and nothing once they are switched off after it
- * (customers may hold points then, so "coming soon" would be wrong).
- */
 export function profilePointsView(s: Pick<PointsSettings, "enabled" | "launchAt">, now: Date = new Date()): "live" | "soon" | "off" {
   if (pointsLive(s, now)) return "live";
   return s.launchAt === null || Date.parse(s.launchAt) > now.getTime() ? "soon" : "off";
 }
 
-/** What the Settings card saves, checked on the server. */
 export const PointsSettingsSchema = z
   .object({
     enabled: z.boolean(),
@@ -117,7 +95,6 @@ export const PointsSettingsSchema = z
     });
   });
 
-/** Pure — the `site_settings` rows for saved settings. An unset launch date deletes its row. */
 export function pointsSettingsToRows(s: PointsSettings): { upsert: { key: string; value: string }[]; remove: string[] } {
   const upsert: { key: string; value: string }[] = [
     { key: POINTS_SETTING_KEYS.enabled, value: s.enabled ? "true" : "false" },

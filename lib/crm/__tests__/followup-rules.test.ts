@@ -13,11 +13,6 @@ import {
   sortFollowUps,
 } from "@/lib/crm/followup-rules";
 
-/**
- * Follow-ups (CRM slice 06): what *overdue* and *due* mean, always against the
- * Singapore calendar day, and the input rules the card and the routes share.
- */
-
 const UUID = "11111111-1111-4111-8111-111111111111";
 const open = (dueOn: string) => ({ dueOn, doneAt: null });
 
@@ -25,9 +20,7 @@ describe("today is the Singapore calendar day", () => {
   it("turns over at midnight SGT (16:00 UTC), not at midnight UTC", () => {
     expect(sgtToday(new Date("2026-10-21T15:59:59.999Z"))).toBe("2026-10-21");
     expect(sgtToday(new Date("2026-10-21T16:00:00.000Z"))).toBe("2026-10-22");
-    // Still the 21st in UTC, already the 22nd in Singapore.
     expect(sgtToday(new Date("2026-10-21T23:30:00.000Z"))).toBe("2026-10-22");
-    // Early morning in Singapore is the previous day in UTC.
     expect(sgtToday(new Date("2026-10-21T17:00:00.000Z"))).toBe("2026-10-22");
   });
 

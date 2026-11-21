@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
-/** Header entry to the customer profile page (signed-in only). */
 export function ProfileMenu() {
   const { locale } = useI18n();
   const [signedIn, setSignedIn] = useState(false);

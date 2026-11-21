@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 import { buildFunnel, type FunnelCampaignFact, type FunnelFacts, type FunnelSegmentFact } from "../model";
 import { planArrangement, planMove, type FunnelMove } from "../move";
 
-/**
- * Arranging the Email flow (PRD-email-funnel slice 07): a move changes only
- * the *Campaign* filter of the drafts it touches, as a list whose gaps close,
- * in an order that never makes a cycle; it refuses in words what cannot move.
- */
-
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const seg = (n: number, name: string, params: Record<string, string>, needsReview = false): FunnelSegmentFact => ({
   id: id(n),
@@ -42,7 +36,6 @@ const ok = (p: ReturnType<typeof planMove>) => {
 };
 const byCampaign = (changes: ReturnType<typeof ok>) => Object.fromEntries(changes.map((c) => [c.campaignId, c]));
 
-// A chain of three drafts on Lead: A (the stage's Segment) → B (got A) → C (clicked B).
 const chain = () =>
   facts(
     [seg(1, "Lead", { stage: "lead" }), seg(2, "Lead · got “A”", { campaign: `${id(10)}:sent` }), seg(3, "Lead · clicked “B”", { campaign: `${id(11)}:clicked` })],
@@ -58,7 +51,6 @@ describe("planMove", () => {
     ]);
     expect(byCampaign(changes)[id(12)].filters).toEqual({ campaign: `${id(10)}:sent` });
     expect(byCampaign(changes)[id(11)].filters).toEqual({ campaign: `${id(12)}:sent` });
-    // The page reads the result as A → C → B.
     const after = buildAfter(chain(), changes);
     const flow = after.stages.find((s) => s.stage === "lead")!.flow;
     expect(flow.find((f) => f.key === `campaign:${id(12)}`)!.after).toEqual({ campaignId: id(10), did: "sent" });
@@ -87,9 +79,7 @@ describe("planMove", () => {
       [id(12), { id: id(10), did: "clicked" }],
       [id(11), { id: id(12), did: "sent" }],
     ]);
-    // The stage filter and any other filter survive.
     expect(byCampaign(changes)[id(12)].filters).toEqual({ stage: "lead", bought: "premium", campaign: `${id(10)}:clicked` });
-    // C's Segment has that name and other filters: the new one is made unique.
     expect(byCampaign(changes)[id(12)].segmentName).toBe("Lead · clicked “P” (2)");
   });
 
@@ -121,7 +111,6 @@ describe("planMove", () => {
     const p = planMove(f, move(10, [11, "sent"], null, "at_risk"));
     expect(p.ok).toBe(false);
     expect(!p.ok && p.error).toContain("Playbook");
-    // Another draft may follow it.
     expect(ok(planMove(f, move(11, [10, "sent"], null, "at_risk")))[0].campaign).toEqual({ id: id(10), did: "sent" });
   });
 
@@ -133,7 +122,6 @@ describe("planMove", () => {
     const p = planMove(f, move(10, [11, "sent"]));
     expect(p.ok).toBe(false);
     expect(!p.ok && p.error).toContain("stays under “D”");
-    // T (a draft under the started S) is still under D: refused too.
     expect(planMove(f, move(10, [12, "sent"])).ok).toBe(false);
 
     const g = facts(
@@ -141,7 +129,6 @@ describe("planMove", () => {
       [camp(10, "D", 1), camp(11, "E", 2)],
     );
     const changes = ok(planMove(g, move(10, [11, "sent"])));
-    // E is re-pointed first (it starts the stage), then D follows it: no step is a cycle.
     expect(changes.map((c) => [c.campaignId, c.campaign])).toEqual([
       [id(11), null],
       [id(10), { id: id(11), did: "sent" }],
@@ -180,7 +167,6 @@ describe("planMove", () => {
     ]);
     expect(byCampaign(changes)[id(12)].filters).toEqual({ stage: "lead" });
     expect(byCampaign(changes)[id(10)].filters).toEqual({ stage: "lead", campaign: `${id(12)}:sent` });
-    // In front of an email that follows another, an after is needed.
     expect(planMove(chain(), move(12, null, 11)).ok).toBe(false);
   });
 
@@ -206,7 +192,6 @@ describe("planMove", () => {
     expect(ok(planMove(f, move(11, null)))[0].filters).toEqual({ bought: "premium", stage: "lead" });
     expect(ok(planMove(f, move(11, null)))[0].segmentName).toBe("Lead · “Outside”");
     expect(ok(planMove(f, move(11, [10, "clicked"])))[0].filters).toEqual({ bought: "premium", campaign: `${id(10)}:clicked` });
-    // Another Audience: the stage's own Segment, or a follow-up's.
     expect(ok(planMove(f, move(12, null)))[0].filters).toEqual({ stage: "lead" });
     expect(ok(planMove(f, move(12, [10, "sent"])))[0].filters).toEqual({ campaign: `${id(10)}:sent` });
   });
@@ -242,7 +227,6 @@ describe("planMove reads a stage as the page draws it (review of slice 07)", () 
       ],
       [camp(20, "Q", 2), camp(10, "D", 3), camp(11, "P", 1), camp(12, "N", 4)],
     );
-    // The page draws D as a sequence's first in Lead, N under it.
     const lead = buildAfter(f, []).stages.find((s) => s.stage === "lead")!.flow;
     expect(lead.find((s) => s.key === `campaign:${id(10)}`)!.after).toBeNull();
     expect(lead.find((s) => s.key === `campaign:${id(12)}`)!.after).toEqual({ campaignId: id(10), did: "sent" });
@@ -276,7 +260,6 @@ describe("planMove reads a stage as the page draws it (review of slice 07)", () 
 
 describe("planMove never writes emails that wait for each other (confirming review of slice 07)", () => {
   it("1: refuses A after B when B's Segment still reads A, though A has left the stage", () => {
-    // B was dragged after A; then A's Audience became everyone subscribed: A is outside the funnel, B starts a sequence in Lead.
     const f = facts(
       [seg(1, "Lead", { stage: "lead" }), seg(2, "Lead · got “A”", { stage: "lead", campaign: `${id(10)}:sent` })],
       [camp(10, "A", null), camp(11, "B", 2)],
@@ -303,7 +286,6 @@ describe("planMove never writes emails that wait for each other (confirming revi
     const p = planMove(f, move(10, [12, "sent"]));
     expect(p.ok).toBe(false);
     expect(!p.ok && p.error).toMatch(/^“D” cannot follow “E”: “E” already comes after “D”, through emails outside this stage's flow/);
-    // Moving E elsewhere in Lead is still fine.
     expect(planMove(f, move(12, [10, "clicked"])).ok).toBe(true);
   });
 
@@ -316,7 +298,6 @@ describe("planMove never writes emails that wait for each other (confirming revi
       ],
       [camp(10, "D", 1), camp(11, "C", 2, true), camp(12, "S", 3, true), camp(13, "P", 1)],
     );
-    // In Lead, S (started) starts its own sequence; through C it reads D.
     const p = planMove(f, move(10, [12, "sent"]));
     expect(p.ok).toBe(false);
     expect(planMove(f, move(10, [13, "sent"])).ok).toBe(true);
@@ -340,11 +321,9 @@ describe("what the page is told about moving", () => {
     expect(lock(10)).toBeNull();
     expect(lock(11)).toMatch(/^Started/);
     expect(lock(15)).toMatch(/Playbook/);
-    // A draft to a Segment that needs review stays in its stage, locked, and is not offered to place.
     expect(lock(13)).toContain("needs review");
     expect(view.unplaced.map((c) => c.name)).toEqual(["Outside", "To everyone"]);
     expect(view.unplaced.every((c) => c.lock === null)).toBe(true);
-    // No Segment's filters, nor a search's words, ride along.
     expect(JSON.stringify(view.unplaced)).not.toMatch(/premium|tan\b/);
   });
 });
@@ -357,7 +336,6 @@ describe("planArrangement", () => {
   });
 });
 
-/** The page after the changes, as if the write had pointed each campaign at a Segment with those filters. */
 function buildAfter(f: ReturnType<typeof chain>, changes: ReturnType<typeof ok>) {
   const segments = [...f.segments];
   const campaigns = f.campaigns.map((c) => {

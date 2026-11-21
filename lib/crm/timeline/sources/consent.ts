@@ -4,16 +4,6 @@ import { readStream } from "@/lib/crm/timeline/read";
 import type { TimelineAdapter } from "@/lib/crm/timeline/types";
 import { consentSourcePhrase, isConsentSource } from "@/lib/marketing-consent/state";
 
-/**
- * Marketing consent changes (migration slice 07) on the Customer timeline
- * (`customers`, like the Marketing email card): every row of the append-only
- * `customer_consent_events`, which `set_marketing_email()` writes with the
- * state. Each says which way it moved and what moved it. A Shopify one is
- * dated the export day, as the event stores it. One from a campaign email's
- * unsubscribe link, or a spam report on it, names the campaign
- * (`campaign_send_id`, PRD-campaign-audiences slice 08).
- */
-
 type One<T> = T | T[] | null | undefined;
 const one = <T,>(v: One<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
@@ -25,7 +15,6 @@ type EventRow = {
   campaign_send?: One<{ campaign?: One<{ name: string | null }> }>;
 };
 
-/** The campaign an event names, in quotes, or null. */
 const campaignOf = (e: EventRow): string | null => {
   const name = one(one(e.campaign_send)?.campaign)?.name;
   return name ? `“${name}”` : null;
@@ -50,7 +39,6 @@ export const consentAdapter: TimelineAdapter = {
         const subscribed = e.to_state === "subscribed";
         const kind = subscribed ? "consent.subscribed" : "consent.unsubscribed";
         const what = subscribed ? "Subscribed to marketing email" : "Unsubscribed from marketing email";
-        // Slice 08: the campaign whose link, or whose spam report, it was.
         const campaign = subscribed ? null : campaignOf(e);
         const named =
           campaign && e.source === "unsubscribe_link"

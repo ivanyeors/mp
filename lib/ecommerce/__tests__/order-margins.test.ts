@@ -33,7 +33,7 @@ describe("computeOrderMargin", () => {
     expect(margin.discount).toBe(10);
     expect(margin.cogs).toBe(40);
     expect(margin.netRevenue).toBe(104);
-    expect(margin.grossMargin).toBe(50); // (100-10) - 40
+    expect(margin.grossMargin).toBe(50);
     expect(margin.marginPct).toBeCloseTo(55.56, 1);
   });
 
@@ -51,7 +51,6 @@ describe("computeOrderMargin", () => {
     expect(partial.netRevenue).toBe(84);
     expect(partial.cogs).toBe(full.cogs);
     expect(partial.grossMargin).toBeLessThan(full.grossMargin);
-    // product revenue 90 scaled by 84/104 ≈ 72.69; minus COGS 40 ≈ 32.69
     expect(partial.grossMargin).toBeCloseTo(32.69, 1);
   });
 
@@ -65,7 +64,6 @@ describe("computeOrderMargin", () => {
       ]
     );
     expect(margin.netRevenue).toBe(75);
-    // adjusted product revenue 90 * (75/100) = 67.5; COGS 30 → margin 37.5
     expect(margin.grossMargin).toBeCloseTo(37.5, 1);
   });
 

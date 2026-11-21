@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { usesPostalCode } from "@/lib/shipping/countries";
 
-/**
- * Where a quote is for. The postal code may be left blank only where the country
- * has none in general use (Hong Kong, the UAE…); everywhere else couriers price
- * by it, so it is required.
- */
 export const QuoteDestinationSchema = z
   .object({
     country: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),

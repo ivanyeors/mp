@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AftercareFakeDb } from "@/lib/aftercare/__tests__/fake-db";
 
-/**
- * Marketing consent on the Customer page (migration slice 07): Staff with
- * `customers` read the state, its source and date and every change; only
- * `customers-edit` may record a support request to unsubscribe, which writes
- * one event with source `support` and an audit row. Nothing here subscribes
- * anyone.
- */
-
 const h = vi.hoisted(() => ({
   db: {} as AftercareFakeDb,
   identity: null as { id: string; email: string } | null,
@@ -27,7 +19,6 @@ vi.mock("@/lib/supabase/server", async () => {
     supabaseAdmin: () =>
       fakeAftercareDb(h.db, {
         set_marketing_email: setMarketingEmailRpc,
-        // PRD-crm-retention-loop slice 11: the reason Staff record, after the unsubscribe.
         record_unsubscribe_reason: (args) => {
           h.reasons.push(args);
           return { data: "recorded", error: null };
@@ -148,7 +139,6 @@ describe.each(["crm-editor", "owner"])("a role with customers-edit (%s)", (roleI
     expect(await res.json()).toMatchObject({ ok: true, changed: true, view: { state: "unsubscribed" } });
     expect(h.reasons).toEqual([{ p_customer_id: "c1", p_reason: "other", p_text: "Moving overseas" }]);
     expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({ after: expect.objectContaining({ reason: "other" }) }));
-    // No reason given: none recorded; an unknown one is refused before anything changes.
     expect((await post({ action: "unsubscribe" })).status).toBe(200);
     expect(h.reasons).toHaveLength(1);
     h.db.customers[0]!.marketing_email = "subscribed";

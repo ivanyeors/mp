@@ -14,10 +14,6 @@ function fetchOnce(): Promise<ServiceCopyValues | null> {
   return pending;
 }
 
-/**
- * Today's service fees for policy copy (ADR 0024). One request per page load,
- * shared by every caller; the launch defaults stand in until it answers.
- */
 export function useServiceCopy(): ServiceCopyValues {
   const [values, setValues] = React.useState<ServiceCopyValues>(DEFAULT_SERVICE_COPY_VALUES);
   React.useEffect(() => {

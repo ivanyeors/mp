@@ -7,7 +7,6 @@ const ListQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
-/** The linked Order's fulfilment facts, so the queue can show the stage without a page load. */
 export interface LinkedOrderSummary {
   id: string;
   order_number: string | null;
@@ -44,12 +43,6 @@ export type MpConfigResponsesListResult =
   | { status: 400; body: { error: unknown } }
   | { status: 500; body: { error: string } };
 
-/**
- * Assembles the `/api/mp-config/responses` GET payload (list + location
- * options + estimated count) so the route handler and the RSC results page
- * share one implementation. `limit`/`offset` arrive as raw strings, exactly as
- * the route reads them off the query string.
- */
 export async function listMpConfigResponses(params: {
   limit?: string | null;
   offset?: string | null;
@@ -64,8 +57,6 @@ export async function listMpConfigResponses(params: {
 
   const { limit, offset } = parsedQuery.data;
   const admin = supabaseAdmin();
-  // Location dropdown options + labels (own + partner) are independent of the
-  // list query, so both run concurrently.
   const [listResult, locations] = await Promise.all([
     admin
       .from("mp_config_responses")
@@ -76,9 +67,6 @@ export async function listMpConfigResponses(params: {
   ]);
   const { data, error, count } = listResult;
 
-  // Fulfilment facts for linked responses. The Result row is terminal at capture,
-  // so the rest of the customisation's story lives here — the queue derives its
-  // stage from the pair (see lib/results/result-stage).
   const orderIds = (data ?? []).map((r) => r.order_id).filter(Boolean) as string[];
   let orderMap = new Map<string, LinkedOrderSummary>();
   if (orderIds.length > 0) {

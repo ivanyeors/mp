@@ -46,9 +46,7 @@ type BuildSummary = {
   addons: string[];
   pricing: {
     subtotal: number;
-    /** Service fees inside the subtotal (ADR 0024). Absent from older responses. */
     services?: Array<{ label: string; amount: number }>;
-    /** A discount code kept at hold (ADR 0033); 0 off is free shipping. */
     discount?: { code: string; amount: number };
     shipping: number;
     tax: number;
@@ -75,13 +73,10 @@ type ResultPublic = {
   payment_intent_id: string | null;
   customer_email: string | null;
   is_pre_order?: boolean | null;
-  /** Assisted: fillings built, cover/case/shipping still to choose (ADR 0017). */
   needs_finish?: boolean;
-  /** Self-collect: the studio the customer collects from. */
   collect_at?: string | null;
   build: BuildSummary | null;
   referenceImages?: { id: string; hostedUrl: string }[];
-  /** A Paired build (ADR 0026): the other half, decided on the Mpillow's page. */
   paired?: { role: "anchor" | "companion"; partner: PairedPartner } | null;
 };
 
@@ -100,7 +95,6 @@ type PairedPartner = {
   build: BuildSummary | null;
 };
 
-/** Still part of the order: not dropped, cancelled or expired. */
 const PAIR_LIVE = new Set(["held", "assigned", "accepted", "captured"]);
 
 const PARTNER_STATUS: Record<string, string> = {
@@ -161,13 +155,6 @@ const STATUS_COPY: Record<string, { title: string; body: string }> = {
   },
 };
 
-/**
- * The same statuses, for a Result with no Authorization hold — an Assisted
- * customisation, or an in-store measurement. Nothing was authorized, so there is
- * no hold to mention and no "we'll capture your card" to promise: at `assigned`
- * the customer pays in full rather than accepting a charge already agreed.
- * Keyed on the missing `payment_intent_id`, never on `source` (ADR 0016).
- */
 const NO_HOLD_COPY: Record<string, { title: string; body: string }> = {
   held: {
     title: "Measurements received",
@@ -179,7 +166,6 @@ const NO_HOLD_COPY: Record<string, { title: string; body: string }> = {
   },
 };
 
-/** Assisted customisation, fillings built, finish not chosen yet (ADR 0017). */
 const NEEDS_FINISH_COPY = {
   title: "Ready — choose your finish",
   body: "Our team has built your fillings. Choose your cover, case and shipping to see your final price. Nothing is charged until you pay.",
@@ -225,7 +211,6 @@ function ResultStatusPage() {
   const [myResults, setMyResults] = useState<ResultListRow[]>([]);
   const [acting, setActing] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
-  // *What made you decide?* on the decline step (PRD-crm-retention-loop slice 10): optional.
   const [declineOrder] = useState(() => shuffledReasons("quote_decline"));
   const [declineReason, setDeclineReason] = useState<DropOffReason | null>(null);
   const [declineText, setDeclineText] = useState("");
@@ -234,14 +219,12 @@ function ResultStatusPage() {
   const topupSessionId = searchParams.get("topup_session_id");
 
   const pairedRole = result?.paired?.role ?? null;
-  /** The Mbolster riding with this Mpillow, while it is still part of the order. */
   const companion =
     pairedRole === "anchor" && result?.paired && PAIR_LIVE.has(result.paired.partner.status ?? "")
       ? result.paired.partner
       : null;
   const companionPending = companion?.status === "held";
   const round2 = (n: number) => Math.round(n * 100) / 100;
-  /** The whole hold: one Checkout authorised both, whatever became of the Mbolster since. */
   const pairAuthorized =
     result?.authorized_amount != null
       ? round2(
@@ -249,12 +232,9 @@ function ResultStatusPage() {
             Number(pairedRole === "anchor" ? (result.paired?.partner.authorized_amount ?? 0) : 0),
         )
       : null;
-  /** The Mbolster's price once it is built; never its quote mixed into a final. */
   const companionFinal = companion?.final_amount != null ? Number(companion.final_amount) : null;
   const pairFinal =
     result?.final_amount != null ? round2(Number(result.final_amount) + (companionFinal ?? 0)) : null;
-  // Before Staff build it, a pair shows the hold it authorised; after, the
-  // finals of the builds still in the order. Never one of each.
   const amount =
     result?.status === "held" || result?.final_amount == null
       ? (pairedRole === "anchor" ? pairAuthorized : null) ?? result?.authorized_amount
@@ -285,7 +265,6 @@ function ResultStatusPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on identity params only
   }, [id, token, sessionId]);
 
   const accept = async (topupSession?: string | null) => {
@@ -307,8 +286,6 @@ function ResultStatusPage() {
         window.location.href = data.checkoutUrl as string;
         return;
       }
-      // GA4 purchase: the hold was captured into an Order (this path also runs
-      // after a top-up Checkout returns). Once per order in this browser.
       const value = amount;
       if (typeof value === "number") {
         const transactionId = data.orderNumber ? String(data.orderNumber) : `result-${id}`;
@@ -342,7 +319,6 @@ function ResultStatusPage() {
     }
   };
 
-  /** Drop the Mbolster from a Paired build; the Mpillow and its hold stay. */
   const removeCompanion = async () => {
     if (!companion) return;
     setActing(true);
@@ -398,13 +374,6 @@ function ResultStatusPage() {
     }
   };
 
-  /**
-   * Rebuild this build as a fresh, payable Result.
-   *
-   * Priced at today's Costings, so the total can differ from the one they were
-   * originally quoted. `repriced=1` on the destination makes that change visible
-   * on arrival instead of letting them discover it at the payment step.
-   */
   const reorder = async () => {
     setActing(true);
     setActionMessage(null);
@@ -428,25 +397,19 @@ function ResultStatusPage() {
     }
   };
 
-  // Back from a completed Checkout: the Paired build hand-off (both builds'
-  // answers) has done its job and must not linger on a shared device.
   useEffect(() => {
     if (!sessionId) return;
     try {
       clearPairedHandoff(window.sessionStorage);
-    } catch {
-      // private mode — nothing was stored
-    }
+    } catch {}
   }, [sessionId]);
 
   const topupStarted = useRef(false);
-  // Resume accept after top-up Checkout returns.
   useEffect(() => {
     if (!topupSessionId || loading || !result || result.status !== "assigned") return;
     if (topupStarted.current) return;
     topupStarted.current = true;
     void accept(topupSessionId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when top-up session present
   }, [topupSessionId, loading, result?.status]);
 
   useEffect(() => {
@@ -483,8 +446,6 @@ function ResultStatusPage() {
 
   const status = result?.status ?? "held";
   const hasPaymentHold = Boolean(result?.payment_intent_id);
-  // `result` is null while loading, so the no-hold voice waits for the row —
-  // otherwise every hold customer sees a flash of the wrong copy first.
   const needsFinish = status === "assigned" && Boolean(result?.needs_finish);
   const copy =
     (needsFinish ? NEEDS_FINISH_COPY : undefined) ??
@@ -496,12 +457,7 @@ function ResultStatusPage() {
   const currency = result?.currency ?? "SGD";
   const build = result?.build;
   const showFinalBuild = status === "assigned" || status === "accepted" || status === "captured";
-  // A no-hold Result is decidable too: Accept creates a Balance payment Checkout
-  // for the whole total instead of capturing a hold (ADR 0016). Gating this on a
-  // hold is what used to strand an assigned build with no way to pay for it.
-  // An Mbolster bought with an Mpillow is accepted from the Mpillow's page.
   const canDecide = status === "assigned" && pairedRole !== "companion";
-  /** Arrived here from a reorder whose total differs from the original quote. */
   const repriced = searchParams.get("repriced") === "1";
   const activeStep = journeyIndex(status);
   const progressValue = ((activeStep + 1) / JOURNEY_STEPS.length) * 100;
@@ -584,7 +540,6 @@ function ResultStatusPage() {
               ))}
             </ul>
           </div>
-          {/* Not chosen yet: the stored lines are empty and the price is a placeholder. */}
           {!needsFinish && (
             <>
               <div>
@@ -809,9 +764,6 @@ function ResultStatusPage() {
       {(status === "declined" || status === "expired") && (
         <div className="space-y-2 border-t pt-3" id="reorder" data-section="reorder">
           <div className="flex flex-wrap gap-2">
-            {/* The build is still on the row — offer it back before offering the
-                questionnaire again. Until this existed, the only way back was to
-                answer every question a second time. */}
             <Button size="sm" onClick={reorder} disabled={acting}>
               {acting ? "Rebuilding…" : "Reorder this build"}
             </Button>
@@ -1017,12 +969,10 @@ function ResultStatusPage() {
     </div>
   ) : null;
 
-  // Wait for auth so we don't flash the guest layout inside the account shell.
   if (!authReady) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
 
-  // Signed-in: settings-style content (shell provides chrome).
   if (signedIn) {
     return (
       <div className={cn("relative space-y-6", showTable ? "max-w-5xl" : "max-w-3xl")}>
@@ -1066,7 +1016,6 @@ function ResultStatusPage() {
     );
   }
 
-  // Guest: standalone status page (token link).
   return (
     <div className="relative mx-auto w-full max-w-xl px-4 py-8 sm:py-12">
       {/* ponytail: status as section so hold→accept drop-off is diagnosable */}

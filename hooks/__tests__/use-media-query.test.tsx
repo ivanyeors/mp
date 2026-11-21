@@ -9,14 +9,8 @@ import { useIsMobile } from "../use-mobile";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// The exact string `useIsMobile` asks for. It has to cover a 767.5px-wide
-// window (a zoomed desktop), where Tailwind's `max-md:` styles still apply.
 const PHONE = "(max-width: 767.98px)";
 
-/**
- * A screen whose media queries the test sets. `useIsMobile` has read
- * `window.innerWidth` as well as the query, so a phone sets both.
- */
 const screen = {
   matches: new Map<string, boolean>(),
   listeners: new Map<string, Set<() => void>>(),
@@ -68,7 +62,6 @@ afterEach(() => {
   host = null;
 });
 
-/** Every value each render saw, first render first. */
 function probe(useValue: () => boolean) {
   const seen: boolean[] = [];
   function Probe() {
@@ -108,7 +101,6 @@ describe("useMediaQuery with a query that changes", () => {
 
     act(() => screen.change(TALL, true));
     expect(host.textContent).toBe("true");
-    // The old query changing no longer reaches the component.
     act(() => screen.change(WIDE, false));
     expect(host.textContent).toBe("true");
   });
@@ -155,9 +147,6 @@ describe.each(hooks)("$name", ({ query, useValue }) => {
   });
 
   it("is the screen's value on the first render inside a server-skipped (`ssr: false`) boundary", async () => {
-    // next/dynamic's `ssr: false` throws on the server inside a Suspense
-    // boundary, so the browser renders that boundary fresh instead of
-    // hydrating it (the appointments calendar relies on this).
     screen.set(query, true);
     const { Probe, seen } = probe(useValue);
     function ServerOnlyBailout(): never {

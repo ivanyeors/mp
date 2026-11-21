@@ -185,8 +185,6 @@ export function CustomiseTierPicker({
     setExpandedId(tier.id);
   };
 
-  // showOverlay only turns true from a click, so the portal never renders on
-  // the server or during hydration.
   const overlay =
     showOverlay
       ? createPortal(

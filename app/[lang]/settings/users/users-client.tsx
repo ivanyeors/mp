@@ -22,7 +22,6 @@ export type SerializedActor = {
   permissions: Permission[];
 };
 
-/** Members and roles are shared by every tab: one load, one refresh. */
 function useDirectory(initialMembers?: MemberRow[], initialRoles?: RoleRow[]) {
   const [members, setMembers] = useState<MemberRow[]>(initialMembers ?? []);
   const [roles, setRoles] = useState<RoleRow[]>(initialRoles ?? []);
@@ -52,7 +51,6 @@ function useDirectory(initialMembers?: MemberRow[], initialRoles?: RoleRow[]) {
     void reload();
   }, [reload]);
 
-  // Member counts follow the Members list as it changes, not the last load.
   const counted = useMemo(
     () => roles.map((r) => ({ ...r, memberCount: members.filter((m) => m.roleId === r.id).length })),
     [roles, members],
@@ -61,7 +59,6 @@ function useDirectory(initialMembers?: MemberRow[], initialRoles?: RoleRow[]) {
   return { members, setMembers, roles: counted, setRoles, loading, reload };
 }
 
-/** Every Staff profile, archived included (the tab filters). */
 function useProfiles(initial?: StaffProfile[]) {
   const [rows, setRows] = useState<StaffProfile[]>(initial ?? []);
   const skipFirstFetch = useRef(initial != null);
@@ -125,7 +122,6 @@ export function UsersClient({
         }),
     [],
   );
-  // A failed server read leaves the list undefined: fetch it here and say so.
   useEffect(() => {
     if (!initialTelegram) void reloadLinks();
   }, [initialTelegram, reloadLinks]);
@@ -136,7 +132,6 @@ export function UsersClient({
     return counts;
   }, [profiles.rows]);
 
-  // Keep ?tab= in the address bar so a tab can be linked and survives reload.
   const selectTab = (next: string) => {
     const value = parseUsersTab(next);
     setTab(value);
@@ -170,7 +165,6 @@ export function UsersClient({
             roles={directory.roles}
             loading={directory.loading}
             reload={async () => {
-              // A revoke deletes profiles, and their Telegram links with them.
               await Promise.all([directory.reload(), profiles.reload(), reloadLinks()]);
             }}
             profileCounts={profileCounts}
@@ -194,7 +188,6 @@ export function UsersClient({
             onMoved={() => void reloadLinks()}
           />
         </TabsContent>
-        {/* Kept mounted so unsaved matrix edits survive a look at another tab. */}
         <TabsContent value="roles" forceMount className="pt-4 data-[state=inactive]:hidden">
           <RolesTab
             actor={actor}
@@ -204,7 +197,6 @@ export function UsersClient({
             onShowMembers={() => selectTab("members")}
           />
         </TabsContent>
-        {/* Kept mounted so a just-issued link code survives a tab switch. */}
         <TabsContent value="telegram" forceMount className="pt-4 data-[state=inactive]:hidden">
           <TelegramAccessTab
             actor={actor}

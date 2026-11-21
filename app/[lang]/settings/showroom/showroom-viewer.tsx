@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ZONE_TINTS, legendSwatches } from "@/lib/showroom/describe";
 import type { ShowroomUnit } from "@/lib/showroom/types";
-// Types only: three.js itself loads with the scene, after the page is up.
 import type { PickInfo, SceneOptions, ShowroomScene } from "./showroom-scene";
 import { InfoTip } from "@/components/ui/info-tip";
 
@@ -38,7 +37,6 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme === "dark";
 
-  // The scene reads the latest options when it finishes loading.
   const optsRef = useRef<SceneOptions>({ ...toggles, mode, dark });
   useEffect(() => {
     optsRef.current = { ...toggles, mode, dark };
@@ -203,7 +201,6 @@ export function ShowroomViewer({ unit }: { unit: ShowroomUnit }) {
           </Section>
 
           <Section title="Moving around">
-            {/* A touch screen has no keys, right button or scroll wheel: show it only the gestures. */}
             <ul className="space-y-1 text-sm text-muted-foreground">
               <li className="pointer-coarse:hidden">Drag to orbit. Right-drag or two fingers to slide along the floor.</li>
               <li className="hidden pointer-coarse:list-item">Drag to orbit. Two fingers to slide along the floor.</li>

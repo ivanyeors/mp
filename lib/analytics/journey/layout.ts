@@ -9,7 +9,6 @@ type LayoutEdge = { from: string; to: string; dashed?: boolean };
 const COL_GAP = 220;
 const ROW_GAP = 120;
 
-/** Longest-path rank from sources; cycles break at the back-edge (rank 0). */
 function pageRanks(
   pages: string[],
   edges: LayoutEdge[],
@@ -40,7 +39,6 @@ function pageRanks(
   return memo;
 }
 
-/** Left→right flow: entry pages → deeper hops → sinks. */
 export function layoutJourneyGraph<T extends LayoutIn>(
   nodes: T[],
   edges: LayoutEdge[],

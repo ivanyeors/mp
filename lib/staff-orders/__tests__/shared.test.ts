@@ -11,8 +11,6 @@ import {
   type StaffOrderLine,
 } from "@/lib/staff-orders/shared";
 
-/** The rules of a Staff order that need no database (ADR 0048). */
-
 const CUSTOMER = "0b0b0b0b-0000-4000-8000-000000000001";
 const VARIANT = "0c0c0c0c-0000-4000-8000-000000000001";
 const NOW = new Date("2026-11-07T04:00:00Z");

@@ -1,5 +1,3 @@
-/** COGS for order lines, from the Items their sale takes out of stock. */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveOrderItemUnitCost } from "@/lib/ecommerce/order-cost";
 import { stockLinesForOrderItem, type StockVariant } from "@/lib/ecommerce/inventory-deduction";
@@ -17,12 +15,6 @@ function toCost(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * `unit_cost` / `total_cost` for each line, in order. A line's build is resolved
- * by `stockLinesForOrderItem`, the function the sale deducts through, so the
- * COGS an Order records is the cost of the stock it took. A line with no Variant
- * has no build and no cost.
- */
 export async function orderLinesCosts(
   admin: SupabaseClient,
   lines: CostableOrderLine[],

@@ -12,12 +12,6 @@ import {
   type ApplicationStatus,
 } from "@/lib/partner-application";
 
-/**
- * Spec tests for the PURE partner-application domain (#83). External behaviour
- * only: inputs → outcomes on the public functions. No storage shapes, no call
- * order, no DB. Mirrors lib/rma/__tests__/transitions.test.ts.
- */
-
 const ALL_STATUSES: ApplicationStatus[] = ["pending", "approved", "rejected"];
 
 function validFields(): ApplicationFields {
@@ -112,10 +106,8 @@ describe("validateApplication", () => {
   it("rejects a malformed UEN (wrong shape) but accepts the ACRA envelope", () => {
     expect(validateApplication({ ...validFields(), uen: "123" }).uen).toBeTruthy();
     expect(validateApplication({ ...validFields(), uen: "12345678!" }).uen).toBeTruthy();
-    // 9–10 alphanumerics — ROB, ROC and other-agency shapes all pass.
     expect(validateApplication({ ...validFields(), uen: "12345678A" }).uen).toBeUndefined();
     expect(validateApplication({ ...validFields(), uen: "T09LL0001B" }).uen).toBeUndefined();
-    // case-insensitive: lowercase is upper-cased before the shape check.
     expect(validateApplication({ ...validFields(), uen: "t09ll0001b" }).uen).toBeUndefined();
   });
 
@@ -151,7 +143,6 @@ describe("validateApplication", () => {
   });
 
   it("is null/undefined-safe: a partial object never throws", () => {
-    // Regression: partial/empty submissions must be validated, not crash.
     expect(() => validateApplication({} as ApplicationFields)).not.toThrow();
     const errors = validateApplication({} as ApplicationFields);
     expect(errors.companyName).toBeTruthy();

@@ -1,16 +1,8 @@
 // @vitest-environment jsdom
-// matchMedia, ResizeObserver and the act flag, which jsdom leaves out.
 import "@/components/block-editor/__tests__/dom";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-/**
- * Blogs and Forms mount with what the server already read. They fetch only
- * when it did not, and dev Strict Mode's second effect run must not count as
- * "the server did not": it used to, because a one-shot ref was spent by the
- * first run.
- */
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/blogs",

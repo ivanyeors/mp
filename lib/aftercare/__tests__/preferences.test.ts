@@ -8,12 +8,6 @@ import {
 } from "@/lib/aftercare/preferences";
 import { fakeAftercareDb, setAftercarePreferenceRpc, type AftercareFakeDb } from "./fake-db";
 
-/**
- * Aftercare preferences (CRM slice 13): the one write path, the Customer page's
- * view, and the derived STOP request. The SQL function itself is exercised
- * against Postgres when the migration is checked; here it is the fake's rpc.
- */
-
 let db: AftercareFakeDb;
 let client: ReturnType<typeof fakeAftercareDb>;
 const admin = () => client as unknown as SupabaseClient;

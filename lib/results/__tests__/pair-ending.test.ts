@@ -4,7 +4,6 @@ import { cascadeEnding, loadEndingPlan } from "../pair-ending";
 
 type Row = Record<string, unknown>;
 
-/** In-memory mp_config_responses with the eq/in filters the helper uses. */
 function fakeAdmin(rows: Row[]) {
   const from = () => {
     const filters: Array<(r: Row) => boolean> = [];

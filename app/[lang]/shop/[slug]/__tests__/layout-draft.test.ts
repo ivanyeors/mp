@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * A draft or archived slug 404s from the layout, not only the page: the page
- * streams inside loading.tsx, by when a 200 is already sent. The layout must
- * not emit its title, description, image and Product JSON-LD (price) either.
- */
-
 const h = vi.hoisted(() => ({
   product: null as Record<string, unknown> | null,
   buildPageMetadata: vi.fn((m: { title: string }) => ({ title: m.title })),

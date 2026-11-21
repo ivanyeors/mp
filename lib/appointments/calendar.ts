@@ -17,60 +17,38 @@ const CAL_BASE = "https://www.googleapis.com/calendar/v3";
 export type CalendarGuestEvent = {
   id: string;
   summary: string;
-  startsAt: string; // ISO
+  startsAt: string;
   endsAt: string;
   location: string | null;
   guestName: string;
-  phone: string; // E.164
-  /** Guest attendee email (booking flow adds one), null for staff-typed events. */
+  phone: string;
   email: string | null;
   appointmentType: AppointmentType;
   bookingUrl: string;
   typeLabel: string;
-  /** The guest answered No to the invite: the event stays, the guest won't come. */
   guestDeclined: boolean;
 };
 
-/**
- * Whether an appointment is still on: `live`, `declined` (the guest said No to
- * the invite, the event is still there), `cancelled` (deleted, Google keeps a
- * tombstone) or `gone` (purged, or never on this calendar).
- */
 export type EventState = "live" | "declined" | "cancelled" | "gone";
 
-/** Admin calendar view — includes events without parsed phone/guest. */
 export type CalendarRangeEvent = {
   id: string;
   summary: string;
-  /** Timed: ISO datetime. All-day: YYYY-MM-DD (GCal exclusive end). */
   startsAt: string;
   endsAt: string;
   allDay: boolean;
-  /** Known Mpillow appointment vs other GCal busy/block time. */
   kind: "appointment" | "busy";
-  /** Plain-text description from GCal (HTML stripped). */
   description: string | null;
   eventType: string | null;
   location: string | null;
-  /**
-   * The Location row the event was booked at: the id stamped on insert, else
-   * an exact address match for events from before stamping, else null (staff
-   * typed a venue by hand, or none).
-   */
   locationId: string | null;
   locationName: string | null;
   guestName: string | null;
   phone: string | null;
   appointmentType: AppointmentType | null;
   typeLabel: string | null;
-  /** Guest's Google RSVP. null for busy/blocked (non-appointment) ranges. */
   rsvp: "accepted" | "declined" | "tentative" | "needsAction" | null;
-  /**
-   * Google `status: "cancelled"`. Only surfaced for known appointments when the
-   * admin opts in (`settings.showCancelled`); drawn struck-through in the grid.
-   */
   cancelled: boolean;
-  /** The Re-adjustment booking behind this event (ADR 0024), from its private property. */
   readjustmentBookingId: string | null;
 };
 
@@ -93,18 +71,12 @@ type GCalEvent = {
   extendedProperties?: { private?: Record<string, string>; shared?: Record<string, string> };
 };
 
-/** The subset of a Location the admin calendar needs to name and colour an event. */
 export type LocationRef = { id: string; name: string; address: string | null };
 
 function normalizeAddress(a: string | null | undefined): string {
   return (a ?? "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-/**
- * Pure: which Location an event belongs to. The stamped id wins; an exact
- * (whitespace/case-insensitive) address match covers events booked before
- * stamping; anything else is unresolved.
- */
 export function resolveEventLocation(
   ev: Pick<GCalEvent, "location" | "extendedProperties">,
   locations: readonly LocationRef[],
@@ -119,7 +91,6 @@ export function resolveEventLocation(
   return locations.find((l) => normalizeAddress(l.address) === addr) ?? null;
 }
 
-/** Guest's Google RSVP: first non-self attendee's responseStatus. Missing/unknown → needsAction. */
 function guestRsvp(
   ev: GCalEvent,
 ): "accepted" | "declined" | "tentative" | "needsAction" {
@@ -127,7 +98,6 @@ function guestRsvp(
   return s === "accepted" || s === "declined" || s === "tentative" ? s : "needsAction";
 }
 
-/** Strip simple HTML from GCal descriptions for UI labels. */
 export function plainDescription(html: string | null | undefined): string | null {
   if (!html?.trim()) return null;
   const text = html
@@ -147,17 +117,10 @@ function isGCalBusyKind(ev: GCalEvent, matched: boolean): boolean {
   if (matched) return false;
   const t = (ev.eventType ?? "default").toLowerCase();
   if (t === "outofoffice" || t === "focustime") return true;
-  // Transparent ("show as free") still listed, but not a busy block for styling
   if (ev.transparency === "transparent") return false;
-  // Anything else on the calendar that isn't a known appointment → busy/block
   return true;
 }
 
-/**
- * Map one GCal events.list item for the admin mirror view. Skips incomplete
- * items. Cancelled items are skipped too unless `includeCancelled` — and even
- * then only known appointments survive: a cancelled random busy block is noise.
- */
 export function mapGCalItemToRangeEvent(
   ev: GCalEvent,
   settings: AppointmentSettings,
@@ -168,12 +131,10 @@ export function mapGCalItemToRangeEvent(
   if (cancelled && !opts.includeCancelled) return null;
 
   const eventType = (ev.eventType ?? "default").toLowerCase();
-  // Not blocks — skip noise from status/location calendars
   if (eventType === "workinglocation" || eventType === "birthday") return null;
 
   const matched = matchAppointmentType(ev.summary, settings);
   if (cancelled && !matched) return null;
-  // Free-time markers aren't blocked off
   if (!matched && ev.transparency === "transparent") return null;
 
   const allDay = Boolean(ev.start?.date && !ev.start.dateTime);
@@ -182,7 +143,7 @@ export function mapGCalItemToRangeEvent(
   if (allDay) {
     if (!ev.start?.date || !ev.end?.date) return null;
     startsAt = ev.start.date;
-    endsAt = ev.end.date; // GCal exclusive end date
+    endsAt = ev.end.date;
   } else {
     if (!ev.start?.dateTime || !ev.end?.dateTime) return null;
     startsAt = ev.start.dateTime;
@@ -213,7 +174,6 @@ export function mapGCalItemToRangeEvent(
     phone,
     appointmentType: matched?.type ?? null,
     typeLabel: matched?.label ?? null,
-    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → none.
     rsvp: busy ? null : guestRsvp(ev),
     cancelled,
     readjustmentBookingId: busy
@@ -226,14 +186,9 @@ function calendarId(): string {
   return process.env.GOOGLE_CALENDAR_ID?.trim() || "primary";
 }
 
-/**
- * FullCalendar with timeZone=Asia/Singapore sends `2026-07-05T00:00:00` (no offset).
- * Google Calendar API requires RFC3339 with Z or ±offset.
- */
 export function toGCalRfc3339(iso: string): string {
   const s = iso.trim();
   if (/[zZ]$|[+-]\d{2}:\d{2}$/.test(s)) return s;
-  // Floating SGT wall time from our admin calendar
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return `${s}+08:00`;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00+08:00`;
   return s;
@@ -252,15 +207,12 @@ async function calFetch(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
-/** Prefer Google's message; call out disabled Calendar API. */
 export function formatGoogleCalendarError(status: number, body: string): string {
   let message = body.slice(0, 400);
   try {
     const json = JSON.parse(body) as { error?: { message?: string } };
     if (json.error?.message) message = json.error.message;
-  } catch {
-    /* keep raw */
-  }
+  } catch {}
   if (
     status === 403 &&
     /Calendar API has not been used|has been disabled|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(
@@ -276,14 +228,12 @@ export function formatGoogleCalendarError(status: number, body: string): string 
   return `Calendar list failed (${status}): ${message}`;
 }
 
-/** Extract phone from description / summary / location free text. */
 export function extractPhoneFromEvent(ev: {
   summary?: string;
   description?: string;
   location?: string;
 }): string | null {
   const blob = [ev.description, ev.summary, ev.location].filter(Boolean).join("\n");
-  // Prefer +65 / 65 forms, then bare 8-digit mobiles
   const patterns = [
     /\+65[\s-]?\d{4}[\s-]?\d{4}/,
     /\b65[\s-]?\d{4}[\s-]?\d{4}\b/,
@@ -299,7 +249,6 @@ export function extractPhoneFromEvent(ev: {
   return null;
 }
 
-/** Guest display name: first non-self attendee, else summary before " - ", else "Guest". */
 export function extractGuestName(ev: GCalEvent): string | null {
   const attendee = (ev.attendees ?? []).find((a) => !a.self);
   if (attendee?.displayName?.trim()) return attendee.displayName.trim();
@@ -308,13 +257,11 @@ export function extractGuestName(ev: GCalEvent): string | null {
     if (local) return local;
   }
   const summary = ev.summary?.trim() ?? "";
-  // "Name - Mpillow Customisation" style
   const dash = summary.split(/\s[-–—]\s/);
   if (dash.length >= 2 && dash[0]!.trim().length >= 2) return dash[0]!.trim();
   return null;
 }
 
-/** Guest email: first non-self attendee's address, else an "Email: x" line in the description. */
 export function extractGuestEmail(ev: GCalEvent): string | null {
   const attendee = (ev.attendees ?? []).find((a) => !a.self && a.email?.trim());
   if (attendee?.email) return attendee.email.trim().toLowerCase();
@@ -344,14 +291,13 @@ export async function listDayEvents(
   return listGuestEvents(timeMin, timeMax, settings);
 }
 
-/** Map one GCal item to a guest event (needs a parsed phone + name), else null. */
 export function mapGCalItemToGuestEvent(
   ev: GCalEvent,
   settings: AppointmentSettings,
 ): CalendarGuestEvent | null {
   if (!ev.id) return null;
   if (ev.status === "cancelled") return null;
-  if (ev.start?.date && !ev.start.dateTime) return null; // all-day
+  if (ev.start?.date && !ev.start.dateTime) return null;
   if (!ev.start?.dateTime || !ev.end?.dateTime) return null;
 
   const phone = extractPhoneFromEvent(ev);
@@ -375,16 +321,11 @@ export function mapGCalItemToGuestEvent(
   };
 }
 
-/** Pure: one GCal item's EventState. */
 export function eventStateOf(ev: GCalEvent): EventState {
   if (ev.status === "cancelled") return "cancelled";
   return guestRsvp(ev) === "declined" ? "declined" : "live";
 }
 
-/**
- * Timed events with a parsable guest (name + phone) between two instants.
- * Used by the reminder cron (one day) and the contacts sweep (next N days).
- */
 export async function listGuestEvents(
   timeMinIso: string,
   timeMaxIso: string,
@@ -425,8 +366,6 @@ export async function listRangeEvents(
     orderBy: "startTime",
     maxResults: "250",
   });
-  // Google keeps a deleted event's fields until it is purged, so cancelled
-  // appointments still carry summary/start/end and can be drawn struck-through.
   if (settings.showCancelled) qs.set("showDeleted", "true");
   const res = await calFetch(`/calendars/${id}/events?${qs}`);
   if (!res.ok) {
@@ -489,7 +428,6 @@ export async function patchEventTimes(
   }
 }
 
-/** Insert a booking event (events.insert). Returns the new event id. */
 // ponytail: sendUpdates=all only mails the attendee because the token is a user-delegated
 // OAuth grant (admin@mpillow.com refresh token, per google-auth.ts). A bare service-account
 // JWT 403s forbiddenForServiceAccounts here — upgrade path is domain-wide delegation with an
@@ -514,13 +452,11 @@ export async function deleteEvent(eventId: string): Promise<void> {
   const res = await calFetch(`/calendars/${id}/events/${eid}?sendUpdates=all`, {
     method: "DELETE",
   });
-  // 404/410 = already gone — treat as success (idempotent)
   if (!res.ok && res.status !== 404 && res.status !== 410) {
     throw new Error(`events.delete failed (${res.status}): ${await res.text()}`);
   }
 }
 
-/** One event's EventState, read fresh. */
 export async function getEventState(eventId: string): Promise<EventState> {
   const id = encodeURIComponent(calendarId());
   const eid = encodeURIComponent(eventId);
@@ -532,10 +468,6 @@ export async function getEventState(eventId: string): Promise<EventState> {
   return eventStateOf((await res.json()) as GCalEvent);
 }
 
-/**
- * Every event changed since `updatedMinIso`, deleted ones included — what a
- * push notification ("something changed") is followed up with.
- */
 export async function listChangedEventStates(
   updatedMinIso: string,
 ): Promise<Array<{ id: string; state: EventState }>> {
@@ -563,11 +495,6 @@ export async function listChangedEventStates(
   return out;
 }
 
-/**
- * Ask Google to POST to `address` whenever an event on the calendar changes
- * (Calendar push notifications). Returns the channel's resource id and the
- * expiry Google granted, which may be shorter than asked.
- */
 export async function watchCalendarEvents(input: {
   channelId: string;
   token: string;
@@ -596,7 +523,6 @@ export async function watchCalendarEvents(input: {
   return { resourceId: json.resourceId, expirationMs };
 }
 
-/** Stop a push channel. Unknown or already-expired channels are not an error. */
 export async function stopCalendarChannel(channelId: string, resourceId: string): Promise<void> {
   const res = await calFetch("/channels/stop", {
     method: "POST",

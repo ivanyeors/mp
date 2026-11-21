@@ -1,13 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 
-/**
- * The Journey composer's Email and WhatsApp modes (PRD-customer-page-journey
- * slice 05). Claude drafts only when a Staff member presses *Generate
- * suggestion* (owner, 2026-11-15): opening a mode, or choosing what the
- * message is about, calls nothing.
- */
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/customers/c1",
 }));

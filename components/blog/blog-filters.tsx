@@ -18,9 +18,6 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
     const activeLabel = searchParams?.get("label");
 
     const [query, setQuery] = useState(urlQuery);
-    // When ?q= changes to something the box did not send (Back, Forward, a
-    // link), the box follows it. The URL catching up with what the box sent
-    // leaves anything typed since alone.
     const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
     const [sent, setSent] = useState(urlQuery);
     if (urlQuery !== seenUrlQuery) {
@@ -46,14 +43,12 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
     const pushQuery = useDebouncedCallback((q: string) => go(q, activeLabel), 300);
 
     const toggleLabel = (label: string) => {
-        // A search still waiting to be written goes with the label, not after it.
         pushQuery.cancel();
         go(query, activeLabel === label ? null : label);
     };
 
     return (
         <div className="flex flex-col gap-6 mb-12">
-            {/* Search Bar */}
             <div className="relative max-w-md mx-auto w-full">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Search className="h-5 w-5 text-muted-foreground" />
@@ -70,7 +65,6 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
                 />
             </div>
 
-            {/* Labels Filter */}
             {availableLabels.length > 0 && (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                     {availableLabels.map((label) => {

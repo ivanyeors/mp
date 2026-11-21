@@ -1,6 +1,5 @@
 import { markdownToPlainText } from "@/lib/seo/meta-description";
 
-/** URL fragment for a heading: lowercase words joined by hyphens, letters and digits in any script. */
 export function headingId(text: string): string {
   return text
     .toLowerCase()
@@ -12,7 +11,6 @@ export function headingId(text: string): string {
 
 export type BlogHeading = { id: string; text: string };
 
-/** The post's `##` headings, in order: the table of contents. */
 export function extractHeadings(body: string): BlogHeading[] {
   const out: BlogHeading[] = [];
   for (const line of body.split("\n")) {
@@ -26,12 +24,6 @@ export function extractHeadings(body: string): BlogHeading[] {
 
 const FAQ_HEADING = /^##\s+(frequently asked questions|faqs?|常见问题)\s*$/i;
 
-/**
- * Question/answer pairs from the post's FAQ section: a `## Frequently asked
- * questions` heading whose `### Question?` subheadings each carry their answer,
- * up to the next `##`. Feeds FAQPage JSON-LD, so the markup always matches
- * what the reader sees.
- */
 export function extractFaq(body: string): { question: string; answer: string }[] {
   const lines = body.split("\n");
   const start = lines.findIndex((line) => FAQ_HEADING.test(line.trim()));

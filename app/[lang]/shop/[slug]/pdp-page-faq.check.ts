@@ -1,7 +1,3 @@
-/**
- * Slice 06 self-check: PDP auto Page FAQ embed for product:{id}.
- * Run: npx tsx --env-file=.env.local app/[lang]/shop/[slug]/pdp-page-faq.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +13,6 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Wiring: accordion in page client slot; FAQPage JSON-LD in layout (crawlable) ---
 const pageSrc = read("app/[lang]/shop/[slug]/page.tsx");
 assert.match(pageSrc, /PageFaqSectionView|PageFaqSection/);
 assert.match(pageSrc, /productSurfaceKey\(product\.id\)/);
@@ -28,7 +23,7 @@ assert.match(pageSrc, /withJsonLd=\{false\}/);
 const clientSrc = read("app/[lang]/shop/[slug]/product-detail-client.tsx");
 assert.match(clientSrc, /pageFaq\?:/);
 assert.match(clientSrc, /\{pageFaq\}/);
-const belowFold = clientSrc.match(/\{\/\* Below fold \*\/\}[\s\S]*?\{relatedProducts/)?.[0] ?? "";
+const belowFold = clientSrc.match(/<Tabs ref=\{detailTabsRef\}[\s\S]*?\{relatedProducts/)?.[0] ?? "";
 assert.match(belowFold, /<\/Tabs>/);
 assert.match(belowFold, /\{pageFaq\}/);
 assert.ok(
@@ -42,7 +37,6 @@ assert.match(layoutSrc, /buildFaqPageJsonLd/);
 assert.match(layoutSrc, /JsonLdScript/);
 assert.match(layoutSrc, /productSurfaceKey/);
 
-// Empty set → no FAQ chrome
 assert.equal(PageFaqSectionView({ title: "FAQs", items: [], locale: "en-US" }), null);
 
 async function main() {
@@ -64,7 +58,6 @@ async function main() {
     new RegExp(set!.items[0]!.question.replace(/[?*+^${}()|[\]\\]/g, "\\$&"))
   );
 
-  // Locale matches page locale
   const zh = await getPageFaq(surfaceKey, "zh-CN");
   assert.ok(zh?.items[0]?.question);
   assert.notEqual(zh!.items[0]!.question, set!.items[0]!.question);
@@ -79,12 +72,10 @@ async function main() {
     new RegExp(set!.items[0]!.question.replace(/[?*+^${}()|[\]\\]/g, "\\$&"))
   );
 
-  // Empty product surface → no FAQ section / no FAQPage JSON-LD
   const emptyKey = productSurfaceKey("00000000-0000-4000-8000-000000000000");
   const empty = await PageFaqSection({ surfaceKey: emptyKey, locale: "en-US" });
   assert.equal(empty, null);
 
-  // Unseeded / no-items product (if any non-main slug exists without a set)
   const other = await getProductBySlug("mpillow-premium");
   if (other?.id) {
     const premium = await getPageFaq(productSurfaceKey(other.id), "en-US");

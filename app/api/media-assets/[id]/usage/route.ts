@@ -5,7 +5,6 @@ import { listAssetUsages } from "@/lib/media/image-usages";
 
 export const runtime = "nodejs";
 
-/** GET /api/media-assets/[id]/usage — attachment list for one Asset. */
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },

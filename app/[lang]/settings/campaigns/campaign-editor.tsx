@@ -142,10 +142,8 @@ import { KeepSendingCard } from "./keep-sending-card";
 import { CampaignResultsPanel } from "./results-panel";
 import { keepSendingBlocker } from "@/lib/email-campaigns/keep-sending";
 
-/** A Segment to send to; `customersHref` opens its list, for Staff holding `customers`. Never its filters. */
 export type SegmentOption = { id: string; name: string; customersHref?: string | null };
 
-/** `?before=`: the draft `slot.before` follows the email just saved; a refusal is said, and the email stays saved. */
 async function slotInFront(id: string, slot: SlotBefore): Promise<void> {
     const res = await moveFunnelEmail({ campaignId: id, stage: slot.stage, after: slot.after, before: slot.before.id }).catch(
         (err: unknown) => ({ ok: false as const, error: err instanceof Error ? err.message : "It could not be moved.", moved: [] }),
@@ -154,19 +152,14 @@ async function slotInFront(id: string, slot: SlotBefore): Promise<void> {
     else toast.error(`Saved. “${slot.before.name}” did not move after it: ${res.error}`, { duration: 12_000 });
 }
 
-/** No wanted Segment found: one object, so the editor's memo holds. */
 const NOTHING_FOUND: FoundSegments = {};
 
-/** The Clear all toast, one at a time: a second Clear all replaces it, Save dismisses it. Convert to blocks shares it. */
 const CLEAR_ALL_TOAST = "campaign-clear-all";
 
-/** The palette's first tab, Blocks; Starters (slice 08) and Variables (slice 13) follow it, built with the email. */
 const PALETTE = [blockPaletteTab(CAMPAIGN_BLOCKS)];
 
-/** The Start panel of an empty email (slice 08), loaded with the first one, not with the page; the server renders it in place. */
 const StartPanel = lazy(() => import("./start-panel").then((m) => ({ default: m.StartPanel })));
 
-/** What shows in the Start panel's place while it loads: its heading, and its four cards to come. */
 const START_PANEL_LOADING = (
     <div aria-busy="true" className="space-y-4 text-left">
         <p className="text-sm font-medium text-foreground">Start the email</p>
@@ -178,31 +171,23 @@ const START_PANEL_LOADING = (
     </div>
 );
 
-/** A campaign written before blocks has no Variables: its subject and preview line are words alone. */
 const NO_VARIABLES: readonly RichTextVariable[] = [];
 
-/** How long typing pauses before the preview renders again. */
 const PREVIEW_AFTER_MS = 400;
 
-/** Past this, a subject may be cut off on a phone; a preview line reads best in this range (PRD *Research*). */
 const SUBJECT_PHONE = 60;
 const PREVIEW_LINE_RANGE = [40, 90] as const;
 
-/** AI writing off, until the page says otherwise. */
 const AI_OFF: AiWritingAvailability = { on: false, configured: false };
 
-/** While one draft is written, another can't start. */
 const AI_BUSY = "Claude is writing. Wait for it, or press Stop.";
 
-// ✨ Generate's popover, its bar and its ideas load after the page, not with it (slice 09).
 const editorAi = () => import("./ai/editor-ai");
 const GeneratePopover = lazy(() => editorAi().then((m) => ({ default: m.GeneratePopover })));
 const DraftBar = lazy(() => editorAi().then((m) => ({ default: m.DraftBar })));
 const DraftIdeas = lazy(() => editorAi().then((m) => ({ default: m.DraftIdeas })));
-// ✨ Refine's ideas under the subject and the preview line too (slice 10).
 const IdeasPanel = lazy(() => editorAi().then((m) => ({ default: m.IdeasPanel })));
 
-/** What a block's card says while Claude's words in it are unread. */
 const DRAFTED_WITH_AI = "Drafted with AI";
 
 const n = (v: number) => v.toLocaleString("en-SG");
@@ -215,9 +200,7 @@ type WaveProgress = {
     skipped: number;
     running: boolean;
     stopped: string | null;
-    /** Staff pressed Stop. */
     stoppedByStaff: boolean;
-    /** Eligible people the wave did not include, when it started. */
     waiting: number;
     errors: string[];
 };
@@ -230,7 +213,6 @@ const UNREAD_READINESS = (detail: string): CampaignReadiness => ({
     sender: { from: null, replyTo: null },
 });
 
-/** A field's live count, amber with why once it runs long. */
 function CharCount({ value, warn, ok, id }: { value: string; warn: string | null; ok?: string; id: string }) {
     return (
         <p id={id} className={cn("text-xs", warn ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground")} aria-live="polite">
@@ -239,30 +221,6 @@ function CharCount({ value, warn, ok, id }: { value: string; warn: string | null
     );
 }
 
-/**
- * Admin Panel → Email campaigns → one campaign (PRD-email-marketing): write it
- * with a live preview, send a test, check what sending needs, then send in
- * waves. A wave is sent from this page a batch at a time, so it stays open
- * while it sends; closing it stops the wave, and the next one picks up the
- * people still to send to.
- *
- * Two tabs (PRD-campaign-email-editor slice 04). **Write** is the shared
- * block editor (components/block-editor/): the palette, the email with its
- * blocks, and the server-rendered preview with its inbox row. Every change,
- * Clear all and Convert to blocks included, is one step of the editor's
- * history (⌘Z, ⇧⌘Z); ⌘S saves; leaving with unsaved changes asks first,
- * and a crashed tab offers them back. **Send** is the send flow as it was
- * (PRD-campaign-send-flow): a test, the checklist, a wave no bigger than
- * today's room, a confirmation that restates the send, and each wave's
- * numbers against the pause lines.
- *
- * Placeholders, not prefilled words (slice 01): an empty field shows its
- * hint, never saved or sent. An email that says nothing yet offers the Start
- * panel (slice 08): blank, Write with AI, a Starter or a past campaign; and
- * the palette's Starters tab drags a Starter's blocks in anywhere. A
- * campaign written before blocks (slice 03) keeps its message box and
- * button, and an unsent one offers *Convert to blocks*.
- */
 export function CampaignEditor({
     campaign,
     draft: initial,
@@ -282,51 +240,32 @@ export function CampaignEditor({
     canCreateSegments = false,
     slotBefore = null,
 }: {
-    /** Null for a new one. */
     campaign: Campaign | null;
     draft: CampaignDraft;
     stats: CampaignStats | null;
-    /** This campaign's waves, oldest first or in any order. */
     waves?: CampaignWaveStats[];
     segments: SegmentOption[];
-    /** The signed-in Staff email: the test's default address. */
     staffEmail: string;
-    /** Points are live (`pointsLive`): *Points balance* can be put in (slice 13). */
     pointsLive?: boolean;
-    /** AI writing on, and Claude set up (slice 09): off shows no ✨ at all. */
     ai?: AiWritingAvailability;
-    /** Emails the daily job's Wave sent today (PRD-campaign-audiences slice 10). */
     keptToday?: number;
-    /** A started campaign's results by stage (slice 11); null when not read. */
     results?: CampaignResults | null;
-    /** Open on Results (`?tab=results`, the Email funnel's links); only once it has started. */
     initialTab?: "results";
-    /** The server's match of each wanted Segment (lib/email-campaigns/wanted-segment.ts): every offered Playbook's, and the address's. */
     found?: FoundSegments;
-    /** The Segment New campaign's address wants (`?starter=`, `?after=`, `?stage=`; PRD-email-funnel slices 04 and 06). */
     wanted?: WantedSegment | null;
-    /** A word beside the Audience from the address (`?stage=lost`). */
     audienceNote?: string | null;
-    /** The page could not read the Segments: whether a wanted one exists is not known. */
     segmentsUnread?: boolean;
-    /** May create Segments (`customers-edit`, the Segments' own create): *Create the Segment* for a wanted one that is missing. */
     canCreateSegments?: boolean;
-    /** `?before=` (PRD-email-funnel slice 07): on the first save, this draft is moved to follow the new email. */
     slotBefore?: SlotBefore | null;
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
     const locked = Boolean(campaign?.lockedAt);
-    // The Segments, with any made here by *Create the Segment*.
     const [madeSegments, setMadeSegments] = useState<SegmentOption[]>([]);
     const segments = useMemo(() => [...givenSegments, ...madeSegments.filter((m) => !givenSegments.some((g) => g.id === m.id))], [givenSegments, madeSegments]);
-    // What the server found, with any found or made here since.
     const [madeFound, setMadeFound] = useState<Record<string, string>>({});
     const found = useMemo(() => ({ ...givenFound, ...madeFound }), [givenFound, madeFound]);
-    // ── The draft ──────────────────────────────────────────────────────────
-    // The draft is the history's: the email's words, its blocks and the greeting, and who it goes to; with them, the
-    // wanted Segment and the address's note, so Undo and Redo always show the ones the draft is for (PRD-email-funnel).
     const history = useEditorHistory<EditorDraft>(() => ({
         wanted: initialWanted,
         audienceNote: initialNote,
@@ -346,29 +285,22 @@ export function CampaignEditor({
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
         history.set((e) => ({ ...e, button: { ...e.button, ...patch } }), { burst });
     const editContent = (next: CampaignContent, burst?: string) => history.set((e) => ({ ...e, content: next }), { burst });
-    // A block a person changes is no longer *Drafted with AI* (slice 09); a block deleted takes its 中文 words with it (slice 17).
     const setBlocks = (blocks: EmailBlock[], burst?: string) =>
         history.set((e) => (e.content ? { ...e, content: withoutGoneChinese(withEditedBlocks(e.content, blocks)) } : e), { burst });
-    // In 中文 (slice 17) an edit changes the blocks' 中文 words, and nothing else.
     const setChineseBlocks = (blocks: EmailBlock[], burst?: string) =>
         history.set((e) => (e.content ? { ...e, content: withChineseBlocks(e.content, blocks) } : e), { burst });
     const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });
 
-    // Who to send to, chosen by hand: the wanted Segment and the address's note no longer apply.
     const byHand = { wanted: null, audienceNote: null };
     const setAudience = (v: CampaignAudience) => edit({ audience: v, ...byHand });
-    // The Segment it is sent to is never one it leaves out (slice 06).
     const setSegmentId = (v: string) => edit({ segmentId: v, excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v), ...byHand });
     const leaveOut = (v: string) => edit({ excludeSegmentIds: [...excludeSegmentIds, v].slice(0, MAX_EXCLUDED_SEGMENTS) });
     const keepIn = (v: string) => edit({ excludeSegmentIds: excludeSegmentIds.filter((x) => x !== v) });
     const segmentName = (id: string) => segments.find((s) => s.id === id)?.name ?? "(archived Segment)";
-    // What *Leave out* can still add: not the Segment it is sent to, nor one already left out.
     const leaveOutChoices = segments.filter(
         (s) => !excludeSegmentIds.includes(s.id) && !(audience === "segment" && s.id === segmentId),
     );
-    // The chosen Segment's Customers list (PRD-crm-retention-loop slice 02).
     const chosenSegmentHref = segments.find((s) => s.id === segmentId)?.customersHref ?? null;
-    // What the email says, as Clear all and Undo see it.
     const words: CampaignWords = useMemo(
         () => ({ name, subject, preheader, body, button: draft.button, content }),
         [name, subject, preheader, body, draft.button, content],
@@ -379,7 +311,6 @@ export function CampaignEditor({
             name,
             subject,
             preheader,
-            // A block campaign is its blocks alone.
             body: content ? "" : body,
             content,
             greeting,
@@ -402,27 +333,21 @@ export function CampaignEditor({
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    // Each save runs the email's checks again (slice 11), which show beside each block as saved.
     const [saves, setSaves] = useState(0);
     const [savedContent, setSavedContent] = useState<CampaignContent | null>(campaign?.content ?? null);
-    // The palette's open tab on a laptop: Blocks, or Variables (slice 13).
     const [paletteTab, setPaletteTab] = useState("blocks");
-    // The email's Language (slice 17): English, or its 中文 version, whose words change and whose layout is English's.
     const [emailLanguage, setEmailLanguage] = useState<Locale>(DEFAULT_LOCALE);
     const version = chineseVersionOf(content);
     const inChinese = Boolean(content) && emailLanguage === CHINESE;
 
-    // The step Clear all (or Convert to blocks) made, and the words it took, until Undo puts them back or Save makes them gone.
     const undoRef = useRef<{ words: CampaignWords; wanted?: WantedSegment | null; step: number | null } | null>(null);
     const latest = useRef(history);
     useEffect(() => {
         latest.current = history;
-        // The step a Clear all just made: the toast's Undo is the history's while nothing has changed since.
         if (undoRef.current && undoRef.current.step === null) undoRef.current.step = history.step;
     });
     useEffect(() => () => void toast.dismiss(CLEAR_ALL_TOAST), []);
 
-    // A new campaign's id once its first Save made it: until the page for it opens, a second Save changes it rather than making another.
     const createdId = useRef<string | null>(null);
     const save = useCallback(async (): Promise<string | null> => {
         setSaving(true);
@@ -432,9 +357,7 @@ export function CampaignEditor({
             if (!res.ok) {
                 setSaveError(res.error);
                 setFieldErrors(res.fieldErrors ?? {});
-                // A fallback's error shows under the Variables palette's chips (slice 13): open it there.
                 if (Object.keys(res.fieldErrors ?? {}).some((k) => k.startsWith("content.fallbacks."))) setPaletteTab("variables");
-                // A 中文 word's shows on its block in 中文 (slice 17).
                 if (hasChineseErrors(res.fieldErrors ?? {})) setEmailLanguage(CHINESE);
                 return null;
             }
@@ -442,13 +365,11 @@ export function CampaignEditor({
             setSavedKey(JSON.stringify(input));
             setSavedContent(input.content ?? null);
             setSaves((s) => s + 1);
-            // After a Save, Clear all's Undo is gone.
             undoRef.current = null;
             toast.dismiss(CLEAR_ALL_TOAST);
             if (!campaign) {
                 const first = createdId.current === null;
                 createdId.current = res.id;
-                // Slotted in: the draft it goes in front of now follows it. Refused, the email is still saved, and says so.
                 if (first && slotBefore) await slotInFront(res.id, slotBefore);
                 router.replace(withLocale(`/settings/campaigns/${res.id}`, locale));
             } else router.refresh();
@@ -458,20 +379,16 @@ export function CampaignEditor({
         }
     }, [campaign, input, locale, router, slotBefore]);
 
-    // ── Write: tabs, selection, panes ──────────────────────────────────────
     const [tab, setTab] = useState<"write" | "send" | "results">(initialTab === "results" && locked ? "results" : "write");
     const [selected, setSelected] = useState<string | null>(null);
     const [pane, setPane] = useState<"write" | "preview">("write");
     const [addOpen, setAddOpen] = useState(false);
-    // The header and Write: what ⌘Z and ⇧⌘Z reach. The Send tab's fields keep the browser's own undo.
     const editorArea = useRef<HTMLDivElement>(null);
-    /** From a check that names a block (slice 11): the Write tab, that block selected, in view and focused; in 中文 for the 中文 version's (slice 17). */
     const goToBlock = (id: string, language: Locale = DEFAULT_LOCALE) => {
         setTab("write");
         setPane("write");
         setEmailLanguage(language);
         setSelected(id);
-        // Once the Write tab shows again.
         requestAnimationFrame(() => {
             const card = editorArea.current?.querySelector<HTMLElement>(`li[data-block-id="${id}"]`);
             card?.scrollIntoView?.({ block: "center" });
@@ -479,10 +396,8 @@ export function CampaignEditor({
         });
     };
 
-    // ── Variables (slice 13): what every text input offers, and the fallbacks the email needs ──
     const variables = useMemo(() => campaignVariables({ pointsLive }), [pointsLive]);
     const lineVariables = content ? variables : NO_VARIABLES;
-    // In 中文 (slice 17) the subject and preview line are the 中文 version's.
     const subjectShown = inChinese ? (version?.subject ?? "") : subject;
     const preheaderShown = inChinese ? (version?.preheader ?? "") : preheader;
     const subjectValue = useMemo(() => richTextFromWords(subjectShown, lineVariables), [subjectShown, lineVariables]);
@@ -491,17 +406,14 @@ export function CampaignEditor({
         inChinese ? editChinese((c) => withChineseLines(c, { [field]: words }, { subject, preheader }), burst && `${burst}-zh`) : edit({ [field]: words }, burst);
     const usedVariables = useMemo(() => variablesInEmail({ subject, preheader, content, greeting }), [subject, preheader, content, greeting]);
 
-    // ── The preview ────────────────────────────────────────────────────────
     const [device, setDevice] = useState<PreviewDevice>("desktop");
     const [scheme, setScheme] = useState<PreviewScheme>("light");
-    // A block campaign's Variables as a sample customer's, or every fallback (slice 13).
     const [previewAs, setPreviewAs] = useState<PreviewAs>("customer");
     const [preview, setPreview] = useState<{ subject: string; html: string; from: string | null } | null>(null);
     const [previewError, setPreviewError] = useState<string | null>(null);
     useEffect(() => {
         let live = true;
         const timer = setTimeout(async () => {
-            // In 中文 (slice 17), the 中文 email.
             const res = await previewCampaign(input, { forceDark: scheme === "dark", previewAs, ...(inChinese ? { language: CHINESE } : {}) }).catch((e: unknown) => ({
                 ok: false as const,
                 error: String(e),
@@ -520,7 +432,6 @@ export function CampaignEditor({
         };
     }, [input, scheme, previewAs, inChinese]);
 
-    // ── Readiness ──────────────────────────────────────────────────────────
     const campaignId = campaign?.id;
     const [readiness, setReadiness] = useState<CampaignReadiness | null>(null);
     const checks = readiness?.checks ?? null;
@@ -530,13 +441,11 @@ export function CampaignEditor({
         (fresh = false) => checkCampaignReadiness(campaignId, { fresh }).catch((e: unknown) => UNREAD_READINESS(String(e))),
         [campaignId],
     );
-    // *Check again* asks every link again, rather than reuse the last ten minutes' answers.
     const runChecks = async () => {
         setChecking(true);
         setReadiness(await readChecks(true));
         setChecking(false);
     };
-    // On opening, and after each save: the email's checks are of the email as saved.
     useEffect(() => {
         if (!campaignId) return;
         let live = true;
@@ -546,13 +455,9 @@ export function CampaignEditor({
         };
     }, [campaignId, readChecks, saves]);
     const pauseFailing = checks?.some((c) => c.key === "pause" && !c.ok) ?? false;
-    // The checked wave's plan (see *Waves* below). Its fit checks (PRD-campaign-audiences slice 09) are advice
-    // about who it goes to, listed with the email's own until the plan is checked again.
     const [plan, setPlan] = useState<Extract<WaveAnswer, { ok: true }> | null>(null);
     const advice = useMemo(() => [...(readiness?.advice ?? []), ...(plan?.fit ?? [])], [readiness, plan]);
 
-    // What the email's checks say of each block, beside it: only while the block is as it was saved, and checked.
-    // In 中文 (slice 17), the 中文 version's, while its words are as saved; its badges already say what isn't translated.
     const blockWarnings = useMemo(() => {
         const out: Record<string, string[]> = {};
         if (!readiness || !content) return out;
@@ -561,7 +466,6 @@ export function CampaignEditor({
             new Map((c?.blocks ?? []).map((b) => [b.id, JSON.stringify(inChinese ? [b, chineseVersionOf(c)?.blocks[b.id] ?? null] : b)]));
         const saved = asSaved(savedContent);
         const now = asSaved(content);
-        // A block marked *Drafted with AI* when saved, and kept since, says so no more. In 中文, its 中文 words' mark.
         const marked = new Set(inChinese ? chineseAiDrafted(content) : (content.aiDrafted ?? []));
         for (const c of [...readiness.checks.filter(isEmailCheck).filter((c) => !c.ok && c.key !== "chinese"), ...advice]) {
             for (const i of c.issues) {
@@ -572,9 +476,7 @@ export function CampaignEditor({
         return out;
     }, [readiness, advice, content, savedContent, inChinese]);
 
-    // ── Test ───────────────────────────────────────────────────────────────
     const [testTo, setTestTo] = useState(staffEmail);
-    // *Send a test* asks which language, once there is a 中文 version (slice 17).
     const [testLanguage, setTestLanguage] = useState<Locale>(DEFAULT_LOCALE);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -592,7 +494,6 @@ export function CampaignEditor({
             else setTestResult({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}. Check the inbox, and the spam folder.` });
             if (res.ok && res.sent > 0) {
                 setLastTest({ sent: res.sent, at: new Date().toISOString() });
-                // A test uses the plan's room too.
                 void readChecks().then(setReadiness);
             }
         } finally {
@@ -600,8 +501,6 @@ export function CampaignEditor({
         }
     };
 
-    // ── Waves ──────────────────────────────────────────────────────────────
-    // Until Staff type a size, it follows today's room (and 50 for a first wave).
     const firstWave = !campaign?.lockedAt;
     const [sizeInput, setSizeInput] = useState<number | null>(null);
     const room = allowance?.remaining ?? null;
@@ -614,7 +513,6 @@ export function CampaignEditor({
     const [progress, setProgress] = useState<WaveProgress | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const stopRef = useRef(false);
-    // Sampled once for the life of the page, as formatAdminRelative's callers do.
     const [nowMs] = useState(() => Date.now());
     const rampEnds = rampUntil(waves, nowMs);
 
@@ -626,7 +524,6 @@ export function CampaignEditor({
             const res = await planCampaignWave(campaign.id, { size, retryFailed, resume }, false);
             if (res.ok) {
                 setPlan(res);
-                // The plan's checks are the freshest: show them in Ready to send? too.
                 setReadiness(res.readiness);
             } else setPlanError(res.error);
         } finally {
@@ -641,10 +538,7 @@ export function CampaignEditor({
         return () => window.removeEventListener("beforeunload", warn);
     }, [progress?.running]);
 
-    /** How many the checked plan sends now: the eligible, less who waits for later waves. */
     const planned = plan ? plan.plan.eligible - plan.waiting : 0;
-    // Who gets which language (slice 17), from the saved campaign the plan is of.
-    // Readers of Chinese with no 中文 version are a fit check's (slice 09), which says what would fix it.
     const languageLine = plan && !plan.fit.some((c) => c.key === "fit_chinese")
         ? languageSummary({
               eligible: plan.plan.eligible,
@@ -654,7 +548,6 @@ export function CampaignEditor({
               hasChinese: Boolean(chineseVersionOf(campaign?.content)),
           })
         : null;
-    // Who it goes to, in words: the confirmation's and Keep sending's.
     const audienceWords =
         CAMPAIGN_AUDIENCE_LABEL[audience] +
         (audience === "segment" ? `: ${segments.find((x) => x.id === segmentId)?.name ?? "a segment"}` : "") +
@@ -742,7 +635,6 @@ export function CampaignEditor({
         void runChecks();
     };
 
-    // ── Archive and duplicate ──────────────────────────────────────────────
     const [busy, setBusy] = useState(false);
     const archive = async () => {
         if (!campaign || !window.confirm(`Archive "${campaign.name}"? It leaves the list; what was sent stays recorded.`)) return;
@@ -752,9 +644,7 @@ export function CampaignEditor({
         if (res.ok) router.push(to("/settings/campaigns"));
         else setSaveError(res.error);
     };
-    /** A copy of campaign `id` as a new draft, opened: Duplicate, and the Start panel's *A past campaign* (slice 08). */
     const copyOf = async (id: string) => {
-        // The copy is of what is saved: changes not saved yet would be left behind.
         if (!guard.confirmLeave()) return;
         setBusy(true);
         const res = await duplicateCampaign(id);
@@ -768,15 +658,10 @@ export function CampaignEditor({
     const ready = checks?.every((c) => c.ok || (c.key === "pause" && resume)) ?? false;
     const editable = !locked && !sending;
 
-    // ── ✨ Generate (slice 09): Claude writes into the email, as one change; only Staff save or send ──
     const aiDraft = useAiDraft({ history, campaignId: campaign?.id ?? null });
-    // ✨ Refine (slice 10): ideas under the subject and preview line, and a rewrite beside a heading or text block.
     const refine = useAiRefine({ history, campaignId: campaign?.id ?? null });
-    // ✨ Translate to Chinese (slice 17): the 中文 version, or what changed, put in as one change; it opens 中文.
     const translate = useAiTranslate({ history, campaignId: campaign?.id ?? null, onTranslated: () => setEmailLanguage(CHINESE) });
-    // One ask at a time: while Claude writes anything, the other ✨ buttons wait.
     const aiBusy = aiDraft.working || refine.working !== null || translate.working !== null;
-    // The brief's popover, under ✨ Generate; anything on the page may open it (slice 08's *✨ Write with AI*).
     const [generateOpen, setGenerateOpen] = useState(false);
     const aiHere = ai.on && editable && Boolean(content);
     const titleBlocker = draftBlocker(subject, name);
@@ -805,7 +690,6 @@ export function CampaignEditor({
               },
           }
         : null;
-    /** *✨ Suggest subject lines* or *preview lines*, in the field's label row (slice 10). */
     const suggestButton = (field: IdeasField) => {
         const kind = IDEAS_KIND[field];
         return (
@@ -827,10 +711,8 @@ export function CampaignEditor({
     const aiDrafted = content?.aiDrafted;
     const badges = useMemo(() => Object.fromEntries((aiDrafted ?? []).map((id) => [id, DRAFTED_WITH_AI])), [aiDrafted]);
 
-    // ── 中文 (slice 17): the English blocks with their 中文 words; where each stands; ✨ and *Keep* for one ──
     const chineseBlocks = useMemo(() => (content && inChinese ? content.blocks.map((b) => chineseBlock(b, version?.blocks[b.id])) : []), [content, inChinese, version]);
     const chineseStatus = useMemo(() => new Map((content?.blocks ?? []).map((b) => [b.id, chineseBlockStatus(b, version)] as const)), [content, version]);
-    // A 中文 block's mark says where its words stand, or, while current, that Claude wrote them and nobody has read them since (decision 9).
     const chineseDrafted = useMemo(() => new Set(chineseAiDrafted(content)), [content]);
     const chineseBadges = useMemo(
         () =>
@@ -863,7 +745,6 @@ export function CampaignEditor({
     const chineseFallbacks = version
         ? { fallbacks: version.fallbacks, onChange: (fallbacks: typeof version.fallbacks, burst?: string) => editChinese((c) => withChineseLines(c, { fallbacks }), burst) }
         : null;
-    // *Translate what changed* has these to do: blocks not translated or out of date, and the lines.
     const chineseChanged = content && version ? chineseGaps(content).length + (linesStatus === "current" ? 0 : 1) : 0;
     const translateBlockerText = content && !subject.trim() && !emailWords.some((w) => w.trim()) ? CHINESE_EDITOR_TEXT.needsWords : null;
     const removeChinese = () => {
@@ -871,11 +752,9 @@ export function CampaignEditor({
         setEmailLanguage(DEFAULT_LOCALE);
         toast(CHINESE_EDITOR_TEXT.removed);
     };
-    // Save's errors in 中文 show on the 中文 blocks and lines.
     const chineseErrors = useMemo(() => (inChinese && content ? chineseFieldErrors(fieldErrors, content) : {}), [inChinese, content, fieldErrors]);
     const lineError = (field: "subject" | "preheader") => (inChinese ? chineseErrors[field] : fieldErrors[field]);
 
-    // ── Editing safety (slice 04): one history, ⌘S, the leave guard, the browser's copy ──
     useHistoryKeys(history, { enabled: editable, within: editorArea });
     const saveDisabled = saving || sending || (!dirty && Boolean(campaign));
     const kept: KeptDraft = useMemo(() => keptOf(draft), [draft]);
@@ -891,30 +770,24 @@ export function CampaignEditor({
         if (k) history.set(draftOf(k));
     };
 
-    // ── Starters (slice 08): the Start panel of an empty email, and the palette's Starters tab ──
-    // *Blank* puts the Start panel away until the next Clear all; words or a block in the email end it anyway.
     const [startPutAway, setStartPutAway] = useState(false);
     const offerStart = editable && !startPutAway && emailSaysNothing(words);
-    /** The wanted Segment once the email is started from `s` (`wantedAfterStarter`), in the same step; an Audience of its own ends the address's note. */
     const wantedAfter = (s: Starter, e: EditorDraft): Pick<EditorDraft, "wanted" | "audienceNote"> => ({
         wanted: wantedAfterStarter(s, e.wanted ?? null),
         ...(s.audience ? { audienceNote: null } : {}),
     });
-    /** A Starter written for one audience sends the email to it, in the same step as its blocks: say so, as it changes. */
     const sayAudience = (s: Starter) => {
         const goesTo = starterAudience(s, found);
         const now = latest.current.value;
         if (!goesTo.audience || (goesTo.audience === now.audience && (goesTo.segmentId === undefined || goesTo.segmentId === now.segmentId))) return;
         toast(`Send to is now “${CAMPAIGN_AUDIENCE_LABEL[goesTo.audience]}”: ${s.label} is written for them.`);
     };
-    /** Each Starter as the palette offers it: dropped in, its blocks land where it is dropped, with the audience it is written for. */
     const starterItems = STARTERS.map(
         (s): PaletteItem<EmailBlock> => ({
             id: s.id,
             label: s.label,
             description: s.description,
             blocks: () => s.blocks(),
-            // The top of the email: no taller than this on a phone's full-width sheet.
             preview: <StarterThumbnail id={s.id} shape="landscape" className="max-h-36" />,
             apply: (next) => {
                 sayAudience(s);
@@ -922,7 +795,6 @@ export function CampaignEditor({
             },
         }),
     );
-    /** Each Starter as the Start panel offers it: the email started from it, its words and audience with its blocks. */
     const startItems = STARTERS.map(
         (s, i): PaletteItem<EmailBlock> => ({
             ...starterItems[i],
@@ -934,27 +806,16 @@ export function CampaignEditor({
     );
     const startersTab: PaletteItemsTab<EmailBlock> = { value: "starters", label: "Starters", items: starterItems };
 
-    // ── A wanted Segment (PRD-email-funnel slices 04 and 06) ──────────────
-    // A Playbook's, a stage's or a follow-up's: while the email is sent to no Segment and the server found none with
-    // its filters, a notice names it and offers to create it.
     const segmentMissing = !locked && wanted && audience === "segment" && !segmentId && !found[wantedKey(wanted)] ? wanted : null;
     const creatingSegment = useRef(false);
     const [segmentBusy, setSegmentBusy] = useState(false);
-    // A create's error, about the wanted Segment it was for: under another one's notice it is not shown.
     const [segmentFailure, setSegmentFailure] = useState<{ for: WantedSegment; error: string } | null>(null);
     const segmentError = segmentMissing && segmentFailure?.for === segmentMissing ? segmentFailure.error : null;
-    /** `row` is the wanted Segment `w`: offered, found and chosen. */
     const chooseWanted = (w: WantedSegment, row: SegmentOption) => {
         setMadeSegments((made) => [...made, row]);
         setMadeFound((f) => ({ ...f, [wantedKey(w)]: row.id }));
         history.set((e) => ({ ...e, audience: "segment", segmentId: row.id, excludeSegmentIds: e.excludeSegmentIds.filter((x) => x !== row.id) }));
     };
-    /**
-     * *Create the Segment*: the Segments' own create (its permission, validation, unique name and audit row) with the
-     * wanted name and filters, then chosen. On a taken name the server is asked again whether a live Segment has the
-     * wanted filters (made since the page loaded): if so it is chosen; if not, the name is a Segment's with other
-     * filters, which is reported and never overwritten. One create at a time; once made, the button goes.
-     */
     const createWantedSegment = async () => {
         const w = segmentMissing;
         if (!w || creatingSegment.current) return;
@@ -999,13 +860,9 @@ export function CampaignEditor({
         }
     };
 
-    // ── Clear all (slice 01), one step of the history ──────────────────────
-    // Writes nothing: the email is saved, and audited, only by Save.
     const clearBlocker = clearAllBlocker({ locked, sending, words });
     const clearWhy = clearBlocker ? CLEAR_ALL_BLOCKER_TEXT[clearBlocker] : null;
-    // Opens only while Clear all is off, to say why; the button stays focusable, so the tree never changes under it.
     const [clearTipOpen, setClearTipOpen] = useState(false);
-    /** The toast's Undo: the history's own while nothing has changed since; else the words put back, as a step. */
     const undoToast = (message: string) =>
         toast(message, {
             id: CLEAR_ALL_TOAST,
@@ -1026,18 +883,11 @@ export function CampaignEditor({
         if (clearBlocker) return;
         const { words: cleared, snapshot } = clearCampaignWords(words);
         undoRef.current = { words: snapshot, wanted, step: null };
-        // The email is no longer the Playbook it was started from: its wanted Segment goes in the same step.
         history.set((e) => ({ ...e, ...cleared, wanted: e.wanted?.playbook ? null : e.wanted }));
         setSelected(null);
-        // Back to the start: the Start panel is offered again.
         setStartPutAway(false);
         undoToast("Cleared the email.");
     };
-    /**
-     * *Convert to blocks* (slice 03): the message and its button as blocks
-     * that read the same, the subject as the opening heading. Nothing is saved
-     * until Save, so the toast offers Undo, as Clear all's does.
-     */
     const convertToBlocks = () => {
         if (locked || sending || content) return;
         undoRef.current = { words, step: null };
@@ -1054,7 +904,6 @@ export function CampaignEditor({
         undoToast("Converted the message to blocks. Save to keep them.");
     };
 
-    // Counted as a customer reads them: each Variable as the sample customer's words.
     const subjectRead = content ? withSampleValues(subjectShown) : subject;
     const preheaderRead = content ? withSampleValues(preheaderShown) : preheader;
     const subjectWarn = subjectRead.length > SUBJECT_PHONE ? "may be cut off on phones" : null;
@@ -1062,9 +911,7 @@ export function CampaignEditor({
         preheaderRead && (preheaderRead.length < PREVIEW_LINE_RANGE[0] || preheaderRead.length > PREVIEW_LINE_RANGE[1])
             ? `${PREVIEW_LINE_RANGE[0]} to ${PREVIEW_LINE_RANGE[1]} reads best`
             : null;
-    // In 中文 the layout is English's: no palette (slice 17).
     const palette = Boolean(content) && editable && !inChinese;
-    // The palette: Blocks, Starters (slice 08), then Variables (slice 13), whose chips go in at the cursor of the words last written in.
     const asideTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
         startersTab,
@@ -1078,7 +925,6 @@ export function CampaignEditor({
             ),
         },
     ];
-    // A phone's sheet: a tap puts a Variable in and closes it; the fallbacks are under the blocks.
     const sheetTabs: PaletteTab<EmailBlock>[] = [
         ...PALETTE,
         startersTab,
@@ -1086,7 +932,6 @@ export function CampaignEditor({
     ];
     const saveLabel = campaign ? "Save changes" : "Save draft";
 
-    // What an empty email offers: four ways to start (slice 08). ✨ Write with AI opens Generate's brief (slice 09), and shows only while AI writing is on.
     const startPanel = (
         <Suspense fallback={START_PANEL_LOADING}>
             <StartPanel
@@ -1112,7 +957,6 @@ export function CampaignEditor({
         </Button>
     );
 
-    // The email's own column: who it goes to, from whom, its subject and preview line, then its blocks.
     const theEmail = (
         <Card className="min-w-0">
             <CardContent className="space-y-4 pt-6">
@@ -1211,7 +1055,6 @@ export function CampaignEditor({
                         {audienceNote}
                     </p>
                 ) : null}
-                {/* Slice 06 (PRD-campaign-audiences): Segments whose Customers this campaign leaves out, with any audience. */}
                 <Field
                     label="Leave out people in…"
                     htmlFor="c-leave-out"
@@ -1245,7 +1088,6 @@ export function CampaignEditor({
                             </ul>
                         ) : null}
                         {locked || excludeSegmentIds.length >= MAX_EXCLUDED_SEGMENTS ? null : (
-                            // Keyed by the list, so it reads its placeholder again after each choice.
                             <Select key={excludeSegmentIds.join(",")} value="" onValueChange={leaveOut}>
                                 <SelectTrigger id="c-leave-out" className="w-full justify-between sm:w-1/2" disabled={!leaveOutChoices.length}>
                                     <SelectValue placeholder={excludeSegmentIds.length ? "Leave out another Segment" : "Nobody: choose a Segment"} />
@@ -1262,7 +1104,6 @@ export function CampaignEditor({
                         {locked && !excludeSegmentIds.length ? <p className="text-sm text-muted-foreground">Nobody.</p> : null}
                     </div>
                 </Field>
-                {/* Slice 12 (PRD-campaign-audiences): the sunset rule leaves the Unengaged out unless this is a win-back. */}
                 <div className="space-y-1">
                     <label className="flex items-center gap-2 text-sm max-md:min-h-11 max-md:active:opacity-60">
                         <Checkbox
@@ -1284,7 +1125,6 @@ export function CampaignEditor({
                     </span>
                 </p>
 
-                {/* One line each, with Variables as chips in a block campaign (slice 13); saved as words with `{first_name}` in them. */}
                 <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <Label id="c-subject-label">{inChinese ? "Subject in 中文" : "Subject"}</Label>
@@ -1444,7 +1284,6 @@ export function CampaignEditor({
                             errorPath="content.blocks"
                             warnings={blockWarnings}
                         />
-                        {/* On a laptop the fallbacks sit under the Variables palette's chips; on a phone, and while the palette is hidden, here. */}
                         <div className={cn(palette && "lg:hidden")}>
                             <VariableFallbacks
                                 used={usedVariables}
@@ -1521,7 +1360,6 @@ export function CampaignEditor({
                                 )}
                             </div>
                         ) : null}
-                        {/* A message written before blocks: an unsent one can become blocks. */}
                         {!locked ? (
                             <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
                                 <span className="min-w-0 flex-1">This email is written as plain text. Blocks add headings, bold, links and two buttons.</span>
@@ -1533,7 +1371,6 @@ export function CampaignEditor({
                         ) : null}
                     </>
                 )}
-                {/* A message written before blocks, cleared: a Starter makes it a block campaign. */}
                 {offerStart && !content ? <div className="rounded-lg border border-dashed p-4">{startPanel}</div> : null}
 
                 {saveError ? (
@@ -1547,7 +1384,6 @@ export function CampaignEditor({
 
     return (
         <div ref={editorArea} className={cn("space-y-4", (sendBar || writeBar) && mobileStickyActionBarSpacerClassName)}>
-            {/* The header bar: back, the name, the status, then the editor's actions. */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                 <div className="flex min-w-0 flex-1 items-center gap-1">
                     <Button variant="ghost" size="sm" className="shrink-0 px-2" asChild>
@@ -1621,7 +1457,6 @@ export function CampaignEditor({
                                     working={aiRunScope?.scope === "email" ? aiStage : null}
                                     onStop={aiDraft.stop}
                                     onGenerate={(brief, mode) => {
-                                        // A draft brings its own ideas: the last ones asked for go.
                                         refine.dismissIdeas("subject");
                                         refine.dismissIdeas("preheader");
                                         void aiDraft.start(brief, { scope: "email", mode });
@@ -1634,7 +1469,6 @@ export function CampaignEditor({
                     ) : null}
                     {campaign ? (
                         <DropdownMenu>
-                            {/* A plain button: the motion Button presses on Enter too, which would shut the menu it opens. */}
                             <DropdownMenuTrigger asChild>
                                 <button type="button" className={buttonVariants({ variant: "outline", size: "icon" })} aria-label="More: duplicate or archive" disabled={busy || sending}>
                                     <MoreHorizontal className="h-4 w-4" />
@@ -1687,11 +1521,9 @@ export function CampaignEditor({
                 <TabsList>
                     <TabsTrigger value="write">Write</TabsTrigger>
                     <TabsTrigger value="send">Send</TabsTrigger>
-                    {/* PRD-campaign-audiences slice 11: once a wave has gone. */}
                     {locked ? <TabsTrigger value="results">Results</TabsTrigger> : null}
                 </TabsList>
 
-                {/* Both tabs stay mounted: a wave keeps sending, and the email keeps its history, while the other is open. */}
                 <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
                     <CampaignAiContext.Provider value={inChinese ? null : campaignAi}>
                         <ChineseEditingContext.Provider value={chineseEditing}>
@@ -1722,7 +1554,6 @@ export function CampaignEditor({
                             <div className={cn("grid gap-6", palette ? "lg:grid-cols-[12rem_minmax(0,1fr)_minmax(0,1fr)]" : "lg:grid-cols-2")}>
                                 {palette ? (
                                     <aside className="max-lg:hidden" aria-label="Palette">
-                                        {/* A tall tab (Starters, with their thumbnails) scrolls inside it. */}
                                         <div className="sticky top-4 -m-1 max-h-[calc(100vh-2rem)] overflow-y-auto p-1">
                                             <BlockPalette tabs={asideTabs} tab={paletteTab} onTab={setPaletteTab} />
                                         </div>
@@ -1782,7 +1613,6 @@ export function CampaignEditor({
                                     </div>
                                 </section>
                             </div>
-                            {/* Phones: the palette is a sheet, and a tap adds after the selected block. */}
                             <Sheet open={addOpen} onOpenChange={setAddOpen}>
                                 <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
                                     <SheetHeader>
@@ -1798,7 +1628,6 @@ export function CampaignEditor({
                     </CampaignAiContext.Provider>
                 </TabsContent>
 
-                {/* Flex, not space-y: on a phone a started campaign moves its send results above the test and checks. */}
                 <TabsContent value="send" forceMount data-own-undo className="flex flex-col gap-6 data-[state=inactive]:hidden">
                     {campaign ? null : (
                         <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
@@ -1892,7 +1721,6 @@ export function CampaignEditor({
                                             <span className="min-w-0">
                                                 <span className="block font-medium">{step.label}</span>
                                                 <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
-                                                {/* The email's failures, then its advice: each one in a block goes to it. */}
                                                 {step.items ? (
                                                     <ul className="mt-1 space-y-0.5 text-xs">
                                                         {step.items.map((item, i) => (
@@ -1982,7 +1810,6 @@ export function CampaignEditor({
                                             audience can get it ({n(plan.plan.eligibleBuyers)} have ordered before; they go first).
                                             {plan.plan.alreadySent ? ` ${n(plan.plan.alreadySent)} already have it.` : ""}
                                         </p>
-                                        {/* PRD-campaign-audiences slice 11: the holdout's share of this wave. */}
                                         {plan.plan.heldOut ? (
                                             <p className="text-muted-foreground">
                                                 The holdout keeps {n(plan.plan.heldOut)} of this wave back to measure the campaign: they are
@@ -1991,7 +1818,6 @@ export function CampaignEditor({
                                         ) : null}
                                         {Object.keys(plan.plan.excluded).length || plan.leftOutBySegment.length ? (
                                             <ul className="list-inside list-disc text-muted-foreground">
-                                                {/* Slice 06: who each left-out Segment took away, before the rule. */}
                                                 {plan.leftOutBySegment.map((x) => (
                                                     <li key={x.segmentId}>
                                                         {n(x.count)} left out: in “{x.name}”
@@ -2000,7 +1826,6 @@ export function CampaignEditor({
                                                 {Object.entries(plan.plan.excluded).map(([why, count]) => (
                                                     <li key={why}>
                                                         {n(count ?? 0)} left out: {CAMPAIGN_BLOCKER_TEXT[why as keyof typeof CAMPAIGN_BLOCKER_TEXT] ?? why}
-                                                        {/* Slice 07: rested, not failed; a later wave reaches them. */}
                                                         {why === "resting" && plan.plan.restingUntil
                                                             ? `; the first can get it from ${formatAdminDateMY(plan.plan.restingUntil)}`
                                                             : ""}
@@ -2048,7 +1873,6 @@ export function CampaignEditor({
                                             aria-label={`Wave ${progress.wave}`}
                                             value={progress.total ? ((progress.sent + progress.failed + progress.skipped) / progress.total) * 100 : 100}
                                         />
-                                        {/* Updated once a batch (about every ten seconds), not once an email. */}
                                         <p role="status" aria-live="polite">
                                             Sent {n(progress.sent)} of {n(progress.total)}, failed {n(progress.failed)}, skipped {n(progress.skipped)}
                                         </p>
@@ -2086,7 +1910,6 @@ export function CampaignEditor({
                         </Card>
                     ) : null}
 
-                    {/* PRD-campaign-audiences slice 10: a started campaign may keep sending by itself. */}
                     {campaign && locked ? (
                         <KeepSendingCard
                             campaignId={campaign.id}

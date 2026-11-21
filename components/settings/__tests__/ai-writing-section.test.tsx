@@ -4,8 +4,6 @@ import { AiWritingForm } from "../ai-writing-section";
 import { AI_WRITING_DEFAULTS, type AiWritingSettings } from "@/lib/ai/writing-settings";
 import type { AiUsageLine, AiUsageThisMonth } from "@/lib/ai/usage";
 
-/** General → AI writing (PRD-campaign-email-editor slice 16): the owner's demo, on a phone as on a desktop. */
-
 const line = (calls: number, inputTokens: number, outputTokens: number, costUsd: number): AiUsageLine => ({
   calls,
   inputTokens,
@@ -15,7 +13,6 @@ const line = (calls: number, inputTokens: number, outputTokens: number, costUsd:
 
 const empty = line(0, 0, 0, 0);
 
-/** 38 drafts and 51 quick actions this month, priced at US$4 / US$20 a million tokens. */
 const usage: AiUsageThisMonth = {
   since: "2026-09-30T16:00:00.000Z",
   byKind: {
@@ -88,7 +85,6 @@ describe("AiWritingForm", () => {
     expect(html).toContain(">Limit per Staff member, per day</label>");
     expect(html).toContain(">Effort for whole drafts</label>");
     expect(html).toContain(">Effort for quick actions</label>");
-    // Every input, switch and picker is one of those; every other button has a name.
     const controls = [...html.matchAll(/<input\b[^>]*>|<button\b[^>]*role="(?:switch|combobox)"[^>]*>/g)].map((m) => m[0]);
     expect(controls).toHaveLength(ids.length);
     for (const tag of controls) expect(ids).toContain(tag.match(/id="([^"]+)"/)?.[1]);

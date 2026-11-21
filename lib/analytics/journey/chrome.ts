@@ -2,20 +2,16 @@ import type { PageViewEvent } from "./transitions";
 import { CONVERTED_NODE } from "./converted-sink";
 import { DROP_OFF_NODE } from "./drop-off-sink";
 
-/** Page node chrome for the unique-node journey graph. */
 export type PageNodeChrome = {
   path: string;
   views: number;
   prospects: number;
   dropOffs: number;
-  /** 0–100; dropOffs / prospects. */
   dropOffPct: number;
   medianDwellMs: number | null;
   topDropOffSection: string | null;
-  /** Landings of return Visits after a prior Drop-off. */
   returnHits: number;
   medianReturnGapMs: number | null;
-  /** Distinct pages behind a collapsed group node (`/blog/*`); unset otherwise. */
   groupedPaths?: number;
 };
 
@@ -28,21 +24,17 @@ export type ReturnTimelineEntry = {
 export type ExitSectionRow = {
   sectionId: string;
   count: number;
-  /** Share of this page's Drop-offs (0–100). */
   sharePct: number;
 };
 
 export type OutboundTransition = { to: string; count: number };
 
-/** What an aggregated node stands for: the members behind it, ranked. */
 export type JourneyGroupDetail = {
-  /** Pages behind `/blog/*`, or Entry sources behind an entry node. */
   kind: "pages" | "sources";
   total: number;
   members: { label: string; count: number; sharePct: number }[];
 };
 
-/** Rank group members by count and attach each one's share of the total. */
 export function buildGroupDetail(
   kind: JourneyGroupDetail["kind"],
   entries: Iterable<readonly [string, number]>,
@@ -73,7 +65,6 @@ export type NodeSidePanel = {
   exitSections: ExitSectionRow[];
   dwellMsSamples: number[];
   medianDwellMs: number | null;
-  /** Ranked Visit page sequences that touch this node (aggregated, unique-node collapse). */
   routes: JourneyRoute[];
   returnTimeline: ReturnTimelineEntry[];
   outbound: OutboundTransition[];
@@ -137,10 +128,8 @@ export function binDwellHistogram(samplesMs: number[]): {
   for (const ms of samplesMs) {
     if (!Number.isFinite(ms) || ms < 0) continue;
     if (ms >= DWELL_AXIS_CAP_MS) {
-      // overflow bin is always last when hasOverflow
       bins[bins.length - 1]!.count++;
     } else {
-      // sample === maxAxisMs maps to last in-range bin (ceil edge)
       const idx = Math.min(
         binCount - 1,
         Math.floor(ms / DWELL_BIN_MS),
@@ -152,36 +141,25 @@ export function binDwellHistogram(samplesMs: number[]): {
   return { bins, medianMs, meanMs, maxAxisMs };
 }
 
-/** Edge thickness ∝ transition count (1–8px). */
 export function edgeStrokeWidth(count: number, maxCount: number): number {
   if (count <= 0) return 1;
   if (maxCount <= 0) return 1;
   return 1 + (count / maxCount) * 7;
 }
 
-/** 0–1 traffic fraction for edge color intensity. */
 export function edgeTrafficT(count: number, maxCount: number): number {
   if (count <= 0 || maxCount <= 0) return 0;
   return Math.min(1, count / maxCount);
 }
 
-/**
- * color-mix % for traffic intensity (light → intense).
- * Use as: color-mix(in oklab, var(--chart-2) ${pct}%, var(--muted)).
- */
 export function edgeTrafficMixPct(count: number, maxCount: number): number {
   return Math.round(22 + edgeTrafficT(count, maxCount) * 78);
 }
 
-/** Opacity when edge hue is already fixed (e.g. country color). */
 export function edgeTrafficOpacity(count: number, maxCount: number): number {
   return 0.35 + edgeTrafficT(count, maxCount) * 0.6;
 }
 
-/**
- * Per-page dwell samples: time from landing on a path until the next different
- * page_view in the same Visit (or until visit end when last page).
- */
 export function collectPageDwells(
   events: PageViewEvent[],
   visitEndedAt: Map<string, string> = new Map(),
@@ -201,7 +179,7 @@ export function collectPageDwells(
     while (i < list.length) {
       const cur = list[i]!;
       let j = i + 1;
-      while (j < list.length && list[j]!.path === cur.path) j++; // collapse refreshes
+      while (j < list.length && list[j]!.path === cur.path) j++;
       const start = Date.parse(cur.occurredAt);
       const next = list[j];
       const end = next
@@ -286,7 +264,6 @@ export function buildNodeSidePanel(input: {
   path: string;
   events: PageViewEvent[];
   exitSections: { sectionId: string; count: number }[];
-  /** Page Drop-off total for share %; defaults to sum of exit section counts. */
   pageDropOffTotal?: number;
   outbound?: OutboundTransition[];
   visitEndedAt?: Map<string, string>;
@@ -301,7 +278,6 @@ export function buildNodeSidePanel(input: {
   for (const e of input.events) {
     if (!e.path || e.path === DROP_OFF_NODE || e.path === CONVERTED_NODE) continue;
     const list = byVisit.get(e.visitId) ?? [];
-    // Unique-node: consecutive same-path refresh collapses in path sample.
     if (list[list.length - 1] !== e.path) list.push(e.path);
     byVisit.set(e.visitId, list);
   }

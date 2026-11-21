@@ -1,9 +1,3 @@
-/**
- * The Mbolster half of a Paired build at hold (ADR 0026). Validated and priced
- * the way the hold route prices any Result — Costings through
- * `priceComposedBuild`, Service fees through `loadResultServiceLines` — except
- * that it rides in the anchor's shipment, so it charges no shipping of its own.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { priceResult } from "@/lib/result-pricing";
 import { round2 } from "@/lib/commissions";
@@ -32,7 +26,6 @@ export async function priceCompanionBolster(
     preferenceLines: Array<{ item_id: number; quantity: number; category: "cover" | "case" }>;
     addonLines: ReadonlyArray<{ item_id: number; quantity: number }>;
     measuredByType: "by_user" | "staff";
-    /** The anchor's shipping country, which sets the tax rule for both. */
     country: string;
   },
 ): Promise<CompanionQuote> {
@@ -113,7 +106,6 @@ export async function priceCompanionBolster(
   }
   const services = sumServiceLines(serviceLines);
 
-  // Rides in the anchor's shipment: no shipping, but tax is still due on goods.
   const taxRule = await resolveTaxRuleForRegion(opts.country);
   const tax = computeTax({ subtotal: goods.subtotal + services, shippingAmount: 0, discountAmount: 0 }, taxRule);
   const priced = priceResult({ goods: goods.subtotal, services, shipping: 0, tax: tax.taxAmount });

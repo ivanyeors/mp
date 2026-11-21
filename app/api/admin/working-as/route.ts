@@ -11,11 +11,6 @@ import {
 
 export const runtime = "nodejs";
 
-/**
- * "Working as" on a shared login: which of the signed-in Member's Staff
- * profiles is at the device. Any signed-in Member, for their own profiles
- * only. Attribution, not authorisation — it changes no permission.
- */
 export async function GET() {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

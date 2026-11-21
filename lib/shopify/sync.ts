@@ -127,7 +127,6 @@ async function pushMappingsToShopify(args: {
         inventoryItemIdCache.set(variantId, inventoryItemId)
       }
 
-      // Full-catalog sync paces to stay under ~2 req/sec. Scoped sync relies on 429 retry.
       if (paceMs > 0) await sleep(paceMs)
       await shopifySetInventoryLevel({ locationId, inventoryItemId, available })
       updated += 1

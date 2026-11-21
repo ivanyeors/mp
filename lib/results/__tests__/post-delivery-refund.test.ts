@@ -1,7 +1,3 @@
-/**
- * Slice 11 — Post-delivery refund request + operator approve.
- * Maps to .claude/PRD-template-linked-customisation/issues/11-post-delivery-refund.md
- */
 import { describe, it, expect } from "vitest";
 import {
   customerCancelDeniedReason,

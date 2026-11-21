@@ -1,8 +1,6 @@
 import type { DraftRequest } from "@/lib/email-campaigns/ai-draft-shape";
 import type { DraftBrief } from "@/lib/email-campaigns/ai-draft";
 
-/** ✨ Generate's fixtures (PRD-campaign-email-editor slice 09): a brief, and Claude's answers as JSON. */
-
 export const COVER_ID = "0b6c1f2e-6a1d-4c55-9a77-2f0b9d3c1a10";
 
 export const REQUEST: DraftRequest = {
@@ -31,7 +29,6 @@ export const GOOD_BLOCKS = [
   { type: "buttons", buttons: [{ label: "Shop the covers", target: "shop", style: "primary" }] },
 ];
 
-/** Claude's answer: three subjects, two preview lines, the blocks, the notes. */
 export function draftAnswer(over: { subjects?: string[]; preheaders?: string[]; blocks?: unknown[]; reviewerNotes?: string[] } = {}): string {
   return JSON.stringify({
     subjects: over.subjects ?? ["Sleep cooler this December", "FibreCool covers are back", "Cool nights, all sizes"],

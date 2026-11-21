@@ -471,7 +471,6 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
                     className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md hover:border-primary transition-all text-left focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                   >
                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={asset.url}
                         alt={asset.alt || asset.name}

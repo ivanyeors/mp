@@ -24,11 +24,6 @@ const APPOINTMENT_META = {
   readjustment: PAGE_META.appointmentsReadjustment,
 } as const;
 
-/**
- * Each booking type is its own page; any other parameter (`item`) is the same page.
- * A readjustment is booked by a signed-in Customer for their own purchase, so to a
- * crawler it is a sign-in prompt: kept out of search, and out of robots.txt's reach.
- */
 export async function generateMetadata({
   params,
   searchParams,
@@ -62,14 +57,9 @@ export default async function AppointmentsPage({
 
   const locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const t = getMessages(locale).slides.bookAppointment;
-  // Customisation: say what the Measurement service costs (ADR 0024). Nothing is
-  // paid at booking — the fee rides the pillow's payment when Staff measure.
   const prices =
     appt === "customisation" ? await loadServicePrices(supabaseAdmin()).catch(() => null) : null;
 
-  // Re-adjustment needs a signed-in Customer: the visit is for one purchase, and
-  // whether it is free depends on when that purchase was made (ADR 0024). The gate
-  // is here, on the server — the API refuses an anonymous booking as well.
   let readjustment: ReadjustmentBooking | null = null;
   let signInHref: string | null = null;
   if (appt === "readjustment") {
@@ -103,11 +93,6 @@ export default async function AppointmentsPage({
     }
   }
 
-  // The location picker's Locations, as `GET /api/locations` answers them. Only
-  // the booking form shows them. A read that throws leaves the picker empty, as
-  // the client's own fetch did; ponytail: `getLocationRows` already turns a
-  // database error into no rows, so an empty picker cannot say "could not load"
-  // until that read reports its errors.
   const locations = appt && !signInHref ? await readBookingLocations().catch(() => []) : [];
 
   return (

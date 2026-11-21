@@ -7,11 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AgreementContent } from "@/components/partner/agreement-content";
 import { reacceptAgreement } from "@/app/[lang]/partner/apply/actions";
 
-/**
- * Shown on hub entry when an approved partner's accepted agreement version is
- * stale (see `needsReaccept`). Accepting records the current version and reloads
- * the hub, which then renders the dashboard.
- */
 export function ReacceptForm({ lang, agreementMd }: { lang: string; agreementMd: string }) {
   const [agreed, setAgreed] = useState(false);
   const [pending, startTransition] = useTransition();

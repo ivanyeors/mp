@@ -1,13 +1,6 @@
 import type { OrderStatus } from "@/lib/types/ecommerce";
 import { formatCurrency } from "@/lib/i18n/currencies";
 
-/**
- * Presentation helpers shared by the customer-facing order pages
- * (order history list + order detail). Kept free of React so they can be used
- * from server components without a client boundary.
- */
-
-/** Human-friendly label for an order status. */
 export function orderStatusLabel(status: OrderStatus): string {
   switch (status) {
     case "payment_failed":
@@ -19,10 +12,6 @@ export function orderStatusLabel(status: OrderStatus): string {
   }
 }
 
-/**
- * Tailwind classes for a status pill. Tuned for the storefront (light/dark),
- * mirroring the palette used in the admin order views.
- */
 export function orderStatusBadgeClass(status: OrderStatus): string {
   switch (status) {
     case "pending":
@@ -47,12 +36,10 @@ export function orderStatusBadgeClass(status: OrderStatus): string {
   }
 }
 
-/** Currency-aware money formatting consistent across the storefront. */
 export function formatOrderPrice(amount: number, currency: string): string {
   return formatCurrency(amount, currency);
 }
 
-/** Compact date for order timestamps. */
 export function formatOrderDate(dateStr: string): string {
   return new Intl.DateTimeFormat("en-MY", {
     year: "numeric",

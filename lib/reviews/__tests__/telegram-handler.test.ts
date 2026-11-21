@@ -9,13 +9,6 @@ import {
   encodeReviewCallback,
 } from "@/lib/reviews/cards";
 
-/**
- * The Telegram side of review cards: who may press what (RBAC), that a Post
- * publishes exactly the draft on screen and only once, staff edits by reply,
- * shop moderation, our reply under a shop review, and binding a Telegram
- * account with /link.
- */
-
 const GROUP = -1001279910218;
 const REVIEW_ID = "3f2b7c1e-8a4d-4e9b-9c11-0123456789ab";
 const SHOP_ID = "5a5a5a5a-1111-4222-8333-444455556666";
@@ -25,7 +18,6 @@ const STRANGER = { id: 999, first_name: "Who" };
 const REPLY = "telegram.google-review-reply";
 const MODERATE = "telegram.shop-review-moderate";
 const SHOP_REPLY = "telegram.shop-review-reply";
-/** The shop review's card in the group. */
 const SHOP_CARD = 88;
 
 const h = vi.hoisted(() => ({
@@ -97,8 +89,6 @@ beforeEach(() => {
   h.updateReply.mockResolvedValue({ comment: "Thanks, Jane!", updateTime: "2026-10-02T08:00:00Z" });
   h.deleteGroupMessage.mockResolvedValue(true);
   h.tables = {
-    // Ivan and Nadia work under an Owner login; Sam under a login whose role
-    // allows moderation only. Effective access = role ∩ link actions.
     admin_roles: [
       { id: "r-owner", name: "Owner", grants_all: true, permissions: [] },
       { id: "r-shop", name: "Shop desk", grants_all: false, permissions: ["orders", MODERATE] },
@@ -173,12 +163,10 @@ describe("isReviewUpdate", () => {
     expect(isReviewUpdate(msg("/stock"))).toBe(false);
     const card = { reply_to_message: { message_id: 77, text: `${GOOGLE_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thanks so much!", card))).toBe(true);
-    // A team note under a card stays with the review flow, so no other handler takes it.
     expect(isReviewUpdate(msg("// shall we offer a refit?", card))).toBe(true);
     const preview = { reply_to_message: { message_id: 78, text: `${PREVIEW_CARD_PREFIX}a 5★ review.\n${GOOGLE_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thanks so much!", preview))).toBe(true);
     expect(isReviewUpdate(msg("/help", card))).toBe(false);
-    // A shop card, real or preview, and a team note under it.
     const shopCard = { reply_to_message: { message_id: SHOP_CARD, text: `${SHOP_CARD_HEADER}\n…` } };
     expect(isReviewUpdate(msg("Thank you, Ada!", shopCard))).toBe(true);
     expect(isReviewUpdate(msg("// approve once the photo checks out", shopCard))).toBe(true);
@@ -481,7 +469,6 @@ describe("our reply under a shop review", () => {
   const unreply = encodeReviewCallback({ source: "shop", action: "unreply", id: SHOP_ID });
 
   beforeEach(() => {
-    // Ivan may reply to shop reviews; Sam's role moderates only.
     h.tables.telegram_operators[0].actions = [REPLY, MODERATE, SHOP_REPLY];
   });
 

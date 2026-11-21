@@ -1,7 +1,3 @@
-/**
- * Visitor identity writers — merge + converted_order_id pick rules.
- * Run: npx tsx lib/analytics/journey/identity.check.ts
- */
 import assert from "node:assert/strict";
 import {
   normalizeVisitorEmail,
@@ -22,7 +18,6 @@ assert.equal(parseVisitorId(null), null);
 assert.equal(normalizeVisitorEmail("  Alice@Example.COM "), "alice@example.com");
 assert.equal(normalizeVisitorEmail("nope"), null);
 
-// --- Merge: set-if-null, no clobber of different email ---
 assert.deepEqual(
   planVisitorMerge(
     { email: null, customer_id: null, merged_at: null },
@@ -62,7 +57,6 @@ assert.equal(
   "already complete → no write",
 );
 
-// --- Conversion pick: open Visit wins; else newest unconverted ---
 const open = {
   id: "open",
   ended_at: null,

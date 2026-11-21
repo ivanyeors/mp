@@ -15,24 +15,12 @@ import {
 
 export type AutoLabelOutcome =
   | { made: true; courierServiceId: string }
-  /** Nothing for Staff to do: no courier account, nothing to send, or a label already exists. */
   | { made: false; skipped: "not_connected" | "not_shippable" | "nothing_to_ship" | "has_label" }
-  /** Staff make this one by hand; the timeline says why. */
   | { made: false; note: string };
 
 const SHIPPABLE = new Set(["confirmed", "processing"]);
 const sentence = (s: string) => s.trim().replace(/[.\s]+$/, "");
 
-/**
- * Make a paid order's courier label the moment it is paid (ADR 0044), so Staff
- * only print it. The courier is the customer's: the one they paid for at
- * checkout, else the one their live Shipping method picks from today's rates.
- * When the customer's courier is not known or not offered today, no label is
- * made: a different courier is Staff's call, and the timeline says why.
- *
- * Making the label does not ship the order; the courier's first scan does.
- * Safe to run twice: an order with a shipment is left alone.
- */
 export async function autoCreateOrderLabel(
   admin: SupabaseClient,
   orderId: string,
@@ -45,7 +33,6 @@ export async function autoCreateOrderLabel(
   }
   const shipment = await loadOrderShipment(admin, orderId);
   if (shipment?.easyship_shipment_id) return { made: false, skipped: "has_label" };
-  // A Re-adjustment fee or a service-only order has no parcel.
   if ((await loadOrderShippableLines(admin, orderId, order.currency)).length === 0) {
     return { made: false, skipped: "nothing_to_ship" };
   }
@@ -81,24 +68,18 @@ export async function autoCreateOrderLabel(
 
   const bought = await buyOrderLabel(admin, order, pick.courierServiceId, config, { auto: true });
   if (!bought.ok) {
-    // Staff made it while this ran.
     if (bought.status === 409) return { made: false, skipped: "has_label" };
     return note(`Easyship refused it (${sentence(bought.error)})`);
   }
   return { made: true, courierServiceId: pick.courierServiceId };
 }
 
-/**
- * Run after the payment is recorded (inside `after()`), never in its way: a
- * failure is logged and left on the order's timeline, and the payment stands.
- */
 export async function autoCreateOrderLabelSafely(admin: SupabaseClient, orderId: string): Promise<void> {
   try {
     await autoCreateOrderLabel(admin, orderId);
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[auto-label] Could not make the label for ${orderId}:`, err);
-    // It may have failed after Easyship made the label, so do not say there is none.
     await Promise.resolve(
       admin.from("order_timeline").insert({
         order_id: orderId,

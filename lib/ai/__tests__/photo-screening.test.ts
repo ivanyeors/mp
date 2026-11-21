@@ -10,8 +10,6 @@ import {
   type PhotoScreeningAnswer,
 } from "@/lib/ai/photo-screening";
 
-/** Sizing photo screening (ADR 0047): Claude answers, this code decides. */
-
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]).toString("base64");
 const WEBP = Buffer.concat([Buffer.from("RIFF"), Buffer.from([0x24, 0, 0, 0]), Buffer.from("WEBPVP8 ")]).toString("base64");
@@ -92,7 +90,6 @@ describe("photoScreeningParams", () => {
   });
 });
 
-/** A client whose `messages.create` answers once, recording the request and its options. */
 function fakeClient(answer: { text?: string; stop_reason?: string; model?: string } | Error) {
   const calls: { params: unknown; opts: unknown }[] = [];
   const client = {

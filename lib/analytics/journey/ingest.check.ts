@@ -1,8 +1,3 @@
-/**
- * Ingest race-safety: Visit create must be upsert+ignoreDuplicates.
- * Live: concurrent beacons with same visitId both succeed.
- * Run: npx tsx --env-file=.env.local lib/analytics/journey/ingest.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

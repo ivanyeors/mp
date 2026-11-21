@@ -3,13 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { PhotoScreening, screenSizingPhoto } from "@/lib/ai/photo-screening";
 import { sizingPhotosForTelegram, type SizingPhotoRow } from "@/lib/results/sizing-photos";
 
-/** What a submitted Result's Telegram message attaches (ADR 0047): only photos Claude passed. */
-
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
 const HEIC = `data:image/heic;base64,${Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypheic")]).toString("base64")}`;
 const ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-/** Records every update and delete made on the photo table. */
 function fakeAdmin() {
   const writes: { op: "update" | "delete"; patch?: Record<string, unknown>; filters: [string, string][] }[] = [];
   const admin = {
@@ -84,7 +81,6 @@ describe("sizingPhotosForTelegram", () => {
       "📷 Front photo not attached: it couldn't be checked.",
       "📷 Side photo not attached: it couldn't be checked.",
     ]);
-    // A HEIC photo from before screening can't be sent to Claude, so it isn't.
     expect(screen).toHaveBeenCalledTimes(1);
     expect(writes).toEqual([]);
   });

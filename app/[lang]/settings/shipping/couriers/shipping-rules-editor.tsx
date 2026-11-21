@@ -189,8 +189,6 @@ export function ShippingRulesEditor({
   );
 }
 
-/* ── Clauses ───────────────────────────────────────────────────────────── */
-
 function defaultOptions(fields: OptionField[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const f of fields) {
@@ -362,7 +360,6 @@ function OptionInput({
   }
 }
 
-/** Select gives back strings; hand numeric enums/ids back as numbers. */
 function coerce(v: string, from: readonly (string | number)[] | undefined): string | number {
   const hit = from?.find((x) => String(x) === v);
   return hit ?? v;
@@ -380,7 +377,6 @@ function Labeled({ label, hint, children }: { label: string; hint?: string; chil
   );
 }
 
-/** Keeps the raw text while typing; splits on commas/newlines when focus leaves. */
 function ListInput({ values, onChange }: { values: string[]; onChange: (v: string[]) => void }) {
   const [state, setState] = useState({ for: values, text: values.join(", ") });
   if (state.for !== values) setState({ for: values, text: values.join(", ") });
@@ -436,7 +432,6 @@ function RefListPicker({
   );
 }
 
-/** Escape hatch for option shapes the field spec doesn't know. */
 function JsonField({ value, onChange }: { value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
   const [state, setState] = useState({ for: value, text: JSON.stringify(value, null, 2), bad: false });
   if (state.for !== value) setState({ for: value, text: JSON.stringify(value, null, 2), bad: false });

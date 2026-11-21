@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ImageUsageEntry } from "@/lib/media/image-usages";
 
-/**
- * Deleting a Media Asset (PRD-campaign-email-editor slice 05): an image an
- * email campaign uses cannot be deleted, not even with *Delete anyway*; any
- * other use can be deleted past, as before. The row goes before the master.
- * Its email rendition stays where it is: a sent email points at it for good,
- * and a product's photo is sent with no campaign naming the asset.
- */
-
 const ASSET = {
   id: "6f1c2b9e-3d4a-4e8b-9c1d-2a3b4c5d6e7f",
   kind: "image",
@@ -29,7 +21,6 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => ({
       select: () => ({
         eq: () => {
-          // Never read on a delete: before its migration the table is not there.
           if (table === "media_asset_renditions") return Promise.resolve({ data: null, error: { code: "PGRST205", message: "Could not find the table 'public.media_asset_renditions'" } });
           return { maybeSingle: async () => ({ data: ASSET, error: null }) };
         },

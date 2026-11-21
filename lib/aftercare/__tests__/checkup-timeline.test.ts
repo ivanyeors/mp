@@ -2,12 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { checkupTimelineEntries, type CheckupSendRow } from "@/lib/aftercare/checkup-timeline";
 import { reviewFakeDb, type ReviewFakeDb } from "./review-request-fake-db";
 
-/**
- * Check-up reminders on the Customer timeline (CRM slice 08, through slice
- * 03's adapter registry): one entry per Order and milestone, *Check-up
- * reminder sent (email, WhatsApp)*, linking to the Order.
- */
-
 const h = vi.hoisted(() => ({ db: {} as Record<string, Array<Record<string, unknown>>> }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => reviewFakeDb(h.db as ReviewFakeDb) }));
 
@@ -76,7 +70,6 @@ describe("the check-ups adapter", () => {
     h.db = {
       customer_emails: [
         { customer_id: "ann", template: "aftercare.checkup_12m", entity_id: "o1", status: "sent", sent_at: "2026-10-21T02:00:01.000Z", created_at: "2026-10-21T02:00:00.000Z" },
-        // Not a check-up, and not Ann's.
         { customer_id: "ann", template: "aftercare.review_request", entity_id: "ann", status: "sent", sent_at: "2026-10-01T00:00:00.000Z", created_at: "2026-10-01T00:00:00.000Z" },
         { customer_id: "ben", template: "aftercare.checkup_12m", entity_id: "o2", status: "sent", sent_at: "2026-10-21T02:00:01.000Z", created_at: "2026-10-21T02:00:00.000Z" },
       ],

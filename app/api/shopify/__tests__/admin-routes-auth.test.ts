@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-/**
- * Guard contract for the six Shopify admin routes. The POSTs take the sync
- * token or a `shopify-link` Staff session and must fail closed when
- * SHOPIFY_SYNC_TOKEN is unset; the GETs take the session only. Calls the real
- * handlers with a real Request and mocks only the Shopify/Supabase work behind
- * the guard, so a refused caller is also proven not to reach it.
- */
-
 const h = vi.hoisted(() => ({
   requireAdmin: vi.fn(),
   syncInventory: vi.fn(),
@@ -62,7 +54,6 @@ const posts = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // Shopify is otherwise configured: only the sync token is missing.
   vi.stubEnv("SHOPIFY_SHOP_DOMAIN", "shop.myshopify.com");
   vi.stubEnv("SHOPIFY_ADMIN_ACCESS_TOKEN", "shpat_x");
   vi.stubEnv("SHOPIFY_SYNC_TOKEN", "");

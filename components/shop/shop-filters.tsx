@@ -40,7 +40,6 @@ export function ShopFilters({ sort }: ShopFiltersProps) {
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-      {/* Sort dropdown */}
       <div className="shrink-0">
         <Select value={sort} onValueChange={(val) => updateParam("sort", val)}>
           <SelectTrigger className="min-w-[10rem]">

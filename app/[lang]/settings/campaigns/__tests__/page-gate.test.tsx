@@ -7,13 +7,6 @@ import {
   ROLE_PERMISSIONS,
 } from "@/lib/auth/permissions";
 
-/**
- * Email campaigns is its own key (PRD-email-marketing): Owner and Admin hold
- * it through grants_all; Manager and Staff hold `customers` but must not
- * email the whole list, so they get the denied page, and every action refuses
- * them before it reads or sends anything.
- */
-
 const h = vi.hoisted(() => ({ permissions: new Set<string>() }));
 
 vi.mock("@/lib/auth/admin", () => ({
@@ -117,11 +110,9 @@ describe("the editor", () => {
     expect(html).toContain('placeholder="e.g. Sleep cooler this December"');
     expect(html).toContain('placeholder="e.g. Our FibreCool covers are back, in every size"');
     expect(html).not.toContain(FIRST_CAMPAIGN_DRAFT.subject);
-    // The Start panel (slice 08), or its place while it loads.
     expect(html).toContain("Start the email");
     expect(html).toMatch(/<button[^>]*aria-disabled="true"[^>]*>.*Clear all/);
     expect(html).toContain("Imported from Shopify, not signed in yet");
-    // Nothing to test or send until it is saved.
     expect(html).not.toContain("Send a test");
   });
 
@@ -135,7 +126,6 @@ describe("the editor", () => {
     expect(html).toContain("Our new website is here, with points waiting for you");
     expect(html).toContain("Sign in within 3 months of this email and we&#x27;ll add 1,000 points");
     expect(html).toContain("Imported from Shopify, not signed in yet");
-    // The audience name is for Staff; the email itself never names the old platform.
     expect(html.replace("Imported from Shopify, not signed in yet", "")).not.toMatch(/shopify|moved|migrat/i);
     expect(html).not.toMatch(/voucher/i);
   });

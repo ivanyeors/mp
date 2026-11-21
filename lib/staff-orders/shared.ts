@@ -1,21 +1,12 @@
-/**
- * Staff orders and their Payment link (ADR 0048): the rules that need no
- * database. Pure and free of server imports, so the Create order dialog, the
- * routes, the pay page and the tests all read the same numbers.
- */
-
 import { z } from "zod";
 
 import { usesPostalCode } from "@/lib/shipping/countries";
 import { SERVICE_KEYS, type ServiceKey } from "@/lib/pricing/service-prices";
 
-/** How long a Payment link works; each resend starts it again. */
 export const PAY_LINK_LIFETIME_DAYS = 7;
 
-/** The Checkout Session metadata `purpose` of a Staff order's payment. */
 export const STAFF_ORDER_PURPOSE = "staff_order";
 
-/** Stripe refuses a charge under SGD 0.50 (Checkout and PayNow alike). */
 export const MIN_CHARGE = 0.5;
 
 export const MAX_GOODS_QUANTITY = 99;
@@ -41,10 +32,6 @@ const AddressSchema = z
 
 export type StaffOrderAddress = z.infer<typeof AddressSchema>;
 
-/**
- * What Staff picked, and nothing that is a price: Variants and Services by id
- * and quantity, where it goes, an optional Discount code and notes.
- */
 const DraftFields = z.object({
   customer_id: z.string().uuid("Customer not found"),
   goods: z
@@ -66,9 +53,7 @@ const DraftFields = z.object({
     .max(SERVICE_KEYS.length * 2)
     .default([]),
   delivery: z.discriminatedUnion("kind", [
-    // Handed over at an own studio, or a service done there.
     z.object({ kind: z.literal("studio"), location_id: z.string().trim().min(1).max(64) }),
-    // Delivered by a delivery method to this address.
     z.object({
       kind: z.literal("ship"),
       shipping_method_id: z.string().uuid("Pick a delivery method"),
@@ -87,12 +72,10 @@ export const StaffOrderDraftSchema = DraftFields.refine(hasALine, NO_LINES);
 export type StaffOrderDraft = z.infer<typeof StaffOrderDraftSchema>;
 
 export const CreateStaffOrderSchema = DraftFields.extend({
-  /** Email the Payment link now. Off when Staff will send it another way. */
   send_email: z.boolean().default(true),
 }).refine(hasALine, NO_LINES);
 export type CreateStaffOrderInput = z.infer<typeof CreateStaffOrderSchema>;
 
-/** Same Variant or Service twice is one line with the quantities added. */
 export function mergeQuantities<K extends string, T extends Record<K, string> & { quantity: number }>(
   rows: readonly T[],
   key: K,
@@ -110,7 +93,6 @@ export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-/** A priced line, as the quote shows it and the Order stores it. */
 export type StaffOrderLine =
   | {
       kind: "goods";
@@ -138,7 +120,6 @@ export function lineTotal(line: Pick<StaffOrderLine, "unitPrice" | "quantity">):
   return round2(line.unitPrice * line.quantity);
 }
 
-/** Goods and Services kept apart: a discount and free shipping see goods only. */
 export function subtotals(lines: readonly StaffOrderLine[]): { goods: number; services: number; all: number } {
   let goods = 0;
   let services = 0;
@@ -149,12 +130,10 @@ export function subtotals(lines: readonly StaffOrderLine[]): { goods: number; se
   return { goods: round2(goods), services: round2(services), all: round2(goods + services) };
 }
 
-/** Where a Staff order goes, as the summary shows it. */
 export type StaffOrderDeliverySummary =
   | { kind: "studio"; locationId: string; locationName: string }
   | { kind: "ship"; methodId: string; label: string };
 
-/** The quote the dialog shows and the Order is written from. Never sent by a client. */
 export type StaffOrderQuoteView = {
   currency: "SGD";
   lines: StaffOrderLine[];
@@ -170,16 +149,10 @@ export type StaffOrderQuoteView = {
   delivery: StaffOrderDeliverySummary;
 };
 
-/** What a Payment link can do right now. */
 export type PayLinkState = "payable" | "paid" | "closed" | "expired";
 
-/** Statuses an unpaid order can still be paid from (as the webhook's `CONFIRMABLE_STATUSES`). */
 export const PAYABLE_STATUSES: ReadonlySet<string> = new Set(["pending", "payment_failed"]);
 
-/**
- * Paid wins over everything; an order Staff cancelled or moved on by hand is
- * closed; an unpaid one is payable until its link expires.
- */
 export function payLinkState(
   order: { status: string; paid_at: string | null },
   link: { expires_at: string },
@@ -194,14 +167,12 @@ export function payLinkExpiry(now: Date): Date {
   return new Date(now.getTime() + PAY_LINK_LIFETIME_DAYS * 24 * 60 * 60 * 1000);
 }
 
-/** The page path of a Payment link, without the locale. */
 export function payLinkPath(token: string): string {
   return `/pay/${token}`;
 }
 
 const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** A token is a uuid; anything else is not looked up at all. */
 export function isPayLinkToken(value: unknown): value is string {
   return typeof value === "string" && TOKEN_RE.test(value);
 }

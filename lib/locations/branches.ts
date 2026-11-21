@@ -1,21 +1,14 @@
-// A partner with several clinics (ADR 0037): the main `partners` row is the
-// partner business and its first Location; every further clinic is a branch row
-// whose `parent_id` is the main row. These helpers are pure and client-safe, so
-// the Admin Panel, Partner Hub and /our-partners share one reading of them.
-
 type BranchFields = { id: string; parent_id?: string | null; position?: number | null };
 
 export function isBranch(row: { parent_id?: string | null }): boolean {
   return !!row.parent_id;
 }
 
-/** "Chirotherapy · Novena" when the clinic has its own name, else the partner's name. */
 export function locationDisplayName(row: { name: string; branch_name?: string | null }): string {
   const branch = row.branch_name?.trim();
   return branch ? `${row.name} · ${branch}` : row.name;
 }
 
-/** Each main row's branches, in their own order. */
 export function branchesByParent<T extends BranchFields>(rows: T[]): Map<string, T[]> {
   const byParent = new Map<string, T[]>();
   for (const row of rows) {
@@ -30,12 +23,6 @@ export function branchesByParent<T extends BranchFields>(rows: T[]): Map<string,
   return byParent;
 }
 
-/**
- * Main rows in the order given (already position-sorted), each followed by its
- * branches. Branch positions count within their partner, so a plain sort by
- * position would scatter a partner's clinics through the list. A branch whose
- * main row is missing goes last rather than vanishing.
- */
 export function orderWithBranches<T extends BranchFields>(rows: T[]): T[] {
   const byParent = branchesByParent(rows);
   const out: T[] = [];
@@ -54,11 +41,6 @@ export function orderWithBranches<T extends BranchFields>(rows: T[]): T[] {
   return out;
 }
 
-/**
- * One line for a card: the address lines joined with commas, then the postal
- * code. "190 Middle Road\n#14-07\nSingapore" + "188979" reads
- * "190 Middle Road, #14-07, Singapore 188979".
- */
 export function formatLocationAddress(
   address: string | null | undefined,
   postalCode?: string | null,
@@ -78,7 +60,6 @@ export function formatLocationAddress(
   return `${lines.join(", ")} ${postal}`;
 }
 
-/** Google Maps search for the clinic, which opens directions on a phone. */
 export function locationMapsUrl(
   address: string | null | undefined,
   postalCode?: string | null,
@@ -88,7 +69,6 @@ export function locationMapsUrl(
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-/** A branch as the Admin Panel and Partner Hub send it: no id = a new clinic. */
 export type BranchInput = {
   id?: string;
   branch_name?: string | null;
@@ -100,15 +80,9 @@ export type BranchSavePlan = {
   updates: (BranchInput & { id: string; position: number })[];
   inserts: (BranchInput & { position: number })[];
   deleteIds: string[];
-  /** Ids sent that are not this partner's branches (removed meanwhile, or not theirs). */
   unknownIds: string[];
 };
 
-/**
- * What saving `incoming` over a partner's `existingIds` does: a known id is
- * updated, no id is a new branch, and an existing branch left out is deleted.
- * Positions follow the order sent.
- */
 export function planBranchSave(existingIds: string[], incoming: BranchInput[]): BranchSavePlan {
   const known = new Set(existingIds);
   const kept = new Set<string>();

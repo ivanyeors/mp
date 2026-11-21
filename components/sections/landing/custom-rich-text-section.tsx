@@ -5,14 +5,6 @@ interface CustomRichTextSectionProps {
   section: LandingSection;
 }
 
-/**
- * Markdown body, rendered through react-markdown (which escapes raw HTML by default).
- *
- * This used to be `dangerouslySetInnerHTML` over the same field while the type
- * documented it as markdown — so anything a page-builder operator pasted became live
- * storefront markup. The editor now says markdown too; existing HTML degrades to
- * escaped text rather than executing.
- */
 export function CustomRichTextSection({ section }: CustomRichTextSectionProps) {
   const c = section.content as CustomRichTextContent;
   const title = c.title ?? "";

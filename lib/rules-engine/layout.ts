@@ -1,7 +1,4 @@
-/**
- * Left-to-right layered layout for rule graphs (authoring canvas only).
- * ponytail: longest-path ranks + one barycenter pass; upgrade to dagre if crossings get ugly.
- */
+// ponytail: longest-path ranks + one barycenter pass; upgrade to dagre if crossings get ugly.
 
 export type LayoutEdge = { source: string; target: string };
 export type LayoutPos = { x: number; y: number };
@@ -10,7 +7,6 @@ const COL_GAP = 280;
 const ROW_GAP = 120;
 const PAD = 40;
 
-/** Assign neat positions for a DAG; disconnected nodes land in the leftmost column. */
 export function layoutRuleGraph(
   nodeIds: string[],
   edges: LayoutEdge[],
@@ -31,8 +27,6 @@ export function layoutRuleGraph(
     ins.get(e.target)!.push(e.source);
   }
 
-  // Longest-path rank from roots (indegree 0), in one Kahn pass. Cycles can't
-  // be ranked this way, so they fall back to the bounded relaxation below.
   const rank = kahnRanks(idSet, ins, outs) ?? relaxRanks(nodeIds, edges, idSet);
   for (const id of nodeIds) if (!rank.has(id)) rank.set(id, 0);
 
@@ -40,7 +34,6 @@ export function layoutRuleGraph(
   const layers: string[][] = Array.from({ length: maxRank + 1 }, () => []);
   for (const id of nodeIds) layers[rank.get(id)!]!.push(id);
 
-  // Stable seed order, then one barycenter pass (parents' average index).
   for (const layer of layers) layer.sort();
   for (let r = 1; r < layers.length; r++) {
     const prev = layers[r - 1]!;
@@ -64,7 +57,6 @@ export function layoutRuleGraph(
     }
   }
 
-  // Shift so topmost y is PAD (centers tall columns without negative coords).
   let minY = Infinity;
   for (const p of pos.values()) minY = Math.min(minY, p.y);
   if (Number.isFinite(minY) && minY !== PAD) {
@@ -75,15 +67,6 @@ export function layoutRuleGraph(
   return pos;
 }
 
-/**
- * Longest-path rank in one topological (Kahn) sweep: sources sit at 0, every
- * other node at 1 + max(predecessor ranks). Linear in nodes + edges, versus the
- * n²-bounded relaxation it replaces.
- *
- * Returns null when the (filtered) graph has a cycle — a cycle has no
- * topological order, and the relaxation it replaces never converges there
- * either, so `relaxRanks` reproduces that bounded-guard result exactly.
- */
 function kahnRanks(
   idSet: Set<string>,
   ins: Map<string, string[]>,
@@ -118,10 +101,6 @@ function kahnRanks(
   return settled === idSet.size ? rank : null;
 }
 
-/**
- * Cycle fallback: the original bounded Bellman-Ford relaxation, kept verbatim so
- * cyclic graphs (which the canvas can author) keep byte-identical positions.
- */
 function relaxRanks(
   nodeIds: string[],
   edges: LayoutEdge[],

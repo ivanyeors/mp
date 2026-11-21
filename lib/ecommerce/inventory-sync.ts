@@ -7,17 +7,11 @@ interface SyncResult {
   items: { archived: number; adopted: number; legacy: number };
 }
 
-/**
- * Sync pillow products from inventory system into ecommerce products table.
- * Creates products with is_auto_generated=true, one per kind (basic/premium).
- * Creates variants per size, linked via pillow_product_id.
- */
 export async function syncPillowProducts(): Promise<{ created: number; updated: number }> {
   const admin = supabaseAdmin();
   let created = 0;
   let updated = 0;
 
-  // Fetch all pillow_products with their prices
   const { data: pillowProducts, error } = await admin
     .from("pillow_products")
     .select("id, size, kind, is_active")
@@ -25,7 +19,6 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
 
   if (error || !pillowProducts) return { created: 0, updated: 0 };
 
-  // Fetch categories to find the pillow category
   const { data: categories } = await admin
     .from("categories")
     .select("id")
@@ -34,7 +27,6 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
 
   const pillowCategoryId = categories?.id ?? null;
 
-  // Group by kind to create one product per kind
   const byKind = new Map<string, typeof pillowProducts>();
   for (const pp of pillowProducts) {
     const kind = pp.kind ?? "basic";
@@ -47,7 +39,6 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
     const titleEn = kind === "basic" ? "Mpillow" : `Mpillow ${kind.charAt(0).toUpperCase() + kind.slice(1)}`;
     const titleZh = kind === "basic" ? "定制枕头" : `定制枕头 (${kind})`;
 
-    // Upsert product
     const { data: existingProduct } = await admin
       .from("products")
       .select("id")
@@ -103,7 +94,6 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
       created++;
     }
 
-    // Create product option for size
     const { data: existingOption } = await admin
       .from("product_options")
       .select("id")
@@ -120,7 +110,6 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
       });
     }
 
-    // Create/update variants per size
     const sizes = ["XS", "S", "M", "L", "XL"];
     for (let i = 0; i < products.length; i++) {
       const pp = products[i];
@@ -148,23 +137,17 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
         });
       }
     }
-    // Populate price from costings if available (no-op when costings not yet set).
     await syncVariantPricesFromCostings(productId).catch(() => {});
   }
 
   return { created, updated };
 }
 
-/**
- * Sync bolster products from inventory system.
- * Creates a single bolster product with variants per length (short/medium/long).
- */
 export async function syncBolsterProducts(): Promise<{ created: number; updated: number }> {
   const admin = supabaseAdmin();
   let created = 0;
   let updated = 0;
 
-  // Fetch bolster category
   const { data: categories } = await admin
     .from("categories")
     .select("id")
@@ -173,7 +156,6 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
 
   const bolsterCategoryId = categories?.id ?? null;
 
-  // Check if bolster BOM lines exist
   const { data: bomLines } = await admin
     .from("bolster_bom_lines")
     .select("variant")
@@ -181,7 +163,6 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
 
   if (!bomLines || bomLines.length === 0) return { created: 0, updated: 0 };
 
-  // Get distinct bolster variants
   const { data: variants } = await admin
     .from("bolster_bom_lines")
     .select("variant");
@@ -190,7 +171,6 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
 
   const slug = "mbolster";
 
-  // Upsert product
   const { data: existingProduct } = await admin
     .from("products")
     .select("id")
@@ -242,7 +222,6 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
     created++;
   }
 
-  // Create product option for length
   const { data: existingOption } = await admin
     .from("product_options")
     .select("id")
@@ -259,7 +238,6 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
     });
   }
 
-  // Create variants per length
   const variantOrder = ["short", "medium", "long"];
   for (const variant of distinctVariants) {
     const { data: existingVariant } = await admin
@@ -284,17 +262,11 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
       });
     }
   }
-  // Populate price from costings if available (no-op when costings not yet set).
   await syncVariantPricesFromCostings(productId).catch(() => {});
 
   return { created, updated };
 }
 
-/**
- * Archive single-item products whose inventory item lost its MSRP or was deactivated.
- * Re-activate (draft) when the item becomes sellable again.
- * Never deletes — preserves history, images, and Stripe linkage.
- */
 export async function archiveUnsellableItemProducts(): Promise<{ archived: number }> {
   const admin = supabaseAdmin();
 
@@ -322,7 +294,6 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
   for (const v of variants as { product_id: string; item_id: number }[]) {
     const active = activeById.get(v.item_id) === true;
     const hasMsrp = msrpById.has(v.item_id);
-    // A product is sellable if ANY of its item-linked variants is sellable.
     sellableByProduct.set(v.product_id, (sellableByProduct.get(v.product_id) ?? false) || (active && hasMsrp));
   }
 
@@ -340,7 +311,6 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
       const { error } = await admin.from("products").update({ status: "archived" }).eq("id", productId);
       if (!error) archived++;
     } else if (sellable && product.status === "archived") {
-      // Restore to draft so the operator can re-publish deliberately.
       await admin.from("products").update({ status: "draft" }).eq("id", productId);
       await syncVariantPricesFromCostings(productId).catch(() => {});
     }
@@ -349,10 +319,6 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
   return { archived };
 }
 
-/**
- * Adopt manual products that map to a sellable inventory item; leave the rest as legacy.
- * Matching: existing item_id link, or case-insensitive title/sku/name match against sellable items.
- */
 export async function adoptManualProducts(): Promise<{ adopted: number; legacy: number }> {
   const admin = supabaseAdmin();
 
@@ -375,7 +341,6 @@ export async function adoptManualProducts(): Promise<{ adopted: number; legacy: 
       .map((i: { id: number; name: string; subtype: string | null; size: string | null }) => [i.id, i]),
   );
 
-  // name / "name subtype" / "name size" → item_id
   const itemsByName = new Map<string, number>();
   for (const item of itemsById.values()) {
     const keys = [
@@ -443,9 +408,6 @@ export async function adoptManualProducts(): Promise<{ adopted: number; legacy: 
   return { adopted, legacy };
 }
 
-/**
- * Run full inventory sync — pillows + bolsters + single-item lifecycle.
- */
 export async function syncAllProducts(): Promise<SyncResult> {
   const pillows = await syncPillowProducts();
   const bolsters = await syncBolsterProducts();

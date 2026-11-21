@@ -1,10 +1,5 @@
 import { csvCell } from "@/lib/csv";
 
-/**
- * The Google Form export's header, as the owner's file has it (2026-10-31),
- * and made-up rows in its shape. Every name, number, email and Drive id here
- * is invented.
- */
 export const FORM_HEADER = [
   "Name:",
   "Timestamp",
@@ -41,7 +36,6 @@ type Header = (typeof FORM_HEADER)[number];
 
 const drive = (id: string) => `https://drive.google.com/open?id=${id}`;
 
-/** A complete row, as a staff member filled the form in. */
 export const SAMPLE_ROW: Record<Header, string> = {
   "Name:": "Avery Lim ",
   Timestamp: "10/17/2026 1:24:28",
@@ -74,7 +68,6 @@ export const SAMPLE_ROW: Record<Header, string> = {
   "Do you use bolsters to sleep?": "No",
 };
 
-/** A CSV of rows over FORM_HEADER (or another header), each a partial override of SAMPLE_ROW. */
 export function formCsv(rows: Partial<Record<string, string>>[], header: readonly string[] = FORM_HEADER): string {
   const lines = [header.map(csvCell).join(",")];
   for (const r of rows) {

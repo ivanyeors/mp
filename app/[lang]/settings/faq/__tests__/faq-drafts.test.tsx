@@ -5,12 +5,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CategoryRow, FaqInitialData, ItemRow } from "../faq-client";
 
-/**
- * The FAQ editor's open drafts: an unsaved edit survives a visibility toggle
- * (which only flips `visible`), and a save re-seeds the draft from the row the
- * server sends back.
- */
-
 vi.mock("next/navigation", () => ({ usePathname: () => "/en-US/settings/faq" }));
 vi.mock("@/components/settings/page-faqs-panel", () => ({ PageFaqsPanel: () => null }));
 
@@ -39,7 +33,6 @@ const initialData: FaqInitialData = {
   items: { ok: true, rows: [item] },
 };
 
-/** What each PATCH sends back as `row`; by default the row as patched. */
 let serverRow: (url: string, body: Record<string, unknown>) => unknown;
 
 let root: Root | null = null;
@@ -65,7 +58,6 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-/** The field right after the label reading `text` (the first one, or the one inside `within`). */
 function fieldAfter(text: string, within: ParentNode = document) {
   const label = [...within.querySelectorAll("label")].find((l) => l.textContent === text);
   const field = label?.nextElementSibling;
@@ -74,7 +66,6 @@ function fieldAfter(text: string, within: ParentNode = document) {
 }
 
 async function openCategory() {
-  // The category name opens it (the phone trigger; the chevron does the same).
   const trigger = [...document.querySelectorAll<HTMLButtonElement>("button[aria-expanded]")].find((b) =>
     b.textContent?.includes("Shipping"),
   );

@@ -6,21 +6,6 @@ import { getDefaultFromAddress } from "./transport";
 import { getSiteOrigin } from "@/lib/site-url";
 import type { RenderedEmail, SendOutcome } from "./types";
 
-// ============================================================
-// Website chat → code and transcript emails
-// ============================================================
-//
-// A visitor without an account proves their email with a 6-digit code before
-// their first message goes out (lib/support/chat-codes.ts). From then on the
-// chat's transcript goes to that address with no second code: when they end
-// the chat, when they leave the page, and when a staff reply arrives after
-// they have gone (lib/support/chat.ts decides when). Every transcript of one
-// chat has the same subject, so the mail client threads them.
-
-/**
- * The code email. Nothing in it comes from the visitor, so typing someone
- * else's address sends them only a code they can ignore.
- */
 export function renderChatCodeEmail(p: { code: string; minutes?: number }): RenderedEmail {
   const minutes = p.minutes ?? 10;
   const intro = "Here's your code for the chat on our website.";
@@ -52,7 +37,6 @@ ${mutedText(notYou)}`,
   return { subject: "Your mpillow chat code", html, text };
 }
 
-/** Sends a code to the visitor alone. Throws if the transport throws. */
 export async function sendChatCodeEmail(email: string, code: string, minutes?: number): Promise<SendOutcome> {
   const transport = getEmailTransport();
   const result = await transport.send({
@@ -63,7 +47,6 @@ export async function sendChatCodeEmail(email: string, code: string, minutes?: n
   return { sent: true, transport: transport.name, id: result.id };
 }
 
-/** Why this transcript is going out; only the opening line differs. */
 export type TranscriptReason = "ended" | "left" | "staff_reply";
 
 export interface TranscriptMessage {
@@ -74,23 +57,15 @@ export interface TranscriptMessage {
 }
 
 export interface ChatTranscript {
-  /** The short chat reference staff see in Telegram, e.g. "3F9A2C". */
   ref: string;
   chatId: string;
   name?: string | null;
-  /** Verified: the account's sign-in email, or one proved with a chat code. */
   email: string;
-  /** Signed in: the email links back to the chat in their account. */
   hasAccount: boolean;
   messages: TranscriptMessage[];
   reason: TranscriptReason;
 }
 
-/**
- * To the customer, with the support inbox and CONTACT_CC on Cc, so staff keep
- * the record and anyone can answer from their inbox. Reply-To names the inbox
- * and the customer, so a reply from either side reaches both.
- */
 export function chatTranscriptRecipients(customerEmail: string): { to: string; cc: string[]; replyTo: string[] } {
   const support = getSupportInbox();
   const cc = uniqueAddresses([customerEmail, support, CONTACT_CC]).slice(1);
@@ -162,7 +137,6 @@ ${paragraph(replyNote, { top: 8 })}`;
   return { subject: `Your chat with mpillow (#${t.ref})`, html, text };
 }
 
-/** Sends one transcript. Throws if the transport throws. */
 export async function sendChatTranscript(t: ChatTranscript): Promise<SendOutcome> {
   const transport = getEmailTransport();
   const result = await transport.send({

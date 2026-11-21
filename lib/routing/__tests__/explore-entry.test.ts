@@ -9,13 +9,6 @@ import {
   showsExplore,
 } from "@/lib/routing/explore-entry";
 
-/**
- * The way in to Explore until the launch (owner, 2026-11-17): an arrival at
- * the home page of mpillow.com or www.mpillow.com is shown /explore (every
- * time when signed out, once per browser session when signed in); a click on
- * the site itself is not, and from the launch nobody is.
- */
-
 vi.mock("@/lib/supabase/middleware", () => ({ refreshSupabaseSession: vi.fn(async () => undefined) }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
 
@@ -203,7 +196,6 @@ describe("in the proxy", () => {
     expect(cookie).toMatch(/Domain=mpillow\.com/i);
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/Secure/i);
-    // A session cookie: it ends with the browser session.
     expect(cookie).not.toMatch(/Max-Age|Expires/i);
   });
 

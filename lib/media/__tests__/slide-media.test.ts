@@ -19,7 +19,6 @@ describe("slide-media (slice 17)", () => {
 
   it("falls back to public path when map empty", () => {
     const img = slideImage("/wash-care.webp", { alt: "Wash care" });
-    // Empty committed map → public fallback (or hosted if migrate already ran in this workspace)
     expect(img.alt).toBe("Wash care");
     expect(img.src === "/wash-care.webp" || /^https?:\/\//i.test(img.src)).toBe(true);
     if (img.src.startsWith("/")) expect(img.assetId).toBeUndefined();
@@ -60,7 +59,6 @@ describe("slide-media (slice 17)", () => {
   });
 
   it("resolveSlideMedia returns null for missing entries", () => {
-    // Only assert shape when empty; after migrate this may be populated
     const miss = resolveSlideMedia("/definitely-not-a-slide-path.webp");
     expect(miss).toBeNull();
   });

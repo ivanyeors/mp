@@ -10,7 +10,6 @@ interface CartButtonProps {
   badgeClassName?: string;
 }
 
-/** Desktop: popover dropdown. Mobile: navigates to cart page. */
 export function CartButton({ className, iconClassName, badgeClassName }: CartButtonProps) {
   const isMobile = useIsMobile();
 

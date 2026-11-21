@@ -6,13 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { skyAt } from "@/lib/explore/sky";
 import type { ExploreSceneOptions } from "../explore-scene";
 
-/**
- * The Explore page's two "finish what the press began" paths and the scene's
- * flower taps call the handlers of the latest render: what a flower does
- * depends on whether the visitor is signed in and points are live now, not
- * when the scene was made or the timer set.
- */
-
 const actions = vi.hoisted(() => ({ claimExplorePoints: vi.fn(), pickExploreFlower: vi.fn() }));
 const scene = vi.hoisted(() => ({ options: null as ExploreSceneOptions | null }));
 vi.mock("@/app/[lang]/explore/actions", () => actions);
@@ -89,7 +82,6 @@ describe("ExploreExperience", () => {
     await act(async () => root.render(<ExploreExperience {...props({ signedIn: false, pointsLive: false })} />));
     await act(async () => void (await import("../explore-scene")));
     expect(scene.options).not.toBeNull();
-    // Points went live after the scene was made: a signed-out tap now asks them to sign up.
     await act(async () => root.render(<ExploreExperience {...props({ signedIn: false, pointsLive: true })} />));
     await act(async () => scene.options!.onFlower(1, { x: 10, y: 10 }));
     await settle();
@@ -100,11 +92,10 @@ describe("ExploreExperience", () => {
   it("back from signing up for a flower, picks it with the latest render's handler", async () => {
     window.history.replaceState(null, "", "/en/explore?flower=1");
     await act(async () => root.render(<ExploreExperience {...props({ signedIn: false, pointsLive: true, finishFlower: 1 })} />));
-    // Signed in by the time the timer fires: the flower is picked for its points, not a sign-up popup.
     await act(async () => root.render(<ExploreExperience {...props({ signedIn: true, pointsLive: true, finishFlower: 1 })} />));
-    await settle(); // the scene loads
-    await settle(); // the finish timer fires
-    await settle(); // the petals fall
+    await settle();
+    await settle();
+    await settle();
     expect(actions.pickExploreFlower).toHaveBeenCalledTimes(1);
     expect(actions.pickExploreFlower).toHaveBeenCalledWith(1);
     expect(host.querySelector("[data-flower]")?.getAttribute("data-flower")).toBe("won");

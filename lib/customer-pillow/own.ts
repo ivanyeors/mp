@@ -9,13 +9,6 @@ import type { Customer } from "@/lib/types/ecommerce";
 import { loadCustomerPillow, type PillowFittingAnswers } from "./load";
 import type { CustomerPillowView, OwnPillowView } from "./view";
 
-/**
- * The Customer's own pillow on their Profile (ADR 0042 k): what the Customer
- * page draws, once something says they bought it (`pillowOwnership`), copied
- * field by field so nothing Staff-only reaches the browser. Not the Staff
- * member who linked it, the match notices, the fitting's codes, or the
- * catalog of templates Change offers.
- */
 export function ownPillowView(pillow: CustomerPillowView): OwnPillowView | null {
   if (!pillow.onProfile || pillow.source === "none") return null;
   return {
@@ -48,12 +41,6 @@ export function ownPillowView(pillow: CustomerPillowView): OwnPillowView | null 
   };
 }
 
-/**
- * Read with the service role, by the Customer the session is linked to and
- * never by anything the request names. `fittings` are the Profile's own
- * (`listOwnFittings`), newest first. Null when nothing says they bought a
- * pillow, or there is nothing to draw; throws when the read fails.
- */
 export async function loadOwnPillow(
   admin: SupabaseClient,
   customerId: string,
@@ -64,12 +51,6 @@ export async function loadOwnPillow(
   return ownPillowView(read.pillow);
 }
 
-/**
- * The signed-in Customer (`loadSignedInCustomer`), when something says they already have a pillow
- * (`pillowOwnership`, the Profile's rule): the configurator then asks whether
- * this one is for them or for someone else. Null for a guest, for a Customer
- * with no pillow, and when the read fails, which only leaves the question out.
- */
 export async function loadSignedInPillowOwner(customer: Customer | null): Promise<{ name: string } | null> {
   if (!customer) return null;
   try {
@@ -81,7 +62,6 @@ export async function loadSignedInPillowOwner(customer: Customer | null): Promis
   }
 }
 
-/** The Customer this session is signed in as, or null for a guest or a failed link. */
 export async function loadSignedInCustomer(): Promise<Customer | null> {
   try {
     const user = await getAuthUser();

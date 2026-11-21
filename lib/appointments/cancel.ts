@@ -1,17 +1,3 @@
-/**
- * An appointment is off — the guest typed "cancel" or turned down every new
- * time, declined the calendar invite, or the event left the calendar (the guest
- * cancelled a Google booking, or staff deleted it). One path for all of them, so
- * the guest hears it exactly once, with a rebook link and the staffed line, and
- * no reminder follows.
- *
- * Order matters. The calendar goes first, so a cancellation that dies halfway
- * still frees the slot, and the event's removal comes back through the push
- * notification and finishes the job. The row is then claimed under its status
- * lock before anything is sent: a push, the cron and a WhatsApp reply can all
- * arrive for the same cancellation, and only the one that moves the row speaks.
- */
-
 import { markReadjustmentCancelledByEvent } from "@/lib/readjustment/lifecycle";
 import { deleteEvent, type EventState } from "./calendar";
 import { isPhoneAllowed } from "./phone";
@@ -27,20 +13,11 @@ import { transitionReminder } from "./state";
 import { appointmentTypeInfo } from "./type";
 import { sendCancelMessage, withinServiceWindow } from "./whatsapp";
 
-/**
- * - `guest`: asked over WhatsApp. The event is ours to delete.
- * - `declined`: said No to the invite. The event is still there holding the
- *   slot; delete it (Google tells the guest) so someone else can book.
- * - `removed`: the event is already gone.
- */
 export type CancelCause = "guest" | "declined" | "removed";
 
 export type CancelOutcome =
-  /** Cancelled now; `messaged` says whether the guest was told. */
   | { kind: "cancelled"; messaged: boolean }
-  /** Already over, or someone else just cancelled it. Nothing done. */
   | { kind: "not_live" }
-  /** The visit has passed: an old event tidied away is not news to the guest. */
   | { kind: "past" };
 
 export async function cancelAppointment(
@@ -48,7 +25,6 @@ export async function cancelAppointment(
   settings: AppointmentSettings,
   opts: {
     cause: CancelCause;
-    /** The guest just messaged us, so free text is allowed. Else looked up. */
     within24h?: boolean;
     now?: Date;
   },
@@ -60,7 +36,6 @@ export async function cancelAppointment(
   if (!t.ok || t.noop) return { kind: "not_live" };
 
   if (opts.cause !== "removed") await deleteEvent(row.calendar_event_id);
-  // The visit is gone: a complimentary Re-adjustment gives its free visit back.
   await markReadjustmentCancelledByEvent(row.calendar_event_id);
 
   const claimed = await updateReminder(
@@ -98,11 +73,6 @@ export async function cancelAppointment(
   return { kind: "cancelled", messaged: true };
 }
 
-/**
- * What the calendar says about an event we may hold a row for: an event that was
- * deleted, or that the guest declined, cancels a live row. Null when there is
- * nothing to act on (still on, or not an appointment we track).
- */
 export async function cancelFromCalendar(
   eventId: string,
   state: EventState,

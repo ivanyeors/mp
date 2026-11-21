@@ -1,7 +1,3 @@
-/**
- * Slice 07 self-check — Stories i18n + claims/SEO gate.
- * Run: npx tsx lib/i18n/marketing-copy-slice-07.check.ts
- */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -20,7 +16,6 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Stories from i18n (not hardcoded EN) ---
 assert.match(enUS.home.stories.title, /Singapore customers/i);
 assert.match(enUS.home.stories.subtitle, /custom-fit sleep|neck comfort/i);
 assert.doesNotMatch(enUS.home.stories.title + enUS.home.stories.subtitle, BANNED_CLINICAL);
@@ -40,11 +35,10 @@ assert.match(landingSrc, /StoriesSectionWrapper messages=\{messages\}/);
 
 assert.match(zhCN.home.stories.title, /新加坡/);
 
-// --- Claims/SEO gate over SEO-flagged samples ---
 const hero = enUS.home.hero;
 const h1 = [hero.titlePrefix, hero.titleEmphasis, hero.titleSuffix].filter(Boolean).join(" ");
 const gated = [
-  { label: "hero.h1", text: h1 }, // tagline OK; SEM intents live in seoAnswer
+  { label: "hero.h1", text: h1 },
   { label: "hero.seoAnswer", text: hero.seoAnswer, requireSingaporeOrCervical: true },
   { label: "home.neckPains", text: `${enUS.home.neckPains.title} ${enUS.home.neckPains.description}`, requireSingaporeOrCervical: true },
   { label: "home.mbolster", text: `${enUS.home.mbolster.description} ${enUS.home.mbolster.subtitle}` },
@@ -62,7 +56,6 @@ assertMarketingCopySafe(gated, {
   heroSeoAnswer: hero.seoAnswer,
 });
 
-// Helper must fail on banned verbs
 let threw = false;
 try {
   assertMarketingCopySafe([{ label: "bad", text: "We cure neck pain." }]);
@@ -71,7 +64,6 @@ try {
 }
 assert.ok(threw, "assertMarketingCopySafe must fail on treat/cure/prescribe/rehab");
 
-// Helper must fail outside hero word band
 threw = false;
 try {
   assertMarketingCopySafe([], { heroSeoAnswer: "Too short." });
@@ -80,7 +72,6 @@ try {
 }
 assert.ok(threw, "assertMarketingCopySafe must fail short hero seoAnswer");
 
-// --- llms.txt: Science of Sleep is retired ---
 process.env.NEXT_PUBLIC_SITE_URL ??= "https://custom.mpillow.com";
 const llms = buildLlmsIndex([{ slug: "cervical-support", title: "Cervical Support" }]);
 assert.ok(!llms.includes("Science of Sleep"), "llms index must not mention Science of Sleep");

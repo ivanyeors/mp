@@ -15,20 +15,11 @@ export interface SendConfirmation {
     from: string | null;
     replyTo: string | null;
     audience: string;
-    /** The campaign's first wave, which also locks the email. */
     firstWave: boolean;
 }
 
-/** Pure — the button's words: the action and the count, never "OK". */
 export const sendButtonLabel = (count: number) => `Send to ${n(count)} ${count === 1 ? "person" : "people"}`;
 
-/**
- * The confirmation before a wave (PRD-campaign-send-flow decision 4). It
- * restates what will happen (the email, who it is from, where replies go, the
- * audience and how many) and that it cannot be undone. Cancel has the focus.
- * The first wave also locks the email, so it asks for one tick: a test was
- * sent and read.
- */
 export function SendConfirmDialog({
     open,
     onOpenChange,
@@ -43,7 +34,6 @@ export function SendConfirmDialog({
     const [tested, setTested] = useState(false);
     if (!details) return null;
     const canSend = !details.firstWave || tested;
-    // The tick is asked for each time the dialog opens.
     const close = () => {
         setTested(false);
         onOpenChange(false);
@@ -53,7 +43,6 @@ export function SendConfirmDialog({
         <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
             <DialogContent
                 onOpenAutoFocus={(e) => {
-                    // Cancel, not the send button, has the focus.
                     e.preventDefault();
                     (e.currentTarget as HTMLElement | null)?.querySelector<HTMLButtonElement>("[data-cancel]")?.focus();
                 }}
@@ -95,7 +84,6 @@ export function SendConfirmDialog({
     );
 }
 
-/** The send's summary, as the dialog states it. */
 export function SendSummary({ details }: { details: SendConfirmation }) {
     const rows: [string, string][] = [
         ["Email", details.subject],

@@ -1,8 +1,3 @@
-/**
- * Commission ledger DB layer (#77, ADR 0015). All supabase reads/writes; the pure
- * calc/lifecycle lives in ./index and is imported here (never the reverse).
- */
-
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   PARTNER_TERMS_COLUMNS,
@@ -17,21 +12,9 @@ import { round2, releaseAt } from "./index";
 
 export type CommissionItemInput = CommissionOrderItem & {
   id: string;
-  /** The line's goods, recorded as the commission's base for reference. */
   total_price?: number | string | null;
 };
 
-/**
- * Create the HELD commission for an attributed order, once per Qualifying Sale
- * (ADR 0034): an order with at least one customised premium pillow earns the
- * partner's flat commission, however many it holds. Nothing else earns.
- *
- * `amount` is the commission the hold fixed (clause 7.2: the pick in force the day
- * the customer paid); without one, the partner's terms today price it. The row
- * sits on the order's first eligible line, so redelivery picks the same line and
- * the upsert is a no-op. `deliveredAt` drives release — null until delivered, a
- * timestamp at in-store handover. Returns whether the order qualifies.
- */
 export async function createHeldCommissionsForOrder(
   admin: SupabaseClient,
   input: {
@@ -76,14 +59,6 @@ export async function createHeldCommissionsForOrder(
   return true;
 }
 
-/**
- * Void what an RMA refund reverses. A row on a refunded line goes (the retired
- * per-unit rows). And a refunded customised premium pillow means the order is no
- * Qualifying Sale (Schedule: no Eligible Product refunded), so the order's flat
- * commission goes too, whichever line it sits on. Idempotent — already-void rows
- * are untouched; exchange/replacement never reach here (they settle to
- * `completed`, not `refunded`).
- */
 export async function voidCommissionsForRma(
   admin: SupabaseClient,
   rmaId: string,
@@ -98,10 +73,6 @@ export async function voidCommissionsForRma(
   );
 }
 
-/**
- * Void what refunding these returned lines reverses, by the rule above. Shared
- * by the RMA refund and a Staff refund for a return; idempotent.
- */
 export async function voidCommissionsForItems(
   admin: SupabaseClient,
   ids: string[],
@@ -138,13 +109,6 @@ export async function voidCommissionsForItems(
   if (orderErr) throw new Error(orderErr.message);
 }
 
-/**
- * Void EVERY commission on an order (a full refund reverses the whole sale).
- * Complements {@link voidCommissionsForRma}: the RMA path voids on a refund
- * resolution; this covers a full refund issued OUTSIDE an RMA (e.g. a
- * staff Stripe-dashboard refund), which otherwise leaves commission held/released
- * on a fully-refunded order. Idempotent — already-void rows are untouched.
- */
 export async function voidCommissionsForOrder(
   admin: SupabaseClient,
   orderId: string,
@@ -157,14 +121,8 @@ export async function voidCommissionsForOrder(
   if (error) throw new Error(error.message);
 }
 
-/**
- * Idempotent settle: flips held → released for every commission whose window has
- * closed, dated from the ORDER's live delivered_at (never paid_at). Not scheduled
- * here — the payout slice (#81) calls it. Returns the count released.
- *
- * ponytail: row-by-row (N updates) — fine for a periodic payout job; batch by
- * delivered_at grouping if the ledger ever grows large.
- */
+// ponytail: row-by-row (N updates) — fine for a periodic payout job; batch by delivered_at grouping
+// if the ledger ever grows large.
 export async function settleDueCommissions(
   admin: SupabaseClient,
   now: Date = new Date(),
@@ -178,7 +136,6 @@ export async function settleDueCommissions(
   for (const row of (data ?? []) as unknown as Array<{
     id: string;
     delivered_at: string | null;
-    // Supabase types an embedded to-one as an array; runtime is an object. Read both.
     orders: { delivered_at: string | null } | { delivered_at: string | null }[] | null;
   }>) {
     const ordersRel = Array.isArray(row.orders) ? row.orders[0] : row.orders;
@@ -200,14 +157,6 @@ export async function settleDueCommissions(
   return released;
 }
 
-/**
- * A partner's releasable balance (#81): sum of `released`, not-yet-paid
- * commission_amount. Settles due (held→released) FIRST so newly-matured
- * commissions count — keeps the hub + admin surfaces consistent. `void`/`paid`
- * are excluded (settled rows carry status `released`; paying flips them to `paid`).
- * Summed in cents so many rows never accrete float dust. No minimum (AC5): a
- * 1-cent balance is returned as-is.
- */
 export async function releasedBalance(
   admin: SupabaseClient,
   partnerId: string,
@@ -229,27 +178,15 @@ export async function releasedBalance(
 export interface RecordPayoutInput {
   partnerId: string;
   amount: number;
-  /** yyyy-mm-dd */
   paidOn: string;
   method?: string | null;
   reference?: string | null;
-  /** Private-bucket key of the proof-of-payment image. */
   proofPath?: string | null;
   createdBy?: string | null;
 }
 
-/**
- * Record an IMMUTABLE payout row and mark the covered released commissions `paid`
- * (#81, AC3/AC6). Settles due first. For a positive amount, released+unpaid
- * commissions are claimed oldest-first until their cumulative total reaches
- * `amount` (whole commissions — a single commission is never split); those flip to
- * `paid` and link to the payout. A zero/negative amount (a correction, AC6)
- * records the row only and touches no commissions. Returns the new payout id and
- * how many commissions it marked paid.
- *
- * ponytail: no row lock — single-operator payout surface. Add SELECT … FOR UPDATE
- * or an advisory lock keyed on partnerId if two admins may pay one partner at once.
- */
+// ponytail: no row lock — single-operator payout surface. Add SELECT … FOR UPDATE or an advisory
+// lock keyed on partnerId if two admins may pay one partner at once.
 export async function recordPayout(
   admin: SupabaseClient,
   input: RecordPayoutInput,
@@ -295,7 +232,7 @@ export async function recordPayout(
     .from("commissions")
     .update({ status: "paid", payout_id: payout.id })
     .in("id", ids)
-    .eq("status", "released"); // guard: only flip still-released rows
+    .eq("status", "released");
   if (updErr) throw new Error(updErr.message);
 
   return { payoutId: payout.id, commissionsPaid: ids.length };

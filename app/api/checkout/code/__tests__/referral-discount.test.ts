@@ -3,18 +3,6 @@ import type { FakeDb } from "@/lib/supabase/__tests__/fake-admin";
 import type { PartnerTerms } from "@/lib/partner-terms";
 import { resetRateLimits } from "@/lib/rate-limit";
 
-/**
- * What a partner's code takes off at checkout (ADR 0034). The customer gets the
- * pool the partner leaves (pool − the partner's commission in effect today) only
- * when ALL hold: a customisation, of a premium pillow, Staff have turned the
- * customer discount on for that partner, and the buyer is not the partner. Never
- * more than the build's goods. The response names the partner, never its id.
- *
- * The code resolver is stubbed to the partner under test; the self-referral
- * check is stubbed to the spec's rule (a signed-in session for that partner, or
- * an email on that partner's account) so the test sees what the route asks it.
- */
-
 const PARTNER_ID = "7c1d2e3f-4a5b-4c6d-8e7f-90a1b2c3d4e5";
 const OTHER_PARTNER_ID = "1f2e3d4c-5b6a-4978-8a6b-5c4d3e2f1a0b";
 const PARTNER_EMAIL = "front-desk@spineclinic.test";
@@ -93,7 +81,6 @@ async function check(context: unknown, extra: Record<string, unknown> = {}) {
   );
   expect(res.status).toBe(200);
   const json = await res.json();
-  // Whatever it answers, the partner's id never leaves the server.
   expect(JSON.stringify(json)).not.toContain(PARTNER_ID);
   expect(json).not.toHaveProperty("partner_id");
   return json as { ok: boolean; kind: string; partner_name?: string; discount_amount?: number };
@@ -154,10 +141,8 @@ describe("POST /api/checkout/code — a partner's code on an eligible build", ()
   it("uses the commission in effect today, by the Singapore calendar", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     givePartner(terms({ choice: 30, nextChoice: 10, nextChoiceFrom: "2026-10-31" }));
-    // 23:59 on 30 Oct in Singapore: the old pick (30) → 20 off.
     vi.setSystemTime(new Date("2026-10-30T15:59:00Z"));
     expect((await check(premiumPillow())).discount_amount).toBe(20);
-    // 00:00 on 31 Oct in Singapore: the waiting pick (10) → 40 off.
     vi.setSystemTime(new Date("2026-10-30T16:00:00Z"));
     expect((await check(premiumPillow())).discount_amount).toBe(40);
   });

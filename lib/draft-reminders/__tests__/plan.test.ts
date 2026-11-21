@@ -8,12 +8,6 @@ import {
   type DraftReminderRow,
 } from "@/lib/draft-reminders";
 
-/**
- * Reminders to a guest who stopped customising (ADR 0050): 1 day, 1 week and
- * 1 month after the last save, then none; each in its own window, so a missed
- * day never sends two together; one Draft per email; Marketing consent only.
- */
-
 const NOW = new Date("2026-11-20T02:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 const ago = (days: number) => new Date(NOW.getTime() - days * DAY).toISOString();
@@ -117,10 +111,8 @@ describe("planDraftReminders", () => {
   it("never sends one already sent, nor an earlier one after a later", () => {
     const sent1d = new Map([["d1", new Set(["results.draft_reminder_1d"])]]);
     expect(plan({ sentByDraft: sent1d }).skipped.already_sent).toBe(1);
-    // Back after the week's reminder and stopped again: the day's window reopens, but it went.
     const sent1w = new Map([["d1", new Set(["results.draft_reminder_1w"])]]);
     expect(plan({ sentByDraft: sent1w }).skipped.already_sent).toBe(1);
-    // The week's reminder still goes after the day's.
     const week = plan({ drafts: [draft({ updated_at: ago(8) })], sentByDraft: sent1d });
     expect(week.planned[0].reminder.step).toBe("1w");
   });
@@ -132,7 +124,6 @@ describe("planDraftReminders", () => {
   it("stops once a Result started since the Draft was held or paid", () => {
     const started = new Map([["wei@example.com", ago(1)]]);
     expect(plan({ resultStartedByEmail: started }).skipped.went_on_to_buy).toBe(1);
-    // A pillow bought before this Draft started does not stop it.
     const before = new Map([["wei@example.com", ago(90)]]);
     expect(plan({ resultStartedByEmail: before }).planned).toHaveLength(1);
   });

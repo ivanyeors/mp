@@ -1,22 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { likeMatch } from "@/lib/supabase/__tests__/fake-admin";
 
-/**
- * In-memory stand-in for the service-role client, for the Aftercare jobs (CRM
- * slices 07 and 08). It answers the PostgREST calls the jobs, the email ledger
- * and the WhatsApp channel make: eq / in / gte / lt / lte / like / is /
- * not-null filters, order, limit, range, head counts, update,
- * `upsert(..., { onConflict, ignoreDuplicates })` with a real unique key, and
- * `claim_customer_email` exactly as the migration defines it.
- *
- * An `orders` row holds its `order_items` inline. A filter on
- * `order_items.<col>` keeps the matching lines and drops an order with none,
- * as an `!inner` embed does.
- *
- * Every statement yields before it runs, then runs in one step, so runs started
- * together with Promise.all interleave between statements the way concurrent
- * cron runs do, while each statement stays atomic as it is in Postgres.
- */
 type Row = Record<string, unknown>;
 export type ReviewFakeDb = Record<string, Row[]>;
 

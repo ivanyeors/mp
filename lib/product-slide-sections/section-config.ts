@@ -10,11 +10,6 @@ import type {
 type SectionDataAttrs = Record<`data-${string}`, string>;
 
 type BaseSectionConfig = {
-  /**
-   * The section's stable name within its slide-in, e.g. `size-guide`. Staff overrides
-   * (`slide_in_sections.slug`) are keyed on it, so renaming one orphans its edits —
-   * treat it like a database key. Unique within one config.
-   */
   key: string;
   borderTop?: boolean;
   sectionData?: SectionDataAttrs;
@@ -29,9 +24,7 @@ export type SplitHeroSectionConfig = BaseSectionConfig & {
   buttonAction?: { labelKey: string; action: SectionButtonAction };
   stacked?: boolean;
   stackedImages?: ImageMediaConfig[];
-  /** Show the image at its own aspect ratio (a GIF or a tall chart) instead of cropping it. */
   naturalImage?: boolean;
-  /** Put `listItems` behind a button labelled `listToggle`, open to start with. */
   collapsibleList?: boolean;
   titleAs?: "h1" | "h2" | "h3";
   titleClassName?: string;
@@ -122,7 +115,6 @@ export type VideoSectionConfig = BaseSectionConfig & {
   type: "video_section";
   contentKey: string;
   videoId: string;
-  /** `split` puts the title and description beside the video on wider screens. */
   layout?: "stacked" | "split";
 };
 
@@ -181,7 +173,6 @@ export type PressQuoteSectionConfig = BaseSectionConfig & {
 export type MeasureCarouselSectionConfig = BaseSectionConfig & {
   type: "measure_carousel";
   contentKey: string;
-  /** One icon per card, in card order. */
   icons: string[];
 };
 
@@ -219,7 +210,6 @@ export function isProductSlideSectionType(value: string): value is ProductSlideS
   return (PRODUCT_SLIDE_SECTION_TYPES as readonly string[]).includes(value);
 }
 
-/** Templates with a React implementation in the renderer (grows per slice). */
 export const IMPLEMENTED_SECTION_TYPES = [
   "split_hero",
   "split_hero_dual_media",

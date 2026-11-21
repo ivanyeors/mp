@@ -7,15 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatPoints } from "@/lib/points/value";
 
-/**
- * The Explore page's flowers are an Easter egg (owner, 2026-11-17): a picked
- * flower's petals drift to the grass, and then this popup. Signed in, it is
- * the surprise, the 1 to 3 points the database gave. Signed out, it is a plain
- * sign-in with no hint of a flower or points, so the surprise stays one; the
- * sign-in comes back to `?flower=N` and the page picks that same flower for
- * them (ADR 0030, decision 22).
- */
-
 export type FlowerPopup = { kind: "won"; points: number; balance: number } | { kind: "sign_up"; flower: number };
 
 function FlowerBadge() {
@@ -38,9 +29,7 @@ export function ExploreFlowerDialog({
 }: {
   popup: FlowerPopup | null;
   onOpenChange: (open: boolean) => void;
-  /** Where a sign-in comes back to for this flower: `/{lang}/explore?flower=N`. */
   signUpPath: (flower: number) => string;
-  /** Their welcome bonus is still theirs to claim. */
   canClaim: boolean;
   onClaim: () => void;
 }) {
@@ -49,7 +38,6 @@ export function ExploreFlowerDialog({
       <DialogContent
         className="sm:max-w-sm"
         data-typography-scope="app"
-        // The sign-in has a title and nothing more to say: no description to point to.
         {...(popup?.kind === "sign_up" ? { "aria-describedby": undefined } : {})}
       >
         <style>{`@keyframes explore-pop{0%{opacity:0;transform:scale(.4) rotate(-25deg)}100%{opacity:1;transform:scale(1) rotate(0)}}`}</style>

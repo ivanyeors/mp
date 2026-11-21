@@ -6,13 +6,6 @@ import type { PastCampaign } from "@/lib/email-campaigns/store";
 import { formatAdminDate } from "@/lib/format/admin-date";
 import { listPastCampaignsAction } from "./actions";
 
-/**
- * *A past campaign*, in the Start panel (PRD-campaign-email-editor slice 08):
- * every campaign, archived ones too, newest first, read when the card opens,
- * not with the page. Picking one is Duplicate: a copy of its email and who it
- * goes to, as a new draft, never its sends.
- */
-
 const pastStatus = (c: PastCampaign) => (c.archived ? "Archived" : c.started ? "Started" : "Draft");
 
 export function PastCampaigns({ onPick, busy }: { onPick: (id: string) => void; busy: boolean }) {

@@ -13,8 +13,6 @@ function row(over: Partial<StageInput> = {}): StageInput {
     created_at: FRESH,
     order_id: null,
     topup_paid_at: null,
-    // A real `online_purchase` row always has this stamped at submit — the hold
-    // amount is written in the same insert that sets the source.
     authorized_amount: 120,
     order: null,
     ...over,
@@ -78,7 +76,6 @@ describe("resultStage — post-capture follows the Order", () => {
   });
 
   it("an in-store handover is handed over even if status lags", () => {
-    // accept() stamps delivered_at at capture for in-store; trust the timestamp.
     expect(
       resultStage(row({ ...captured, order: { status: "confirmed", delivered_at: FRESH } }), NOW)
         .stage,
@@ -102,8 +99,6 @@ describe("resultStage — stuck states", () => {
   });
 
   it("measurement residue: held in-store with no payment intent", () => {
-    // buildInstoreReviewOnlyPatch sets authorized_amount: null — in-store
-    // measurement never authorizes a card.
     const s = resultStage(
       row({ payment_intent_id: null, source: "manual", authorized_amount: null }),
       NOW,
@@ -153,7 +148,6 @@ describe("resultStage — stuck states", () => {
 });
 
 describe("resultStage — Assisted customisation (no hold by design)", () => {
-  // An Assisted customisation takes no card, so no amount is ever authorized.
   const assisted = (over: Partial<StageInput> = {}) =>
     row({
       source: "staff_assisted",
@@ -187,7 +181,6 @@ describe("resultStage — Assisted customisation (no hold by design)", () => {
     ).toBe("abandoned_checkout");
     expect(
       resultStage(
-        // In-store measurement authorizes nothing.
         row({ source: "manual", payment_intent_id: null, authorized_amount: null }),
         NOW,
       ).stuckReason,
@@ -196,10 +189,6 @@ describe("resultStage — Assisted customisation (no hold by design)", () => {
 });
 
 describe("resultStage — authorization hold switched off", () => {
-  // The toggle suppresses the card step for an ordinary online submit, so the
-  // row keeps source `online_purchase` but authorizes nothing. Staging must key
-  // on the missing amount, not the source, or every such submit reads as an
-  // abandoned checkout the moment holds are turned off.
   const noHold = (over: Partial<StageInput> = {}) =>
     row({ payment_intent_id: null, authorized_amount: null, ...over });
 
@@ -216,14 +205,12 @@ describe("resultStage — authorization hold switched off", () => {
   });
 
   it("still flags an abandoned checkout when a hold WAS expected", () => {
-    // Same row, same missing PaymentIntent — only the stamped amount differs.
     expect(resultStage(noHold({ authorized_amount: 120 }), NOW).stuckReason).toBe(
       "abandoned_checkout",
     );
   });
 
   it("waits on the customer once assigned, with no rotting-hold warning", () => {
-    // hold_rotting requires a payment_intent_id, so a no-hold row can't trip it.
     const s = resultStage(noHold({ status: "assigned", created_at: OLD }), NOW);
     expect(s.stage).toBe("awaiting_customer");
     expect(s.stuckReason).toBeNull();

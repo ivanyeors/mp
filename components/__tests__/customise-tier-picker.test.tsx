@@ -11,11 +11,6 @@ vi.mock("next/navigation", () => ({
 
 const { CustomiseTierPicker } = await import("@/components/customise-tier-picker");
 
-/**
- * The landing hero server-renders this picker. Its overlay is a portal into
- * document.body, so it must never render on the server or during hydration,
- * and must appear on the first click.
- */
 window.scrollTo = () => undefined;
 
 const picker = (
@@ -58,7 +53,6 @@ describe("CustomiseTierPicker", () => {
     expect(dialog()).not.toBeNull();
     expect(dialog()!.getAttribute("aria-hidden")).toBe("false");
 
-    // Escape closes it; the overlay unmounts once the close animation ends.
     act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
     expect(dialog()!.getAttribute("aria-hidden")).toBe("true");
     await until(() => (dialog() === null ? true : null), 100);

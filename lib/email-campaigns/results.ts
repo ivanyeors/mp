@@ -1,32 +1,8 @@
-/**
- * Results per campaign (PRD-campaign-audiences slice 11; retention metric
- * M22), pure.
- *
- * What the people sent a campaign did next: clicked, unsubscribed from it,
- * marked it as spam, and bought within 30 days of being sent it. A purchase is
- * the CRM's **Purchase** (a counted Order with a goods line), never a
- * re-adjustment fee; its total is net of refunds. Each number is split by the
- * Lifecycle stage the person had when sent (`stage_at_send`), since the stage
- * moves. Rates are over people sent, never over opens, and show a dash when
- * nobody was.
- *
- * A purchase after an email is not proof the email caused it. The holdout
- * says more: a campaign that keeps sending may hold out 10% of the people it
- * would send to (`campaign_holdout_bucket`, the claim), and their 30-day
- * purchase rate is set beside that of the people sent in the same weeks.
- *
- * The rows come from `email_campaign_stage_results` (20261031162653).
- */
-
 import { LIFECYCLE_STAGE_LABEL, LIFECYCLE_STAGES, type LifecycleStage } from "@/lib/crm/lifecycle-stage";
 
-/** A purchase counts when paid within this many days after the send. */
 export const RESULT_WINDOW_DAYS = 30;
-/** Of the people a holding-out campaign would send to, the share held out: `campaign_holdout_bucket(id) < 10`. */
 export const HOLDOUT_PERCENT = 10;
-/** The holdout is offered once a campaign has been sent to this many (owner decision 5). */
 export const HOLDOUT_MIN_SENT = 500;
-/** Two-sided 95%: past this, the difference is unlikely to be chance. */
 const Z_95 = 1.96;
 
 export type ResultStage = LifecycleStage | "unknown";
@@ -43,13 +19,9 @@ export interface ResultNumbers {
   clicked: number;
   unsubscribed: number;
   complained: number;
-  /** People who bought within 30 days of being sent it. */
   bought: number;
-  /** Of `bought`, those whose purchase came after their first click. */
   boughtAfterClick: number;
-  /** What those purchases came to, in S$, net of refunds. */
   boughtTotal: number;
-  /** People sent it under 30 days ago: their window is still open. */
   counting: number;
 }
 
@@ -59,20 +31,14 @@ export interface StageResult extends ResultNumbers {
 
 export interface HoldoutComparison {
   heldOut: ResultNumbers;
-  /** The people sent it since the first person was held out: the same weeks. */
   sent: ResultNumbers;
-  /** Percentage points, sent's purchase rate less the held out's; null when either group is empty. */
   difference: number | null;
-  /** Whether the difference is past what chance explains at 95%. */
   clear: boolean;
 }
 
 export interface CampaignResults {
-  /** Everyone it was sent to. */
   total: ResultNumbers;
-  /** The same, by the stage each person had when sent: in funnel order, only stages with someone. */
   byStage: StageResult[];
-  /** Null when nobody was held out. */
   holdout: HoldoutComparison | null;
 }
 
@@ -104,7 +70,6 @@ function add(a: ResultNumbers, b: ResultNumbers): ResultNumbers {
   };
 }
 
-/** Pure — one `email_campaign_stage_results` row's numbers. */
 export function numbersFromRow(row: Record<string, unknown>): ResultNumbers {
   return {
     people: num(row.people),
@@ -118,7 +83,6 @@ export function numbersFromRow(row: Record<string, unknown>): ResultNumbers {
   };
 }
 
-/** Pure — a campaign's `email_campaign_stage_results` rows as its results. Unknown cohorts and stages are skipped. */
 export function resultsFromRows(rows: readonly Record<string, unknown>[]): CampaignResults {
   const by: Record<ResultCohort, Map<ResultStage, ResultNumbers>> = {
     sent: new Map(),
@@ -142,12 +106,10 @@ export function resultsFromRows(rows: readonly Record<string, unknown>[]): Campa
   };
 }
 
-/** Pure — `n` of `of` as a fraction, or null when nobody is in `of`: a dash, never 0%. */
 export function rate(n: number, of: number): number | null {
   return of > 0 ? n / of : null;
 }
 
-/** Pure — a rate as people read it: a dash for none, one decimal under 10%, whole above. */
 export function formatRate(r: number | null): string {
   if (r === null || !Number.isFinite(r)) return "—";
   const pct = r * 100;
@@ -156,16 +118,10 @@ export function formatRate(r: number | null): string {
   return `${Math.round(pct)}%`;
 }
 
-/** Pure — S$ in whole dollars, as the demo reads: S$2,140. */
 export function formatSgd(amount: number): string {
   return `S$${Math.round(amount).toLocaleString("en-SG")}`;
 }
 
-/**
- * Pure — the held out beside the people sent in the same weeks, on the
- * 30-day purchase rate: a two-proportion z-test, so a difference is called
- * clear only past what chance explains at 95%.
- */
 export function compareHoldout(heldOut: ResultNumbers, sent: ResultNumbers): HoldoutComparison {
   const a = rate(sent.bought, sent.people);
   const b = rate(heldOut.bought, heldOut.people);
@@ -176,7 +132,6 @@ export function compareHoldout(heldOut: ResultNumbers, sent: ResultNumbers): Hol
   return { heldOut, sent, difference: Math.round((a - b) * 1000) / 10, clear };
 }
 
-/** Pure — what the comparison means, in one sentence. */
 export function holdoutVerdict(c: HoldoutComparison): string {
   if (c.difference === null) return "Nobody has been sent it since the holdout began, so there is nothing to compare yet.";
   if (!c.clear) return "Too close to call: at these numbers the difference could be chance.";
@@ -185,7 +140,6 @@ export function holdoutVerdict(c: HoldoutComparison): string {
     : "People held out bought more than those sent it, by more than chance explains.";
 }
 
-/** Pure — why a campaign cannot hold out yet, or null when it can. */
 export function holdoutBlocker(c: { keepSending: boolean }, handed: number): string | null {
   if (!c.keepSending) return "Only a campaign that keeps sending can hold people out.";
   if (handed < HOLDOUT_MIN_SENT) {
@@ -194,6 +148,5 @@ export function holdoutBlocker(c: { keepSending: boolean }, handed: number): str
   return null;
 }
 
-/** Pure — whether a Customer in this bucket (0–99, `campaign_holdout_bucket`) is held out while a holdout is on. */
 export const inHoldout = (bucket: number | null | undefined): boolean =>
   typeof bucket === "number" && bucket >= 0 && bucket < HOLDOUT_PERCENT;

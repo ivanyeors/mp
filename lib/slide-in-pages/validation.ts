@@ -10,15 +10,6 @@ import { VIDEO_ID_PATTERN, type SlideInSectionContent } from "./content";
 import { copyFieldsFor } from "./fields";
 import { slideMessages, type SlideInPageKey } from "./pages";
 
-/**
- * Write-path validation for a **Slide-in section** override.
- *
- * The shape is checked loosely (each template reads only its own fields, and unknown
- * keys are ignored at render), but the three things that can break or embarrass a live
- * sheet are checked hard: image hosts `next/image` would refuse, a video id that is not
- * one, and copy that makes a clinical claim.
- */
-
 const MAX_TEXT = 2000;
 
 const ImageOverrideSchema = z
@@ -72,7 +63,6 @@ export const SlideInContentSchema = z
     }
   });
 
-/** Every string in a copy record, with its path. */
 export function strings(value: unknown, path: Array<string | number> = []): Array<[Array<string | number>, string]> {
   if (typeof value === "string") return [[path, value]];
   if (Array.isArray(value)) return value.flatMap((item, i) => strings(item, [...path, i]));
@@ -90,16 +80,6 @@ export interface SlideInCopyIssue {
   message: string;
 }
 
-/**
- * Banned clinical claims, in every locale and every editable field — the same gate the
- * i18n literals and the landing hero already pass (CONTEXT.md — **Copy fit**). Fields the
- * template does not read are not checked: they never render.
- *
- * `knownCopy` holds the page's own i18n strings per locale. A string identical to one is
- * the default Staff started from ("Edit these" seeds the list with it), which ships today
- * and is reviewed with the i18n — refusing it would make a list uneditable without
- * rewriting copy nobody asked to change.
- */
 export function validateSlideInCopy(
   sectionType: string,
   content: SlideInSectionContent,
@@ -128,10 +108,6 @@ export function formatSlideInCopyIssues(issues: SlideInCopyIssue[]): string {
   return issues.map((i) => `${i.message} (${i.locale})`).join(" ");
 }
 
-/**
- * Every i18n string of a sub page, per locale — the defaults Staff start from, which
- * `validateSlideInCopy` does not re-gate.
- */
 export function knownSlideCopy(page: SlideInPageKey): Record<Locale, ReadonlySet<string>> {
   const out = {} as Record<Locale, ReadonlySet<string>>;
   for (const locale of SUPPORTED_LOCALES) {

@@ -3,8 +3,6 @@ import { renderToString } from "react-dom/server";
 import { lifecycleSummary } from "@/lib/crm/lifecycle-summary";
 import { LifecycleCard } from "../lifecycle-card";
 
-/** The Customer lifecycle card above the Customers list (2026-10-31). */
-
 const summary = lifecycleSummary([
   { stage: "lead", detail: null, undated: false, customers: 500 },
   { stage: "new", detail: "delivered", undated: false, customers: 40 },

@@ -10,21 +10,6 @@ import type { CampaignContent } from "@/lib/email-campaigns/content";
 import type { Campaign, CampaignDraft, CampaignDraftInput } from "@/lib/email-campaigns/rules";
 import type { PastCampaign } from "@/lib/email-campaigns/store";
 
-/**
- * Starters in the campaign editor (PRD-campaign-email-editor slice 08), as
- * the owner's demo goes: a new campaign offers four ways to start; *Product
- * launch* lands as a hero, a heading, some text, products and a button, each
- * on its placeholder; the button is dragged above the products and a block
- * deleted; *Care tips* is dragged from the palette's Starters tab to the end,
- * where its blocks land as ordinary blocks, and one Undo takes them all out.
- * Thumbnails are the real renders, asked for when the first one shows; a
- * past campaign is Duplicate.
- *
- * dnd-kit measures the screen, which jsdom has none of, so a drag is played
- * through the provider's own handlers, with each palette item's drag data as
- * its draggable registered it.
- */
-
 type DragHandlers = Pick<ComponentProps<typeof import("@dnd-kit/react").DragDropProvider>, "onDragOver" | "onDragEnd">;
 const dnd = vi.hoisted(() => ({ handlers: null as DragHandlers | null, items: new Map<string, unknown>() }));
 vi.mock("@dnd-kit/react", async (importOriginal) => {
@@ -57,7 +42,6 @@ const actions = vi.hoisted(() => ({
   planCampaignWave: vi.fn(),
   placeCampaignImage: vi.fn(),
   previewCampaign: vi.fn(async (input: CampaignDraftInput) => ({ ok: true as const, subject: input.subject, html: "<p>preview</p>", text: "", from: null })),
-  // Each thumbnail's email: here, its id, so a frame says which it shows.
   previewStarters: vi.fn(async () => ({
     ok: true as const,
     previews: Object.fromEntries(["blank", "product_launch", "care_tips", "event", "short_note", "sign_in_invitation"].map((id) => [id, `<p>${id}</p>`])),
@@ -110,7 +94,6 @@ const SAVED: Campaign = {
 };
 
 let root: Root | null = null;
-/** `segments` with their filters, as the server reads them: the editor gets their names and what the server found. */
 function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAvailability, segments: { id: string; name: string; params: Record<string, string> }[] = []) {
   const live = matchable(segments.map((s) => ({ ...s, needsReview: false })));
   const host = document.createElement("div");
@@ -138,7 +121,6 @@ function mount(campaign: Campaign | null, draft: CampaignDraft, ai?: AiWritingAv
 const cards = () => [...document.querySelectorAll<HTMLElement>("[data-block-id]")];
 const kinds = () => cards().map((li) => li.querySelector("span.text-xs.font-medium")?.textContent);
 const startPanel = () => document.querySelector("[aria-labelledby='c-start-title']");
-/** A card of the Start panel, by the name it starts with. */
 const choice = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("[aria-labelledby='c-start-title'] button")].find((b) => b.firstElementChild?.textContent === label) ?? null;
 const audience = () => document.getElementById("c-audience")!.textContent;
@@ -146,21 +128,17 @@ const toastText = () => document.querySelector("[data-sonner-toast]")?.textConte
 const undo = () => press("z", { ctrl: true }, document.body);
 const redo = () => press("z", { ctrl: true, shift: true }, document.body);
 
-/** The palette's Starters tab, opened as a pointer opens it. */
 const openStarters = async () => {
   const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent === "Starters")!;
   await act(async () => void tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })));
 };
-/** A Starter in the palette's Starters tab: its button. */
 const paletteStarter = (label: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("ul[aria-label='Starters'] button")].find((b) => b.textContent?.startsWith(label)) ?? null;
-/** What the palette's Starter `id` carries when dragged. */
 const dragged = (id: string) => {
   const found = [...dnd.items.entries()].find(([key, data]) => key.includes(":starters:") && (data as PaletteDrag).palette.id === id);
   if (!found) throw new Error(`No Starter ${id} in the palette.`);
   return { id: found[0], data: found[1] as PaletteDrag };
 };
-/** Drags the palette's Starter `id` in and drops it: over a card's top half (before it), or the column's end. */
 function drop(id: string, over: { card: HTMLElement } | "end") {
   const source = dragged(id);
   const target = over === "end" ? { id: "block-editor:end" } : { id: over.card.dataset.blockId, element: over.card };
@@ -181,12 +159,10 @@ afterEach(async () => {
   document.body.innerHTML = "";
 });
 
-// First in the file: the thumbnails are asked for once while the page is open.
 describe("thumbnails", () => {
   it("are asked for when the first one shows, not with the page, once, and are each email's real render", async () => {
     mount(SAVED, DRAFT);
     await settle(20);
-    // A written email offers no Start panel, and the Starters tab is closed.
     expect(startPanel()).toBeNull();
     expect(actions.previewStarters).not.toHaveBeenCalled();
 
@@ -198,14 +174,12 @@ describe("thumbnails", () => {
     expect(frame.tabIndex).toBe(-1);
     expect(frame.closest("[aria-hidden]")).not.toBeNull();
     expect(actions.previewStarters).toHaveBeenCalledTimes(1);
-    // Each Starter is a card with its name and what it holds.
     expect([...document.querySelectorAll("ul[aria-label='Starters'] button span.font-medium")].map((s) => s.textContent)).toEqual([
       "Product launch",
       "Care tips",
       "Event or fitting day",
       "A short note",
       "New website: sign in for points",
-      // The CRM's Playbooks, approved by the owner (PRD-crm-retention-loop slice 07, 2026-11-01).
       "Second purchase",
       "Thank you",
       "We miss you",
@@ -228,7 +202,6 @@ describe("a Playbook", () => {
     expect(document.getElementById("c-subject")!.textContent).toBe("Your pillow's fit can be retuned");
     expect(audience()).toBe("A saved Segment");
     expect(document.getElementById("c-segment")!.textContent).toBe("At risk · Lapsed");
-    // The win-back reaches the Unengaged too (PRD-campaign-audiences slice 12).
     expect(document.querySelector("[aria-describedby='c-include-unengaged-hint']")!.getAttribute("aria-checked")).toBe("true");
   });
 });
@@ -236,15 +209,12 @@ describe("a Playbook", () => {
 describe("the demo", () => {
   it("starts from Product launch, moves and deletes its blocks, drags Care tips to the end, and one Undo takes Care tips out", async () => {
     mount(null, newCampaignDraft(undefined, []));
-    // Loaded with the first empty email, not with the page.
     expect((await until(startPanel)).textContent).toContain("Start the email");
-    // AI writing is off here, so there is no ✨ Write with AI (slice 09).
     expect([...startPanel()!.querySelectorAll("ul[aria-label='Ways to start'] > li button > span:first-child")].map((s) => s.textContent)).toEqual([
       "Blank",
       "A Starter",
       "A past campaign",
     ]);
-    // The Blank and A Starter cards show real renders.
     await until(() => startPanel()!.querySelector("iframe[srcdoc='<p>blank</p>']"));
 
     await click(choice("A Starter")!);
@@ -252,34 +222,27 @@ describe("the demo", () => {
     await click(choice("Product launch")!);
     expect(kinds()).toEqual(["Hero", "Heading", "Text", "Products", "Buttons"]);
     expect(startPanel()).toBeNull();
-    // Every field on its placeholder, never sample words.
     const heading = cards()[1].querySelector<HTMLElement>("[data-block-body] [id$='-text']")!;
     expect(placeholderOf(heading.id)).toBe(CONTENT_PLACEHOLDERS.heading);
     expect(placeholderOf(`block-${cards()[0].dataset.blockId}-line`)).toBe(CONTENT_PLACEHOLDERS.line);
     expect(cards()[4].querySelector("input")!.value).toBe("");
     expect(cards()[4].querySelector("input")!.placeholder).toBe(CAMPAIGN_PLACEHOLDERS.buttonLabel);
-    // Ordinary blocks: nothing marks where they came from.
     expect(document.querySelector("[data-starter]")).toBeNull();
 
-    // The button above the products.
     const button = cards()[4].dataset.blockId!;
     act(() => dnd.handlers!.onDragEnd!({ operation: { source: { id: button, index: 3 }, target: { id: button } }, canceled: false } as never, {} as never));
     expect(kinds()).toEqual(["Hero", "Heading", "Text", "Buttons", "Products"]);
-    // A paragraph deleted.
     await choose(byLabel("Actions for Text, block 3")!, "Delete");
     expect(kinds()).toEqual(["Hero", "Heading", "Buttons", "Products"]);
 
-    // Care tips, dragged from the palette's Starters tab to the end.
     await openStarters();
     drop("care_tips", "end");
     expect(kinds()).toEqual(["Hero", "Heading", "Buttons", "Products", "Heading", "Text", "Image + text", "Text", "Buttons"]);
     expect(document.body.textContent).toContain("5 blocks added at position 5 of 9.");
-    // They move and delete like any others.
     await choose(byLabel("Actions for Image + text, block 7")!, "Move up");
     expect(kinds()).toEqual(["Hero", "Heading", "Buttons", "Products", "Heading", "Image + text", "Text", "Text", "Buttons"]);
     undo();
     expect(kinds()).toEqual(["Hero", "Heading", "Buttons", "Products", "Heading", "Text", "Image + text", "Text", "Buttons"]);
-    // One Undo takes the whole insert out, and Redo puts it back.
     undo();
     expect(kinds()).toEqual(["Hero", "Heading", "Buttons", "Products"]);
     redo();
@@ -298,11 +261,10 @@ describe("the palette's Starters tab", () => {
     drop("short_note", { card: cards()[1] });
     expect(kinds()).toEqual(["Heading", "Heading", "Text", "Buttons", "Text"]);
     await settle();
-    // The first of them selected, and its words ready to type.
     expect(cards()[1].dataset.selected).toBe("true");
     undo();
     expect(kinds()).toEqual(["Heading", "Text"]);
-    expect(button("Save changes")!.disabled).toBe(true); // back to what is saved
+    expect(button("Save changes")!.disabled).toBe(true);
   });
 
   it("adds a Starter after the selected block with a click, as Enter does", async () => {
@@ -322,7 +284,6 @@ describe("the palette's Starters tab", () => {
     expect(audience()).toBe("Imported from Shopify, not signed in yet");
     await settle();
     expect(toastText()).toContain("Send to is now “Imported from Shopify, not signed in yet”: New website: sign in for points is written for them.");
-    // A dragged-in Starter brings its blocks, never its subject.
     expect(document.getElementById("c-subject")!.textContent).toBe(DRAFT.subject);
     undo();
     expect(kinds()).toEqual(["Heading", "Text"]);
@@ -340,7 +301,6 @@ describe("the Start panel", () => {
     await retype("c-subject", "Sleep cooler");
     await click(button("Clear all")!);
     expect(startPanel()).not.toBeNull();
-    // Typing in the email ends it; emptying it again offers it again.
     await retype("c-subject", "Hi");
     expect(startPanel()).toBeNull();
     await retype("c-subject", "");
@@ -364,9 +324,7 @@ describe("the Start panel", () => {
   });
 
   it("opens Generate's brief from ✨ Write with AI while AI writing is on, or says why it can't yet", async () => {
-    // A name of three words is what Claude drafts from until there is a subject (slice 09).
     mount(null, { ...newCampaignDraft(undefined, []), name: "December cooling launch" }, { on: true, configured: true });
-    // Generate's popover loads with the page's AI parts: the card opens it under the header's Generate.
     await until(() => [...document.querySelectorAll("button[aria-haspopup='dialog']")].find((b) => b.textContent?.includes("Generate")));
     const card = await until(() => choice("Write with AI"));
     expect(card.getAttribute("aria-disabled")).toBeNull();
@@ -375,7 +333,6 @@ describe("the Start panel", () => {
     expect(brief.textContent).toContain("December cooling launch");
     act(() => root?.unmount());
 
-    // No subject and no name of three words: the card says what Claude needs.
     mount(null, newCampaignDraft(undefined, []), { on: true, configured: false });
     expect((await until(() => choice("Write with AI"))).getAttribute("aria-disabled")).toBe("true");
     expect(choice("Write with AI")!.textContent).toContain("add the Claude API key");

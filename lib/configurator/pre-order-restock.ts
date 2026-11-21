@@ -1,7 +1,3 @@
-/**
- * Automated Pre-order restock email (ADR 0005 / UX polish slice 07).
- * Notify open Pre-order Results when the live trigger would clear.
- */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmailTransport } from "@/lib/email";
 import type { EmailCopy } from "@/lib/email/copy";
@@ -36,7 +32,6 @@ export type RestockCandidateRow = {
   suggested_length: string | null;
 };
 
-/** Pure: open Pre-order Results not yet notified. */
 export function selectRestockNotifyCandidates(
   rows: ReadonlyArray<RestockCandidateRow>,
 ): RestockCandidateRow[] {
@@ -54,17 +49,10 @@ export function selectRestockNotifyCandidates(
   });
 }
 
-/** True when inventory recovered enough that Pre-order trigger clears. */
 export function stockRecoveredForResult(input: PreOrderTriggerInput): boolean {
   return !isPreOrder(input).isPreOrder;
 }
 
-/**
- * Restock notice copy. Rendering lives in lib/email/results.ts alongside the
- * other Result lifecycle emails; this wrapper keeps the existing call sites and
- * the pre-order-restock self-check pointed at a stable name. `words` is the
- * email's editable copy (`RESULT_EMAIL_COPY.restocked`); without it, the defaults.
- */
 export function restockEmailCopy(
   opts: {
     origin: string;
@@ -94,10 +82,6 @@ export type RestockNoticeSummary = {
   errors: string[];
 };
 
-/**
- * Scan open Pre-order Results; email once when live trigger would clear.
- * Does not clear sticky `is_pre_order`.
- */
 export async function runPreOrderRestockNotices(
   admin: SupabaseClient,
   opts: { origin: string; now?: Date },
@@ -163,7 +147,6 @@ export async function runPreOrderRestockNotices(
       continue;
     }
 
-    // Claim marker first so concurrent cron ticks do not double-send.
     const { data: claimed, error: claimErr } = await admin
       .from("mp_config_responses")
       .update({ pre_order_restock_notified_at: nowIso })
@@ -201,7 +184,6 @@ export async function runPreOrderRestockNotices(
       });
       summary.notified += 1;
     } catch (e) {
-      // Release claim so a later tick can retry.
       await admin
         .from("mp_config_responses")
         .update({ pre_order_restock_notified_at: null })

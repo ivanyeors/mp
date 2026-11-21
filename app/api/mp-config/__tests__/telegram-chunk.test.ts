@@ -6,7 +6,7 @@ describe("chunkItems", () => {
     const items = Array.from({ length: 12 }, (_, i) => i);
     const chunks = chunkItems(items, 10);
     expect(chunks.map((c) => c.length)).toEqual([10, 2]);
-    expect(chunks.flat()).toEqual(items); // order preserved, nothing dropped
+    expect(chunks.flat()).toEqual(items);
   });
 
   it("returns a single chunk when at/under the cap and empty for none", () => {
