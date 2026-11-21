@@ -448,7 +448,7 @@ export default function CostingsPage() {
   }, [commitDraft, commitDraftDebounced]);
 
   const latestLoad = useRef(0);
-  const shownLoad = useRef(0);
+  const ignoreLoadsBelow = useRef(0);
   const load = useCallback(async () => {
     const id = ++latestLoad.current;
     setLoading(true);
@@ -517,7 +517,7 @@ export default function CostingsPage() {
         supabaseClient.from("inventory_balances").select("item_id,on_hand"),
         templatesRequest,
       ]);
-      if (id < shownLoad.current) return;
+      if (id < ignoreLoadsBelow.current) return;
 
       if (itemsError) throw new Error(itemsError.message);
       if (pillowError) throw new Error(pillowError.message);
@@ -729,13 +729,16 @@ export default function CostingsPage() {
       setCommittedDraft(loadedDraft);
       setHasPendingEdit(false);
       applyBaseline({ ...nextBaseline, ...productBaseline });
-      shownLoad.current = id;
+      ignoreLoadsBelow.current = id;
     } catch (err) {
-      if (id < shownLoad.current) return;
+      if (id < ignoreLoadsBelow.current) return;
       const message = err instanceof Error ? err.message : "Couldn't load costings.";
       toast.error(message);
     } finally {
-      if (id === latestLoad.current) setLoading(false);
+      if (id === latestLoad.current) {
+        ignoreLoadsBelow.current = id;
+        setLoading(false);
+      }
     }
   }, [applyBaseline, commitDraftDebounced, settingsPath]);
 
