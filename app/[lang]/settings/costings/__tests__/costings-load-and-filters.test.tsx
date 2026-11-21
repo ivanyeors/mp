@@ -5,7 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Item = { id: number; category: string; name: string; msrp: string };
-type Load = { answer: (items: Item[]) => Promise<void> };
+type Load = { answer: (items: Item[]) => Promise<void>; fail: (message: string) => Promise<void> };
 
 const db = vi.hoisted(() => ({ loads: [] as Load[] }));
 
@@ -15,10 +15,11 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), message: vi.fn() }) }));
 vi.mock("@/lib/supabase/client", () => {
-  let current: { tables: Map<string, (data: unknown[]) => void> } | null = null;
+  type Result = { data: unknown[] | null; error: { message: string } | null };
+  let current: { tables: Map<string, (result: Result) => void> } | null = null;
   const from = (table: string) => {
     if (table === "items") {
-      const tables = new Map<string, (data: unknown[]) => void>();
+      const tables = new Map<string, (result: Result) => void>();
       current = { tables };
       const group = current;
       db.loads.push({
@@ -34,14 +35,20 @@ vi.mock("@/lib/supabase/client", () => {
           }));
           const { act: reactAct } = await import("react");
           await reactAct(async () => {
-            for (const [name, resolve] of group.tables) resolve(name === "items" ? rows : []);
+            for (const [name, resolve] of group.tables) resolve({ data: name === "items" ? rows : [], error: null });
+          });
+        },
+        fail: async (message) => {
+          const { act: reactAct } = await import("react");
+          await reactAct(async () => {
+            for (const [name, resolve] of group.tables) resolve(name === "items" ? { data: null, error: { message } } : { data: [], error: null });
           });
         },
       });
     }
-    let resolve!: (data: unknown[]) => void;
-    const promise = new Promise<{ data: unknown[]; error: null }>((r) => {
-      resolve = (data) => r({ data, error: null });
+    let resolve!: (result: Result) => void;
+    const promise = new Promise<Result>((r) => {
+      resolve = r;
     });
     current!.tables.set(table, resolve);
     const query = {
@@ -134,6 +141,23 @@ const visibleTags = () =>
     .filter((b) => !b.closest("[aria-hidden]") && !b.closest('[data-testid="filter-options"]'))
     .map((b) => b.textContent?.trim())
     .filter((t) => Object.values(TITLES).includes(t ?? ""));
+const saveButton = () => [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === "Save")!;
+async function editPartMsrp(value: string) {
+  const cell = document.querySelector<HTMLElement>('#costings-parts td[aria-label$=" MSRP"]')!;
+  await act(async () => {
+    cell.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  });
+  await act(async () => {
+    cell.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  });
+  const input = document.querySelector<HTMLInputElement>('#costings-parts td[aria-label$=" MSRP"] input')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+  await settle(300);
+}
 const button = (label: RegExp) => [...document.querySelectorAll<HTMLElement>("button")].find((b) => label.test(b.textContent ?? ""));
 
 describe("Costings load", () => {
@@ -149,6 +173,25 @@ describe("Costings load", () => {
     await settle();
     expect(text()).toContain("MSRP $30.00");
     expect(text()).not.toContain("MSRP $25.00");
+  });
+
+  it("shows saved prices as saved when the reload after Save answers and a later reload fails", async () => {
+    await db.loads[0].answer([item(1, "cover")]);
+    await editPartMsrp("30.00");
+    expect(saveButton().disabled).toBe(false);
+
+    await click(saveButton());
+    await settle();
+    expect(db.loads).toHaveLength(2);
+    await reload();
+    expect(db.loads).toHaveLength(3);
+
+    await db.loads[1].answer([item(1, "cover", "30.00")]);
+    await db.loads[2].fail("network down");
+    await settle();
+    expect(text()).toContain("MSRP $30.00");
+    expect(text()).not.toContain("Unsaved changes");
+    expect(saveButton().disabled).toBe(true);
   });
 
   it("keeps showing Loading until the newest load answers", async () => {
