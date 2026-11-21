@@ -14,7 +14,7 @@ import { readContactFacts } from "@/lib/crm/contact-facts";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { readCustomerEntry } from "@/lib/crm/customer-entry";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { Customer } from "@/lib/types/ecommerce";
+import type { Customer, CustomerAddress } from "@/lib/types/ecommerce";
 import { parseCustomerTab } from "@/lib/crm/customer-tabs";
 import {
     CustomerDetailClient,
@@ -69,6 +69,7 @@ export default async function CustomerDetailPage({
         pillow,
         contact,
         entry,
+        addresses: customer.ok ? ((customer.row as { customer_addresses?: CustomerAddress[] }).customer_addresses ?? []) : [],
     };
 
     return (
