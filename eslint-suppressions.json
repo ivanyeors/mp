@@ -268,7 +268,7 @@
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/customers/filters/filters-page-client.tsx": {

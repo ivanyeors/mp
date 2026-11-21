@@ -180,6 +180,49 @@ describe("Customers list: page 2 then page 3, answered out of order", () => {
   });
 });
 
+describe("Customers list: the search box", () => {
+  const searchBox = () => host.querySelector<HTMLInputElement>('input[placeholder="Search by name or email…"]')!;
+  const list = (initialFilters?: { stage: string[] }) => (
+    <CustomersClient initialData={{ customers: customersPage(1, "Pageone") as never }} initialFilters={initialFilters as never} />
+  );
+
+  it("stays on page 2 when page 2 is clicked as soon as the list loads", async () => {
+    await mount(list());
+    await click(button("2"));
+    await lastFor("page=2").answer(customersPage(2, "Pagetwo"));
+    await pastDebounce();
+
+    expect(held.map((h) => h.url).filter((u) => u.startsWith("/api/shop/customers"))).toEqual([
+      "/api/shop/customers?page=2&limit=20",
+    ]);
+    expect(host.textContent).toContain("Pagetwo");
+  });
+
+  it("searches once typing stops, from page 1", async () => {
+    await mount(list());
+    await click(button("2"));
+    await lastFor("page=2").answer(customersPage(2, "Pagetwo"));
+    await typeInto(searchBox(), "me");
+    await typeInto(searchBox(), "mei");
+    expect(held.filter((h) => h.url.includes("search="))).toEqual([]);
+    await pastDebounce();
+
+    expect(held.filter((h) => h.url.includes("search=")).map((h) => h.url)).toEqual([
+      "/api/shop/customers?search=mei&page=1&limit=20",
+    ]);
+  });
+
+  it("drops a search still waiting when Clear all is pressed", async () => {
+    await mount(list({ stage: ["lead"] }));
+    await typeInto(searchBox(), "mei");
+    await click(button("Clear all"));
+    await pastDebounce();
+
+    expect(held.filter((h) => h.url.includes("search="))).toEqual([]);
+    expect(searchBox().value).toBe("");
+  });
+});
+
 describe("Customer journey: Sent it while the first read is still loading", () => {
   const journey = (reloadSignal: number) => (
     <CustomerJourney
