@@ -34,7 +34,7 @@ import { useSoftCut, type SoftCutInput } from "./soft-cut";
 import { landingText, SNAP_WORDS } from "./drag-badge";
 import { badgeFontFor, buzz, HeldGhost, pastThreshold, pickUp, stepHold, svgScale, useHeldGhost, type HeldGhostHandle } from "./held-pouch";
 import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
-import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
+import { XRAY_INTERIOR_VAR, XRAY_PIECE_EDGE_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
 export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
 
@@ -315,7 +315,7 @@ function PuffySlab({
         data-slab-body=""
         fill={fill}
         fillOpacity={mode === "landing" ? 0.5 : hovered ? 1 : 0.92}
-        stroke={hovered ? "white" : "rgba(255,255,255,0.9)"}
+        stroke={hovered ? "white" : XRAY_PIECE_EDGE_VAR}
         strokeWidth={mode === "landing" || hovered ? 2.2 : 1.5}
         strokeDasharray={mode === "landing" ? "5 3" : undefined}
         vectorEffect="non-scaling-stroke"

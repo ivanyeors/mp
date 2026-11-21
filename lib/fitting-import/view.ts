@@ -50,6 +50,15 @@ export const DRIVE_SLOT_LABELS: Record<DriveSlot, string> = {
   customisation_form: "Customisation form",
 };
 
+export type FittingMeasurementKey = "shoulderLengthIn" | "neckToBackIn" | "headToBackIn" | "neckLengthIn";
+
+export const FITTING_MEASUREMENTS: readonly { letter: string; label: string; key: FittingMeasurementKey; icon: string }[] = [
+  { letter: "A", label: "Shoulder length", key: "shoulderLengthIn", icon: "/shoulder-length.svg" },
+  { letter: "B", label: "Neck to back", key: "neckToBackIn", icon: "/neck-to-back.svg" },
+  { letter: "C", label: "Head to back", key: "headToBackIn", icon: "/head-to-back.svg" },
+  { letter: "D", label: "Neck length", key: "neckLengthIn", icon: "/neck-length.svg" },
+];
+
 export function fittingLabel(f: Pick<FittingAnswersView, "recommendedSize" | "configurationType" | "profileSide">): string {
   const parts = [f.recommendedSize ? `Mpillow ${f.recommendedSize}` : null, f.configurationType, f.profileSide].filter(Boolean);
   return parts.length ? parts.join(" · ") : "Fitting";

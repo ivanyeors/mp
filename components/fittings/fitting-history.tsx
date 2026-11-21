@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { fittingLabel, inches, yesNo, type FittingAnswersView } from "@/lib/fitting-import/view";
+import { FITTING_MEASUREMENTS, fittingLabel, inches, yesNo, type FittingAnswersView } from "@/lib/fitting-import/view";
 
 export function FittingHistory<F extends FittingAnswersView>({
     fittings,
@@ -119,18 +119,10 @@ function FittingSection<F extends FittingAnswersView>({
     );
 }
 
-type MeasurementKey = "shoulderLengthIn" | "neckToBackIn" | "headToBackIn" | "neckLengthIn";
-const MEASUREMENTS: [string, string, MeasurementKey][] = [
-    ["A", "Shoulder length", "shoulderLengthIn"],
-    ["B", "Neck to back", "neckToBackIn"],
-    ["C", "Head to back", "headToBackIn"],
-    ["D", "Neck length", "neckLengthIn"],
-];
-
 function Measurements({ fitting: f, previous }: { fitting: FittingAnswersView; previous?: FittingAnswersView }) {
     return (
         <dl className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
-            {MEASUREMENTS.map(([letter, label, key]) => {
+            {FITTING_MEASUREMENTS.map(({ letter, label, key }) => {
                 const value = f[key];
                 const before = previous?.[key] ?? null;
                 return (
