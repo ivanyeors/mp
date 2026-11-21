@@ -158,10 +158,10 @@ export async function syncProductToStripe(productId: string): Promise<StripeSync
   );
   const notices: string[] = [];
   const paymentLinkCleared = await retireStalePaymentLink(
-    product,
-    currentPriceIds,
-    stripeNotices,
-    notices,
+    productId,
+    stripePaymentLinkIdOf(product),
+    { currentPriceIds, stripeNotices, notices },
+    true,
   );
 
   if (stripeNotices.length) {
@@ -171,14 +171,20 @@ export async function syncProductToStripe(productId: string): Promise<StripeSync
   return { stripeProductId, variants: variantResults, notices, paymentLinkCleared };
 }
 
+type LinkCheck = {
+  currentPriceIds: Set<string>;
+  stripeNotices: string[];
+  notices: string[];
+};
+
 async function retireStalePaymentLink(
-  product: PaymentLinkRow & { id: string },
-  currentPriceIds: Set<string>,
-  stripeNotices: string[],
-  notices: string[],
+  productId: string,
+  linkId: string | null,
+  check: LinkCheck,
+  mayFollowNewerLink: boolean,
 ): Promise<boolean> {
-  const linkId = stripePaymentLinkIdOf(product);
   if (!linkId) return false;
+  const { currentPriceIds, stripeNotices } = check;
 
   let linePriceIds: (string | null)[];
   try {
@@ -189,7 +195,7 @@ async function retireStalePaymentLink(
       stripeNotices.push(`couldn't check Stripe payment link ${linkId} (${errorMessage(err)})`);
       return false;
     }
-    return clearPaymentLink(product.id, linkId, stripeNotices, notices, {
+    return clearPaymentLink(productId, linkId, check, mayFollowNewerLink, {
       done: `Stripe payment link ${linkId} is not in this Stripe account, so it was removed from the product; generate a new one if you need it`,
       stuck: `Stripe payment link ${linkId} is not in this Stripe account, but couldn't be removed from the product`,
     });
@@ -205,22 +211,24 @@ async function retireStalePaymentLink(
     );
     return false;
   }
-  return clearPaymentLink(product.id, linkId, stripeNotices, notices, {
+  return clearPaymentLink(productId, linkId, check, mayFollowNewerLink, {
     done: `Stripe payment link ${linkId} sold at a price this product no longer has, so it was deactivated; generate a new one`,
     stuck: `Stripe payment link ${linkId} was deactivated because it sold at a price this product no longer has, but the product still shows it`,
-    replaced: `Stripe payment link ${linkId} sold at a price this product no longer has, so it was deactivated; the product already shows a newer link`,
+    deactivated: `Stripe payment link ${linkId} sold at a price this product no longer has, so it was deactivated`,
   });
 }
 
 async function clearPaymentLink(
   productId: string,
   linkId: string,
-  stripeNotices: string[],
-  notices: string[],
-  say: { done: string; stuck: string; replaced?: string },
+  check: LinkCheck,
+  mayFollowNewerLink: boolean,
+  say: { done: string; stuck: string; deactivated?: string },
 ): Promise<boolean> {
+  const { stripeNotices, notices } = check;
   const column = stripePaymentLinkColumns();
-  const { data, error } = await supabaseAdmin()
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
     .from("products")
     .update({ [column.url]: null, [column.id]: null })
     .eq("id", productId)
@@ -230,12 +238,30 @@ async function clearPaymentLink(
     stripeNotices.push(`${say.stuck} (${error.message})`);
     return false;
   }
-  if (!data?.length) {
-    if (say.replaced) notices.push(say.replaced);
+  if (data?.length) {
+    notices.push(say.done);
+    return true;
+  }
+
+  const { data: row, error: readError } = await admin
+    .from("products")
+    .select(column.id)
+    .eq("id", productId)
+    .single();
+  if (readError) {
+    stripeNotices.push(
+      `couldn't read back the product's Stripe payment link after checking ${linkId} (${readError.message})`,
+    );
     return false;
   }
-  notices.push(say.done);
-  return true;
+  const nowLinkId = stripePaymentLinkIdOf(row as PaymentLinkRow | null);
+  if (!nowLinkId) {
+    notices.push(`${say.deactivated ?? `Stripe payment link ${linkId} is gone`}; it was already removed from the product`);
+    return true;
+  }
+  if (say.deactivated) notices.push(`${say.deactivated}; the product now shows Stripe payment link ${nowLinkId}`);
+  if (!mayFollowNewerLink) return false;
+  return retireStalePaymentLink(productId, nowLinkId, check, false);
 }
 
 // ponytail: best-effort + synchronous. Ceiling: if Stripe is down the DB edit still saves but
@@ -309,6 +335,7 @@ async function syncVariantPrice(
 
     if (existingPrice) {
       if (
+        existingPrice.active &&
         existingPrice.unit_amount === unitAmount &&
         existingPrice.currency === variant.currency.toLowerCase() &&
         existingPrice.tax_behavior === STRIPE_TAX_BEHAVIOR
@@ -322,7 +349,7 @@ async function syncVariantPrice(
         }
         return { priceId: existingPriceId, archiveAfterSave: null };
       }
-      await archivePrice(existingPriceId, stripeNotices);
+      if (existingPrice.active) await archivePrice(existingPriceId, stripeNotices);
     }
   }
 

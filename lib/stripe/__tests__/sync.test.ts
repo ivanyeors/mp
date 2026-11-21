@@ -356,6 +356,13 @@ describe("syncProductToStripe: a variant's Stripe Price", () => {
     ]);
   });
 
+  it("4. an archived stored Price at the right amount is replaced, without archiving it again", async () => {
+    retrieveFor.set("price_old", { ...samePrice, active: false });
+    const out = await syncProductToStripe("p1");
+    expect(out.variants).toEqual([{ id: "v1", stripePriceId: "price_new" }]);
+    expect(callLog).toEqual(["create", "save price_new"]);
+  });
+
   it("9a. stored Price missing: creates and saves, archives nothing", async () => {
     retrieveFor.set("price_old", missing);
     const out = await syncProductToStripe("p1");
@@ -466,6 +473,13 @@ describe("createPaymentLink", () => {
     expect(paymentLinksUpdate).not.toHaveBeenCalled();
     expect(paymentLinksCreate).not.toHaveBeenCalled();
     expect(rowUpdates).toEqual([]);
+  });
+
+  it("E. a fractional price matches its Price in cents (19.99 is 1999)", async () => {
+    product.product_variants = [{ ...variant(), price: 19.99 }];
+    retrieveFor.set("price_old", { ...samePrice, unit_amount: 1999 });
+    const out = await createPaymentLink("p1");
+    expect(out.id).toBe("plink_new");
   });
 
   it("E. a Price that can't be read stops the link with Stripe's error", async () => {
@@ -671,18 +685,82 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
     expect(out.paymentLinkCleared).toBe(true);
   });
 
-  it("C. a link regenerated while the sync ran is not cleared, and nothing claims it was", async () => {
-    retrieveFor.set("price_old", oldAmount);
+  function swapLinkDuringDeactivate(to: string | null) {
     paymentLinksUpdate.mockImplementationOnce(async (id: string) => {
       callLog.push(`deactivate ${id}`);
-      product.stripe_payment_link_test = "https://buy.stripe.com/test_newer";
-      product.stripe_payment_link_id_test = "plink_newer";
+      product.stripe_payment_link_test = to && `https://buy.stripe.com/test_${to}`;
+      product.stripe_payment_link_id_test = to;
       return {};
     });
+  }
+
+  it("C. a newer link on a current Price, written while the sync ran, is checked once and left alone", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    linkLines.set("plink_newer", ["price_new"]);
+    swapLinkDuringDeactivate("plink_newer");
     const out = await syncProductToStripe("p1");
+    expect(callLog.slice(-3)).toEqual([
+      "deactivate plink_old",
+      `row ${JSON.stringify(SANDBOX_LINK_CLEARED)}`,
+      "read link plink_newer",
+    ]);
+    expect(paymentLinksUpdate).not.toHaveBeenCalledWith("plink_newer", expect.anything());
     expect(out.paymentLinkCleared).toBe(false);
     expect(out.notices).toEqual([
-      "Stripe payment link plink_old sold at a price this product no longer has, so it was deactivated; the product already shows a newer link",
+      "Stripe payment link plink_old sold at a price this product no longer has, so it was deactivated; the product now shows Stripe payment link plink_newer",
+    ]);
+  });
+
+  it("1. a newer link on the old Price, written while the sync ran, is retired too", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    linkLines.set("plink_newer", ["price_old"]);
+    swapLinkDuringDeactivate("plink_newer");
+    const out = await syncProductToStripe("p1");
+    expect(callLog.slice(-5)).toEqual([
+      "deactivate plink_old",
+      `row ${JSON.stringify(SANDBOX_LINK_CLEARED)}`,
+      "read link plink_newer",
+      "deactivate plink_newer",
+      `row ${JSON.stringify(SANDBOX_LINK_CLEARED)}`,
+    ]);
+    expect(out.paymentLinkCleared).toBe(true);
+    expect(out.notices).toEqual([
+      "Stripe payment link plink_old sold at a price this product no longer has, so it was deactivated; the product now shows Stripe payment link plink_newer",
+      "Stripe payment link plink_newer sold at a price this product no longer has, so it was deactivated; generate a new one",
+    ]);
+  });
+
+  it("1. the newer link is followed once, not again", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    linkLines.set("plink_newer", ["price_old"]);
+    linkLines.set("plink_third", ["price_old"]);
+    swapLinkDuringDeactivate("plink_newer");
+    swapLinkDuringDeactivate("plink_third");
+    const out = await syncProductToStripe("p1");
+    expect(callLog).not.toContain("read link plink_third");
+    expect(out.paymentLinkCleared).toBe(false);
+  });
+
+  it("1. another sync already emptied the row: says the link is gone and reports the clear", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    swapLinkDuringDeactivate(null);
+    const out = await syncProductToStripe("p1");
+    expect(out.paymentLinkCleared).toBe(true);
+    expect(out.notices).toEqual([
+      "Stripe payment link plink_old sold at a price this product no longer has, so it was deactivated; it was already removed from the product",
+    ]);
+  });
+
+  it("1. a missing link whose row was already emptied: gone, and cleared", async () => {
+    paymentLinksListLineItems.mockImplementationOnce(async () => {
+      product.stripe_payment_link_test = null;
+      product.stripe_payment_link_id_test = null;
+      throw missing;
+    });
+    const out = await syncProductToStripe("p1");
+    expect(out.paymentLinkCleared).toBe(true);
+    expect(out.notices).toEqual([
+      "Stripe payment link plink_old is gone; it was already removed from the product",
     ]);
   });
 
@@ -694,6 +772,7 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
       throw missing;
     });
     const out = await syncProductToStripe("p1");
+    expect(callLog).toContain("read link plink_newer");
     expect(out.paymentLinkCleared).toBe(false);
     expect(out.notices).toEqual([]);
   });
