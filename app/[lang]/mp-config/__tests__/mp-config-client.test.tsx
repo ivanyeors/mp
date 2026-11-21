@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { byLabel, click, settle, typeField, until } from "@/components/block-editor/__tests__/dom";
+import type { DraftAnswers } from "@/lib/configurator/continue-draft";
 import { holdCancelDraftKey } from "@/lib/configurator/hold-cancel-restore";
 
 vi.mock("next/navigation", () => ({
@@ -73,7 +74,7 @@ const RECOMMENDATION = {
   recommendation_record: null,
 };
 
-const ANSWERS = {
+const ANSWERS: Partial<DraftAnswers> = {
   name: "Mei",
   gender: "female",
   ageGroup: "25-34",
@@ -112,7 +113,6 @@ beforeEach(() => {
       if (url === "/api/shop/shipping/countries") return answered({ countries: ["SG", "MY"] });
       if (url === "/api/account/addresses") return answered({ signedIn: false, addresses: [] });
       if (url.startsWith("/api/results/addons")) return answered({ addons: [] });
-      if (url.startsWith("/api/discovery-source")) return answered({ options: [] });
       if (url === "/api/shop/customize") return answered(RECOMMENDATION);
       return answered({});
     }),
@@ -180,7 +180,7 @@ describe("MpConfigClient preview shipping", () => {
   it("lists the methods for the country picked last when an earlier country's answer lands after it", async () => {
     restoreToPreview("SG");
     holdShipping = true;
-    await mount(<MpConfigClient info={INFO} />);
+    await mount(<MpConfigClient info={INFO} discoverySourceOptions={[]} />);
     await until(() => host.querySelector("#hold-country"));
     await until(() => held.filter((h) => h.url.endsWith("country=SG")).length === 2);
 
@@ -198,7 +198,7 @@ describe("MpConfigClient preview shipping", () => {
 
   it("lists the restored country's methods when nothing races", async () => {
     restoreToPreview("MY");
-    await mount(<MpConfigClient info={INFO} />);
+    await mount(<MpConfigClient info={INFO} discoverySourceOptions={[]} />);
     await until(() => shippingNames().length > 0);
     expect(shippingNames()).toEqual(["Malaysia post"]);
   });
@@ -217,7 +217,7 @@ describe("MpConfigClient field errors", () => {
     [...host.querySelectorAll("p.text-destructive")].find((p) => p.textContent === "Enter a valid measurement") ?? null;
   const afterTransition = () => settle(350);
   const toShoulderStep = async () => {
-    await mount(<MpConfigClient info={INFO} resumeDraft={RESUME} />);
+    await mount(<MpConfigClient info={INFO} discoverySourceOptions={[]} resumeDraft={RESUME} />);
     await until(() => measureInput());
   };
 
@@ -248,7 +248,7 @@ describe("MpConfigClient field errors", () => {
   it("clears the step's errors when the visitor leaves the step and comes back", async () => {
     const emailError = () =>
       [...host.querySelectorAll("p.text-destructive")].find((p) => p.textContent === "Enter a valid email address") ?? null;
-    await mount(<MpConfigClient info={INFO} askEmailFirst />);
+    await mount(<MpConfigClient info={INFO} discoverySourceOptions={[]} askEmailFirst />);
     await click(byLabel("Get Started")!);
     await afterTransition();
     await click(byLabel("Continue")!);

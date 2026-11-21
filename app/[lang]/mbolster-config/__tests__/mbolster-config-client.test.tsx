@@ -122,7 +122,6 @@ beforeEach(() => {
       if (url === "/api/shop/shipping/countries") return answered({ countries: ["SG", "MY"] });
       if (url === "/api/account/addresses") return answered({ signedIn: false, addresses: [] });
       if (url.startsWith("/api/results/addons")) return answered({ addons: [] });
-      if (url.startsWith("/api/discovery-source")) return answered({ options: [] });
       if (url === "/api/shop/customize") {
         const body = JSON.parse(String(init?.body ?? "{}"));
         return answered(recommendation(body.bolster_preferences.height_cm >= 180 ? "long" : "medium"));
@@ -198,7 +197,7 @@ describe("MbolsterConfigClient preview shipping", () => {
   it("lists the methods for the country picked last when an earlier country's answer lands after it", async () => {
     restoreToPreview("SG");
     holdShipping = true;
-    await mount(<MbolsterConfigClient info={INFO} />);
+    await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);
     await until(() => host.querySelector("#hold-country"));
     await until(() => held.length > 0 && held.every((h) => h.url.endsWith("country=SG")));
 
@@ -216,7 +215,7 @@ describe("MbolsterConfigClient preview shipping", () => {
 
   it("lists the restored country's methods when nothing races", async () => {
     restoreToPreview("MY");
-    await mount(<MbolsterConfigClient info={INFO} />);
+    await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);
     await until(() => shippingNames().length > 0);
     expect(shippingNames()).toEqual(["Malaysia post"]);
   });
@@ -250,7 +249,7 @@ describe("MbolsterConfigClient staff assist mix", () => {
   it("seeds each length's suggested mix and never shows the old length's mix at the new length", async () => {
     panelRenders.length = 0;
     pairedFromPillow();
-    await mount(<MbolsterConfigClient info={INFO} staffAssist />);
+    await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} staffAssist />);
 
     await sizeAt("170");
     expect(panelRenders.at(-1)).toEqual({ length: "medium", template: 11, slots: [501] });
@@ -264,7 +263,7 @@ describe("MbolsterConfigClient staff assist mix", () => {
 
 describe("MbolsterConfigClient field errors", () => {
   const toHeightStep = async () => {
-    await mount(<MbolsterConfigClient info={INFO} />);
+    await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);
     await click(byLabel("Get started")!);
     await until(() => heightInput());
   };

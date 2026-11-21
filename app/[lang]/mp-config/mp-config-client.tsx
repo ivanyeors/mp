@@ -192,6 +192,7 @@ import {
 import {
   PreviewContactFields,
   previewContactFieldChecks,
+  type DiscoverySourceChoice,
 } from "@/components/configurator/preview-contact-fields";
 import {
   checkoutCodeDiscount,
@@ -450,7 +451,9 @@ export function MpConfigClient({
   pillowOwner = null,
   readjustmentPolicy = DEFAULT_READJUSTMENT_POLICY,
   pointsPerDollar = null,
+  discoverySourceOptions,
 }: {
+  discoverySourceOptions: DiscoverySourceChoice[];
   readjustmentPolicy?: ReadjustmentPolicy;
   pointsPerDollar?: number | null;
   pillowOwner?: { name: string } | null;
@@ -3362,7 +3365,7 @@ export function MpConfigClient({
 
                 {askingDetails && !resumeFinish && !staffEdit && (
                 <PreviewContactFields
-                    locale={locale}
+                    discoverySourceOptions={discoverySourceOptions}
                     fieldErrors={fieldErrors}
                     values={contactValues}
                     codeContext={codeContext}
@@ -4832,7 +4835,7 @@ export function MpConfigClient({
                     case and shipping after that — nothing is charged now.
                   </p>
                   <PreviewContactFields
-                    locale={locale}
+                    discoverySourceOptions={discoverySourceOptions}
                     fieldErrors={fieldErrors}
                     values={contactValues}
                     codeContext={NO_ORDER_CODE_CONTEXT}

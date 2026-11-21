@@ -58,6 +58,7 @@ import {
 import {
   PreviewContactFields,
   previewContactFieldChecks,
+  type DiscoverySourceChoice,
 } from "@/components/configurator/preview-contact-fields";
 import {
   checkoutCodeDiscount,
@@ -269,8 +270,10 @@ export function MbolsterConfigClient({
   partner = null,
   servicePrices = null,
   measuredByStaff = false,
+  discoverySourceOptions,
 }: {
   info: MbolsterConfigInfo;
+  discoverySourceOptions: DiscoverySourceChoice[];
   servicePrices?: ServicePrices | null;
   measuredByStaff?: boolean;
   staffAssist?: boolean;
@@ -1579,7 +1582,7 @@ export function MbolsterConfigClient({
               ) : (
               <>
               <PreviewContactFields
-                  locale={locale}
+                  discoverySourceOptions={discoverySourceOptions}
                   fieldErrors={fieldErrors}
                   values={{
                     email: holdEmail,

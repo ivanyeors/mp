@@ -8,6 +8,7 @@ import {
   archiveDiscoverySourceOption,
   assertCatalogAllowsSave,
   DEFAULT_DISCOVERY_SOURCE_CATALOG,
+  discoverySourceChoices,
   DISCOVERY_SOURCE_SETTING_KEY,
   normalizeDiscoverySourceOther,
   OTHER_DISCOVERY_SOURCE_ID,
@@ -69,6 +70,10 @@ assert.equal(
 const activeIds = activeDiscoverySourceOptions(archived).map((o) => o.id);
 assert.ok(!activeIds.includes("instagram"));
 assert.ok(activeIds.includes(OTHER_DISCOVERY_SOURCE_ID));
+assert.deepEqual(
+  discoverySourceChoices(archived, "zh-CN").map((o) => o.id),
+  activeIds,
+);
 assert.equal(
   resolveDiscoverySourceLabel(archived, "instagram", "en-US"),
   "Instagram",
@@ -170,7 +175,7 @@ assert.match(adminApi, /export async function GET/);
 assert.match(adminApi, /export async function PUT/);
 
 const publicApi = read("app/api/discovery-source/route.ts");
-assert.match(publicApi, /activeDiscoverySourceOptions/);
+assert.match(publicApi, /discoverySourceChoices/);
 assert.doesNotMatch(publicApi, /requireAdmin/);
 
 assert.equal(roleHasPermission("owner", "forms"), true);

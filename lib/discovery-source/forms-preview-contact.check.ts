@@ -72,7 +72,7 @@ const preview = read("components/configurator/preview-contact-fields.tsx");
 assert.match(preview, /data-preview-contact/);
 assert.match(preview, /How did you hear about us/);
 assert.match(preview, /Additional Notes/);
-assert.match(preview, /\/api\/discovery-source/);
+assert.match(preview, /discoverySourceOptions/);
 
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.match(mp, /PreviewContactFields/);
