@@ -408,8 +408,8 @@ export default function ConfigureCardPage() {
 
   const loadRequest = useRef(0);
   const templatePick = useRef(0);
-  const bolsterLinesLoadedFor = useRef<BolsterLength | null>(null);
-  const loadAll = useCallback(async (withBolsterLinesOf?: BolsterLength | null) => {
+  const linesLoaded = useRef(false);
+  const loadAll = useCallback(async (readLines: boolean) => {
     const request = ++loadRequest.current;
     setLoading(true);
     const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
@@ -417,18 +417,18 @@ export default function ConfigureCardPage() {
       supabaseClient.from("pillow_products").select("id,size,kind,default_filling_template_id").eq("is_active", true),
       supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
       supabaseClient.from("bolster_length_config").select("variant,default_filling_template_id"),
-      withBolsterLinesOf
-        ? supabaseClient.from("bolster_bom_lines").select("item_id,quantity").eq("variant", withBolsterLinesOf)
+      readLines && bolsterLength
+        ? supabaseClient.from("bolster_bom_lines").select("item_id,quantity").eq("variant", bolsterLength)
         : null,
     ]);
     if (request !== loadRequest.current) return;
-    if (withBolsterLinesOf && bolsterLinesRead?.error) {
+    if (bolsterLinesRead?.error) {
       setBolsterLinesFailed(true);
-    } else if (withBolsterLinesOf && bolsterLinesRead) {
+    } else if (bolsterLinesRead) {
       type LineRow = { item_id: number; quantity: number | string };
       setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
       setBolsterLinesFailed(false);
-      bolsterLinesLoadedFor.current = withBolsterLinesOf;
+      linesLoaded.current = true;
       templatePick.current += 1;
       setBolsterSelectedTemplateId('');
     }
@@ -482,14 +482,20 @@ export default function ConfigureCardPage() {
         lines[existingIdx] = { item_id: itemId, quantity };
       }
     });
-    setBomByKind(next);
+    if (readLines && !bolsterLength) {
+      setBomByKind(next);
+      linesLoaded.current = true;
+      templatePick.current += 1;
+      setPillowSelectedTemplateId('');
+    }
     setLoading(false);
-  }, []);
+  }, [bolsterLength]);
 
   useEffect(() => {
-    loadAll(bolsterLength);
+    linesLoaded.current = false;
+    loadAll(true);
     const onChanged = () => {
-      loadAll(bolsterLinesLoadedFor.current === bolsterLength ? null : bolsterLength);
+      loadAll(!linesLoaded.current);
     };
     if (typeof window !== "undefined") {
       window.addEventListener("inventory:changed", onChanged);

@@ -356,6 +356,28 @@ describe("Configure card: cancelling a pick still loading", () => {
   });
 });
 
+const savedBasicM = (lines: unknown) => `POST ${JSON.stringify({ productId: 10, lines, defaultFillingTemplateId: 42 })}`;
+
+describe("Configure card: pillow lines after a reload", () => {
+  it("keeps a picked template's lines when a reload lands after the pick", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    await until(() => templatePicker());
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/templates/7")).toEqual([`PUT ${JSON.stringify({ lines: [{ item_id: 1, quantity: 5 }] })}`]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 1, quantity: 5 }])]);
+  });
+});
+
 describe("Configure card: premium warehouse templates", () => {
   it("lists the variant picked last when an older variant's templates answer after it", async () => {
     auto = (url, method) => (url.includes("role=warehouse") ? undefined : autoAnswers(url, method));
