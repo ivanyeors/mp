@@ -512,7 +512,7 @@
   },
   "app/[lang]/settings/results/[id]/result-detail-client.tsx": {
     "mp/no-effect": {
-      "count": 8
+      "count": 7
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 1
