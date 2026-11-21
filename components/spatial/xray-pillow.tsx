@@ -971,15 +971,23 @@ export function XrayPillow({
     const here = alongExtent(fit.settle, ref);
     if (here) nudgeTo(ref, p.x + p.w / 2 + step.xMm * stage.k, (here.startMm + here.endMm) / 2);
   };
-  const nudgeByRef = useRef(nudgeBy);
-  const performMoveRef = useRef(performMove);
-  const takeOutSelectedRef = useRef(() => {});
-  useEffect(() => {
-    performMoveRef.current = performMove;
-    nudgeByRef.current = nudgeBy;
-    takeOutSelectedRef.current = () => {
+  const onMoveKey = useEffectEvent((e: KeyboardEvent) => {
+    if (isTypingTarget(e.target) || draggingRef.current) return;
+    if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
       if (selectedPiece) takeOut(selectedPiece);
-    };
+      return;
+    }
+    const step = nudgeKeyFor(e);
+    if (step) {
+      e.preventDefault();
+      nudgeBy(step);
+      return;
+    }
+    const kind = moveKeyFor(e);
+    if (!kind) return;
+    e.preventDefault();
+    performMove(kind);
   });
 
   const toView = (clientX: number, clientY: number) => {
@@ -1261,26 +1269,9 @@ export function XrayPillow({
 
   useEffect(() => {
     if (!dived || !editable || !selectedPiece) return;
-    const onMoveKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target) || draggingRef.current) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        e.preventDefault();
-        takeOutSelectedRef.current();
-        return;
-      }
-      const step = nudgeKeyFor(e);
-      if (step) {
-        e.preventDefault();
-        nudgeByRef.current(step);
-        return;
-      }
-      const kind = moveKeyFor(e);
-      if (!kind) return;
-      e.preventDefault();
-      performMoveRef.current(kind);
-    };
-    window.addEventListener("keydown", onMoveKey);
-    return () => window.removeEventListener("keydown", onMoveKey);
+    const listener = (e: KeyboardEvent) => onMoveKey(e);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
   }, [dived, editable, selectedPiece]);
 
   const pieceChip = (cell: Cell, itemId: number, slots: number[]) => {
