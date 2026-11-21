@@ -1012,14 +1012,6 @@
       "count": 1
     }
   },
-  "components/shop/cart/cart-coupon-field.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "components/shop/cart/cart-shipping-bar.tsx": {
     "mp/no-effect": {
       "count": 2
