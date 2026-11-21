@@ -136,6 +136,26 @@ describe("session changes", () => {
     expect(replace.mock.calls).toEqual([["/en-US/settings?denied=orders"]]);
   });
 
+  it("sends Staff away from the first page loaded when the server's session lacks it", async () => {
+    pathname = "/en-US/settings/costings";
+    await mountHere();
+    expect(replace.mock.calls).toEqual([["/en-US/settings?denied=costings"]]);
+  });
+
+  it("sends Staff away when the server layout drops the current page's permission", async () => {
+    pathname = "/en-US/settings/costings";
+    const el = document.createElement("div");
+    document.body.append(el);
+    root = createRoot(el);
+    await act(async () => renderAuth({ signedIn: true, permissions: ["costings", "orders"] }));
+    await settle();
+    expect(replace).not.toHaveBeenCalled();
+
+    await act(async () => renderAuth({ signedIn: true, permissions: ["orders"] }));
+    await settle();
+    expect(replace.mock.calls).toEqual([["/en-US/settings?denied=costings"]]);
+  });
+
   it("stays on the page when the refetch after a navigation still grants it", async () => {
     await mountHere();
     pathname = "/en-US/settings/orders";

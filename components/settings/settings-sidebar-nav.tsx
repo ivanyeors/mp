@@ -296,19 +296,19 @@ export function SettingsSidebarNav({
   const customersBadge = followUpBadge(followUpCounts);
 
   const firstPath = useRef(basePathname);
+  const [permissionsPath, setPermissionsPath] = useState(basePathname);
   useEffect(() => {
     if (isLoginRoute || status !== "authed" || basePathname === firstPath.current) return;
     firstPath.current = "";
-    const pathKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
+    const path = basePathname;
     let cancelled = false;
     fetch("/api/admin/context")
       .then((res) => res.json())
       .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
         if (cancelled) return;
         if (!data?.signedIn) return setStatus("unauth");
-        const granted = Array.isArray(data.permissions) ? data.permissions : [];
-        setPermissions(granted);
-        if (pathKey && !granted.includes(pathKey)) router.replace(to(`/settings?denied=${pathKey}`));
+        setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+        setPermissionsPath(path);
       })
       .catch(() => {});
     return () => {
@@ -316,13 +316,21 @@ export function SettingsSidebarNav({
     };
   }, [basePathname]);
 
+  const currentKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
+  const lostCurrentPage =
+    status === "authed" &&
+    permissionsPath === basePathname &&
+    !!currentKey &&
+    !permissions.includes(currentKey);
+  const leaveTo =
+    status === "unauth" && !isLoginRoute
+      ? to(`/account/login?next=${encodeURIComponent(to(basePathname))}`)
+      : lostCurrentPage && currentKey
+        ? to(`/settings?denied=${currentKey}`)
+        : null;
   useEffect(() => {
-    if (status === "unauth" && !isLoginRoute) {
-      router.replace(
-        to(`/account/login?next=${encodeURIComponent(to(basePathname))}`),
-      );
-    }
-  }, [status, isLoginRoute]);
+    if (leaveTo) router.replace(leaveTo);
+  }, [leaveTo]);
 
   if (isLoginRoute) {
     return <>{children}</>;
