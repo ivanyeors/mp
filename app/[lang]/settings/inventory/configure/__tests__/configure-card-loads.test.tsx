@@ -277,6 +277,23 @@ describe("Configure card: warehouse template picks", () => {
   });
 });
 
+describe("Configure card: bolster lines that fail to load", () => {
+  it("shows an error and writes nothing when the bolster parts cannot be read", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].fail();
+    await until(() => document.querySelector("h1"));
+    typeField(document.querySelector<HTMLInputElement>('input[placeholder="Template name"]')!, "Backup");
+    for (const b of document.querySelectorAll<HTMLButtonElement>("button")) {
+      if (b.textContent?.trim() === "Save") await act(async () => b.click());
+    }
+    await settle();
+
+    expect([...posted("/configure/save"), ...posted("/configure/templates")]).toEqual([]);
+    expect(document.body.textContent).toContain("Couldn't load this bolster's parts.");
+  });
+});
+
 describe("Configure card: premium warehouse templates", () => {
   it("lists the variant picked last when an older variant's templates answer after it", async () => {
     auto = (url, method) => (url.includes("role=warehouse") ? undefined : autoAnswers(url, method));

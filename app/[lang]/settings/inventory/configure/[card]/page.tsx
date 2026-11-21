@@ -371,6 +371,7 @@ export default function ConfigureCardPage() {
   const [saving, setSaving] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
+  const [bolsterLinesFailed, setBolsterLinesFailed] = useState(false);
   const [pillowTemplates, setPillowTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
   const [pillowSelectedTemplateId, setPillowSelectedTemplateId] = useState<number | ''>('');
   const [pillowTemplateName, setPillowTemplateName] = useState('');
@@ -420,9 +421,12 @@ export default function ConfigureCardPage() {
         : null,
     ]);
     if (request !== loadRequest.current) return;
-    if (withBolsterLinesOf && bolsterLinesRead) {
+    if (withBolsterLinesOf && bolsterLinesRead?.error) {
+      setBolsterLinesFailed(true);
+    } else if (withBolsterLinesOf && bolsterLinesRead) {
       type LineRow = { item_id: number; quantity: number | string };
       setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+      setBolsterLinesFailed(false);
       bolsterLinesLoadedFor.current = withBolsterLinesOf;
     }
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
@@ -1156,7 +1160,7 @@ export default function ConfigureCardPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" onClick={saveBolster} disabled={saving}>
+                    <Button size="sm" onClick={saveBolster} disabled={saving || bolsterLinesFailed}>
                       {saving ? 'Saving…' : 'Save'}
                     </Button>
                   </>
@@ -1204,6 +1208,7 @@ export default function ConfigureCardPage() {
                     </Button>
                     <Button
                       variant="secondary"
+                      disabled={bolsterLinesFailed}
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
                         if (!name) { toast.message('Enter a template name.'); return; }
@@ -1282,12 +1287,18 @@ export default function ConfigureCardPage() {
                 loadTemplateLines={loadTemplateLines}
               />
               <Separator className="lg:hidden" />
-              <BolsterEditor
-                items={items}
-                lines={bolsterLines}
-                setLines={setBolsterLines}
-                variant={bolsterVariant}
-              />
+              {bolsterLinesFailed ? (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn&apos;t load this bolster&apos;s parts. Refresh the page to try again.
+                </p>
+              ) : (
+                <BolsterEditor
+                  items={items}
+                  lines={bolsterLines}
+                  setLines={setBolsterLines}
+                  variant={bolsterVariant}
+                />
+              )}
               </div>
               </div>
               </TabsContent>
@@ -1307,7 +1318,7 @@ export default function ConfigureCardPage() {
           {bolsterDrawerTab === "product" && (
             <>
               <div className="hidden justify-end md:flex lg:hidden">
-                <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+                <Button onClick={saveBolster} disabled={saving || bolsterLinesFailed}>{saving ? 'Saving…' : 'Save'}</Button>
               </div>
               <MobileStickyActionBar>
                 <div className="flex items-center justify-between gap-3">
@@ -1319,7 +1330,7 @@ export default function ConfigureCardPage() {
                       {bolsterSelectedTemplate ? 'Saving also updates this template.' : 'No template linked.'}
                     </div>
                   </div>
-                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving}>
+                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving || bolsterLinesFailed}>
                     {saving ? 'Saving…' : 'Save'}
                   </Button>
                 </div>
