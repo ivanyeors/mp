@@ -1,6 +1,8 @@
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
 import { getAdminContext } from "@/lib/auth/admin";
+import { discoverySourceChoices } from "@/lib/discovery-source";
+import { readDiscoverySourceCatalog } from "@/lib/discovery-source/cached";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
@@ -36,11 +38,14 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
   const { partner: partnerCode } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  const [offer, faq, staffCtx, partner] = await Promise.all([
+  const [offer, faq, staffCtx, partner, discoverySourceOptions] = await Promise.all([
     getConfiguratorOfferRange("bolster"),
     getPageFaq("mbolster-config", locale),
     getAdminContext(),
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
+    // ponytail: a failed read leaves "How did you hear about us?" empty, as the old
+    // client fetch did; the hold is refused until a source is picked.
+    readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)).catch(() => []),
   ]);
 
   const [servicePrices, measuringProfile] = await Promise.all([
@@ -73,6 +78,7 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
         staffAssist={Boolean(staffCtx && hasPermission(staffCtx, "results"))}
         servicePrices={servicePrices}
         measuredByStaff={Boolean(measuringProfile)}
+        discoverySourceOptions={discoverySourceOptions}
         partner={
           partner
             ? {

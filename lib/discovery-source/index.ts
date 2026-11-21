@@ -14,6 +14,7 @@ export {
   activeDiscoverySourceOptions,
   archiveDiscoverySourceOption,
   assertCatalogAllowsSave,
+  discoverySourceChoices,
   findDiscoverySourceOption,
   normalizeDiscoverySourceCatalog,
   parseDiscoverySourceCatalog,

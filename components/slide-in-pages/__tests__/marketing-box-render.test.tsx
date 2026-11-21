@@ -44,7 +44,7 @@ describe("the customisation contact step's box", () => {
         values={{ email: "", phone: "", discoverySource: "", discoverySourceOther: "", notes: "", code: "", marketingEmail }}
         onChange={() => undefined}
         fieldErrors={{}}
-        locale="en-US"
+        discoverySourceOptions={[]}
         codeContext={null}
         onCodeStatus={() => undefined}
         formatAmount={(n) => `SGD ${n.toFixed(2)}`}
