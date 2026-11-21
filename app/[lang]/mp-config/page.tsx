@@ -78,9 +78,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       draftId && !resultId && !staffEditRequested
         ? loadResumeDraft(draftId, resultToken)
         : Promise.resolve(null),
-      // ponytail: a failed read leaves "How did you hear about us?" empty, as the old
-      // client fetch did; the hold is refused until a source is picked.
-      readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)).catch(() => []),
+      readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)),
     ]);
   const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
   const liveResultId = staffEdit || resumeFinish ? resultId : resumeDraft?.id;

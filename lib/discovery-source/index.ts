@@ -43,6 +43,16 @@ export async function getDiscoverySourceCatalog(): Promise<DiscoverySourceCatalo
   return parseDiscoverySourceCatalog(stored[DISCOVERY_SOURCE_SETTING_KEY]);
 }
 
+export async function getDiscoverySourceCatalogOrThrow(): Promise<DiscoverySourceCatalog> {
+  const { data, error } = await supabaseAdmin()
+    .from("site_settings")
+    .select("value")
+    .eq("key", DISCOVERY_SOURCE_SETTING_KEY)
+    .maybeSingle();
+  if (error) throw new Error(`Discovery source catalog read failed: ${error.message}`);
+  return parseDiscoverySourceCatalog(data?.value);
+}
+
 export async function saveDiscoverySourceCatalog(
   catalog: DiscoverySourceCatalog,
 ): Promise<{ ok: true; catalog: DiscoverySourceCatalog } | { ok: false; error: string }> {

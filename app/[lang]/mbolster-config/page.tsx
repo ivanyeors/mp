@@ -43,9 +43,7 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
     getPageFaq("mbolster-config", locale),
     getAdminContext(),
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
-    // ponytail: a failed read leaves "How did you hear about us?" empty, as the old
-    // client fetch did; the hold is refused until a source is picked.
-    readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)).catch(() => []),
+    readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)),
   ]);
 
   const [servicePrices, measuringProfile] = await Promise.all([
