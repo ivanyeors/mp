@@ -886,10 +886,7 @@
   },
   "components/settings/appointments-settings-sheet.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/settings/inventory-push-sheet.tsx": {
