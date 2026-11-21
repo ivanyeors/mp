@@ -3,6 +3,7 @@ import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Customer, CustomerAddress } from "@/lib/types/ecommerce";
+import type { CustomerReviewsData } from "@/lib/crm/reviews";
 
 import "@/components/block-editor/__tests__/dom";
 
@@ -72,6 +73,17 @@ const addresses = [
   address("a-office", "Office", false, "2026-03-01T00:00:00Z"),
 ];
 
+const reviews: CustomerReviewsData = {
+  ok: true,
+  google: [],
+  shop: [
+    { id: "s1", rating: 4, product: "Premium Mpillow", status: "pending", createdAt: "2026-10-28T02:00:00.000Z" },
+    { id: "s2", rating: 5, product: "Mbolster", status: "approved", createdAt: "2026-10-29T02:00:00.000Z" },
+  ],
+  request: null,
+  possible: [],
+};
+
 const mount = async () => {
   host = document.createElement("div");
   document.body.append(host);
@@ -80,7 +92,7 @@ const mount = async () => {
     root!.render(
       <StrictMode>
         <CustomerDetailClient
-          initialData={{ customer: { ok: true, row: customer }, notes: [], addresses }}
+          initialData={{ customer: { ok: true, row: customer }, notes: [], addresses, reviews }}
           canEdit={false}
           viewer={{ userId: "u1", grantsAll: false }}
         />
@@ -105,5 +117,11 @@ describe("Customer detail: what the server sent", () => {
     await act(async () => row.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     const labels = [...host.querySelectorAll("span.font-medium")].map((s) => s.textContent).filter((t) => ["Home", "Office", "Old flat"].includes(t ?? ""));
     expect(labels).toEqual(["Home", "Office", "Old flat"]);
+  });
+
+  it("counts the server's reviews on the Reviews tab without reading them again", async () => {
+    await mount();
+    expect(requests.filter((u) => u.includes("/reviews"))).toEqual([]);
+    expect(host.querySelector('[aria-label="2 on record"]')?.textContent).toBe("2");
   });
 });

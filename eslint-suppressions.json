@@ -236,11 +236,6 @@
       "count": 2
     }
   },
-  "app/[lang]/settings/customers/[id]/customer-reviews-card.tsx": {
-    "mp/no-effect": {
-      "count": 3
-    }
-  },
   "app/[lang]/settings/customers/[id]/customer-shortcuts.tsx": {
     "mp/no-effect": {
       "count": 2

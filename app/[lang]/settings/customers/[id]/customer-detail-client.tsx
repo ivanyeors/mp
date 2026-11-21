@@ -49,7 +49,8 @@ import { MarketingConsentCard } from "./marketing-consent-card";
 import { PointsCard } from "./points-card";
 import { CustomerEntryCard } from "./customer-entry-card";
 import type { CustomerEntryResult } from "@/lib/crm/customer-entry";
-import { CustomerReviewsCard } from "./customer-reviews-card";
+import { CustomerReviewsCard, reviewsOnRecord } from "./customer-reviews-card";
+import type { CustomerReviewsData } from "@/lib/crm/reviews";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import { CustomerPillowCard } from "./customer-pillow-card";
 import { CreateOrderDialog } from "./create-order-dialog";
@@ -102,6 +103,7 @@ export type CustomerDetailInitialData = {
     pillow?: CustomerPillowResult;
     entry?: CustomerEntryResult;
     addresses?: CustomerAddress[];
+    reviews?: CustomerReviewsData | null;
 };
 
 const defaultFirstThenNewest = (rows: CustomerAddress[]) =>
@@ -149,7 +151,7 @@ export function CustomerDetailClient({
     const [composerMode, setComposerMode] = useState<ComposerMode>("note");
     const [composerFocus, setComposerFocus] = useState(0);
     const [journeyReload, setJourneyReload] = useState(0);
-    const [reviewCount, setReviewCount] = useState<number | null>(null);
+    const [reviewCount, setReviewCount] = useState<number | null>(initialData.reviews ? reviewsOnRecord(initialData.reviews) : null);
     const [editing, setEditing] = useState(false);
 
     const [addresses, setAddresses] = useState<CustomerAddress[]>(() => defaultFirstThenNewest(initialData.addresses ?? []));
@@ -720,7 +722,12 @@ export function CustomerDetailClient({
                         </TabsContent>
 
                         <TabsContent value="reviews" forceMount className="data-[state=inactive]:hidden">
-                            <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} onCount={setReviewCount} />
+                            <CustomerReviewsCard
+                                customerId={customer.id}
+                                canEdit={canEdit}
+                                initialData={initialData.reviews ?? null}
+                                onCount={setReviewCount}
+                            />
                         </TabsContent>
                     </Tabs>
                 </div>

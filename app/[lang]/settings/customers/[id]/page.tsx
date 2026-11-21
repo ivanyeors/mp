@@ -13,6 +13,7 @@ import type { CustomerPillowResult } from "@/lib/customer-pillow/view";
 import { readContactFacts } from "@/lib/crm/contact-facts";
 import type { ContactFactsResult } from "@/lib/crm/contact-status";
 import { readCustomerEntry } from "@/lib/crm/customer-entry";
+import { readCustomerReviews } from "@/lib/crm/google-review-match-server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Customer, CustomerAddress } from "@/lib/types/ecommerce";
 import { parseCustomerTab } from "@/lib/crm/customer-tabs";
@@ -36,7 +37,7 @@ export default async function CustomerDetailPage({
 
     const ctx = await requireAdminPage("customers", locale);
 
-    const [customer, notes, migration, lifecycle, fittings, unsubscribeReason, next] = await Promise.all([
+    const [customer, notes, migration, lifecycle, fittings, unsubscribeReason, next, reviews] = await Promise.all([
         getAdminCustomer(id),
         listCustomerNotes(id).catch(() => null),
         getMigratedCustomer(id),
@@ -46,6 +47,7 @@ export default async function CustomerDetailPage({
         readNextStepFacts(supabaseAdmin(), id)
             .then((facts) => (facts ? nextStep(facts, new Date()) : null))
             .catch(() => null),
+        readCustomerReviews(supabaseAdmin(), id).catch(() => null),
     ]);
 
     const [pillow, contact, entry] = customer.ok
@@ -70,6 +72,7 @@ export default async function CustomerDetailPage({
         contact,
         entry,
         addresses: customer.ok ? ((customer.row as { customer_addresses?: CustomerAddress[] }).customer_addresses ?? []) : [],
+        reviews,
     };
 
     return (
