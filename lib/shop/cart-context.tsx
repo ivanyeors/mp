@@ -165,6 +165,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated || !state.couponCode || state.items.length === 0) return;
+    let live = true;
     const subtotal = state.items.reduce(
       (sum, item) => sum + (item.price + (item.addonPrice ?? 0)) * item.quantity,
       0
@@ -175,6 +176,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotal,
       state.customerEmail ?? undefined
     ).then((result) => {
+      if (!live) return;
       if (!result.valid) {
         setState((prev) => ({
           ...prev,
@@ -196,6 +198,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         couponError: null,
       }));
     });
+    return () => {
+      live = false;
+    };
   }, [state.items, state.customerEmail, hydrated]);
 
   const addItem = useCallback((item: CartItemClient) => {
