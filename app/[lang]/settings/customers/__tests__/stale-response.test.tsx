@@ -12,6 +12,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { FollowUpsTab } = await import("../followups-tab");
+const { CustomersPageTabs } = await import("../customers-page-tabs");
+const { WORKING_AS_CHANGED_EVENT } = await import("@/components/settings/working-as-picker");
 const { CustomersClient } = await import("../customers-client");
 const { FindCustomerLink } = await import("../review-match-parts");
 const { CustomerJourney } = await import("../[id]/customer-journey");
@@ -88,8 +90,7 @@ const followUps = (scope: FollowUpScope, title: string): FollowUpListData & { ok
 
 describe("Follow-ups tab: All then Overdue, answered out of order", () => {
   it("shows Overdue's rows when All's slower response lands last", async () => {
-    await mount(<FollowUpsTab canEdit={false} />);
-    await lastFor("scope=mine").answer(followUps("mine", "Mine row"));
+    await mount(<FollowUpsTab canEdit={false} initialData={followUps("mine", "Mine row")} />);
 
     await click(button("All"));
     await click(button("Overdue"));
@@ -110,14 +111,73 @@ describe("Follow-ups tab: All then Overdue, answered out of order", () => {
   });
 
   it("keeps the chosen list when the page re-renders with another scope in the URL", async () => {
-    const tab = (scope: FollowUpScope) => <FollowUpsTab canEdit={false} initialScope={scope} />;
+    const tab = (scope: FollowUpScope) => (
+      <FollowUpsTab canEdit={false} initialScope={scope} initialData={followUps("overdue", "Overdue row")} />
+    );
     await mount(tab("overdue"));
-    await lastFor("scope=overdue").answer(followUps("overdue", "Overdue row"));
 
     await act(async () => root!.render(tab("mine")));
 
-    expect(held.map((h) => h.url)).toEqual(["/api/settings/customers/followups?scope=overdue"]);
+    expect(held.map((h) => h.url)).toEqual([]);
     expect(host.textContent).toContain("Overdue row");
+  });
+});
+
+describe("Follow-ups tab: its first list", () => {
+  const page = (props: { initialView: "list" | "followups"; followUps?: FollowUpListData | { error: string } }) => (
+    <CustomersPageTabs canEdit={false} canEditOnlineResult={false} {...props}>
+      <p>Customer list</p>
+    </CustomersPageTabs>
+  );
+  const openTab = (label: string) =>
+    act(async () => {
+      [...host.querySelectorAll('[role="tab"]')]
+        .find((t) => t.textContent?.trim() === label)!
+        .dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+    });
+  const followUpReads = () => held.filter((h) => h.url.startsWith("/api/settings/customers/followups"));
+
+  it("loads the list once, when the tab is first opened", async () => {
+    await mount(page({ initialView: "list" }));
+    expect(followUpReads()).toEqual([]);
+
+    await openTab("Follow-ups");
+    expect(followUpReads().map((h) => h.url)).toEqual(["/api/settings/customers/followups?scope=mine"]);
+    await followUpReads()[0]!.answer(followUps("mine", "Mine row"));
+    expect(host.textContent).toContain("Mine row");
+
+    await openTab("Customers");
+    await openTab("Follow-ups");
+    expect(followUpReads()).toHaveLength(1);
+  });
+
+  it("shows the list the server read when the page opens on Follow-ups, asking for nothing", async () => {
+    await mount(page({ initialView: "followups", followUps: followUps("overdue", "Server row") }));
+    expect(followUpReads()).toEqual([]);
+    expect(host.textContent).toContain("Server row");
+  });
+
+  it("offers Try again when the server could not read it", async () => {
+    await mount(page({ initialView: "followups", followUps: { error: "Could not load follow-ups." } }));
+    expect(followUpReads()).toEqual([]);
+    expect(host.textContent).toContain("Could not load follow-ups.");
+
+    await click(button("Try again"));
+    await lastFor("scope=mine").answer(followUps("mine", "Mine row"));
+    expect(host.textContent).toContain("Mine row");
+  });
+
+  it("reloads the chosen scope when Working-as changes", async () => {
+    await mount(<FollowUpsTab canEdit={false} initialData={followUps("mine", "Mine row")} />);
+    await click(button("All"));
+    await lastFor("scope=all").answer(followUps("all", "All row"));
+
+    await act(async () => window.dispatchEvent(new Event(WORKING_AS_CHANGED_EVENT)));
+
+    expect(held.map((h) => h.url)).toEqual([
+      "/api/settings/customers/followups?scope=all",
+      "/api/settings/customers/followups?scope=all",
+    ]);
   });
 });
 
