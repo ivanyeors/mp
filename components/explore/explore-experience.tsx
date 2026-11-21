@@ -12,7 +12,7 @@ import type { ExploreScene } from "@/components/explore/explore-scene";
 import { resubscribeMe } from "@/lib/auth/sign-in-actions";
 import { LOGO_SRC } from "@/lib/brand-logo";
 import { countdownParts, EXPLORE_LAUNCH_LABEL } from "@/lib/explore/launch";
-import { guessPlace, skyAt, skyCss, type Place, type SkyState } from "@/lib/explore/sky";
+import { guessPlace, skyAt, skyCss, toHex, type Place, type SkyState } from "@/lib/explore/sky";
 import type { ExploreFlowers, ExploreViewer } from "@/lib/explore/viewer";
 import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -278,18 +278,18 @@ export function ExploreExperience({
 
   return (
     <main
-      className="fixed inset-0 overflow-hidden"
+      className="fixed inset-0 overflow-hidden standalone:bottom-auto standalone:h-lvh"
       style={{ background: skyCss(sky.palette) }}
       data-sky-ink={sky.ink}
       data-scene={sceneOn ? "on" : "off"}
       data-typography-scope="app"
     >
-      <style>{`@keyframes explore-float{0%{opacity:0;transform:translate(-50%,-30%) scale(.9)}15%{opacity:1;transform:translate(-50%,-70%) scale(1)}100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}`}</style>
+      <style>{`html,body{background:${toHex(sky.palette.seaDeep)}}@keyframes explore-float{0%{opacity:0;transform:translate(-50%,-30%) scale(.9)}15%{opacity:1;transform:translate(-50%,-70%) scale(1)}100%{opacity:0;transform:translate(-50%,-260%) scale(1)}}`}</style>
       <div ref={hostRef} className="absolute inset-0" aria-hidden="true" />
 
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 flex flex-col px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] transition-colors duration-700 sm:px-8 lg:px-[7vw]",
+          "pointer-events-none absolute inset-0 flex flex-col standalone:bottom-auto standalone:h-dvh px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] transition-colors duration-700 sm:px-8 lg:px-[7vw]",
           dark ? "text-[#0d1b33]" : "text-white",
         )}
       >

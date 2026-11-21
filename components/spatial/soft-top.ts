@@ -206,14 +206,19 @@ const NO_CASE: Pt[] = [
 ];
 const asShapes = (rings: ReadonlyMap<string, Pt[]>): SoftCutShapes => ({ case: NO_CASE, rings, labels: new Map() });
 
+let settling = 0;
+
+export const softTopSettling = () => settling > 0;
+
 export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings: SoftBodySettings, view: View, easeMs?: number): ReadonlyMap<string, string> | null {
   const mounted = useSyncExternalStore(noSubscribe, isClient, isServer);
   const live = mounted && settings.enabled && planes !== null && planes.length > 0;
   const [settledMore, setSettledMore] = useState(0);
-  const target = useMemo(() => {
-    if (!live) return null;
+  const { target, unsettled } = useMemo(() => {
+    if (!live) return { target: null, unsettled: 0 };
     const out = new Map<string, Pt[]>();
     let settled = 0;
+    let unsettled = 0;
     for (const plane of planes!) {
       let rings = cachedPlane(plane, settings, view);
       if (!rings && settled < SYNC_PLANES) {
@@ -221,17 +226,28 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
         settled++;
       }
       if (rings) for (const [key, ring] of rings) out.set(key, ring);
+      else unsettled++;
     }
-    return out.size > 0 ? out : null;
+    return { target: out.size > 0 ? out : null, unsettled };
   }, [live, planes, settings, view, settledMore]);
 
   useEffect(() => {
     if (!live) return;
     const pending = planes!.filter((plane) => !cachedPlane(plane, settings, view));
-    if (pending.length === 0) return;
+    if (pending.length === 0) {
+      if (unsettled === 0) return;
+      const raf = requestAnimationFrame(() => setSettledMore((n) => n + 1));
+      return () => cancelAnimationFrame(raf);
+    }
     let i = 0;
     let run: ReturnType<typeof startPlane> | null = null;
     let raf = 0;
+    let open = true;
+    settling++;
+    const close = () => {
+      if (open) settling--;
+      open = false;
+    };
     const tick = () => {
       const t0 = performance.now();
       while (i < pending.length && performance.now() - t0 < FRAME_BUDGET_MS) {
@@ -243,11 +259,17 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
         }
       }
       if (i < pending.length) raf = requestAnimationFrame(tick);
-      else setSettledMore((n) => n + 1);
+      else {
+        close();
+        setSettledMore((n) => n + 1);
+      }
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [live, planes, settings, view]);
+    return () => {
+      cancelAnimationFrame(raf);
+      close();
+    };
+  }, [live, planes, settings, view, unsettled]);
 
   const [frame, setFrame] = useState<{ of: Map<string, Pt[]>; rings: ReadonlyMap<string, Pt[]> } | null>(null);
   const shown = useRef<ReadonlyMap<string, Pt[]> | null>(null);

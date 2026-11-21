@@ -744,7 +744,13 @@ export function CustomerDetailClient({
                         </TabsContent>
 
                         <TabsContent value="pillow" forceMount className="space-y-4 data-[state=inactive]:hidden md:space-y-6">
-                            <CustomerPillowCard customerId={customer.id} pillow={initialData?.pillow} canEdit={canEdit} />
+                            <CustomerPillowCard
+                                customerId={customer.id}
+                                pillow={initialData?.pillow}
+                                canEdit={canEdit}
+                                customer={customer}
+                                fittings={initialData?.fittings ?? []}
+                            />
                             <CustomerFittingsCard customerId={customer.id} fittings={initialData?.fittings} />
                             {!hasPillowSection ? (
                                 <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">

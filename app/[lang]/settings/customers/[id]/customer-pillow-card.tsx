@@ -24,7 +24,10 @@ import { formatTemplateKeys, PILLOW_TEMPLATE_KEYS } from "@/lib/filling-template
 import { rowsToPillowPlacements } from "@/lib/spatial-fillings/core";
 import type { MatchableTemplate, PillowSizeKey } from "@/lib/customer-pillow/match";
 import { matchNotices } from "@/lib/customer-pillow/notices";
-import type { CustomerPillowResult, CustomerPillowView } from "@/lib/customer-pillow/view";
+import { pillowGuideOffered } from "@/lib/customer-pillow/sheet";
+import { customerFacingPillow, type CustomerPillowResult, type CustomerPillowView } from "@/lib/customer-pillow/view";
+import type { FittingAnswersView } from "@/lib/fitting-import/view";
+import { PillowSheetButton } from "@/components/customer-pillow/pillow-sheet-button";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { ReadjustDialog, readjustDraftKey } from "./customer-pillow-readjust";
 
@@ -34,12 +37,17 @@ export function CustomerPillowCard({
     customerId,
     pillow: initial,
     canEdit,
+    customer,
+    fittings,
 }: {
     customerId: string;
     pillow: CustomerPillowResult | undefined;
     canEdit: boolean;
+    customer: { first_name: string | null; last_name: string | null };
+    fittings: readonly FittingAnswersView[];
 }) {
     const [pillow, setPillow] = useState<CustomerPillowView | null>(initial ?? null);
+    const forCustomer = useMemo(() => (pillow ? customerFacingPillow(pillow) : null), [pillow]);
     const [open, setOpen] = useState<"link" | "readjust" | null>(null);
     const [session, setSession] = useState(0);
     const openDialog = (kind: "link" | "readjust") => {
@@ -62,6 +70,8 @@ export function CustomerPillowCard({
         setOpen(null);
     };
 
+    const canDownload = forCustomer !== null && pillow !== null && pillowGuideOffered(pillow);
+
     if (initial === undefined) return null;
     if (pillow === null) {
         return (
@@ -79,17 +89,22 @@ export function CustomerPillowCard({
                         <BedDouble className="h-4 w-4" aria-hidden />
                         Pillow
                     </CardTitle>
-                    {canEdit && (
+                    {(canEdit || canDownload) && (
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" size="sm" onClick={() => openDialog("link")}>
-                                <Link2 className="mr-1.5 h-4 w-4" aria-hidden />
-                                {pillow.source === "none" ? "Link pillow" : "Change pillow"}
-                            </Button>
-                            {pillow.source !== "none" && (
+                            {canEdit && (
+                                <Button variant="outline" size="sm" onClick={() => openDialog("link")}>
+                                    <Link2 className="mr-1.5 h-4 w-4" aria-hidden />
+                                    {pillow.source === "none" ? "Link pillow" : "Change pillow"}
+                                </Button>
+                            )}
+                            {canEdit && pillow.source !== "none" && (
                                 <Button variant="outline" size="sm" onClick={() => openDialog("readjust")}>
                                     <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />
                                     Re-adjust
                                 </Button>
+                            )}
+                            {forCustomer && canDownload && (
+                                <PillowSheetButton pillow={forCustomer} customer={customer} fittings={fittings} />
                             )}
                         </div>
                     )}
@@ -219,6 +234,9 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
         );
     }
     const pieces = placements.length;
+    if (pillow.source === "fitting" && pieces > 0 && !pillowGuideOffered(pillow)) {
+        notices.push("Download PDF appears once you link the pillow they have: this drawing is the nearest template, so its fill order may not match theirs.");
+    }
     const drawn = pillow.template !== null || pieces > 0;
     return (
         <>
