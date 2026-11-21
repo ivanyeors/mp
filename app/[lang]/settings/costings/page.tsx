@@ -1419,6 +1419,7 @@ export default function CostingsPage() {
         }
       }
       toast.success("Costings saved");
+      ignoreLoadsBelow.current = latestLoad.current + 1;
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save costings.";
