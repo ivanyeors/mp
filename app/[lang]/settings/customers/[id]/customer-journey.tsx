@@ -155,10 +155,15 @@ export function CustomerJourney({
     const [view, setView] = useState<"map" | "list" | null>(null);
     const [selectedId, setSelectedId] = useState<string>(NOW_ID);
     const pages = useRef(0);
+    const timelineReads = useRef({ started: 0, shown: 0 });
+    const followUpReads = useRef({ started: 0, shown: 0 });
 
     const refresh = useCallback(async () => {
+        const read = ++timelineReads.current.started;
         try {
             const page = await fetchPage(customerId, null);
+            if (read < timelineReads.current.shown) return;
+            timelineReads.current.shown = read;
             setEntries((prev) => {
                 const oldest = page.entries.length ? Date.parse(page.entries[page.entries.length - 1]!.at) : Infinity;
                 const fresh = new Set(page.entries.map((e) => e.id));
@@ -176,8 +181,12 @@ export function CustomerJourney({
     }, [customerId]);
 
     const refreshFollowUps = useCallback(async () => {
+        const read = ++followUpReads.current.started;
         try {
-            setFollowUps(await fetchFollowUps(customerId));
+            const data = await fetchFollowUps(customerId);
+            if (read < followUpReads.current.shown) return;
+            followUpReads.current.shown = read;
+            setFollowUps(data);
         } catch {}
     }, [customerId]);
 

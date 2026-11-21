@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 const { FollowUpsTab } = await import("../followups-tab");
 const { CustomersClient } = await import("../customers-client");
 const { FindCustomerLink } = await import("../review-match-parts");
+const { CustomerJourney } = await import("../[id]/customer-journey");
 
 type Held = { url: string; answer: (body: unknown) => Promise<void> };
 let held: Held[] = [];
@@ -176,6 +177,94 @@ describe("Customers list: page 2 then page 3, answered out of order", () => {
     expect(one).toBeDefined();
     await one.answer(customersPage(1, "Pageone"));
     expect(host.textContent).toContain("Pageone");
+  });
+});
+
+describe("Customer journey: Sent it while the first read is still loading", () => {
+  const journey = (reloadSignal: number) => (
+    <CustomerJourney
+      customerId="c1"
+      canEdit={false}
+      viewer={{ userId: "u1", grantsAll: false }}
+      initialNotes={[]}
+      migration={undefined}
+      importHistoryHref={null}
+      nextStepText={null}
+      stageLabel={null}
+      composerMode="note"
+      onComposerModeChange={() => {}}
+      composerFocus={0}
+      reloadSignal={reloadSignal}
+      onAnswerReview={() => {}}
+    />
+  );
+  const note = (id: string, at: string, detail: string) => ({
+    id: `note.added:${id}`,
+    at,
+    kind: "note.added",
+    ref: { type: "customer_note", id },
+    summary: "Note by Jess",
+    detail,
+    group: "notes",
+  });
+  const timeline = (...entries: ReturnType<typeof note>[]) => ({
+    ok: true,
+    entries,
+    next: null,
+    groups: [{ key: "notes", label: "Notes" }],
+    unavailable: [],
+  });
+  const followUpsWith = (...titles: string[]) => ({
+    rows: titles.map((title, i) => ({
+      id: `f${i}`,
+      customerId: "c1",
+      title,
+      dueOn: "2026-10-23",
+      assignee: { id: "p-jess", name: "Jess", archived: false },
+      createdBy: { id: "p-jess", name: "Jess" },
+      createdAt: "2026-10-20T02:00:00Z",
+      doneAt: null,
+      doneBy: null,
+    })),
+    today: "2026-10-21",
+    me: { id: "p-jess", name: "Jess" },
+    assignees: [],
+  });
+  const reads = (part: string) => held.filter((h) => h.url.includes(part));
+
+  it("keeps the note the second read brought when the first read answers last", async () => {
+    await mount(journey(0));
+    await act(async () => root!.render(journey(1)));
+    const [first, second] = reads("/timeline");
+
+    await second.answer(timeline(note("n1", "2026-10-01T02:00:00Z", "Prefers mornings."), note("n2", "2026-10-20T02:00:00Z", "Sent the care guide.")));
+    await first.answer(timeline(note("n1", "2026-10-01T02:00:00Z", "Prefers mornings.")));
+
+    expect(host.textContent).toContain("Sent the care guide.");
+    expect(host.textContent).toContain("Prefers mornings.");
+  });
+
+  it("keeps the follow-up the second read brought when the first read answers last", async () => {
+    await mount(journey(0));
+    await act(async () => root!.render(journey(1)));
+    const [first, second] = reads("/followups");
+    for (const read of reads("/timeline")) await read.answer(timeline(note("n1", "2026-10-01T02:00:00Z", "Prefers mornings.")));
+
+    await second.answer(followUpsWith("Call about her second pillow"));
+    await first.answer(followUpsWith());
+
+    expect(host.textContent).toContain("Call about her second pillow");
+  });
+
+  it("shows the journey when only the first read answers, after the second failed", async () => {
+    await mount(journey(0));
+    await act(async () => root!.render(journey(1)));
+    const [first, second] = reads("/timeline");
+
+    await second.answer({ ok: false, error: "offline" });
+    await first.answer(timeline(note("n1", "2026-10-01T02:00:00Z", "Prefers mornings.")));
+
+    expect(host.textContent).toContain("Prefers mornings.");
   });
 });
 
