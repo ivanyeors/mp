@@ -12,10 +12,11 @@ import { staffRefundDeniedReason, type OrderRefundFields } from "@/lib/results/p
 const toCents = (n: number) => Math.round(n * 100);
 
 const paidOrder = fc
-  .array(fc.record({ unitCents: fc.integer({ min: 100, max: 50_000 }), quantity: fc.integer({ min: 1, max: 4 }) }), {
+  .array(fc.record({ unitCents: fc.oneof(fc.constantFrom(100, 4_500), fc.integer({ min: 100, max: 50_000 })), quantity: fc.integer({ min: 1, max: 4 }) }), {
     minLength: 1,
     maxLength: 6,
   })
+  .chain((raw) => fc.constantFrom(raw, raw.map(() => raw[0])))
   .chain((raw) => {
     const subtotalCents = raw.reduce((t, l) => t + l.unitCents * l.quantity, 0);
     return fc.record({
@@ -105,9 +106,9 @@ describe("Staff refunds (ADR 0038)", () => {
         ([order, index, a, b]) => {
           const line = order.lines[index];
           const [lo, hi] = a <= b ? [a, b] : [b, a];
-          const less = lineRefundAmount(order.totals, line, lo);
-          const more = lineRefundAmount(order.totals, line, hi);
-          const all = lineRefundAmount(order.totals, line, line.quantity);
+          const less = lineRefundAmount(order.totals, order.lines, line, lo);
+          const more = lineRefundAmount(order.totals, order.lines, line, hi);
+          const all = lineRefundAmount(order.totals, order.lines, line, line.quantity);
           expect(less).toBeGreaterThanOrEqual(0);
           expect(less).toBeLessThanOrEqual(more);
           expect(more).toBeLessThanOrEqual(all);
@@ -116,16 +117,85 @@ describe("Staff refunds (ADR 0038)", () => {
     );
   });
 
-  it("choosing every line and the shipping drifts from what the Order took by at most half a cent per line", () => {
+  it("choosing every line at full quantity and the shipping refunds exactly what the Order took, to the cent", () => {
     fc.assert(
       fc.property(paidOrder, (order) => {
         const everything = selectionRefundAmount(order.totals, order.lines, {
           items: order.lines.map((l) => ({ order_item_id: l.id, quantity: l.quantity })),
           shipping: true,
         });
-        expect(Math.abs(toCents(everything) - toCents(order.totals.total))).toBeLessThanOrEqual(
-          Math.floor(order.lines.length / 2),
-        );
+        expect(toCents(everything)).toBe(toCents(order.totals.total));
+      }),
+    );
+  });
+
+  it("each line's full share is within a cent of its exact share, and the shares add up to what the Order took for goods", () => {
+    fc.assert(
+      fc.property(paidOrder, (order) => {
+        const subtotalCents = toCents(order.totals.subtotal);
+        const goodsCents = toCents(order.totals.total) - toCents(order.totals.shipping_amount);
+        let sum = 0;
+        for (const line of order.lines) {
+          const shareCents = toCents(lineRefundAmount(order.totals, order.lines, line, line.quantity));
+          const exactTimesSubtotal = toCents(line.total_price) * goodsCents;
+          expect(shareCents).toBeGreaterThanOrEqual(0);
+          expect(Math.abs(shareCents * subtotalCents - exactTimesSubtotal)).toBeLessThan(subtotalCents);
+          sum += shareCents;
+        }
+        expect(sum).toBe(goodsCents);
+      }),
+    );
+  });
+
+  it("a line's share is the same whatever order the Order's lines arrive in", () => {
+    fc.assert(
+      fc.property(
+        paidOrder.chain((o) => fc.tuple(fc.constant(o), fc.shuffledSubarray(o.lines, { minLength: o.lines.length }))),
+        ([order, shuffled]) => {
+          for (const line of order.lines) {
+            for (let qty = 0; qty <= line.quantity; qty++) {
+              expect(lineRefundAmount(order.totals, shuffled, line, qty)).toBe(lineRefundAmount(order.totals, order.lines, line, qty));
+            }
+          }
+        },
+      ),
+    );
+  });
+
+  it("however an Order's lines, units and shipping are split across refunds, once everything has been chosen nothing is left to refund", () => {
+    const splitOrder = paidOrder.chain((order) => {
+      const units = [
+        ...order.lines.flatMap((l) => Array.from({ length: l.quantity }, () => l.id)),
+        "shipping",
+      ];
+      return fc.record({
+        order: fc.constant(order),
+        sequence: fc.shuffledSubarray(units, { minLength: units.length }),
+        cutAfter: fc.array(fc.boolean(), { minLength: units.length, maxLength: units.length }),
+        arrivals: fc.array(fc.shuffledSubarray(order.lines, { minLength: order.lines.length }), {
+          minLength: units.length,
+          maxLength: units.length,
+        }),
+      });
+    });
+    fc.assert(
+      fc.property(splitOrder, ({ order, sequence, cutAfter, arrivals }) => {
+        const events: string[][] = [[]];
+        sequence.forEach((unit, i) => {
+          events[events.length - 1].push(unit);
+          if (cutAfter[i] && i < sequence.length - 1) events.push([]);
+        });
+        let remaining = toCents(order.totals.total);
+        events.forEach((event, i) => {
+          const quantities = new Map<string, number>();
+          for (const unit of event) if (unit !== "shipping") quantities.set(unit, (quantities.get(unit) ?? 0) + 1);
+          const amount = selectionRefundAmount(order.totals, arrivals[i], {
+            items: [...quantities].map(([order_item_id, quantity]) => ({ order_item_id, quantity })),
+            shipping: event.includes("shipping"),
+          });
+          remaining -= Math.min(toCents(amount), remaining);
+        });
+        expect(remaining).toBe(0);
       }),
     );
   });

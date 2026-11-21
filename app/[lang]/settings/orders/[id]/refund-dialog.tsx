@@ -227,7 +227,7 @@ export function RefundDialog({
                             {items.map((item) => {
                                 const qty = quantities[item.id] ?? 0;
                                 const checked = qty > 0;
-                                const share = lineRefundAmount(order, item, item.quantity);
+                                const share = lineRefundAmount(order, items, item, item.quantity);
                                 return (
                                     <li key={item.id} className="flex items-center gap-3 px-3 py-2.5">
                                         <Checkbox
@@ -286,7 +286,7 @@ export function RefundDialog({
                                             )}
                                         </div>
                                         <span className="w-20 shrink-0 text-right text-sm tabular-nums">
-                                            {money(checked ? lineRefundAmount(order, item, qty) : share)}
+                                            {money(checked ? lineRefundAmount(order, items, item, qty) : share)}
                                         </span>
                                     </li>
                                 );

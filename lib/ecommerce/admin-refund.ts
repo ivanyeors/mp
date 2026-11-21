@@ -41,10 +41,6 @@ export function stripeRefundReason(
   return undefined;
 }
 
-function round2(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
-
 export interface RefundOrderTotals {
   subtotal: number;
   shipping_amount: number;
@@ -57,17 +53,42 @@ export interface RefundLine {
   total_price: number;
 }
 
+const cents = (n: number | null | undefined) => Math.round(Number(n ?? 0) * 100);
+
+function lineShareCents(order: RefundOrderTotals, lines: RefundLine[]): Map<string, number> {
+  const subtotalCents = cents(order.subtotal);
+  const shares = new Map<string, number>();
+  if (!(subtotalCents > 0)) return shares;
+  const goodsCents = Math.max(0, cents(order.total) - cents(order.shipping_amount));
+  const exact = lines.map((line, index) => {
+    const product = cents(line.total_price) * goodsCents;
+    const floor = Math.floor(product / subtotalCents);
+    return { id: line.id, index, floor, remainder: product - floor * subtotalCents };
+  });
+  let owed = goodsCents - exact.reduce((t, e) => t + e.floor, 0);
+  const largestRemainderFirst = exact
+    .filter((e) => e.remainder > 0)
+    .sort((a, b) => b.remainder - a.remainder || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const roundedUp = new Set<number>();
+  for (const e of largestRemainderFirst) {
+    if (owed <= 0) break;
+    roundedUp.add(e.index);
+    owed -= 1;
+  }
+  for (const e of exact) shares.set(e.id, e.floor + (roundedUp.has(e.index) ? 1 : 0));
+  return shares;
+}
+
 export function lineRefundAmount(
   order: RefundOrderTotals,
+  lines: RefundLine[],
   line: RefundLine,
   quantity: number,
 ): number {
-  const subtotal = Number(order.subtotal);
-  if (!(subtotal > 0) || !(line.quantity > 0)) return 0;
+  if (!(line.quantity > 0)) return 0;
+  const share = lineShareCents(order, lines).get(line.id) ?? 0;
   const qty = Math.min(Math.max(0, Math.floor(quantity)), line.quantity);
-  const goodsPaid = Math.max(0, Number(order.total) - Number(order.shipping_amount ?? 0));
-  const lineShare = (Number(line.total_price) / subtotal) * goodsPaid;
-  return round2((lineShare * qty) / line.quantity);
+  return Math.ceil((share * qty) / line.quantity) / 100;
 }
 
 export interface RefundSelection {
@@ -81,12 +102,12 @@ export function selectionRefundAmount(
   selection: RefundSelection,
 ): number {
   const byId = new Map(lines.map((l) => [l.id, l]));
-  let sum = selection.shipping ? Number(order.shipping_amount ?? 0) : 0;
+  let sumCents = selection.shipping ? cents(order.shipping_amount) : 0;
   for (const s of selection.items) {
     const line = byId.get(s.order_item_id);
-    if (line) sum += lineRefundAmount(order, line, s.quantity);
+    if (line) sumCents += Math.round(lineRefundAmount(order, lines, line, s.quantity) * 100);
   }
-  return round2(sum);
+  return sumCents / 100;
 }
 
 export interface IntentBalance {
