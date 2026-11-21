@@ -1102,13 +1102,16 @@ export function MpConfigClient({
     }
   }, [currentStep, nameFields, ageFields, healthFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
 
-  useEffect(() => {
+  const [errorsStep, setErrorsStep] = useState(currentStep);
+  if (errorsStep !== currentStep) {
+    setErrorsStep(currentStep);
     setFieldErrors({});
-  }, [currentStep]);
-
-  useEffect(() => {
+  }
+  const [errorsPrunedFor, setErrorsPrunedFor] = useState(activeFields);
+  if (errorsPrunedFor !== activeFields) {
+    setErrorsPrunedFor(activeFields);
     setFieldErrors((prev) => pruneFieldErrors(prev, activeFields));
-  }, [activeFields]);
+  }
 
   const tryAdvance = (fields: FieldCheck[], onOk: () => void | Promise<void>) => {
     const errors = buildFieldErrorMap(fields);
