@@ -935,10 +935,10 @@
   },
   "components/settings/page-faqs-panel.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "components/settings/readjustment-panel.tsx": {

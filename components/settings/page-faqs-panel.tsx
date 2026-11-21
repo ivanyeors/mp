@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -116,7 +116,9 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
     } catch {}
   }, []);
 
+  const latestSetLoad = useRef(0);
   const loadSet = useCallback(async (key: string) => {
+    const request = ++latestSetLoad.current;
     setLoading(true);
     try {
       const ensure = await fetch("/api/page-faq/sets", {
@@ -124,6 +126,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ surface_key: key }),
       });
+      if (request !== latestSetLoad.current) return;
       if (!ensure.ok) {
         toast.error("Couldn't load the page FAQs.");
         setSet(null);
@@ -131,12 +134,14 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
       }
       const res = await fetch(`/api/page-faq/sets?surface_key=${encodeURIComponent(key)}`);
       const json = await res.json();
+      if (request !== latestSetLoad.current) return;
       setSet(json.set ?? null);
     } catch {
+      if (request !== latestSetLoad.current) return;
       toast.error("Couldn't load the page FAQs.");
       setSet(null);
     } finally {
-      setLoading(false);
+      if (request === latestSetLoad.current) setLoading(false);
     }
   }, []);
 
@@ -366,11 +371,12 @@ function PageItemEditor({
   const [open, setOpen] = useState(false);
   const [slug, setSlug] = useState(item.slug);
   const [content, setContent] = useState(item.content);
-
-  useEffect(() => {
+  const [seen, setSeen] = useState(item);
+  if (seen.slug !== item.slug || seen.content !== item.content) {
+    setSeen(item);
     setSlug(item.slug);
     setContent(item.content);
-  }, [item]);
+  }
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
