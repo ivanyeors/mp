@@ -35,7 +35,10 @@ export async function PATCH(req: Request) {
 
   const result = await setProductListed(parsed.data.product_id, parsed.data.listed);
   if (!result.ok) {
-    return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
+    return NextResponse.json(
+      { ok: false, error: result.error, stripe_warnings: result.stripeWarnings?.length ? result.stripeWarnings : undefined },
+      { status: result.status },
+    );
   }
 
   await recordAdminAction({
