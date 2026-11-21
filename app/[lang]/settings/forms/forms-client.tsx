@@ -46,7 +46,6 @@ import {
   type DiscoverySourceCatalog,
   type DiscoverySourceOption,
 } from "@/lib/discovery-source";
-import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { getApiErrorMessage } from "@/lib/utils";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -73,12 +72,12 @@ export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog };
 export default function FormsSettingsPage({
   initialData,
 }: {
-  initialData?: FormsInitialData;
+  initialData: FormsInitialData;
 }) {
   const [options, setOptions] = useState<DiscoverySourceOption[]>(
-    initialData?.catalog?.options ?? [],
+    initialData.catalog?.options ?? [],
   );
-  const [loading, setLoading] = useState(!initialData);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -98,8 +97,6 @@ export default function FormsSettingsPage({
       setLoading(false);
     }
   }, []);
-
-  useOncePerKey(initialData ? null : "no-server-catalog", load);
 
   const save = async (next: DiscoverySourceOption[]) => {
     setSaving(true);

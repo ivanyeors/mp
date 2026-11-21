@@ -78,10 +78,4 @@ describe("Forms discovery-source options", () => {
     expect(urls()).toEqual([]);
     expect(host.textContent).toContain("A friend");
   });
-
-  it("fetches on mount when the server read failed", async () => {
-    await mount(<FormsPage />);
-    expect(urls()).toEqual(["/api/settings/forms/discovery-source"]);
-    expect(host.textContent).toContain("A friend");
-  });
 });
