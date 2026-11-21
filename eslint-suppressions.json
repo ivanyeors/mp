@@ -974,13 +974,10 @@
   },
   "components/settings/settings-sidebar-nav.tsx": {
     "mp/no-effect": {
-      "count": 8
+      "count": 6
     },
     "react-hooks/exhaustive-deps": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/settings/shop-listing-toggles.tsx": {

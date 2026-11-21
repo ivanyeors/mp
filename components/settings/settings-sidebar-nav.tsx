@@ -244,12 +244,13 @@ export function SettingsSidebarNav({
   const [resultsStuck, setResultsStuck] = useState(0);
   const [followUpCounts, setFollowUpCounts] = useState<FollowUpCounts | null>(null);
 
-  const initialSignedIn = initialAuth.signedIn;
-  const initialPermissionKey = initialAuth.permissions.join(",");
-  useEffect(() => {
+  const initialAuthKey = `${initialAuth.signedIn}|${initialAuth.permissions.join(",")}`;
+  const [seenAuthKey, setSeenAuthKey] = useState(initialAuthKey);
+  if (initialAuthKey !== seenAuthKey) {
+    setSeenAuthKey(initialAuthKey);
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
-  }, [initialSignedIn, initialPermissionKey]);
+  }
 
   useEffect(() => {
     if (!isMobile) return;
@@ -295,35 +296,25 @@ export function SettingsSidebarNav({
   const customersBadge = followUpBadge(followUpCounts);
 
   const firstPath = useRef(basePathname);
-  const [permissionsPath, setPermissionsPath] = useState(basePathname);
   useEffect(() => {
     if (isLoginRoute || status !== "authed" || basePathname === firstPath.current) return;
     firstPath.current = "";
-    const path = basePathname;
+    const pathKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
     let cancelled = false;
     fetch("/api/admin/context")
       .then((res) => res.json())
       .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
         if (cancelled) return;
         if (!data?.signedIn) return setStatus("unauth");
-        setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
-        setPermissionsPath(path);
+        const granted = Array.isArray(data.permissions) ? data.permissions : [];
+        setPermissions(granted);
+        if (pathKey && !granted.includes(pathKey)) router.replace(to(`/settings?denied=${pathKey}`));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [basePathname]);
-
-  const currentKey = permissionForHref(findActiveHref(basePathname, NAV_GROUPS) ?? "");
-  const lostCurrentPage =
-    status === "authed" &&
-    permissionsPath === basePathname &&
-    !!currentKey &&
-    !permissions.includes(currentKey);
-  useEffect(() => {
-    if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
-  }, [lostCurrentPage, currentKey]);
 
   useEffect(() => {
     if (status === "unauth" && !isLoginRoute) {
