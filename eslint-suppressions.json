@@ -493,10 +493,7 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 3
     }
   },
   "app/[lang]/settings/products/categories-manager.tsx": {
