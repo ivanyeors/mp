@@ -515,7 +515,7 @@
   },
   "app/[lang]/settings/products/products-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/results/[id]/result-customer-panel.tsx": {
