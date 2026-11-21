@@ -120,7 +120,7 @@ interface FormData {
   country: string;
 }
 
-const ADDRESS_FIELDS = new Set<keyof FormData>(["recipient", "line1", "line2", "city", "state", "postal_code", "country"]);
+const ADDRESS_FIELDS = new Set<keyof FormData>(["recipient", "line1", "line2", "city", "state", "postal_code", "country", "phone"]);
 
 function getShippingContent(
   content: ShippingMethod["content"],

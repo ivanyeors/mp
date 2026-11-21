@@ -43,7 +43,7 @@ const savedMalaysia: CustomerAddress = {
   state: null,
   postal_code: "50000",
   country: "MY",
-  phone: null,
+  phone: "+60 12 345 6789",
   is_default: true,
   created_at: "2026-10-01T00:00:00Z",
   updated_at: "2026-10-01T00:00:00Z",
@@ -120,7 +120,17 @@ describe("Checkout: the saved default address", () => {
     expect(field("recipient").value).toBe("Saved Recipient");
     expect(field("line1").value).toBe("1 Jalan Saved");
     expect(field("postal_code").value).toBe("50000");
+    expect(field("phone").value).toBe("+60 12 345 6789");
     expect(host.querySelector("#country")?.textContent).toContain("Malaysia");
+  });
+
+  it("keeps the phone the shopper typed while the saved addresses were loading", async () => {
+    await mount();
+    typeField(field("phone"), "+65 9123 4567");
+
+    await answerAll("/api/account/addresses", signedInWith([savedMalaysia]));
+
+    expect(field("phone").value).toBe("+65 9123 4567");
   });
 
   it("keeps the address the shopper typed while the saved addresses were loading", async () => {
