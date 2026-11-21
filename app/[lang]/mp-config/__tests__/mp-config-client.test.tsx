@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, type ReactNode } from "react";
+import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +31,29 @@ vi.mock("next/dynamic", () => ({
 vi.mock("@/components/ui/particles", () => ({ Particles: () => null }));
 vi.mock("@/components/ui/shadcn-io/dot-pattern", () => ({ DotPattern: () => null }));
 vi.mock("@/components/ui/shadcn-io/retro-grid", () => ({ RetroGrid: () => null }));
+vi.mock("@/components/spatial/xray-pillow", () => ({ XrayPillow: () => null }));
+vi.mock("@/components/spatial/xray-pack-list", () => ({ XrayPackList: () => null }));
+vi.mock("@/components/spatial/xray-section-dock", () => ({ XraySectionDock: () => null }));
+vi.mock("@/components/spatial/xray-cross-section", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/spatial/xray-cross-section")>()),
+  XrayCrossSection: () => null,
+}));
+vi.mock("@/components/configurator/config-image-upload", () => ({ ConfigImageUpload: () => null }));
+
+const panelRenders = vi.hoisted(() => [] as { template: number | null; items: number[] }[]);
+vi.mock("@/components/configurator/staff-assist-panel", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/configurator/staff-assist-panel")>()),
+  StaffAssistPanel: ({
+    placements,
+    loadedTemplate,
+  }: {
+    placements: { itemId: number }[];
+    loadedTemplate: { id: number } | null;
+  }) => {
+    panelRenders.push({ template: loadedTemplate?.id ?? null, items: placements.map((p) => p.itemId) });
+    return <div data-assist-template={loadedTemplate?.id ?? ""} />;
+  },
+}));
 
 const { MpConfigClient } = await import("../mp-config-client");
 
@@ -91,11 +114,13 @@ const MEASURED = { ...ANSWERS, shoulderLength: "40", neckToBack: "10", headToBac
 type Held = { url: string; answer: (body: unknown) => Promise<void> };
 let held: Held[] = [];
 let holdShipping = false;
+let recommendationRecord: Record<string, unknown> | null = null;
 const answered = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
 
 beforeEach(() => {
   held = [];
   holdShipping = false;
+  recommendationRecord = null;
   window.localStorage.clear();
   window.sessionStorage.clear();
   window.history.replaceState({}, "", "/en-US/mp-config");
@@ -113,7 +138,10 @@ beforeEach(() => {
       if (url === "/api/shop/shipping/countries") return answered({ countries: ["SG", "MY"] });
       if (url === "/api/account/addresses") return answered({ signedIn: false, addresses: [] });
       if (url.startsWith("/api/results/addons")) return answered({ addons: [] });
-      if (url === "/api/shop/customize") return answered(RECOMMENDATION);
+      if (url === "/api/shop/customize") return answered({ ...RECOMMENDATION, recommendation_record: recommendationRecord });
+      if (url === "/api/mp-config/assist?templateId=21") {
+        return answered({ placements: [{ section: "left", sub_section: "front", slot: 0, item_id: 901 }] });
+      }
       return answered({});
     }),
   );
@@ -201,6 +229,26 @@ describe("MpConfigClient preview shipping", () => {
     await mount(<MpConfigClient info={INFO} discoverySourceOptions={[]} />);
     await until(() => shippingNames().length > 0);
     expect(shippingNames()).toEqual(["Malaysia post"]);
+  });
+});
+
+describe("MpConfigClient staff assist mix", () => {
+  it("seeds the engine's suggested Filling Template once under Strict Mode", async () => {
+    panelRenders.length = 0;
+    recommendationRecord = { flow: "premium-mpillow", size: "M", templateId: "21", flowRoute: null };
+    restoreToPreview("SG");
+    await mount(
+      <StrictMode>
+        <MpConfigClient info={INFO} discoverySourceOptions={[]} staffAssist />
+      </StrictMode>,
+    );
+    await until(() => host.querySelector('[data-assist-template="21"]'));
+
+    expect(panelRenders.at(-1)).toEqual({ template: 21, items: [901] });
+    const templateReads = (fetch as unknown as { mock: { calls: string[][] } }).mock.calls.filter(([url]) =>
+      String(url).startsWith("/api/mp-config/assist?templateId="),
+    );
+    expect(templateReads).toHaveLength(1);
   });
 });
 
