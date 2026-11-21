@@ -1303,12 +1303,15 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: 
     return map;
   }, [fillingBaseItems]);
 
-  useEffect(() => {
-    if (!open) return;
-    setEntries([createDefaultEntry()]);
-    setErrorMessage(null);
-    setSaving(false);
-  }, [open]);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setEntries([createDefaultEntry()]);
+      setErrorMessage(null);
+      setSaving(false);
+    }
+  }
 
   const parseCurrency = (raw: string): number | undefined | null => {
     const trimmed = raw.trim();

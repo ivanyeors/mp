@@ -412,13 +412,13 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 7
+      "count": 6
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "app/[lang]/settings/media/media-client.tsx": {
