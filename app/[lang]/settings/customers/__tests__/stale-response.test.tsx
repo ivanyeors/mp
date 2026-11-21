@@ -17,18 +17,20 @@ const { WORKING_AS_CHANGED_EVENT } = await import("@/components/settings/working
 const { CustomersClient } = await import("../customers-client");
 const { FindCustomerLink } = await import("../review-match-parts");
 const { CustomerJourney } = await import("../[id]/customer-journey");
+const { CustomerShortcutsProvider } = await import("../[id]/customer-shortcuts");
 
-type Held = { url: string; answer: (body: unknown) => Promise<void> };
+type Held = { url: string; method: string; answer: (body: unknown) => Promise<void> };
 let held: Held[] = [];
 beforeEach(() => {
   held = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(
-      (url: string) =>
+      (url: string, init?: RequestInit) =>
         new Promise((resolve) => {
           held.push({
             url: String(url),
+            method: init?.method ?? "GET",
             answer: (body) =>
               act(async () => {
                 resolve({ ok: true, status: 200, json: async () => body });
@@ -165,6 +167,40 @@ describe("Follow-ups tab: its first list", () => {
     await click(button("Try again"));
     await lastFor("scope=mine").answer(followUps("mine", "Mine row"));
     expect(host.textContent).toContain("Mine row");
+  });
+
+  const kai = (scope: FollowUpScope, title: string) => ({ ...followUps(scope, title), me: { id: "p-kai", name: "Kai" } });
+  const changeWorkingAs = () => act(async () => window.dispatchEvent(new Event(WORKING_AS_CHANGED_EVENT)));
+
+  it("shows the new Working-as list when Working-as changes during the first read, answered last", async () => {
+    await mount(page({ initialView: "list" }));
+    await openTab("Follow-ups");
+    await changeWorkingAs();
+    expect(followUpReads().map((h) => h.url)).toEqual([
+      "/api/settings/customers/followups?scope=mine",
+      "/api/settings/customers/followups?scope=mine",
+    ]);
+    const [asJess, asKai] = followUpReads();
+
+    await asKai!.answer(kai("mine", "Kai row"));
+    await asJess!.answer(followUps("mine", "Jess row"));
+
+    expect(host.textContent).toContain("Working as Kai");
+    expect(host.textContent).toContain("Kai row");
+    expect(host.textContent).not.toContain("Jess row");
+  });
+
+  it("shows the new Working-as list when Working-as changes during the first read, answered first", async () => {
+    await mount(page({ initialView: "list" }));
+    await openTab("Follow-ups");
+    await changeWorkingAs();
+    const [asJess, asKai] = followUpReads();
+
+    await asJess!.answer(followUps("mine", "Jess row"));
+    await asKai!.answer(kai("mine", "Kai row"));
+
+    expect(host.textContent).toContain("Working as Kai");
+    expect(host.textContent).not.toContain("Jess row");
   });
 
   it("reloads the chosen scope when Working-as changes", async () => {
@@ -368,6 +404,62 @@ describe("Customer journey: Sent it while the first read is still loading", () =
     await first.answer(timeline(note("n1", "2026-10-01T02:00:00Z", "Prefers mornings.")));
 
     expect(host.textContent).toContain("Prefers mornings.");
+  });
+
+  const editable = (reloadSignal: number, composerMode: "note" | "followup") => (
+    <CustomerShortcutsProvider customerId="c1" email="mei@example.test" phone={null} canLog onLogged={() => {}}>
+      <CustomerJourney
+        customerId="c1"
+        canEdit
+        viewer={{ userId: "u1", grantsAll: false }}
+        initialNotes={[
+          { id: "n1", body: "Prefers mornings.", createdAt: "2026-10-01T02:00:00Z", authorName: "Jess", authorUserId: "u1", legacy: false },
+        ]}
+        migration={undefined}
+        importHistoryHref={null}
+        nextStepText={null}
+        stageLabel={null}
+        composerMode={composerMode}
+        onComposerModeChange={() => {}}
+        composerFocus={0}
+        reloadSignal={reloadSignal}
+        onAnswerReview={() => {}}
+      />
+    </CustomerShortcutsProvider>
+  );
+  const gets = (part: string) => held.filter((h) => h.method === "GET" && h.url.includes(part));
+  const forJess = (...titles: string[]) => ({ ...followUpsWith(...titles), assignees: [{ id: "p-jess", name: "Jess" }] });
+  const morning = () => timeline(note("n1", "2026-10-01T02:00:00Z", "Prefers mornings."));
+
+  it("keeps a follow-up added while an older follow-ups read is still on its way", async () => {
+    await mount(editable(0, "followup"));
+    for (const read of gets("/timeline")) await read.answer(morning());
+    await gets("/followups")[0]!.answer(forJess());
+    await act(async () => root!.render(editable(1, "followup")));
+    const beforeTheAdd = gets("/followups")[1]!;
+
+    await typeInto(host.querySelector<HTMLInputElement>('input[aria-label="New follow-up"]')!, "Call Friday");
+    await click(button("Add follow-up"));
+    const [added] = followUpsWith("Call Friday").rows;
+    await held.find((h) => h.method === "POST" && h.url.endsWith("/followups"))!.answer({ row: added });
+    await beforeTheAdd.answer(forJess());
+
+    expect(host.textContent).toContain("Call Friday");
+  });
+
+  it("keeps a deleted note gone when an older journey read answers after the delete", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    await mount(editable(0, "note"));
+    for (const read of gets("/timeline")) await read.answer(morning());
+    await act(async () => root!.render(editable(1, "note")));
+    const beforeTheDelete = gets("/timeline")[1]!;
+
+    await click(host.querySelector('[aria-label="Delete note"]')!);
+    await held.find((h) => h.method === "DELETE" && h.url.endsWith("/notes/n1"))!.answer({ ok: true });
+    await beforeTheDelete.answer(morning());
+
+    expect(host.textContent).not.toContain("Prefers mornings.");
+    confirm.mockRestore();
   });
 });
 

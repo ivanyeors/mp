@@ -39,13 +39,8 @@ export async function readFollowUps(scope: FollowUpScope): Promise<FollowUpListD
 export const readFollowUpsFirst = (scope: FollowUpScope): Promise<FollowUpsFirstRead> =>
     readFollowUps(scope).catch((e) => ({ error: e instanceof Error ? e.message : COULD_NOT_LOAD }));
 
-export function FollowUpsLoading() {
-    return (
-        <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-    );
-}
+const listOf = (read: FollowUpsFirstRead | null) => (read && !("error" in read) ? read : null);
+const errorOf = (read: FollowUpsFirstRead | null) => (read && "error" in read ? read.error : null);
 
 export function FollowUpsTab({
     canEdit,
@@ -54,19 +49,30 @@ export function FollowUpsTab({
 }: {
     canEdit: boolean;
     initialScope?: FollowUpScope;
-    initialData: FollowUpsFirstRead;
+    initialData: FollowUpsFirstRead | null;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-    const firstList = "error" in initialData ? null : initialData;
-    const [scope, setScope] = useState<FollowUpScope>(firstList?.scope ?? initialScope);
-    const [data, setData] = useState<FollowUpListData | null>(firstList);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>("error" in initialData ? initialData.error : null);
+    const [scope, setScope] = useState<FollowUpScope>(listOf(initialData)?.scope ?? initialScope);
+    const [data, setData] = useState<FollowUpListData | null>(listOf(initialData));
+    const [loading, setLoading] = useState(initialData === null);
+    const [error, setError] = useState<string | null>(errorOf(initialData));
+    const [firstReadShown, setFirstReadShown] = useState(initialData);
+    const [firstReadSuperseded, setFirstReadSuperseded] = useState(false);
     const latest = useRef(0);
+
+    if (firstReadShown !== initialData) {
+        setFirstReadShown(initialData);
+        if (initialData && !firstReadSuperseded) {
+            setData(listOf(initialData));
+            setError(errorOf(initialData));
+            setLoading(false);
+        }
+    }
 
     const load = useCallback(async (which: FollowUpScope) => {
         const id = ++latest.current;
+        setFirstReadSuperseded(true);
         setLoading(true);
         setError(null);
         try {
@@ -130,7 +136,9 @@ export function FollowUpsTab({
             </div>
 
             {loading && !rows.length ? (
-                <FollowUpsLoading />
+                <div className="flex items-center justify-center py-16">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
             ) : error ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>{error}</span>

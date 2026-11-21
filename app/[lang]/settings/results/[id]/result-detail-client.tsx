@@ -313,6 +313,16 @@ type SavedMix = {
 
 const EMPTY_SAVED_MIX: SavedMix = { pillow: [], bolster: [], items: [] };
 
+type TemplatePreview = {
+  placementRows: Array<PillowPlacementRow | BolsterPlacementRow>;
+  lines: Array<{ item_id: number; quantity: number }>;
+  notes: string;
+  colorOverrides: ColorOverrideRow[];
+  dimensionOverrides: DimensionOverridesPayload | undefined;
+};
+
+type LandedPreview = { scope: string; keepMix: boolean; preview: TemplatePreview | null };
+
 function savedMixOf(mix: ResultFillingMixPayload | null): SavedMix {
   if (!mix) return EMPTY_SAVED_MIX;
   return {
@@ -458,6 +468,30 @@ export default function ResultDetailPage({
     }
     setTemplateHadPlacements(true);
     setTemplateLegacyLines([]);
+  }
+
+  const [landedPreview, setLandedPreview] = useState<LandedPreview | null>(null);
+  const [shownPreview, setShownPreview] = useState<LandedPreview | null>(null);
+  if (shownPreview !== landedPreview) {
+    setShownPreview(landedPreview);
+    if (landedPreview?.scope === scope) {
+      const { keepMix, preview } = landedPreview;
+      if (!keepMix && !preview) {
+        setPlacements([]);
+        setBolsterMix([]);
+      } else if (!keepMix && preview) {
+        if (productType === "pillow") setPlacements(rowsToPillowPlacements(preview.placementRows as PillowPlacementRow[]));
+        else setBolsterMix(rowsToBolsterPlacements(preview.placementRows as BolsterPlacementRow[]));
+        setMixOrigin("template");
+      }
+      if (preview) {
+        setTemplateHadPlacements(preview.placementRows.length > 0);
+        setTemplateLegacyLines(preview.lines);
+        setTemplateNotes(preview.notes);
+        setColorOverrides(preview.colorOverrides);
+        setDimensionOverrides(preview.dimensionOverrides);
+      }
+    }
   }
   const hasSavedMix = savedMix.pillow.length > 0 || savedMix.bolster.length > 0;
   const canReconfigure =
@@ -613,6 +647,7 @@ export default function ResultDetailPage({
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string, opts: { keepMix?: boolean } = {}) => {
       const request = ++previewRequest.current;
+      const requestedFor = scope;
       if (!templateId) {
         if (!opts.keepMix) {
           setPlacements([]);
@@ -631,31 +666,26 @@ export default function ResultDetailPage({
         if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the template.");
         if (request !== previewRequest.current) return;
         type LineRow = { item_id: number | string; quantity: number | string };
-        const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({
-          item_id: Number(l.item_id),
-          quantity: Number(l.quantity),
-        }));
-        if (productType === "pillow") {
-          const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-          if (!opts.keepMix) setPlacements(rowsToPillowPlacements(placementRows));
-          setTemplateHadPlacements(placementRows.length > 0);
-        } else {
-          const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
-          if (!opts.keepMix) setBolsterMix(rowsToBolsterPlacements(placementRows));
-          setTemplateHadPlacements(placementRows.length > 0);
-        }
-        if (!opts.keepMix) setMixOrigin("template");
-        setTemplateLegacyLines(lines);
-        setTemplateNotes(String(payload?.template?.notes ?? ""));
-        setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
-        setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
+        setLandedPreview({
+          scope: requestedFor,
+          keepMix: Boolean(opts.keepMix),
+          preview: {
+            placementRows: payload?.placements ?? [],
+            lines: ((payload?.lines ?? []) as LineRow[]).map((l) => ({
+              item_id: Number(l.item_id),
+              quantity: Number(l.quantity),
+            })),
+            notes: String(payload?.template?.notes ?? ""),
+            colorOverrides: (payload?.colorOverrides ?? []) as ColorOverrideRow[],
+            dimensionOverrides: (payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined,
+          },
+        });
       } catch {
         if (opts.keepMix || request !== previewRequest.current) return;
-        setPlacements([]);
-        setBolsterMix([]);
+        setLandedPreview({ scope: requestedFor, keepMix: false, preview: null });
       }
     },
-    [productType, to],
+    [scope, to],
   );
 
   const ownTemplateId = row?.filling_template_id ?? null;

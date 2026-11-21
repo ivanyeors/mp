@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { AftercareSettingsCard } from "./aftercare-settings-card";
 import type { FollowUpScope } from "@/lib/crm/followup-rules";
-import { FollowUpsLoading, FollowUpsTab, readFollowUpsFirst, type FollowUpsFirstRead } from "./followups-tab";
+import { FollowUpsTab, readFollowUpsFirst, type FollowUpsFirstRead } from "./followups-tab";
 import type { ReviewTabScope } from "@/lib/crm/reviews";
 import { ReviewsTab } from "./reviews-tab";
 import { TelegramUpdatesCard, type TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -116,10 +116,8 @@ export function CustomersPageTabs({
           forceMount={followUpsSeen || undefined}
           className="pt-4 data-[state=inactive]:hidden"
         >
-          {followUpsFirst ? (
+          {followUpsSeen ? (
             <FollowUpsTab canEdit={canEdit} initialScope={followUpScope} initialData={followUpsFirst} />
-          ) : followUpsSeen ? (
-            <FollowUpsLoading />
           ) : null}
         </TabsContent>
         <TabsContent
