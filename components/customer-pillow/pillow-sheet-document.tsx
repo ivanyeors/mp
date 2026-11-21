@@ -24,148 +24,110 @@ export function registerSheetFonts(src: (weight: number) => string) {
 
 const INK = SHEET_ART_BACKGROUND;
 const NAVY = "#1d3f75";
-const CONTENT_WIDTH = 595.28 - 2 * 40;
-const CUT_WIDTH = 222;
+const TINT = "#eef3fa";
+const MARGIN = 30;
+const CONTENT_WIDTH = 595.28 - 2 * MARGIN;
+const GAP = 12;
+const TOP_WIDTH = 330;
+const COLUMN_WIDTH = (CONTENT_WIDTH - 2 * GAP) / 3;
+const CARD_GAP = 6;
 const SECTION_TITLE: Record<Section, string> = { left: "Left", center: "Centre", right: "Right" };
 
 const s = StyleSheet.create({
-    page: { fontFamily: "Figtree", fontSize: 9.5, color: LIGHT.fg, paddingTop: 34, paddingBottom: 54, paddingHorizontal: 40 },
-    p: { lineHeight: "13.5pt" },
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-    eyebrow: { fontSize: 7.5, fontWeight: 600, letterSpacing: 1.4, color: NAVY, textTransform: "uppercase" },
-    small: { fontSize: 8, color: LIGHT.mutedFg },
-    h1: { fontSize: 26, fontWeight: 600, letterSpacing: -0.6, lineHeight: 1.15 },
-    h2: { fontSize: 15, fontWeight: 600, letterSpacing: -0.3 },
-    h3: { fontSize: 10.5, fontWeight: 600 },
+    page: { fontFamily: "Figtree", fontSize: 8.5, color: LIGHT.fg, paddingTop: 26, paddingBottom: 36, paddingHorizontal: MARGIN },
+    p: { lineHeight: "11.5pt" },
+    row: { flexDirection: "row" },
+    header: { flexDirection: "row", alignItems: "center" },
+    eyebrow: { fontSize: 7, fontWeight: 600, letterSpacing: 1.3, color: NAVY, textTransform: "uppercase" },
+    small: { fontSize: 7.5, color: LIGHT.mutedFg },
+    h1: { fontSize: 21, fontWeight: 600, letterSpacing: -0.5 },
+    h2: { fontSize: 12.5, fontWeight: 600, letterSpacing: -0.2 },
+    h3: { fontSize: 9.5, fontWeight: 600 },
     muted: { color: LIGHT.mutedFg },
-    chips: { flexDirection: "row", flexWrap: "wrap", marginTop: 10 },
-    chip: { fontSize: 8, fontWeight: 500, backgroundColor: LIGHT.mutedBg, borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, marginRight: 5 },
-    chipDark: { fontSize: 8, fontWeight: 600, color: "#ffffff", backgroundColor: NAVY, borderRadius: 8, paddingVertical: 3, paddingHorizontal: 8, marginRight: 5 },
-    block: { marginTop: 18 },
-    blockHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, paddingBottom: 5, borderBottomWidth: 0.75, borderBottomColor: LIGHT.border },
-    fillings: { flexDirection: "row", flexWrap: "wrap" },
-    filling: { width: CONTENT_WIDTH / 3, flexDirection: "row", alignItems: "center", paddingVertical: 3, paddingRight: 10 },
-    swatch: { width: 9, height: 9, borderRadius: 2.5, marginRight: 7 },
+    chip: { fontSize: 7.5, fontWeight: 500, backgroundColor: LIGHT.mutedBg, borderRadius: 7, paddingVertical: 2.5, paddingHorizontal: 7, marginLeft: 4 },
+    chipDark: { fontSize: 7.5, fontWeight: 600, color: "#ffffff", backgroundColor: NAVY, borderRadius: 7, paddingVertical: 2.5, paddingHorizontal: 7, marginLeft: 4 },
+    blockHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5, paddingBottom: 4, borderBottomWidth: 0.75, borderBottomColor: LIGHT.border },
+    filling: { flexDirection: "row", alignItems: "center", paddingVertical: 1.8 },
+    swatch: { width: 8, height: 8, borderRadius: 2, marginRight: 6 },
     count: { marginLeft: "auto", fontWeight: 600, color: LIGHT.mutedFg },
-    cards: { flexDirection: "row", justifyContent: "space-between" },
-    card: { width: (CONTENT_WIDTH - 3 * 8) / 4, borderWidth: 0.75, borderColor: LIGHT.border, borderRadius: 10, padding: 9, alignItems: "center" },
-    cardValue: { fontSize: 15, fontWeight: 600, marginTop: 2 },
-    facts: { flexDirection: "row", flexWrap: "wrap", marginTop: 8, backgroundColor: LIGHT.mutedBg, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 10 },
-    fact: { width: (CONTENT_WIDTH - 20) / 4 },
-    tips: { flexDirection: "row", justifyContent: "space-between", marginTop: 12 },
-    tip: { width: (CONTENT_WIDTH - 8) / 2, backgroundColor: "#eef3fa", borderRadius: 10, padding: 10 },
-    sectionRow: { flexDirection: "row", paddingTop: 12, marginTop: 12, borderTopWidth: 0.75, borderTopColor: LIGHT.border },
-    cutCol: { width: CUT_WIDTH, marginRight: 20 },
-    stepsCol: { flex: 1 },
-    step: { flexDirection: "row", alignItems: "center", paddingVertical: 2.5 },
-    stepNo: { width: 15, height: 15, borderRadius: 7.5, backgroundColor: NAVY, color: "#ffffff", fontSize: 7.5, fontWeight: 700, textAlign: "center", lineHeight: 1, paddingTop: 3.6, marginRight: 7 },
-    stepDot: { width: 7, height: 7, borderRadius: 3.5, marginLeft: 4, marginRight: 11 },
-    stepBar: { width: 3, height: 13, borderRadius: 1.5, marginRight: 6 },
-    stepLabel: { fontWeight: 600 },
-    stepWhere: { marginLeft: "auto", fontSize: 8, color: LIGHT.mutedFg },
-    help: { marginTop: 18, backgroundColor: INK, borderRadius: 12, padding: 14, color: "#ffffff" },
-    helpLinks: { flexDirection: "row", marginTop: 8 },
-    helpLink: { color: "#ffffff", fontWeight: 600, textDecoration: "none", marginRight: 18 },
-    footer: { position: "absolute", left: 40, right: 40, bottom: 24, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: LIGHT.mutedFg },
+    facts: { flexDirection: "row", flexWrap: "wrap", marginTop: 8, backgroundColor: LIGHT.mutedBg, borderRadius: 8, paddingTop: 6, paddingHorizontal: 8 },
+    fact: { width: "50%", paddingBottom: 6, paddingRight: 4 },
+    card: {
+        width: (CONTENT_WIDTH - 3 * CARD_GAP) / 4,
+        flexDirection: "row",
+        alignItems: "center",
+        borderWidth: 0.75,
+        borderColor: LIGHT.border,
+        borderRadius: 9,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+    },
+    cardValue: { fontSize: 12.5, fontWeight: 600, marginTop: 1 },
+    column: { width: COLUMN_WIDTH },
+    cutBox: { backgroundColor: INK, borderRadius: 6, justifyContent: "center", overflow: "hidden" },
+    step: { flexDirection: "row", alignItems: "center", paddingVertical: 1.8 },
+    stepNo: { width: 13, height: 13, borderRadius: 6.5, backgroundColor: NAVY, color: "#ffffff", fontSize: 7, fontWeight: 700, textAlign: "center", lineHeight: 1, paddingTop: 3, marginRight: 5 },
+    stepDot: { width: 7, height: 7, borderRadius: 3.5, marginLeft: 3, marginRight: 8 },
+    stepBar: { width: 2.5, height: 11, borderRadius: 1.25, marginRight: 5 },
+    tip: { width: COLUMN_WIDTH, backgroundColor: TINT, borderRadius: 9, padding: 9 },
+    help: { width: COLUMN_WIDTH, backgroundColor: INK, borderRadius: 9, padding: 9 },
+    helpLink: { color: "#ffffff", fontWeight: 600, textDecoration: "none", marginTop: 3 },
+    footer: { position: "absolute", left: MARGIN, right: MARGIN, bottom: 16, flexDirection: "row", justifyContent: "space-between", fontSize: 7, color: LIGHT.mutedFg },
 });
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function Picture({ image, width }: { image: SheetImage; width: number }) {
     return <PdfImage src={image.src} style={{ width, height: (width * image.height) / image.width }} />;
 }
 
-function Header({ sheet, logo }: { sheet: PillowSheet; logo: SheetImage }) {
-    return (
-        <View style={s.header}>
-            <Picture image={logo} width={38} />
-            <View style={{ alignItems: "flex-end" }}>
-                <Text style={s.eyebrow}>Pillow guide</Text>
-                <Text style={s.small}>{sheet.preparedOn}</Text>
-            </View>
-        </View>
-    );
-}
-
-function Footer({ sheet }: { sheet: PillowSheet }) {
-    return (
-        <View style={s.footer} fixed>
-            <Text>
-                Mpillow · <Link src={sheet.links.care.href.replace(/\/mp-care$/, "")} style={{ color: LIGHT.mutedFg, textDecoration: "none" }}>{sheet.links.care.text.replace(/\/mp-care$/, "")}</Link> · WhatsApp {sheet.links.whatsapp.text}
-            </Text>
-            <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-        </View>
-    );
-}
-
-function BlockHead({ title, aside }: { title: string; aside?: string }) {
+function BlockHead({ title, aside, large = false }: { title: string; aside?: string; large?: boolean }) {
     return (
         <View style={s.blockHead}>
-            <Text style={s.h3}>{title}</Text>
+            <Text style={large ? s.h2 : s.h3}>{title}</Text>
             {aside ? <Text style={s.small}>{aside}</Text> : null}
         </View>
     );
 }
 
-function Overview({ sheet, art }: { sheet: PillowSheet; art: SheetArt }) {
+function Header({ sheet, logo }: { sheet: PillowSheet; logo: SheetImage }) {
     return (
-        <>
-            <View>
-                <Text style={s.h1}>Your Mpillow</Text>
-                {sheet.customerName ? <Text style={[s.h3, s.muted, { fontWeight: 500, marginTop: 4 }]}>Prepared for {sheet.customerName}</Text> : null}
-                <Text style={[s.p, { marginTop: 6, color: LIGHT.mutedFg, maxWidth: 400 }]}>{sheet.story}</Text>
-                <View style={s.chips}>
-                    {sheet.size ? <Text style={s.chipDark}>Size {sheet.size}</Text> : null}
-                    <Text style={s.chip}>{sheet.pillowName}</Text>
-                    <Text style={s.chip}>
-                        {sheet.pieces} piece{sheet.pieces === 1 ? "" : "s"}
-                    </Text>
+        <View>
+            <View style={s.header}>
+                <Picture image={logo} width={34} />
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                    <Text style={s.h1}>Your Mpillow</Text>
+                    {sheet.customerName ? <Text style={[s.muted, { fontSize: 9, marginTop: 1 }]}>Prepared for {sheet.customerName}</Text> : null}
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                    <Text style={s.eyebrow}>Pillow guide</Text>
+                    <Text style={[s.small, { marginTop: 2 }]}>{sheet.preparedOn}</Text>
                 </View>
             </View>
-            {art.top ? (
-                <View style={{ marginTop: 14, alignItems: "center" }}>
-                    <Picture image={art.top} width={CONTENT_WIDTH} />
-                </View>
-            ) : null}
-            <View style={s.block} wrap={false}>
-                <BlockHead title="What's inside" aside={`${sheet.pieces} piece${sheet.pieces === 1 ? "" : "s"} in all`} />
-                <View style={s.fillings}>
-                    {sheet.fillings.map((f) => (
-                        <View key={f.label} style={s.filling}>
-                            <View style={[s.swatch, { backgroundColor: f.color }]} />
-                            <Text>{f.label}</Text>
-                            <Text style={s.count}>× {f.count}</Text>
-                        </View>
-                    ))}
-                </View>
+            <View style={[s.row, { alignItems: "center", marginTop: 9 }]}>
+                <Text style={[s.p, s.muted, { flex: 1 }]}>{sheet.story}</Text>
+                {sheet.size ? <Text style={s.chipDark}>Size {sheet.size}</Text> : null}
+                <Text style={s.chip}>{sheet.pillowName}</Text>
+                <Text style={s.chip}>{plural(sheet.pieces, "piece")}</Text>
             </View>
-        </>
+        </View>
     );
 }
 
-function Measurements({ sheet, art }: { sheet: PillowSheet; art: SheetArt }) {
-    const fitting = sheet.fitting;
-    if (!fitting) return null;
+function Inside({ sheet }: { sheet: PillowSheet }) {
     return (
-        <View style={s.block} wrap={false}>
-            <BlockHead title="Your measurements" aside={`From your fitting on ${fitting.fittedOn}`} />
-            {fitting.measurements.length > 0 ? (
-                <View style={s.cards}>
-                    {fitting.measurements.map((m) => {
-                        const icon = art.icons[m.icon];
-                        return (
-                            <View key={m.letter} style={s.card}>
-                                {icon ? <Picture image={icon} width={34} /> : null}
-                                <Text style={[s.small, { marginTop: 5 }]}>
-                                    {m.letter} · {m.label}
-                                </Text>
-                                <Text style={s.cardValue}>{m.value}</Text>
-                            </View>
-                        );
-                    })}
+        <View style={{ flex: 1 }}>
+            <BlockHead title="What's inside" aside={`${plural(sheet.pieces, "piece")} in all`} />
+            {sheet.fillings.map((f) => (
+                <View key={f.label} style={s.filling}>
+                    <View style={[s.swatch, { backgroundColor: f.color }]} />
+                    <Text>{f.label}</Text>
+                    <Text style={s.count}>× {f.count}</Text>
                 </View>
-            ) : null}
-            {fitting.facts.length > 0 ? (
+            ))}
+            {sheet.fitting && sheet.fitting.facts.length > 0 ? (
                 <View style={s.facts}>
-                    {fitting.facts.map(([label, value]) => (
+                    {sheet.fitting.facts.map(([label, value]) => (
                         <View key={label} style={s.fact}>
                             <Text style={s.small}>{label}</Text>
                             <Text style={{ fontWeight: 600 }}>{value}</Text>
@@ -173,6 +135,32 @@ function Measurements({ sheet, art }: { sheet: PillowSheet; art: SheetArt }) {
                     ))}
                 </View>
             ) : null}
+        </View>
+    );
+}
+
+function Measurements({ sheet, art }: { sheet: PillowSheet; art: SheetArt }) {
+    const fitting = sheet.fitting;
+    if (!fitting || fitting.measurements.length === 0) return null;
+    return (
+        <View style={{ marginTop: GAP }} wrap={false}>
+            <BlockHead title="Your measurements" aside={`From your fitting on ${fitting.fittedOn}`} />
+            <View style={[s.row, { justifyContent: "space-between" }]}>
+                {fitting.measurements.map((m) => {
+                    const icon = art.icons[m.icon];
+                    return (
+                        <View key={m.letter} style={s.card}>
+                            {icon ? <Picture image={icon} width={22} /> : null}
+                            <View style={{ marginLeft: 7, flex: 1 }}>
+                                <Text style={s.small}>
+                                    {m.letter} · {m.label}
+                                </Text>
+                                <Text style={s.cardValue}>{m.value}</Text>
+                            </View>
+                        </View>
+                    );
+                })}
+            </View>
         </View>
     );
 }
@@ -185,8 +173,13 @@ function Steps({ section }: { section: SheetSection }) {
                 <View key={i} style={s.step}>
                     {section.ordered ? <Text style={s.stepNo}>{i + 1}</Text> : <View style={[s.stepDot, { backgroundColor: step.color }]} />}
                     {section.ordered ? <View style={[s.stepBar, { backgroundColor: step.color }]} /> : null}
-                    <Text style={s.stepLabel}>{step.label}</Text>
-                    <Text style={s.stepWhere}>{step.where}</Text>
+                    <Text style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: 600 }}>{step.label}</Text>
+                        <Text style={s.muted}>
+                            {"  "}
+                            {step.where}
+                        </Text>
+                    </Text>
                 </View>
             ))}
         </View>
@@ -195,64 +188,84 @@ function Steps({ section }: { section: SheetSection }) {
 
 function Refill({ sheet, art }: { sheet: PillowSheet; art: SheetArt }) {
     const ordered = sheet.sections.some((x) => x.ordered);
+    const cutHeight = COLUMN_WIDTH * Math.max(0, ...Object.values(art.cuts).map((c) => c.height / c.width));
     return (
-        <>
-            <Text style={s.h2}>Putting your fillings back</Text>
-            <Text style={[s.p, { marginTop: 4, color: LIGHT.mutedFg, maxWidth: 440 }]}>
+        <View style={{ marginTop: GAP + 2 }} wrap={false}>
+            <BlockHead large title="Putting your fillings back" aside="After a wash, once every filling is completely dry" />
+            <Text style={[s.p, s.muted, { marginBottom: 7 }]}>
                 {ordered
-                    ? "Once the fillings are completely dry, put each one back into its section in the order below: step 1 goes in first. The cut beside each list shows how the pieces sit inside."
-                    : "Once the fillings are completely dry, put each one back into its section. The cut beside each list shows where every piece sits inside."}
+                    ? "Put each filling back into its section in the order shown: step 1 goes in first. The cut above each list shows how the pieces sit inside, from the front of the section to the back."
+                    : "Put each filling back into its section. The cut above each list shows where every piece sits inside, from the front of the section to the back."}
             </Text>
-            <View style={s.tips}>
-                <View style={s.tip}>
-                    <Text style={[s.h3, { color: NAVY }]}>Dry the fillings in shade</Text>
-                    <Text style={[s.p, { marginTop: 3 }]}>
-                        Dry them under sheltered sunlight, never in direct sun. Make sure they are completely dry before they go back in.
-                    </Text>
-                </View>
-                <View style={s.tip}>
-                    <Text style={[s.h3, { color: NAVY }]}>Reset the fillings</Text>
-                    <Text style={[s.p, { marginTop: 3 }]}>Before refilling, loosen and air the fillings so they get back their shape and fluff.</Text>
-                </View>
-            </View>
-            {sheet.sections.map((section) => {
-                const cut = art.cuts[section.section];
-                return (
-                    <View key={section.section} style={s.sectionRow} wrap={false}>
-                        <View style={s.cutCol}>
-                            <View style={{ flexDirection: "row", alignItems: "baseline", marginBottom: 5 }}>
+            <View style={[s.row, { justifyContent: "space-between" }]}>
+                {sheet.sections.map((section) => {
+                    const cut = art.cuts[section.section];
+                    return (
+                        <View key={section.section} style={s.column}>
+                            <View style={[s.row, { alignItems: "baseline", marginBottom: 4 }]}>
                                 <Text style={s.h3}>{SECTION_TITLE[section.section]} section</Text>
-                                <Text style={[s.small, { marginLeft: 6 }]}>
-                                    {section.steps.length} piece{section.steps.length === 1 ? "" : "s"}
-                                </Text>
+                                <Text style={[s.small, { marginLeft: 5 }]}>{plural(section.steps.length, "piece")}</Text>
                             </View>
-                            {cut ? <Picture image={cut} width={CUT_WIDTH} /> : null}
-                        </View>
-                        <View style={s.stepsCol}>
-                            <Text style={[s.small, { marginBottom: 3 }]}>{section.ordered ? "Fill in this order" : "Pieces in this section"}</Text>
+                            {cutHeight > 0 ? (
+                                <View style={[s.cutBox, cut ? { height: cutHeight } : { height: cutHeight, backgroundColor: LIGHT.mutedBg }]}>
+                                    {cut ? <Picture image={cut} width={COLUMN_WIDTH} /> : null}
+                                </View>
+                            ) : null}
+                            <Text style={[s.small, { marginTop: 6, marginBottom: 2 }]}>
+                                {section.ordered ? "Fill in this order" : "Pieces in this section"}
+                            </Text>
                             <Steps section={section} />
                         </View>
-                    </View>
-                );
-            })}
-            <View style={s.help} wrap={false}>
-                <Text style={[s.h3, { color: "#ffffff" }]}>Does your pillow feel different?</Text>
-                <Text style={[s.p, { marginTop: 3, color: "#cbd5e1" }]}>
-                    If the height or support no longer feels right, we can re-adjust it for you. Videos showing how to take your pillow apart and wash it are on our care page.
-                </Text>
-                <View style={s.helpLinks}>
-                    <Link src={sheet.links.readjust.href} style={s.helpLink}>
-                        Book a re-adjustment ›
-                    </Link>
-                    <Link src={sheet.links.whatsapp.href} style={s.helpLink}>
-                        WhatsApp {sheet.links.whatsapp.text} ›
-                    </Link>
-                    <Link src={sheet.links.care.href} style={s.helpLink}>
-                        {sheet.links.care.text} ›
-                    </Link>
-                </View>
+                    );
+                })}
             </View>
-        </>
+        </View>
+    );
+}
+
+function Care({ sheet }: { sheet: PillowSheet }) {
+    return (
+        <View style={[s.row, { justifyContent: "space-between", marginTop: GAP + 2 }]} wrap={false}>
+            <View style={s.tip}>
+                <Text style={[s.h3, { color: NAVY }]}>Dry the fillings in shade</Text>
+                <Text style={[s.p, { marginTop: 3 }]}>
+                    Dry them under sheltered sunlight, never in direct sun. Make sure they are completely dry before they go back in.
+                </Text>
+            </View>
+            <View style={s.tip}>
+                <Text style={[s.h3, { color: NAVY }]}>Reset the fillings</Text>
+                <Text style={[s.p, { marginTop: 3 }]}>Before refilling, loosen and air the fillings so they get back their shape and fluff.</Text>
+            </View>
+            <View style={s.help}>
+                <Text style={[s.h3, { color: "#ffffff" }]}>Does your pillow feel different?</Text>
+                <Text style={[s.p, { marginTop: 3, color: "#cbd5e1" }]}>If the height or support no longer feels right, we can re-adjust it for you.</Text>
+                <Link src={sheet.links.readjust.href} style={[s.helpLink, { marginTop: 5 }]}>
+                    Book a re-adjustment ›
+                </Link>
+                <Link src={sheet.links.whatsapp.href} style={s.helpLink}>
+                    WhatsApp {sheet.links.whatsapp.text} ›
+                </Link>
+                <Link src={sheet.links.care.href} style={s.helpLink}>
+                    Washing videos ›
+                </Link>
+            </View>
+        </View>
+    );
+}
+
+function Footer({ sheet }: { sheet: PillowSheet }) {
+    const site = { href: sheet.links.care.href.replace(/\/mp-care$/, ""), text: sheet.links.care.text.replace(/\/mp-care$/, "") };
+    return (
+        <View style={s.footer} fixed>
+            <Text>
+                Mpillow ·{" "}
+                <Link src={site.href} style={{ color: LIGHT.mutedFg, textDecoration: "none" }}>
+                    {site.text}
+                </Link>{" "}
+                · WhatsApp {sheet.links.whatsapp.text}
+            </Text>
+            <Text render={({ pageNumber, totalPages }) => (totalPages > 1 ? `${pageNumber} / ${totalPages}` : "")} />
+        </View>
     );
 }
 
@@ -267,13 +280,17 @@ export function pillowSheetDocument(sheet: PillowSheet, art: SheetArt) {
         >
             <Page size="A4" style={s.page}>
                 <Header sheet={sheet} logo={art.logo} />
-                <Overview sheet={sheet} art={art} />
+                <View style={[s.row, { marginTop: GAP }]} wrap={false}>
+                    {art.top ? (
+                        <View style={{ marginRight: 16 }}>
+                            <Picture image={art.top} width={TOP_WIDTH} />
+                        </View>
+                    ) : null}
+                    <Inside sheet={sheet} />
+                </View>
                 <Measurements sheet={sheet} art={art} />
-                <Footer sheet={sheet} />
-            </Page>
-            <Page size="A4" style={s.page}>
-                <Header sheet={sheet} logo={art.logo} />
                 <Refill sheet={sheet} art={art} />
+                <Care sheet={sheet} />
                 <Footer sheet={sheet} />
             </Page>
         </Document>

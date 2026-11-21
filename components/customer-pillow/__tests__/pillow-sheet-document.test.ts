@@ -111,21 +111,22 @@ beforeAll(async () => {
     logo: await png(readFileSync(join(PUBLIC, "mpillow_logo_2026.png")), 192),
     top: await png({ width: 1328, height: 748 }, 1328),
     cuts: {
-      left: await png({ width: 1328, height: 440 }, 1328),
-      center: await png({ width: 1328, height: 440 }, 1328),
-      right: await png({ width: 1328, height: 440 }, 1328),
+      left: await png({ width: 950, height: 440 }, 950),
+      center: await png({ width: 950, height: 440 }, 950),
+      right: await png({ width: 950, height: 440 }, 950),
     },
     icons: Object.fromEntries(icons),
   };
 });
 
 describe("pillowSheetDocument", () => {
-  it("makes a two-page PDF in Figtree that links to re-adjustment, WhatsApp and care", async () => {
+  it("makes one A4 page in Figtree that links to re-adjustment, WhatsApp and care", async () => {
     const pdf = await render(sheetFor([fitting]), art);
     if (process.env.PILLOW_SHEET_OUT) writeFileSync(process.env.PILLOW_SHEET_OUT, pdf);
     const raw = pdf.toString("latin1");
     expect(raw.startsWith("%PDF-")).toBe(true);
-    expect(pageCount(pdf)).toBe(2);
+    expect(raw).toMatch(/\/MediaBox \[0 0 595\.\d+ 841\.\d+\]/);
+    expect(pageCount(pdf)).toBe(1);
     expect(raw).toMatch(/\/FontName \/[A-Z]{6}\+Figtree/);
     for (const uri of ["https://mpillow.com/appointments?type=readjustment", "https://mpillow.com/mp-care", "https://wa.me/"]) {
       expect(raw).toContain(`/URI (${uri}`);
@@ -133,9 +134,17 @@ describe("pillowSheetDocument", () => {
     expect(pdf.length).toBeLessThan(400_000);
   }, 30_000);
 
-  it("still makes the two pages with no fitting, an empty Section and no drawings", async () => {
+  it("still makes one page with no fitting, an empty Section and no drawings", async () => {
     const sheet = sheetFor([], { placements: pillow.placements.filter((p) => p.section !== "right"), name: null });
     const pdf = await render(sheet, { ...art, top: null, cuts: {} });
-    expect(pageCount(pdf)).toBe(2);
+    expect(pageCount(pdf)).toBe(1);
+  }, 30_000);
+
+  it("keeps a six-piece-per-Section pillow with long names on the one page", async () => {
+    const six = (section: string) =>
+      (["front", "middle", "back"] as const).flatMap((sub, k) => [cell(section, sub, 1, 6, 2 * k + 1, 0), cell(section, sub, 2, 3, 2 * k + 2, 1)]);
+    const sheet = sheetFor([fitting], { placements: [...six("left"), ...six("center"), ...six("right")] });
+    expect(sheet.sections.map((x) => x.steps.length)).toEqual([6, 6, 6]);
+    expect(pageCount(await render(sheet, art))).toBe(1);
   }, 30_000);
 });
