@@ -768,36 +768,42 @@ export default function ConfigureCardPage() {
     }
   };
 
+  const templatePick = useRef(0);
   const selectPillowTemplate = async (next: number | '') => {
+    const pick = ++templatePick.current;
     setPillowSelectedTemplateId(next);
     if (next === '' || !selectedPillowKind || !selectedSize) return;
     try {
       const lines = await loadTemplateLines(next);
+      if (pick !== templatePick.current) return;
       setBomByKind((prev) => ({
         ...prev,
         [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: lines },
       }));
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
+      if (pick === templatePick.current) toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
   const selectBolsterTemplate = async (next: number | '') => {
+    const pick = ++templatePick.current;
     setBolsterSelectedTemplateId(next);
     if (next === '') return;
     try {
-      setBolsterLines(await loadTemplateLines(next));
+      const lines = await loadTemplateLines(next);
+      if (pick !== templatePick.current) return;
+      setBolsterLines(lines);
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
+      if (pick === templatePick.current) toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
   const changePremiumVariant = (value: string) => {
     if (value === 'linen' || value === 'fibrecool') {
       setPremiumVariant(value);
-      setPillowSelectedTemplateId('');
+      void selectPillowTemplate('');
     }
   };
 
@@ -877,7 +883,7 @@ export default function ConfigureCardPage() {
                   <>
                     {pillowSelectedTemplate && (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setPillowSelectedTemplateId('')}>
+                        <Button variant="ghost" size="sm" onClick={() => void selectPillowTemplate('')}>
                           Unlink
                         </Button>
                         <Button
@@ -1136,7 +1142,7 @@ export default function ConfigureCardPage() {
                   <>
                     {bolsterSelectedTemplate && (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setBolsterSelectedTemplateId('')}>
+                        <Button variant="ghost" size="sm" onClick={() => void selectBolsterTemplate('')}>
                           Unlink
                         </Button>
                         <Button

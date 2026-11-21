@@ -166,6 +166,15 @@ async function answerWarehouse(kind: "pillow" | "bolster", ids: number[]) {
     templates: ids.map((id) => ({ id, name: `Template ${id}`, notes: null })),
   });
 }
+async function pickAndSave(card: "bolster" | "pillow") {
+  await choose(templatePicker()!, "7");
+  await choose(templatePicker()!, "8");
+  await answerRequest((r) => r.url.endsWith("/templates/8"), { lines: [{ item_id: 2, quantity: 2 }] });
+  await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+  const save = card === "bolster" ? bolsterSave() : [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === "Save changes")!;
+  await act(async () => save.click());
+  await settle();
+}
 
 describe("Configure card: bolster lines", () => {
   it("saves the template picked as soon as the editor shows, not the BOM read that answers later", async () => {
@@ -236,6 +245,34 @@ describe("Configure card: overlapping first loads", () => {
 
     expect(posted("/configure/save")).toEqual([
       `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines: [{ item_id: 2, quantity: 2 }], defaultFillingTemplateId: null })}`,
+    ]);
+  });
+});
+
+describe("Configure card: warehouse template picks", () => {
+  it("applies only the bolster template picked last when an earlier pick answers after it", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7, 8]);
+    await pickAndSave("bolster");
+
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines: [{ item_id: 2, quantity: 2 }], defaultFillingTemplateId: null })}`,
+    ]);
+    expect(posted("/templates/8")).toEqual([`PUT ${JSON.stringify({ lines: [{ item_id: 2, quantity: 2 }] })}`]);
+  });
+
+  it("applies only the pillow template picked last when an earlier pick answers after it", async () => {
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7, 8]);
+    await pickAndSave("pillow");
+
+    expect(posted("/templates/8")).toEqual([`PUT ${JSON.stringify({ lines: [{ item_id: 2, quantity: 2 }] })}`]);
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ productId: 10, lines: [{ item_id: 2, quantity: 2 }], defaultFillingTemplateId: 42 })}`,
     ]);
   });
 });
