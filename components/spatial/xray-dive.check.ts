@@ -103,7 +103,7 @@ assert.equal(renderer.match(/warning=\{layerWarning\(subSection, depth\)\}/g)?.l
 assert.match(renderer, /layerFitMessage\(cell, layer\)/, "a row's tooltip is the pure per-layer message");
 
 assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
-assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
+assert.match(renderer, /if \(selected\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
 assert.match(renderer, /changeDive\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
 assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,1400}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
 assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");

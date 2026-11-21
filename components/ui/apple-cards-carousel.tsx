@@ -1,9 +1,9 @@
 "use client"
 
 import Image from "next/image"
-import { IconArrowNarrowLeft, IconArrowNarrowRight, IconX } from "@tabler/icons-react"
-import { AnimatePresence, motion } from "motion/react"
-import React, { createContext, useContext, useEffect, useRef, useState } from "react"
+import { IconArrowNarrowLeft, IconArrowNarrowRight } from "@tabler/icons-react"
+import { motion } from "motion/react"
+import React, { createContext, useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 
 export function Card({ className, ...props }: React.ComponentProps<"div">) {
@@ -35,30 +35,6 @@ export function MeasureTile({ iconSrc, title, description }: MeasureTileProps) {
   )
 }
 
-function useOnClickOutside<T extends HTMLElement>(
-  ref: React.RefObject<T>,
-  handler: (event: MouseEvent | TouchEvent) => void,
-) {
-  useEffect(() => {
-    const listener = (event: MouseEvent | TouchEvent) => {
-      const el = ref.current
-      if (!el) return
-      const target = event.target as Node | null
-      if (!target) return
-      if (el.contains(target)) return
-      handler(event)
-    }
-
-    document.addEventListener("mousedown", listener)
-    document.addEventListener("touchstart", listener, { passive: true })
-
-    return () => {
-      document.removeEventListener("mousedown", listener)
-      document.removeEventListener("touchstart", listener)
-    }
-  }, [ref, handler])
-}
-
 export interface CarouselProps {
   items: React.JSX.Element[]
   initialScroll?: number
@@ -67,13 +43,6 @@ export interface CarouselProps {
    * Use this to remove default padding/max-width for full-bleed layouts.
    */
   itemsContainerClassName?: string
-}
-
-export interface AppleCarouselCardData {
-  src: string
-  title: string
-  category: string
-  content: React.ReactNode
 }
 
 export const CarouselContext = createContext<{
@@ -206,159 +175,6 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
   )
 }
 
-export interface CardProps {
-  card: AppleCarouselCardData
-  index: number
-  layout?: boolean
-  variant?: "overlay" | "stacked"
-}
-
-export const AppleCarouselCard = ({ card, index, layout = false, variant = "overlay" }: CardProps) => {
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const { onCardClose } = useContext(CarouselContext)
-  const hasCategory = card.category.trim().length > 0
-
-  const handleClose = React.useCallback(() => {
-    setOpen(false)
-    onCardClose(index)
-  }, [index, onCardClose])
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        handleClose()
-      }
-    }
-
-    if (open) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = "auto"
-    }
-
-    window.addEventListener("keydown", onKeyDown)
-    return () => {
-      window.removeEventListener("keydown", onKeyDown)
-      document.body.style.overflow = "auto"
-    }
-  }, [handleClose, open])
-
-  useOnClickOutside(containerRef as React.RefObject<HTMLElement>, handleClose)
-
-  const handleOpen = () => {
-    setOpen(true)
-  }
-
-  return (
-    <>
-      <AnimatePresence>
-        {open && (
-          <div className="fixed inset-0 z-50 h-screen overflow-auto">
-            <motion.div
-              animate={{ opacity: 1 }}
-              className="fixed inset-0 h-full w-full bg-black/80 backdrop-blur-lg"
-              exit={{ opacity: 0 }}
-              initial={{ opacity: 0 }}
-            />
-            <motion.div
-              animate={{ opacity: 1 }}
-              className="relative z-[60] mx-auto my-10 h-fit max-w-5xl rounded-3xl bg-white p-4 md:p-10 dark:bg-neutral-900"
-              exit={{ opacity: 0 }}
-              initial={{ opacity: 0 }}
-              layoutId={layout ? `card-${card.title}` : undefined}
-              ref={containerRef}
-            >
-              <button
-                type="button"
-                aria-label="Close"
-                className="fixed bottom-[calc(1rem+var(--safe-bottom))] right-4 z-[70] flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black md:sticky md:top-4 md:right-0 md:ml-auto md:h-8 md:w-8 md:min-h-0 md:min-w-0 dark:bg-white"
-                onClick={handleClose}
-              >
-                <IconX className="h-6 w-6 text-neutral-100 dark:text-neutral-900" />
-              </button>
-              <motion.p
-                className="text-base font-medium text-black dark:text-white"
-                layoutId={layout ? `category-${card.title}` : undefined}
-              >
-                {card.category}
-              </motion.p>
-              <motion.p
-                className="mt-4 text-2xl font-semibold text-neutral-700 md:text-5xl dark:text-white"
-                layoutId={layout ? `title-${card.title}` : undefined}
-              >
-                {card.title}
-              </motion.p>
-              <div className="py-10">{card.content}</div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      <motion.button
-        className={cn(
-          "relative z-10 overflow-hidden rounded-3xl bg-gray-100 text-left dark:bg-neutral-900",
-          variant === "overlay"
-            ? "flex h-48 w-40 flex-col items-start justify-start md:h-64 md:w-56"
-            : "flex h-auto w-60 flex-col md:w-84",
-        )}
-        layoutId={layout ? `card-${card.title}` : undefined}
-        onClick={handleOpen}
-      >
-        {variant === "overlay" ? (
-          <>
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-full bg-gradient-to-b from-black/50 via-transparent to-transparent" />
-            <div className="relative z-40 p-4 md:p-6">
-              {hasCategory ? (
-                <motion.p
-                  className="text-left text-xs font-medium text-white md:text-sm"
-                  layoutId={layout ? `category-${card.category}` : undefined}
-                >
-                  {card.category}
-                </motion.p>
-              ) : null}
-              <motion.p
-                className={cn(
-                  "max-w-xs text-left text-sm font-semibold [text-wrap:balance] text-white md:text-lg",
-                  hasCategory ? "mt-1" : "mt-0",
-                )}
-                layoutId={layout ? `title-${card.title}` : undefined}
-              >
-                {card.title}
-              </motion.p>
-            </div>
-            <BlurImage alt={card.title} className="absolute inset-0 z-10 object-cover" src={card.src} />
-          </>
-        ) : (
-          <>
-            <div className="relative h-40 w-full md:h-52">
-              <BlurImage alt={card.title} className="absolute inset-0 h-full w-full object-cover" src={card.src} />
-            </div>
-            <div className="relative z-40 border-t border-black/5 p-4 dark:border-white/10 md:p-5">
-              {hasCategory ? (
-                <motion.p
-                  className="text-xs font-medium text-muted-foreground md:text-sm"
-                  layoutId={layout ? `category-${card.category}` : undefined}
-                >
-                  {card.category}
-                </motion.p>
-              ) : null}
-              <motion.p
-                className={cn(
-                  "text-sm font-semibold leading-snug [text-wrap:balance] text-foreground md:text-base",
-                  hasCategory ? "mt-1" : "mt-0",
-                )}
-                layoutId={layout ? `title-${card.title}` : undefined}
-              >
-                {card.title}
-              </motion.p>
-            </div>
-          </>
-        )}
-      </motion.button>
-    </>
-  )
-}
-
 export interface BlurImageProps {
   src: string
   alt?: string
@@ -415,45 +231,5 @@ export const BlurImage = ({
       sizes={sizes}
       unoptimized
     />
-  )
-}
-
-// Demo
-const demoCards: AppleCarouselCardData[] = [
-  {
-    src: "https://picsum.photos/seed/1/400/600",
-    title: "Forest Adventure",
-    category: "Nature",
-    content: <p className="text-muted-foreground">Explore the beauty of ancient forests and discover hidden trails.</p>,
-  },
-  {
-    src: "https://picsum.photos/seed/2/400/600",
-    title: "Urban Photography",
-    category: "City",
-    content: <p className="text-muted-foreground">Capture the essence of city life through stunning urban landscapes.</p>,
-  },
-  {
-    src: "https://picsum.photos/seed/3/400/600",
-    title: "Ocean Waves",
-    category: "Beach",
-    content: <p className="text-muted-foreground">Feel the rhythm of the waves and embrace coastal serenity.</p>,
-  },
-  {
-    src: "https://picsum.photos/seed/4/400/600",
-    title: "Mountain Peaks",
-    category: "Adventure",
-    content: <p className="text-muted-foreground">Conquer new heights and witness breathtaking mountain vistas.</p>,
-  },
-]
-
-export function Demo() {
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-background py-10">
-      <Carousel
-        items={demoCards.map((card, index) => (
-          <AppleCarouselCard key={card.title} card={card} index={index} layout />
-        ))}
-      />
-    </div>
   )
 }
