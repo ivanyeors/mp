@@ -444,10 +444,7 @@
   },
   "app/[lang]/settings/orders/orders-client.tsx": {
     "mp/no-effect": {
-      "count": 5
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 4
     }
   },
   "app/[lang]/settings/page-builder/page-builder-client.tsx": {
