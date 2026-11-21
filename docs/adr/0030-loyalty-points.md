@@ -20,7 +20,9 @@ one-time **Claim bonus** for Migrated customers.
 - **Results take no discount.** Every pricer of a custom pillow hard-codes `discountAmount: 0`,
   Accept writes `discount_amount: 0`, and `planCapture` refuses an amount of zero or less.
 - **Refunds already pay cash only,** each capped at `amount_captured − amount_refunded`, and an
-  RMA refunds a returned line at its `unit_price` up to the cash left.
+  RMA refunded a returned line at its `unit_price` up to the cash left. (Since 2026-11-21 an RMA
+  refunds the line's share of what the Order took for goods, as a staff refund does (ADR 0038), so
+  the points come off it in proportion; decision 7 below has not been revisited for that.)
 - **Partner commission waits 30 days after delivery** (`lib/rma/eligibility.ts`,
   `lib/commissions`), so most refunds land before it is released.
 - **The daily job has room for runners but not for a third cron** (`vercel.json`); Aftercare

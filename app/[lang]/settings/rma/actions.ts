@@ -108,7 +108,7 @@ export async function issueRmaRefund(rmaId: string) {
   const { data, error } = await admin
     .from("rma_requests")
     .select(
-      "id, status, resolution, orders(id, payment_reference, total, amount_refunded, amount_captured, currency), rma_request_items(quantity, order_items(unit_price))",
+      "id, status, resolution, orders(id, payment_reference, subtotal, shipping_amount, total, amount_refunded, amount_captured, currency, order_items(id, quantity, total_price)), rma_request_items(order_item_id, quantity)",
     )
     .eq("id", rmaId)
     .maybeSingle();
@@ -121,11 +121,15 @@ export async function issueRmaRefund(rmaId: string) {
     orders: {
       id: string;
       payment_reference: string | null;
+      subtotal: number;
+      shipping_amount: number;
       total: number;
       amount_refunded: number | null;
+      amount_captured: number | null;
       currency: string;
+      order_items: Array<{ id: string; quantity: number; total_price: number }>;
     } | null;
-    rma_request_items: Array<{ quantity: number; order_items: { unit_price: number | null } | null }>;
+    rma_request_items: Array<{ order_item_id: string; quantity: number }>;
   };
 
   if (rma.resolution !== "refund") throw new Error("This return is not a refund.");
@@ -134,12 +138,7 @@ export async function issueRmaRefund(rmaId: string) {
   if (!order?.payment_reference) throw new Error("Order has no payment to refund.");
 
   const remaining = refundableAmount(order);
-  const requested = rmaRefundAmount(
-    rma.rma_request_items.map((i) => ({
-      unit_price: Number(i.order_items?.unit_price ?? 0),
-      quantity: i.quantity,
-    })),
-  );
+  const requested = rmaRefundAmount(order, order.order_items ?? [], rma.rma_request_items);
   const amount = Math.min(requested, remaining);
   if (amount <= 0) throw new Error("Nothing left to refund on this order.");
 

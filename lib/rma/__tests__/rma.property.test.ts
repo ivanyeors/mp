@@ -10,6 +10,7 @@ import {
   type RmaStatus,
 } from "@/lib/rma/transitions";
 import { rmaRefundAmount } from "@/lib/rma/refund";
+import { lineRefundAmount, selectionRefundAmount } from "@/lib/ecommerce/admin-refund";
 import { planRmaCreate, type PlanOrderItem } from "@/lib/rma/create";
 
 const STATUSES: RmaStatus[] = [
@@ -61,6 +62,36 @@ const requestFor = (items: PlanOrderItem[]) =>
     }),
     { minLength: 0, maxLength: items.length + 1 },
   );
+
+const unitCentsOf = (lines: Array<{ id: string; quantity: number; total_price: number }>, id: string) => {
+  const line = lines.find((l) => l.id === id)!;
+  return Math.round((line.total_price * 100) / line.quantity);
+};
+
+const returnOnOrder = ({ discount }: { discount: boolean }) =>
+  fc
+    .record({
+      lines: fc.array(
+        fc.record({ unitCents: fc.integer({ min: 1, max: 50_000 }), quantity: fc.integer({ min: 1, max: 5 }) }),
+        { minLength: 1, maxLength: 6 },
+      ),
+      offBasisPoints: discount ? fc.integer({ min: 0, max: 10_000 }) : fc.constant(0),
+      shippingCents: fc.integer({ min: 0, max: 2_000 }),
+    })
+    .chain(({ lines: raw, offBasisPoints, shippingCents }) => {
+      const lines = raw.map((l, i) => ({ id: `l${i}`, quantity: l.quantity, total_price: (l.unitCents * l.quantity) / 100 }));
+      const subtotalCents = raw.reduce((t, l) => t + l.unitCents * l.quantity, 0);
+      const goodsCents = subtotalCents - Math.floor((subtotalCents * offBasisPoints) / 10_000);
+      const order = { subtotal: subtotalCents / 100, shipping_amount: shippingCents / 100, total: (goodsCents + shippingCents) / 100 };
+      const returned = fc
+        .subarray(lines, { minLength: 0 })
+        .chain((picked) =>
+          picked.length === 0
+            ? fc.constant([] as Array<{ order_item_id: string; quantity: number }>)
+            : fc.tuple(...picked.map((l) => fc.integer({ min: 1, max: l.quantity }).map((quantity) => ({ order_item_id: l.id, quantity })))),
+        );
+      return returned.map((r) => ({ order, lines, returned: r }));
+    });
 
 describe("Returns / RMA lifecycle (ADR 0011)", () => {
   it("allows exactly the transitions the ADR's state machine lists, for every pair of states", () => {
@@ -188,19 +219,47 @@ describe("Returns / RMA lifecycle (ADR 0011)", () => {
     );
   });
 
-  it("a return's refund is exactly its lines at their unit price, to the cent", () => {
+  it("with no discount, no tax and no points, a return refunds the list price of the units returned, to the cent", () => {
     fc.assert(
-      fc.property(
-        fc.array(
-          fc.record({ unitCents: fc.integer({ min: 0, max: 50_000 }), quantity: fc.integer({ min: 1, max: 5 }) }),
-          { maxLength: 6 },
-        ),
-        (raw) => {
-          const items = raw.map((i) => ({ unit_price: i.unitCents / 100, quantity: i.quantity }));
-          const listCents = raw.reduce((t, i) => t + i.unitCents * i.quantity, 0);
-          expect(Math.round(rmaRefundAmount(items) * 100)).toBe(listCents);
-        },
-      ),
+      fc.property(returnOnOrder({ discount: false }), ({ order, lines, returned }) => {
+        const listCents = returned.reduce((t, r) => t + unitCentsOf(lines, r.order_item_id) * r.quantity, 0);
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCents);
+      }),
+    );
+  });
+
+  it("with a discount, a return never refunds more than the list price of the units returned", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ discount: true }), ({ order, lines, returned }) => {
+        const listCents = returned.reduce((t, r) => t + unitCentsOf(lines, r.order_item_id) * r.quantity, 0);
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBeLessThanOrEqual(listCents);
+      }),
+    );
+  });
+
+  it("returning every line of an Order at full quantity refunds exactly what it took for goods, total less shipping", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ discount: true }), ({ order, lines }) => {
+        const everything = lines.map((l) => ({ order_item_id: l.id, quantity: l.quantity }));
+        expect(Math.round(rmaRefundAmount(order, lines, everything) * 100)).toBe(
+          Math.round(order.total * 100) - Math.round(order.shipping_amount * 100),
+        );
+      }),
+    );
+  });
+
+  it("a return refunds what Choose items gives for the same lines, without the shipping", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ discount: true }), ({ order, lines, returned }) => {
+        expect(rmaRefundAmount(order, lines, returned)).toBe(
+          selectionRefundAmount(order, lines, { items: returned, shipping: false }),
+        );
+        const perLineCents = returned.reduce((t, r) => {
+          const line = lines.find((l) => l.id === r.order_item_id)!;
+          return t + Math.round(lineRefundAmount(order, lines, line, r.quantity) * 100);
+        }, 0);
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(perLineCents);
+      }),
     );
   });
 });

@@ -1,6 +1,13 @@
+import {
+  selectionRefundAmount,
+  type RefundLine,
+  type RefundOrderTotals,
+} from "@/lib/ecommerce/admin-refund";
+
 export function rmaRefundAmount(
-  items: Array<{ unit_price: number; quantity: number }>,
+  order: RefundOrderTotals,
+  allOrderLines: RefundLine[],
+  returned: Array<{ order_item_id: string; quantity: number }>,
 ): number {
-  const total = items.reduce((sum, i) => sum + Number(i.unit_price) * i.quantity, 0);
-  return Math.round(total * 100) / 100;
+  return selectionRefundAmount(order, allOrderLines, { items: returned, shipping: false });
 }
