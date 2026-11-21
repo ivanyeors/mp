@@ -321,9 +321,9 @@ export async function setProductListed(productId: string, listed: boolean): Prom
     return { ok: true, listed: false, title, stripeWarnings: [] };
   }
 
-  let stripeWarnings: StripeWarning[] = [];
+  const stripeWarnings: StripeWarning[] = [];
   if (product.is_auto_generated) {
-    stripeWarnings = await repriceFromCostings({ id: productId, name: title });
+    stripeWarnings.push(...(await repriceFromCostings({ id: productId, name: title })));
     product = (await load()) ?? product;
   }
 
