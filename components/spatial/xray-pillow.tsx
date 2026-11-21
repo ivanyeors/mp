@@ -617,10 +617,19 @@ export function XrayPillow({
     selectedRef.current = selected;
   }, [selected]);
 
+  const divedRef = useRef<Section | null>(null);
   const changeDive = useCallback(
     (next: Section | null) => {
+      divedRef.current = next;
       setDived(next);
       onDiveChange?.(next);
+    },
+    [onDiveChange],
+  );
+  const attachRootAndTellHostItMountedUndived = useCallback(
+    (el: HTMLDivElement | null) => {
+      rootRef.current = el;
+      if (el && divedRef.current === null) onDiveChange?.(null);
     },
     [onDiveChange],
   );
@@ -1553,7 +1562,7 @@ export function XrayPillow({
     );
 
   return (
-    <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
+    <div ref={attachRootAndTellHostItMountedUndived} className={className} style={{ pointerEvents: "none" }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${XRAY_VIEW.width} ${XRAY_VIEW.height}`}
