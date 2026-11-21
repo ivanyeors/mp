@@ -803,15 +803,22 @@ export function XrayCrossSection({
     setSpringSection(null);
   }, []);
 
+  const sectionToDrop = (target: SlabDropTarget | null) => (target && target.section !== cut.section ? target.section : null);
+  const aimAt = (target: SlabDropTarget | null) => {
+    setDropTarget(target);
+    onDropSection?.(sectionToDrop(target));
+  };
+
   const endHold = useCallback(() => {
     holdRef.current = null;
     disarmSpring();
     setHeld(null);
     setDropTarget(null);
+    onDropSection?.(null);
     setDropAlong(null);
     snappedAt.current = null;
     setOverTab(false);
-  }, [disarmSpring]);
+  }, [disarmSpring, onDropSection]);
 
   useEffect(() => {
     if (!held) return;
@@ -1086,13 +1093,13 @@ export function XrayCrossSection({
         hold.target = target;
         hold.at = centre;
         setHeld({ ...hold });
-        setDropTarget(target);
+        aimAt(target);
         setHoverKey(null);
         return;
       }
       if (slabTargetKey(target) !== slabTargetKey(hold.target)) {
         hold.target = target;
-        setDropTarget(target);
+        aimAt(target);
       }
     },
     onPointerUp: (e) => {
@@ -1219,10 +1226,7 @@ export function XrayCrossSection({
     if (!onReadout) return;
     onReadout(readoutTone && readoutText ? { tone: readoutTone, text: readoutText } : null);
   }, [onReadout, readoutTone, readoutText]);
-  const dropSection = dropTarget && dropTarget.section !== cut.section ? dropTarget.section : null;
-  useEffect(() => {
-    onDropSection?.(dropSection);
-  }, [onDropSection, dropSection]);
+  const dropSection = sectionToDrop(dropTarget);
 
   const body = (
     <div ref={bodyRef} className={`relative space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>

@@ -1106,7 +1106,7 @@
   },
   "components/spatial/xray-cross-section.tsx": {
     "mp/no-effect": {
-      "count": 13
+      "count": 12
     }
   },
   "components/spatial/xray-pillow.tsx": {
