@@ -45,7 +45,7 @@ import { CategoriesManager } from "./categories-manager";
 import { stripePriceIdOf, type StripeMode } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
 import { InventoryPushSheet } from "@/components/settings/inventory-push-sheet";
-import { stripeWarningToast, type StripeWarning } from "@/lib/shop/stripe-warnings";
+import { savedToasts } from "@/lib/shop/stripe-warnings";
 
 type ProductVariant = {
     id: string;
@@ -306,9 +306,9 @@ export function ProductsClient({
                 throw new Error(json.error ?? "Couldn't sync.");
             }
             const json = await res.json();
-            const stripeWarnings: StripeWarning[] = json.stripe_warnings ?? [];
-            if (stripeWarnings.length === 0) toast.success(json.message ?? "Inventory synced");
-            else toast.warning(...stripeWarningToast(`${json.message ?? "Inventory synced"}, but a price did not reach Stripe`, stripeWarnings));
+            for (const t of savedToasts(json.message ?? "Inventory synced", { stripeWarnings: json.stripe_warnings })) {
+                toast[t.type](t.title, t.options);
+            }
             fetchProducts();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Couldn't sync inventory.");
@@ -323,14 +323,11 @@ export function ProductsClient({
             const res = await fetch("/api/shop/products/resync-prices", { method: "POST" });
             const json = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(json.error ?? "Couldn't resync.");
-            const stripeWarnings: StripeWarning[] = json.stripe_warnings ?? [];
-            if (stripeWarnings.length === 0) toast.success(json.message ?? "Prices resynced from Costings");
-            if (json.unresolvable?.length) {
-                toast.warning(`${json.unresolvable.length} variant(s) have no costing source`);
-            }
-            if (stripeWarnings.length > 0) {
-                toast.warning(...stripeWarningToast(`${json.message ?? "Prices resynced from Costings"}, but a price did not reach Stripe`, stripeWarnings));
-            }
+            const toasts = savedToasts(json.message ?? "Prices resynced from Costings", {
+                unresolvable: json.unresolvable?.length ?? 0,
+                stripeWarnings: json.stripe_warnings,
+            });
+            for (const t of toasts) toast[t.type](t.title, t.options);
             fetchProducts();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Couldn't resync prices.");

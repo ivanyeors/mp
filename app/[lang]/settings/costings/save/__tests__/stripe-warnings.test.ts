@@ -4,7 +4,7 @@ type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
   tables: {} as Record<string, Row[]>,
-  variantReadError: null as { message: string } | null,
+  readErrors: {} as Record<string, { message: string }>,
   variantUpdateError: null as { message: string } | null,
   variantUpdates: [] as Array<{ id: unknown; values: Row }>,
   stripe: vi.fn(),
@@ -56,9 +56,7 @@ vi.mock("@/lib/supabase/server", () => ({
             return resolve({ data: null, error: h.variantUpdateError });
           }
           if (q.op !== "select") return resolve({ data: null, error: null });
-          if (table === "product_variants" && h.variantReadError) {
-            return resolve({ data: null, error: h.variantReadError });
-          }
+          if (h.readErrors[table]) return resolve({ data: null, error: h.readErrors[table] });
           const rows = (h.tables[table] ?? []).filter((r) =>
             q.filters.every(([c, v]) => !(c in r) || r[c] === v),
           );
@@ -91,7 +89,7 @@ const resync = async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.variantReadError = null;
+  h.readErrors = {};
   h.variantUpdateError = null;
   h.variantUpdates = [];
   h.stripe.mockResolvedValue({ synced: true, result: {} });
@@ -124,7 +122,7 @@ describe.each([
   ["Costings save", save],
   ["Resync prices", resync],
 ])("%s: a price that does not reach Stripe", (_name, run) => {
-  it("still answers ok, and names the product with Stripe's own message", async () => {
+  it("still answers ok, names the product, gives Stripe's own message and points at Sync to Stripe", async () => {
     h.stripe.mockResolvedValue({ synced: false, error: "Rate limit exceeded (req_123)" });
     const { status, body } = await run();
 
@@ -133,30 +131,77 @@ describe.each([
     expect(h.variantUpdates).toEqual([{ id: "v1", values: expect.objectContaining({ price: 29 }) }]);
     expect(h.stripe).toHaveBeenCalledWith("p1");
     expect(body.stripe_warnings).toEqual([
-      { product: "Ear Pad", message: expect.stringContaining("Rate limit exceeded (req_123)") },
+      {
+        product: "Ear Pad",
+        message: expect.stringContaining("Rate limit exceeded (req_123)"),
+        next: "Open Ear Pad in Products and use Sync to Stripe to try again.",
+      },
     ]);
-    expect(body.stripe_warnings[0].message).toMatch(/Stripe/);
   });
 
-  it("reports a Variant price that could not be written, by the Variant's name", async () => {
+  it("reports a Variant price that could not be written, and points at Resync prices", async () => {
     h.variantUpdateError = { message: "permission denied for table product_variants" };
     const { status, body } = await run();
 
     expect(status).toBe(200);
+    expect(h.stripe).not.toHaveBeenCalled();
     expect(body.stripe_warnings).toEqual([
       {
         product: "Ear Pad",
         message: expect.stringMatching(/Size S.*permission denied for table product_variants/),
+        next: "Use Resync prices in Products to try again.",
       },
     ]);
   });
 
   it("reports a failed Variant read", async () => {
-    h.variantReadError = { message: "connection reset" };
+    h.readErrors.product_variants = { message: "connection reset" };
     const { body } = await run();
 
     expect(body.stripe_warnings).toEqual([
-      { product: "Ear Pad", message: expect.stringContaining("connection reset") },
+      {
+        product: "Ear Pad",
+        message: expect.stringContaining("connection reset"),
+        next: "Use Resync prices in Products to try again.",
+      },
+    ]);
+  });
+
+  it.each(["product_prices", "bom_lines", "bolster_bom_lines", "item_prices", "items"])(
+    "writes nothing and syncs nothing when the Costings read of %s fails",
+    async (table) => {
+      h.readErrors[table] = { message: "statement timeout" };
+      const { status, body } = await run();
+
+      expect(h.variantUpdates).toEqual([]);
+      expect(h.stripe).not.toHaveBeenCalled();
+      if (run === save && table !== "item_prices") {
+        expect(status).toBe(500);
+        expect(body).toEqual({ error: "statement timeout" });
+        return;
+      }
+      expect(status).toBe(200);
+      expect(body.stripe_warnings).toEqual([
+        {
+          product: "Ear Pad",
+          message: expect.stringMatching(new RegExp(`Couldn't read Costings \\(${table} \\(statement timeout\\)\\), so no price was updated`)),
+          next: "Use Resync prices in Products to try again.",
+        },
+      ]);
+    },
+  );
+
+  it("does not answer an empty success when the shop products cannot be read", async () => {
+    h.readErrors.products = { message: "connection refused" };
+    const { status, body } = await run();
+
+    expect(status).toBe(200);
+    expect(h.variantUpdates).toEqual([]);
+    expect(body.stripe_warnings).toEqual([
+      {
+        message: expect.stringMatching(/no price was updated from Costings: connection refused/),
+        next: "Use Resync prices in Products to try again.",
+      },
     ]);
   });
 
@@ -165,7 +210,9 @@ describe.each([
     h.stripe.mockResolvedValue({ synced: false, error: "boom" });
     const { body } = await run();
 
-    expect(body.stripe_warnings).toEqual([{ product: "ear-pad", message: expect.stringContaining("boom") }]);
+    expect(body.stripe_warnings).toEqual([
+      expect.objectContaining({ product: "ear-pad", message: expect.stringContaining("boom") }),
+    ]);
   });
 
   it("has no warning key when everything synced", async () => {

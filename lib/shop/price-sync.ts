@@ -1,12 +1,19 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
-import { productName, warningsFor, type StripeWarning } from "@/lib/shop/stripe-warnings";
+import {
+  productName,
+  thrownProblem,
+  warningsFor,
+  type NextStep,
+  type PriceProblem,
+  type StripeWarning,
+} from "@/lib/shop/stripe-warnings";
 
 export type PriceSyncResult = {
   productId: string;
   synced: number;
   unresolvable: string[];
-  problems: string[];
+  problems: PriceProblem[];
 };
 
 type VariantRow = {
@@ -93,11 +100,11 @@ export function resolveVariantCost(
 
 export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdmin>) {
   const [
-    { data: productPrices },
-    { data: bomLines },
-    { data: bolsterLines },
-    { data: itemPrices },
-    { data: caseItems },
+    { data: productPrices, error: productPricesErr },
+    { data: bomLines, error: bomErr },
+    { data: bolsterLines, error: bolsterErr },
+    { data: itemPrices, error: itemPricesErr },
+    { data: caseItems, error: caseItemsErr },
   ] = await Promise.all([
     admin.from("product_prices").select("key, kind, product_id, variant, msrp, compare_at_price"),
     admin.from("bom_lines").select("product_id, item_id, quantity"),
@@ -105,6 +112,16 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
     admin.from("item_prices").select("item_id, cost_price, msrp, compare_at_price"),
     admin.from("items").select("id, price_family").not("price_family", "is", null),
   ]);
+
+  const failedReads = (
+    [
+      ["product_prices", productPricesErr],
+      ["bom_lines", bomErr],
+      ["bolster_bom_lines", bolsterErr],
+      ["item_prices", itemPricesErr],
+      ["items", caseItemsErr],
+    ] as const
+  ).flatMap(([table, err]) => (err ? [`${table} (${err.message})`] : []));
 
   const familyByItem = new Map<number, string>(
     (caseItems ?? []).map((i) => [Number(i.id), String(i.price_family)]),
@@ -151,7 +168,20 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
     bomLines: bomLines ?? [],
     bolsterLines: bolsterLines ?? [],
     itemPrices: itemPrices ?? [],
+    failedReads,
   };
+}
+
+const RESYNC: NextStep = { kind: "resync-prices" };
+
+export function stripeSyncProblems(stripe: Awaited<ReturnType<typeof syncProductToStripeSafe>>): PriceProblem[] {
+  if (stripe.synced) return [];
+  return [
+    {
+      message: `Couldn't sync to Stripe, so customers may still be charged the old price: ${stripe.error ?? "unknown error"}`,
+      next: { kind: "sync-to-stripe" },
+    },
+  ];
 }
 
 // ponytail: loads full BOM + item_prices tables (small, < 500 rows). Upgrade path: filter by
@@ -169,12 +199,25 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
       productId,
       synced: 0,
       unresolvable: [],
-      problems: [`Couldn't read its variants, so no price was updated: ${vErr.message}`],
+      problems: [{ message: `Couldn't read its variants, so no price was updated: ${vErr.message}`, next: RESYNC }],
     };
   }
   if (!variants?.length) return { productId, synced: 0, unresolvable: [], problems: [] };
 
   const maps = await loadCostingsPriceMaps(admin);
+  if (maps.failedReads.length > 0) {
+    return {
+      productId,
+      synced: 0,
+      unresolvable: [],
+      problems: [
+        {
+          message: `Couldn't read Costings (${maps.failedReads.join(", ")}), so no price was updated`,
+          next: RESYNC,
+        },
+      ],
+    };
+  }
   const { priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem } = maps;
   const bomLines = maps.bomLines;
   const bolsterLines = maps.bolsterLines;
@@ -201,7 +244,7 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
 
   let synced = 0;
   const unresolvable: string[] = [];
-  const problems: string[] = [];
+  const problems: PriceProblem[] = [];
 
   for (const v of variants as VariantRow[]) {
     const price = resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem);
@@ -219,22 +262,32 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
 
     const { error } = await admin.from("product_variants").update(update).eq("id", v.id);
     if (error) {
-      problems.push(`Couldn't save the new price for ${v.title || v.sku || v.id}: ${error.message}`);
+      problems.push({
+        message: `Couldn't save the new price for ${v.title || v.sku || v.id}: ${error.message}`,
+        next: RESYNC,
+      });
     } else {
       synced++;
     }
   }
 
   if (synced > 0) {
-    const stripe = await syncProductToStripeSafe(productId);
-    if (!stripe.synced) {
-      problems.push(
-        `Couldn't sync to Stripe, so customers may still be charged the old price: ${stripe.error ?? "unknown error"}`,
-      );
-    }
+    problems.push(...stripeSyncProblems(await syncProductToStripeSafe(productId)));
   }
 
   return { productId, synced, unresolvable, problems };
+}
+
+export async function repriceFromCostings(
+  product: { id: string; name: string },
+  action: string,
+): Promise<StripeWarning[]> {
+  try {
+    const result = await syncVariantPricesFromCostings(product.id);
+    return warningsFor(product.name, result.problems);
+  } catch (err) {
+    return warningsFor(product.name, [thrownProblem(err, action)]);
+  }
 }
 
 // ponytail: syncs all auto-generated products (typically 2–3); fine for this table size. Upgrade
@@ -244,13 +297,35 @@ export async function syncAllAutoGeneratedProductPrices(): Promise<{
   stripeWarnings: StripeWarning[];
 }> {
   const admin = supabaseAdmin();
-  const { data: products } = await admin
+  const { data: products, error } = await admin
     .from("products")
     .select("id, slug, content")
     .eq("is_auto_generated", true);
+  if (error) {
+    return {
+      results: [],
+      stripeWarnings: warningsFor(undefined, [
+        {
+          message: `Couldn't read the shop products, so no price was updated from Costings: ${error.message}`,
+          next: RESYNC,
+        },
+      ]),
+    };
+  }
 
   const rows = (products ?? []) as Array<{ id: string; slug: string; content: unknown }>;
-  const results = await Promise.all(rows.map((p) => syncVariantPricesFromCostings(p.id)));
+  const results = await Promise.all(
+    rows.map((p) =>
+      syncVariantPricesFromCostings(p.id).catch(
+        (err: unknown): PriceSyncResult => ({
+          productId: p.id,
+          synced: 0,
+          unresolvable: [],
+          problems: [{ ...thrownProblem(err, "Resync prices"), next: RESYNC }],
+        }),
+      ),
+    ),
+  );
   const stripeWarnings = results.flatMap((r, i) => warningsFor(productName(rows[i]!), r.problems));
   return { results, stripeWarnings };
 }

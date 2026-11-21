@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
-import { productName, warningsFor, type StripeWarning } from "@/lib/shop/stripe-warnings";
+import { repriceFromCostings } from "@/lib/shop/price-sync";
+import { productName, warningsFor, type PriceProblem, type StripeWarning } from "@/lib/shop/stripe-warnings";
 
 interface SyncResult {
   pillows: { created: number; updated: number };
@@ -9,17 +9,22 @@ interface SyncResult {
   stripeWarnings: StripeWarning[];
 }
 
-export async function syncPillowProducts(): Promise<{ created: number; updated: number }> {
+type ProjectionResult = { created: number; updated: number; stripeWarnings: StripeWarning[] };
+
+const SYNC_FROM_INVENTORY = "Sync from Inventory";
+
+export async function syncPillowProducts(): Promise<ProjectionResult> {
   const admin = supabaseAdmin();
   let created = 0;
   let updated = 0;
+  const stripeWarnings: StripeWarning[] = [];
 
   const { data: pillowProducts, error } = await admin
     .from("pillow_products")
     .select("id, size, kind, is_active")
     .eq("is_active", true);
 
-  if (error || !pillowProducts) return { created: 0, updated: 0 };
+  if (error || !pillowProducts) return { created: 0, updated: 0, stripeWarnings };
 
   const { data: categories } = await admin
     .from("categories")
@@ -43,11 +48,12 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
 
     const { data: existingProduct } = await admin
       .from("products")
-      .select("id")
+      .select("id, slug, content")
       .eq("slug", slug)
       .single();
 
     let productId: string;
+    const name = existingProduct ? productName(existingProduct) : titleEn;
 
     if (existingProduct) {
       productId = existingProduct.id;
@@ -139,13 +145,13 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
         });
       }
     }
-    await syncVariantPricesFromCostings(productId).catch(() => {});
+    stripeWarnings.push(...(await repriceFromCostings({ id: productId, name }, SYNC_FROM_INVENTORY)));
   }
 
-  return { created, updated };
+  return { created, updated, stripeWarnings };
 }
 
-export async function syncBolsterProducts(): Promise<{ created: number; updated: number }> {
+export async function syncBolsterProducts(): Promise<ProjectionResult> {
   const admin = supabaseAdmin();
   let created = 0;
   let updated = 0;
@@ -163,7 +169,7 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
     .select("variant")
     .limit(1);
 
-  if (!bomLines || bomLines.length === 0) return { created: 0, updated: 0 };
+  if (!bomLines || bomLines.length === 0) return { created: 0, updated: 0, stripeWarnings: [] };
 
   const { data: variants } = await admin
     .from("bolster_bom_lines")
@@ -175,11 +181,12 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
 
   const { data: existingProduct } = await admin
     .from("products")
-    .select("id")
+    .select("id, slug, content")
     .eq("slug", slug)
     .single();
 
   let productId: string;
+  const name = existingProduct ? productName(existingProduct) : "Mbolster";
 
   if (existingProduct) {
     productId = existingProduct.id;
@@ -219,7 +226,7 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
       .select("id")
       .single();
 
-    if (insertErr || !newProduct) return { created, updated };
+    if (insertErr || !newProduct) return { created, updated, stripeWarnings: [] };
     productId = newProduct.id;
     created++;
   }
@@ -264,20 +271,21 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
       });
     }
   }
-  await syncVariantPricesFromCostings(productId).catch(() => {});
+  const stripeWarnings = await repriceFromCostings({ id: productId, name }, SYNC_FROM_INVENTORY);
 
-  return { created, updated };
+  return { created, updated, stripeWarnings };
 }
 
-export async function archiveUnsellableItemProducts(): Promise<{ archived: number }> {
+export async function archiveUnsellableItemProducts(): Promise<{ archived: number; stripeWarnings: StripeWarning[] }> {
   const admin = supabaseAdmin();
+  const stripeWarnings: StripeWarning[] = [];
 
   const { data: variants } = await admin
     .from("product_variants")
     .select("id, product_id, item_id")
     .not("item_id", "is", null);
 
-  if (!variants?.length) return { archived: 0 };
+  if (!variants?.length) return { archived: 0, stripeWarnings };
 
   const itemIds = [...new Set(variants.map((v: { item_id: number }) => v.item_id))];
   const [{ data: items }, { data: prices }] = await Promise.all([
@@ -303,7 +311,7 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
   for (const [productId, sellable] of sellableByProduct) {
     const { data: product } = await admin
       .from("products")
-      .select("id, status")
+      .select("id, slug, content, status")
       .eq("id", productId)
       .eq("is_auto_generated", true)
       .single();
@@ -314,11 +322,20 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
       if (!error) archived++;
     } else if (sellable && product.status === "archived") {
       await admin.from("products").update({ status: "draft" }).eq("id", productId);
-      await syncVariantPricesFromCostings(productId).catch(() => {});
+      stripeWarnings.push(
+        ...(await repriceFromCostings({ id: productId, name: productName(product) }, SYNC_FROM_INVENTORY)),
+      );
     }
   }
 
-  return { archived };
+  return { archived, stripeWarnings };
+}
+
+function adoptionProblem(step: string, reason: string): PriceProblem {
+  return {
+    message: `Couldn't ${step}, so its price was not updated from Costings: ${reason}`,
+    next: { kind: "run-again", action: SYNC_FROM_INVENTORY },
+  };
 }
 
 export async function adoptManualProducts(): Promise<{
@@ -402,16 +419,22 @@ export async function adoptManualProducts(): Promise<{
       continue;
     }
 
-    await admin
+    const name = productName(product);
+    const { error: linkErr } = await admin
       .from("product_variants")
       .update({ item_id: matchedItemId, price_key: `item:${matchedItemId}` })
       .eq("id", matchedVariantId);
+    if (linkErr) {
+      stripeWarnings.push(...warningsFor(name, [adoptionProblem("link its variant to Inventory", linkErr.message)]));
+      continue;
+    }
 
-    await admin.from("products").update({ is_auto_generated: true }).eq("id", product.id);
-    const priced = await syncVariantPricesFromCostings(product.id).catch((err: unknown) => ({
-      problems: [err instanceof Error ? err.message : "Couldn't reprice it from Costings"],
-    }));
-    stripeWarnings.push(...warningsFor(productName(product), priced.problems));
+    const { error: flagErr } = await admin.from("products").update({ is_auto_generated: true }).eq("id", product.id);
+    if (flagErr) {
+      stripeWarnings.push(...warningsFor(name, [adoptionProblem("switch it to Costings prices", flagErr.message)]));
+      continue;
+    }
+    stripeWarnings.push(...(await repriceFromCostings({ id: product.id, name }, SYNC_FROM_INVENTORY)));
     adopted++;
   }
 
@@ -421,7 +444,17 @@ export async function adoptManualProducts(): Promise<{
 export async function syncAllProducts(): Promise<SyncResult> {
   const pillows = await syncPillowProducts();
   const bolsters = await syncBolsterProducts();
-  const { archived } = await archiveUnsellableItemProducts();
-  const { adopted, legacy, stripeWarnings } = await adoptManualProducts();
-  return { pillows, bolsters, items: { archived, adopted, legacy }, stripeWarnings };
+  const restored = await archiveUnsellableItemProducts();
+  const adoption = await adoptManualProducts();
+  return {
+    pillows: { created: pillows.created, updated: pillows.updated },
+    bolsters: { created: bolsters.created, updated: bolsters.updated },
+    items: { archived: restored.archived, adopted: adoption.adopted, legacy: adoption.legacy },
+    stripeWarnings: [
+      ...pillows.stripeWarnings,
+      ...bolsters.stripeWarnings,
+      ...restored.stripeWarnings,
+      ...adoption.stripeWarnings,
+    ],
+  };
 }

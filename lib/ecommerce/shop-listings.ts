@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
+import { repriceFromCostings } from "@/lib/shop/price-sync";
+import type { StripeWarning } from "@/lib/shop/stripe-warnings";
 import {
   CUSTOM_COMPOSED_PRODUCT_TYPES,
   isListedShopProduct,
@@ -138,6 +139,7 @@ export type PushResult =
       created: boolean;
       added: number;
       productStatus: ProductStatus;
+      stripeWarnings: StripeWarning[];
     }
   | { ok: false; error: string; status: number; reason?: PriceCheckFailure["reason"] };
 
@@ -204,6 +206,7 @@ export async function pushFamilyToProducts(
       created: true,
       added: result.variantIds.length,
       productStatus: "draft",
+      stripeWarnings: result.stripeWarnings,
     };
   }
 
@@ -217,6 +220,7 @@ export async function pushFamilyToProducts(
     created: false,
     added: result.variantIds.length,
     productStatus: family.productStatus ?? "draft",
+    stripeWarnings: result.stripeWarnings,
   };
 }
 
@@ -290,7 +294,7 @@ export async function listShopProducts(): Promise<ShopProductListing[]> {
 }
 
 export type SetListedResult =
-  | { ok: true; listed: boolean; title: string }
+  | { ok: true; listed: boolean; title: string; stripeWarnings: StripeWarning[] }
   | { ok: false; error: string; status: number };
 
 export async function setProductListed(productId: string, listed: boolean): Promise<SetListedResult> {
@@ -314,11 +318,12 @@ export async function setProductListed(productId: string, listed: boolean): Prom
       const { error } = await admin.from("products").update({ status: "draft" }).eq("id", productId);
       if (error) return { ok: false, error: error.message, status: 500 };
     }
-    return { ok: true, listed: false, title };
+    return { ok: true, listed: false, title, stripeWarnings: [] };
   }
 
+  let stripeWarnings: StripeWarning[] = [];
   if (product.is_auto_generated) {
-    await syncVariantPricesFromCostings(productId).catch(() => {});
+    stripeWarnings = await repriceFromCostings({ id: productId, name: title }, "the In the shop switch");
     product = (await load()) ?? product;
   }
 
@@ -336,5 +341,5 @@ export async function setProductListed(productId: string, listed: boolean): Prom
   const { error } = await admin.from("products").update(update).eq("id", productId);
   if (error) return { ok: false, error: error.message, status: 500 };
 
-  return { ok: true, listed: true, title };
+  return { ok: true, listed: true, title, stripeWarnings };
 }

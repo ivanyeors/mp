@@ -5,6 +5,7 @@
  *   npx tsx --env-file=.env.local scripts/seed-shop-accessories.ts
  */
 import { publishAllUnpublishedAccessories } from "../lib/ecommerce/from-inventory";
+import { stripeWarningText } from "../lib/shop/stripe-warnings";
 
 async function main() {
   const result = await publishAllUnpublishedAccessories();
@@ -12,7 +13,9 @@ async function main() {
   console.log(`published: ${result.published.length}`);
   for (const row of result.published) {
     console.log(`  ${row.slug} (${row.name}) — ${row.variantCount} variant(s) id=${row.productId}`);
+    for (const w of row.stripeWarnings) console.error(`    ${stripeWarningText(w)}`);
   }
+  if (result.published.some((row) => row.stripeWarnings.length > 0)) process.exitCode = 1;
   if (result.skipped.length) {
     console.log(`skipped: ${result.skipped.length}`);
     for (const row of result.skipped) {

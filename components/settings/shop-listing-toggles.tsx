@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Loader2, Package, PackagePlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { savedToasts } from "@/lib/shop/stripe-warnings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -77,7 +78,8 @@ export function ShopListingToggles({ onAddFromInventory }: { onAddFromInventory?
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? "Couldn't update.");
-      toast.success(listed ? `${row.title} is now in the shop` : `${row.title} removed from the shop`);
+      const done = listed ? `${row.title} is now in the shop` : `${row.title} removed from the shop`;
+      for (const t of savedToasts(done, { stripeWarnings: json.stripe_warnings })) toast[t.type](t.title, t.options);
       if (listed) void load();
     } catch (err) {
       setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, listed: !listed } : r)));

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
+import { repriceFromCostings } from "@/lib/shop/price-sync";
+import type { StripeWarning } from "@/lib/shop/stripe-warnings";
 import { syncItemImageToProducts } from "@/lib/ecommerce/item-image-sync";
 import { sizeSortKey } from "@/lib/ecommerce/inventory-families";
 
@@ -29,7 +30,7 @@ export type AccessoryFamilyItem = {
 };
 
 export type PublishFamilyResult =
-  | { ok: true; productId: string; slug: string; variantIds: string[] }
+  | { ok: true; productId: string; slug: string; variantIds: string[]; stripeWarnings: StripeWarning[] }
   | { ok: false; error: string; status: number };
 
 function variantRowsFor(
@@ -169,7 +170,7 @@ export async function publishAccessoryFamily(
     return { ok: false, error: variantErr?.message ?? "Failed to create variants", status: 500 };
   }
 
-  await syncVariantPricesFromCostings(product.id).catch(() => {});
+  const stripeWarnings = await repriceFromCostings({ id: product.id, name: baseName }, "Add from Inventory");
   await syncFamilyImages(sorted.map((i) => i.id));
 
   return {
@@ -177,6 +178,7 @@ export async function publishAccessoryFamily(
     productId: product.id,
     slug,
     variantIds: variants.map((v: { id: string }) => v.id),
+    stripeWarnings,
   };
 }
 
@@ -242,7 +244,7 @@ export async function addSizesToProduct(
     await admin.from("product_options").update({ values }).eq("id", sizeOption.id);
   }
 
-  await syncVariantPricesFromCostings(productId).catch(() => {});
+  const stripeWarnings = await repriceFromCostings({ id: productId, name: title }, "Add from Inventory");
   await syncFamilyImages(ids);
 
   return {
@@ -250,11 +252,18 @@ export async function addSizesToProduct(
     productId,
     slug: product.slug as string,
     variantIds: inserted.map((v: { id: string }) => v.id),
+    stripeWarnings,
   };
 }
 
 export type PublishAllAccessoriesResult = {
-  published: Array<{ name: string; slug: string; productId: string; variantCount: number }>;
+  published: Array<{
+    name: string;
+    slug: string;
+    productId: string;
+    variantCount: number;
+    stripeWarnings: StripeWarning[];
+  }>;
   skipped: Array<{ name: string; error: string }>;
 };
 
@@ -302,6 +311,7 @@ export async function publishAllUnpublishedAccessories(): Promise<PublishAllAcce
         slug: result.slug,
         productId: result.productId,
         variantCount: result.variantIds.length,
+        stripeWarnings: result.stripeWarnings,
       });
     } else {
       skipped.push({ name, error: result.error });

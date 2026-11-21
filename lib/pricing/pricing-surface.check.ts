@@ -26,6 +26,8 @@ const PRICE_TABLE_READERS: Record<string, string> = {
   "lib/results/composed-sellable.ts": "THE loader — every money path goes through it",
   "lib/shop/price-sync.ts": "projects Costings into product_variants for the storefront",
   "lib/results/__tests__/composed-sellable.test.ts": "tests the loader",
+  "app/[lang]/settings/costings/save/__tests__/stripe-warnings.test.ts":
+    "fails the read to prove a failed Costings read writes no Variant price",
   "app/[lang]/settings/inventory/actions.ts": "inventory templates and sale lines; reporting",
   "lib/shopify/pricing.ts":
     "pushes prices to the Shopify mirror. It still derives the premium family by " +

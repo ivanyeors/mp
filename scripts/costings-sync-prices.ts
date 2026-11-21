@@ -129,7 +129,8 @@ async function main() {
       `  ${p.slug}: ${result.synced} variant(s) priced` +
         (result.unresolvable.length ? `, unresolvable=${result.unresolvable.length}` : ""),
     );
-    for (const problem of result.problems) console.error(`    ${p.slug}: ${problem}`);
+    for (const problem of result.problems) console.error(`    ${p.slug}: ${problem.message}`);
+    if (result.problems.length > 0) process.exitCode = 1;
   }
 }
 

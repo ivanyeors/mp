@@ -45,5 +45,9 @@ export async function PATCH(req: Request) {
     entityId: parsed.data.product_id,
   });
 
-  return NextResponse.json(result);
+  const { stripeWarnings, ...rest } = result;
+  return NextResponse.json({
+    ...rest,
+    stripe_warnings: stripeWarnings.length > 0 ? stripeWarnings : undefined,
+  });
 }
