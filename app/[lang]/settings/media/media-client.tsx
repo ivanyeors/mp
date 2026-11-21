@@ -292,6 +292,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         loadUsages();
     }, [loadFiles, loadFolders, loadOverrides, loadUsages]);
 
+    const rereadUsagesAfterReferencesMoved = () => {
+        setUsageByAssetId({});
+        return loadUsages();
+    };
+
     const getFileUsages = useCallback(
         (file: MediaFile): UsageEntry[] => {
             if (file.url && usageMap[file.url]?.length) return usageMap[file.url];
@@ -636,7 +641,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             if (data.ok) {
                 setOverrides((prev) => ({ ...prev, [slot.key]: url }));
                 toast.success(`Updated "${slot.label}" image`);
-                loadUsages();
+                rereadUsagesAfterReferencesMoved();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't update."));
             }
@@ -662,7 +667,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                     return copy;
                 });
                 toast.success(`Reset "${slot.label}" to default`);
-                loadUsages();
+                rereadUsagesAfterReferencesMoved();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't reset."));
             }
@@ -716,7 +721,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 toast.success(parts.length > 0 ? `Replaced in ${parts.join(", ")}` : "No references found to replace");
                 setReplaceFile(null);
                 setDetailFile(null);
-                loadUsages();
+                rereadUsagesAfterReferencesMoved();
                 loadOverrides();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't replace."));

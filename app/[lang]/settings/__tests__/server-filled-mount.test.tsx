@@ -42,6 +42,8 @@ afterEach(() => {
 });
 
 const urls = () => fetchMock.mock.calls.map((c) => String(c[0]));
+const button = (label: string) => [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === label)!;
+const click = (el: Element) => act(async () => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
 
 describe("Blogs list", () => {
   it("fetches nothing on mount in Strict Mode when the server sent the rows", async () => {
@@ -54,17 +56,34 @@ describe("Blogs list", () => {
     expect(host.textContent).toContain("First post");
   });
 
-  it("fetches on mount when the server read failed", async () => {
+  it("says so, and fetches nothing by itself, when the server read failed", async () => {
     await mount(<BlogsPage />);
+    expect(urls()).toEqual([]);
+    expect(host.textContent).toContain("Couldn't load blog posts.");
+    expect(host.textContent).not.toContain("No blog posts yet.");
+  });
+
+  it("loads the posts when Try again is clicked", async () => {
+    await mount(<BlogsPage />);
+    await click(button("Try again"));
     expect(urls()).toEqual(["/api/blogs"]);
     expect(host.textContent).toContain("First post");
   });
 
-  it("stops the spinner when that fetch fails", async () => {
+  it("stops the spinner and keeps Try again when that fetch fails", async () => {
     fetchMock.mockRejectedValueOnce(new Error("offline"));
     await mount(<BlogsPage />);
-    await act(async () => {});
+    await click(button("Try again"));
     expect(host.querySelector(".animate-spin")).toBeNull();
+    expect(button("Try again")).toBeTruthy();
+  });
+
+  it("keeps Try again, not an empty list, when the server answers with an error", async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: "Could not read posts" }) });
+    await mount(<BlogsPage />);
+    await click(button("Try again"));
+    expect(host.textContent).toContain("Couldn't load blog posts.");
+    expect(host.textContent).not.toContain("No blog posts yet.");
   });
 });
 

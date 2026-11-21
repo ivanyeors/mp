@@ -13,7 +13,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { WORKING_AS_CHANGED_EVENT } from "@/components/settings/working-as-picker";
@@ -41,6 +40,7 @@ export function FollowUpsTab({
     const [data, setData] = useState<FollowUpListData | null>(initialData ?? null);
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
+    const hydrated = useRef(Boolean(initialData));
     const latest = useRef(0);
 
     const load = useCallback(async (which: FollowUpScope) => {
@@ -59,18 +59,16 @@ export function FollowUpsTab({
         }
     }, []);
 
-    useOncePerKey(initialData ? null : initialScope, () => void load(initialScope));
-
     useEffect(() => {
+        if (hydrated.current) hydrated.current = false;
+        else void load(scope);
         const reload = () => void load(scope);
         window.addEventListener(WORKING_AS_CHANGED_EVENT, reload);
         return () => window.removeEventListener(WORKING_AS_CHANGED_EVENT, reload);
     }, [load, scope]);
 
     const choose = (next: FollowUpScope) => {
-        if (next === scope) return;
         setScope(next);
-        void load(next);
         const url = new URL(window.location.href);
         if (next === "mine") url.searchParams.delete("scope");
         else url.searchParams.set("scope", next);

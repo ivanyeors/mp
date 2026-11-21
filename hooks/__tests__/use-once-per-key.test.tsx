@@ -61,4 +61,12 @@ describe("useOncePerKey", () => {
     act(() => root.render(<Probe k="b" label="second" ran={ran} />));
     expect(ran).toEqual(["first:a", "second:b"]);
   });
+
+  it("does not run again for an earlier key that comes back after another", () => {
+    const ran: string[] = [];
+    act(() => root.render(<Probe k="a" label="first" ran={ran} />));
+    act(() => root.render(<Probe k="b" label="second" ran={ran} />));
+    act(() => root.render(<Probe k="a" label="third" ran={ran} />));
+    expect(ran).toEqual(["first:a", "second:b"]);
+  });
 });

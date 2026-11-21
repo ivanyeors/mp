@@ -14,7 +14,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/settings/empty-state";
-import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -40,21 +39,23 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
     const to = (href: string) => withLocale(href, locale);
 
     const [posts, setPosts] = useState<BlogRow[]>(initialData?.rows ?? []);
-    const [loading, setLoading] = useState(!initialData);
+    const [loading, setLoading] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(!initialData);
     const fetchPosts = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch("/api/blogs");
+            if (!res.ok) throw new Error("Couldn't load blog posts.");
             const json = await res.json();
             setPosts(json.rows ?? []);
+            setLoadFailed(false);
         } catch {
+            setLoadFailed(true);
             toast.error("Couldn't load blog posts.");
         } finally {
             setLoading(false);
         }
     }, []);
-
-    useOncePerKey(initialData ? null : "no-server-rows", fetchPosts);
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === "published" ? "unpublished" : "published";
@@ -114,6 +115,16 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
+            ) : loadFailed && posts.length === 0 ? (
+                <EmptyState
+                    action={
+                        <Button size="sm" variant="outline" onClick={() => void fetchPosts()}>
+                            Try again
+                        </Button>
+                    }
+                >
+                    Couldn&apos;t load blog posts.
+                </EmptyState>
             ) : posts.length === 0 ? (
                 <EmptyState>No blog posts yet.</EmptyState>
             ) : (

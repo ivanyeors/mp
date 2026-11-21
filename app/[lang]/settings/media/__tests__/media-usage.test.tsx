@@ -22,6 +22,18 @@ const asset = (id: string, name: string) => ({
 });
 const assets = [asset("a1", "Hero shot"), asset("a2", "Side shot")];
 const usage = { type: "blog_featured", label: "Sleep guide", ref_id: "post-1" };
+const replaced = {
+  blogFeatured: 1,
+  blogInline: 0,
+  landingSlots: [],
+  landingSections: 0,
+  slideInSections: 0,
+  productImages: 0,
+  productVariants: 0,
+  categories: 0,
+  partners: 0,
+  partnersPages: 0,
+};
 
 function json(body: unknown) {
   return Promise.resolve(new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }));
@@ -36,6 +48,7 @@ function mockFetch() {
     if (url.match(/^\/api\/media-assets\/[^/]+\/usage$/)) return json({ ok: true, usages: [] });
     if (url === "/api/media-assets") return json({ ok: true, assets });
     if (url === "/api/media" && init?.method === "POST") return json({ ok: true });
+    if (url === "/api/media/replace") return json({ ok: true, summary: replaced });
     return json({ ok: true });
   });
 }
@@ -78,5 +91,33 @@ describe("Media gallery usage badge", () => {
 
     expect(badge("Hero shot")).toBe("1 use");
     expect(badge("Side shot")).toBe("Unused");
+  });
+
+  it("drops that usage once the file is replaced everywhere", async () => {
+    const fetchMock = mockFetch();
+    const host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    act(() =>
+      root!.render(
+        <MediaPage initialData={{ assets: { ok: true, assets }, folders: { ok: true, folders: [] } }} />,
+      ),
+    );
+    await until(() => (badge("Hero shot") === "Unused" ? true : null));
+    act(() => card("Hero shot")!.click());
+    await until(() => (badge("Hero shot") === "1 use" ? true : null));
+
+    act(() => card("Hero shot")!.querySelector<HTMLButtonElement>('button[title="Replace everywhere"]')!.click());
+    const replacement = await until(
+      () =>
+        document.body
+          .querySelector<HTMLImageElement>('button[type="button"] > img[alt="Side shot"]')
+          ?.closest<HTMLButtonElement>("button") ?? null,
+    );
+    act(() => replacement.click());
+    await until(() => (fetchMock.mock.calls.some(([u]) => String(u) === "/api/media/replace") ? true : null));
+    await settle(50);
+
+    expect(badge("Hero shot")).toBe("Unused");
   });
 });

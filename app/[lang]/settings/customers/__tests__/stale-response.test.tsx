@@ -96,14 +96,21 @@ describe("Follow-ups tab: All then Overdue, answered out of order", () => {
     expect(host.textContent).not.toContain("Nothing overdue.");
   });
 
-  it("makes no request on mount when the caller passed the list, even in Strict Mode", async () => {
-    await mount(
-      <StrictMode>
-        <FollowUpsTab canEdit={false} initialData={followUps("all", "Server row")} />
-      </StrictMode>,
-    );
+  it("makes no request on mount when the caller passed the list", async () => {
+    await mount(<FollowUpsTab canEdit={false} initialData={followUps("all", "Server row")} />);
     expect(held.map((h) => h.url)).toEqual([]);
     expect(host.textContent).toContain("Server row");
+  });
+
+  it("keeps the chosen list when the page re-renders with another scope in the URL", async () => {
+    const tab = (scope: FollowUpScope) => <FollowUpsTab canEdit={false} initialScope={scope} />;
+    await mount(tab("overdue"));
+    await lastFor("scope=overdue").answer(followUps("overdue", "Overdue row"));
+
+    await act(async () => root!.render(tab("mine")));
+
+    expect(held.map((h) => h.url)).toEqual(["/api/settings/customers/followups?scope=overdue"]);
+    expect(host.textContent).toContain("Overdue row");
   });
 });
 

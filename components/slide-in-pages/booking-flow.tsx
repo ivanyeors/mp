@@ -93,11 +93,11 @@ export type ReadjustmentBooking = {
 export function BookingFlow({
   type,
   readjustment,
-  locations = [],
+  locations,
 }: {
   type: ApptType;
   readjustment?: ReadjustmentBooking;
-  locations?: Location[];
+  locations: Location[];
 }) {
   const { m, locale } = useI18n();
   const router = useRouter();
