@@ -61,10 +61,14 @@ above. Stripe takes the money, and no Order is made, no stock is deducted and no
 receipt is sent. ADR 0048 rejected Stripe Payment Links for Staff orders for the same
 kind of reason (the link lives where our stock check cannot reach it).
 
+Separately, two *Generate link* clicks at once each make a link and the last write
+wins; the other stays active in Stripe with no row pointing at it, so no later sync
+checks it (`createPaymentLink` saves without checking what the row holds now).
+
 **If you fix it:** either retire product payment links (the product editor, the two
 `stripe_payment_link*` column pairs and `createPaymentLink`), or have the webhook build
-an Order from such a session the way checkout does. Until then, do not share a
-product's link.
+an Order from such a session the way checkout does, and save a new link only over the
+one it replaced. Until then, do not share a product's link.
 
 ## A refunded return frees its lines to be returned and refunded again
 
