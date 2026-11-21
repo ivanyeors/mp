@@ -26,6 +26,8 @@ export async function POST(req: Request) {
       stripeProductId: result.stripeProductId,
       variant_count: result.variants.length,
       variants: result.variants,
+      notices: result.notices,
+      paymentLinkCleared: result.paymentLinkCleared,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to sync product to Stripe";

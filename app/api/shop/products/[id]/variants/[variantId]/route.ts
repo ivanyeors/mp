@@ -67,7 +67,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({
     ok: true,
     row,
-    stripe: stripe && { synced: stripe.synced, error: stripe.error },
+    stripe: stripe && {
+      synced: stripe.synced,
+      error: stripe.error,
+      notices: stripe.result?.notices ?? [],
+      paymentLinkCleared: stripe.result?.paymentLinkCleared ?? false,
+    },
   });
 }
 

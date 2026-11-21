@@ -107,6 +107,7 @@ async function main() {
       console.log(
         `  OK  ${p.slug} -> ${result.stripeProductId} (${result.variants.length} price[s])`,
       );
+      for (const notice of result.notices) console.log(`      ${notice}`);
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       failures.push({ slug: p.slug, id: p.id, reason });
