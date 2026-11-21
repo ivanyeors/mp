@@ -150,9 +150,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         initialData ? toMediaFiles(initialData.assets.assets) : [],
     );
     const [loading, setLoading] = useState(!initialData);
-
-    const skipFilesFetch = useRef(Boolean(initialData));
-    const skipFoldersFetch = useRef(Boolean(initialData));
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -278,19 +275,13 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     }, []);
 
     useEffect(() => {
-        if (skipFilesFetch.current) {
-            skipFilesFetch.current = false;
-        } else {
+        if (!initialData) {
             loadFiles();
-        }
-        if (skipFoldersFetch.current) {
-            skipFoldersFetch.current = false;
-        } else {
             loadFolders();
         }
         loadOverrides();
         loadUsages();
-    }, [loadFiles, loadFolders, loadOverrides, loadUsages]);
+    }, [initialData, loadFiles, loadFolders, loadOverrides, loadUsages]);
 
     const rereadUsagesAfterReferencesMoved = () => {
         setUsageByAssetId({});

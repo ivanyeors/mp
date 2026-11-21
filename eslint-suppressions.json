@@ -330,19 +330,11 @@
     }
   },
   "app/[lang]/settings/faq/faq-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
     "react-hooks/purity": {
       "count": 1
     }
   },
   "app/[lang]/settings/general/general-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
-  "app/[lang]/settings/integrations/shopify/shopify-client.tsx": {
     "mp/no-effect": {
       "count": 2
     }
@@ -852,11 +844,6 @@
       "count": 1
     }
   },
-  "components/settings/ai-writing-section.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
   "components/settings/appointments-calendar.tsx": {
     "mp/no-effect": {
       "count": 3
@@ -867,10 +854,7 @@
   },
   "components/settings/appointments-settings-sheet.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/settings/inventory-push-sheet.tsx": {
@@ -919,10 +903,10 @@
   },
   "components/settings/page-faqs-panel.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "components/settings/readjustment-panel.tsx": {
@@ -958,13 +942,10 @@
   },
   "components/settings/settings-sidebar-nav.tsx": {
     "mp/no-effect": {
-      "count": 8
+      "count": 6
     },
     "react-hooks/exhaustive-deps": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/settings/shop-listing-toggles.tsx": {

@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { supabaseClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import ShopifyAdminPanel from "../../inventory/ShopifyAdminPanel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -21,32 +20,10 @@ export type ShopifyInitialData = Item[];
 export default function ShopifyAdminPage({
   initialData,
 }: {
-  initialData?: ShopifyInitialData;
+  initialData: ShopifyInitialData;
 }) {
-  const [items, setItems] = useState<Item[]>(initialData ?? []);
-  const [loading, setLoading] = useState(!initialData);
   const [syncingShopify, setSyncingShopify] = useState(false);
-  const skipFirstFetch = useRef(initialData != null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabaseClient
-      .from("items")
-      .select("id,category,subtype,name,size,alteration_of_item_id")
-      .eq("is_active", true);
-    setItems((data ?? []) as Item[]);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
-    load();
-  }, [load]);
-
-  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
@@ -73,7 +50,7 @@ export default function ShopifyAdminPage({
           {syncingShopify ? "Syncing Shopify…" : "Sync Shopify"}
         </Button>
       </div>
-      <ShopifyAdminPanel items={items} />
+      <ShopifyAdminPanel items={initialData} />
     </div>
   );
 }
