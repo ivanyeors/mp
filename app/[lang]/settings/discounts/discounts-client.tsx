@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, Tag, Loader2 } from "lucide-react";
@@ -105,30 +105,20 @@ export function DiscountsClient({
     const [total, setTotal] = useState(initialData?.coupons.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
 
-    const hydratedFromServer = useRef(Boolean(initialData));
-
-    const fetchCoupons = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await fetch("/api/shop/coupons?limit=100");
-            const json = await res.json();
-            setCoupons(json.rows ?? []);
-            setTotal(json.total ?? 0);
-        } catch {
-            setCoupons([]);
-            setTotal(0);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
-        if (hydratedFromServer.current) {
-            hydratedFromServer.current = false;
-            return;
-        }
-        fetchCoupons();
-    }, [fetchCoupons]);
+        if (initialData) return;
+        fetch("/api/shop/coupons?limit=100")
+            .then((res) => res.json())
+            .then((json) => {
+                setCoupons(json.rows ?? []);
+                setTotal(json.total ?? 0);
+            })
+            .catch(() => {
+                setCoupons([]);
+                setTotal(0);
+            })
+            .finally(() => setLoading(false));
+    }, [initialData]);
 
     return (
         <div className="flex flex-col gap-6">
