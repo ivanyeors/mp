@@ -1251,12 +1251,6 @@ export function XrayPillow({
   }, [draftSnap]);
   useEffect(() => () => clearXrayDraft(placementsRef.current, "top"), []);
   useEffect(() => {
-    if (!dragRef.current) {
-      draftSignature.current = "";
-      setOwnDraft(null);
-    }
-  }, [placements]);
-  useEffect(() => {
     if (!drag?.active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
