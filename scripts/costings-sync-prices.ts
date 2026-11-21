@@ -70,6 +70,12 @@ async function main() {
   // The SAME maps the sync writes from — imported, not re-derived. A hand copy had
   // already drifted on compare-at and on which products it enumerated.
   const maps = await loadCostingsPriceMaps(admin as never);
+  if (maps.failedReads.length > 0) {
+    console.error(
+      `Couldn't read Costings: ${maps.failedReads.join(", ")}. No diff shown and nothing written; run it again.`,
+    );
+    process.exit(1);
+  }
 
   const slugById = new Map((products ?? []).map((p) => [p.id as string, p.slug as string]));
   let changed = 0;

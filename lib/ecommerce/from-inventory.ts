@@ -170,7 +170,7 @@ export async function publishAccessoryFamily(
     return { ok: false, error: variantErr?.message ?? "Failed to create variants", status: 500 };
   }
 
-  const stripeWarnings = await repriceFromCostings({ id: product.id, name: baseName }, "Add from Inventory");
+  const stripeWarnings = await repriceFromCostings({ id: product.id, name: baseName });
   await syncFamilyImages(sorted.map((i) => i.id));
 
   return {
@@ -244,7 +244,7 @@ export async function addSizesToProduct(
     await admin.from("product_options").update({ values }).eq("id", sizeOption.id);
   }
 
-  const stripeWarnings = await repriceFromCostings({ id: productId, name: title }, "Add from Inventory");
+  const stripeWarnings = await repriceFromCostings({ id: productId, name: title });
   await syncFamilyImages(ids);
 
   return {

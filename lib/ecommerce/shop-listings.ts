@@ -323,7 +323,7 @@ export async function setProductListed(productId: string, listed: boolean): Prom
 
   let stripeWarnings: StripeWarning[] = [];
   if (product.is_auto_generated) {
-    stripeWarnings = await repriceFromCostings({ id: productId, name: title }, "the In the shop switch");
+    stripeWarnings = await repriceFromCostings({ id: productId, name: title });
     product = (await load()) ?? product;
   }
 

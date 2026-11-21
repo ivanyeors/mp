@@ -109,7 +109,7 @@ describe("In the shop switch", () => {
     h.reprice.mockResolvedValue([warning]);
     const res = await listed();
     expect(res.status).toBe(200);
-    expect(h.reprice).toHaveBeenCalledWith({ id: "p1", name: "Ear Pad" }, "the In the shop switch");
+    expect(h.reprice).toHaveBeenCalledWith({ id: "p1", name: "Ear Pad" });
     expect(await res.json()).toEqual({ ok: true, listed: true, title: "Ear Pad", stripe_warnings: [warning] });
   });
 

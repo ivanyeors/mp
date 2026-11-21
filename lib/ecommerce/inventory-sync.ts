@@ -145,7 +145,7 @@ export async function syncPillowProducts(): Promise<ProjectionResult> {
         });
       }
     }
-    stripeWarnings.push(...(await repriceFromCostings({ id: productId, name }, SYNC_FROM_INVENTORY)));
+    stripeWarnings.push(...(await repriceFromCostings({ id: productId, name })));
   }
 
   return { created, updated, stripeWarnings };
@@ -271,7 +271,7 @@ export async function syncBolsterProducts(): Promise<ProjectionResult> {
       });
     }
   }
-  const stripeWarnings = await repriceFromCostings({ id: productId, name }, SYNC_FROM_INVENTORY);
+  const stripeWarnings = await repriceFromCostings({ id: productId, name });
 
   return { created, updated, stripeWarnings };
 }
@@ -288,10 +288,22 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
   if (!variants?.length) return { archived: 0, stripeWarnings };
 
   const itemIds = [...new Set(variants.map((v: { item_id: number }) => v.item_id))];
-  const [{ data: items }, { data: prices }] = await Promise.all([
+  const [{ data: items, error: itemsErr }, { data: prices, error: pricesErr }] = await Promise.all([
     admin.from("items").select("id, is_active").in("id", itemIds),
     admin.from("item_prices").select("item_id, msrp").in("item_id", itemIds),
   ]);
+  const failedReads = [
+    ...(itemsErr ? [`items (${itemsErr.message})`] : []),
+    ...(pricesErr ? [`item_prices (${pricesErr.message})`] : []),
+  ];
+  if (failedReads.length > 0) {
+    stripeWarnings.push(
+      ...warningsFor(undefined, [
+        runSyncAgain(`Couldn't read ${failedReads.join(", ")}, so no shop product was archived or restored`),
+      ]),
+    );
+    return { archived: 0, stripeWarnings };
+  }
 
   const activeById = new Map((items ?? []).map((i: { id: number; is_active: boolean }) => [i.id, i.is_active]));
   const msrpById = new Map(
@@ -319,11 +331,19 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
 
     if (!sellable && product.status !== "archived") {
       const { error } = await admin.from("products").update({ status: "archived" }).eq("id", productId);
-      if (!error) archived++;
+      if (error) {
+        stripeWarnings.push(
+          ...warningsFor(productName(product), [
+            runSyncAgain(`Couldn't take it out of the shop, though nothing in Inventory sells it: ${error.message}`),
+          ]),
+        );
+      } else {
+        archived++;
+      }
     } else if (sellable && product.status === "archived") {
       await admin.from("products").update({ status: "draft" }).eq("id", productId);
       stripeWarnings.push(
-        ...(await repriceFromCostings({ id: productId, name: productName(product) }, SYNC_FROM_INVENTORY)),
+        ...(await repriceFromCostings({ id: productId, name: productName(product) })),
       );
     }
   }
@@ -331,11 +351,12 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
   return { archived, stripeWarnings };
 }
 
+function runSyncAgain(message: string): PriceProblem {
+  return { message, next: { kind: "run-again", action: SYNC_FROM_INVENTORY } };
+}
+
 function adoptionProblem(step: string, reason: string): PriceProblem {
-  return {
-    message: `Couldn't ${step}, so its price was not updated from Costings: ${reason}`,
-    next: { kind: "run-again", action: SYNC_FROM_INVENTORY },
-  };
+  return runSyncAgain(`Couldn't ${step}, so its price was not updated from Costings: ${reason}`);
 }
 
 export async function adoptManualProducts(): Promise<{
@@ -434,7 +455,7 @@ export async function adoptManualProducts(): Promise<{
       stripeWarnings.push(...warningsFor(name, [adoptionProblem("switch it to Costings prices", flagErr.message)]));
       continue;
     }
-    stripeWarnings.push(...(await repriceFromCostings({ id: product.id, name }, SYNC_FROM_INVENTORY)));
+    stripeWarnings.push(...(await repriceFromCostings({ id: product.id, name })));
     adopted++;
   }
 
