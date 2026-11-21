@@ -362,10 +362,10 @@
   },
   "app/[lang]/settings/inventory/ShopifyAdminPanel.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "app/[lang]/settings/inventory/actions.ts": {

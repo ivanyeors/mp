@@ -113,15 +113,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   }, [reload]);
 
   useEffect(() => {
-    if (linkKind === "pillow") {
-      if (!linkPillowSize) setLinkPillowSize("M");
-    }
-    if (linkKind === "bolster") {
-      if (!linkBolsterVariant) setLinkBolsterVariant("medium");
-    }
-  }, [linkKind, linkPillowSize, linkBolsterVariant]);
-
-  useEffect(() => {
     const load = async () => {
       if (linkKind === "part") {
         setLinkTemplates([]);
