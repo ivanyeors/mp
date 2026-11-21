@@ -362,10 +362,10 @@
   },
   "app/[lang]/settings/inventory/ShopifyAdminPanel.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 1
     }
   },
   "app/[lang]/settings/inventory/actions.ts": {
@@ -375,7 +375,7 @@
   },
   "app/[lang]/settings/inventory/configure/[card]/page.tsx": {
     "mp/no-effect": {
-      "count": 10
+      "count": 8
     },
     "react-hooks/set-state-in-effect": {
       "count": 3
@@ -412,13 +412,13 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 11
+      "count": 6
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 1
     }
   },
   "app/[lang]/settings/media/media-client.tsx": {
