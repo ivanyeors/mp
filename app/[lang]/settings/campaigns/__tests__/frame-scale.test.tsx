@@ -47,7 +47,11 @@ afterEach(() => {
   root = null;
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
+
+const measuredAt = (width: number) =>
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width } as DOMRect);
 
 const frame = () => host.querySelector("iframe")!;
 const watching = (selector: string) => watchers.filter((w) => w.box === host.querySelector(selector) && !w.disconnected);
@@ -62,6 +66,12 @@ describe("ThumbnailFrame", () => {
     expect(frame().style.transform).toBe("scale(0.5)");
     card.report(160);
     expect(frame().style.transform).toBe("scale(0.25)");
+  });
+
+  it("scales the email to the card from the first frame, before the observer reports", () => {
+    measuredAt(320);
+    act(() => root!.render(<ThumbnailFrame id="welcome" html="<p>Hello</p>" />));
+    expect(frame().style.transform).toBe("scale(0.5)");
   });
 
   it("stops watching the card once it is gone", () => {
@@ -95,6 +105,13 @@ describe("EmailPreview", () => {
     act(() => root!.render(preview("desktop")));
     expect(frame().style.transform).toBe("scale(1)");
     expect(frame().style.width).toBe("640px");
+  });
+
+  it("scales the email to the box from the first frame, before the observer reports", () => {
+    measuredAt(320);
+    act(() => root!.render(preview("desktop")));
+    expect(frame().style.transform).toBe("scale(0.5)");
+    expect(frame().style.height).toBe("1360px");
   });
 
   it("shrinks the email to fit the box and centres a phone-width email in a wide box", () => {
