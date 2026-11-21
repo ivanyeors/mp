@@ -246,18 +246,24 @@ describe("MpConfigClient field errors", () => {
   });
 
   it("clears the step's errors when the visitor leaves the step and comes back", async () => {
-    await toShoulderStep();
-    typeField(measureInput()!, "0");
+    const emailError = () =>
+      [...host.querySelectorAll("p.text-destructive")].find((p) => p.textContent === "Enter a valid email address") ?? null;
+    await mount(<MpConfigClient info={INFO} askEmailFirst />);
+    await click(byLabel("Get Started")!);
+    await afterTransition();
     await click(byLabel("Continue")!);
-    expect(measureError()).not.toBeNull();
+    await afterTransition();
+    typeField(host.querySelector<HTMLInputElement>("#mp-name")!, "Mei");
+    typeField(host.querySelector<HTMLInputElement>("#mp-email")!, "mei");
+    await click(byLabel("Continue")!);
+    expect(emailError()).not.toBeNull();
 
     await click(byLabel("Back")!);
     await afterTransition();
-    expect(measureInput()).toBeNull();
+    expect(host.querySelector("#mp-email")).toBeNull();
     await click(byLabel("Continue")!);
     await afterTransition();
-    await until(() => measureInput());
-    expect(measureInput()!.value).toBe("0");
-    expect(measureError()).toBeNull();
+    expect(host.querySelector<HTMLInputElement>("#mp-email")!.value).toBe("mei");
+    expect(emailError()).toBeNull();
   });
 });
