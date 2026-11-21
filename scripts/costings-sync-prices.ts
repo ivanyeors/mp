@@ -55,13 +55,13 @@ async function main() {
 
   const admin = createClient(url, key, { auth: { persistSession: false } });
 
-  const { data: products } = await admin
+  const { data: products, error: productsErr } = await admin
     .from("products")
     .select("id, slug")
     .eq("status", "active")
     .order("slug");
 
-  const { data: variants } = await admin
+  const { data: variants, error: variantsErr } = await admin
     .from("product_variants")
     .select(
       "id, product_id, pillow_product_id, item_id, option1, price_key, price, compare_at_price",
@@ -70,10 +70,13 @@ async function main() {
   // The SAME maps the sync writes from — imported, not re-derived. A hand copy had
   // already drifted on compare-at and on which products it enumerated.
   const maps = await loadCostingsPriceMaps(admin as never);
-  if (maps.failedReads.length > 0) {
-    console.error(
-      `Couldn't read Costings: ${maps.failedReads.join(", ")}. No diff shown and nothing written; run it again.`,
-    );
+  const failedReads = [
+    ...(productsErr ? [`products (${productsErr.message})`] : []),
+    ...(variantsErr ? [`product_variants (${variantsErr.message})`] : []),
+    ...maps.failedReads,
+  ];
+  if (failedReads.length > 0) {
+    console.error(`Couldn't read ${failedReads.join(", ")}. No diff shown and nothing written; run it again.`);
     process.exit(1);
   }
 
@@ -136,7 +139,7 @@ async function main() {
         (result.unresolvable.length ? `, unresolvable=${result.unresolvable.length}` : ""),
     );
     for (const problem of result.problems) console.error(`    ${p.slug}: ${problem.message}`);
-    if (result.problems.length > 0) process.exitCode = 1;
+    if (result.problems.some((problem) => !problem.notice)) process.exitCode = 1;
   }
 }
 

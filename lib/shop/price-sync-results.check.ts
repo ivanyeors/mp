@@ -5,10 +5,12 @@ import { join, relative } from "node:path";
 const ROOT = process.cwd();
 const DIRS = ["app", "lib", "components", "hooks", "scripts"];
 const RAW_ALLOWED = new Set(["lib/shop/price-sync.ts", "scripts/costings-sync-prices.ts"]);
-const RAW = /\bsyncVariantPricesFromCostings\(/g;
-const REPRICE = /\brepriceFromCostings\(/g;
+const RAW = /\bsyncVariantPricesFromCostings\b/g;
+const REPRICE = /\brepriceFromCostings\b/g;
 const ASSIGNED = /(?:^|[^=!<>])=\s*await\s+$|\.\.\.\(\s*await\s+$/;
 const CHAINED = /^\s*\.\s*(catch|then|finally)\b/;
+const IMPORT_OPEN = /\bimport\s*\{[^{}]*$/;
+const IMPORT_NEXT = /^\s*[,}]/;
 
 function closeParen(src: string, open: number): number {
   let depth = 0;
@@ -27,20 +29,22 @@ export function violations(file: string, src: string): string[] {
   if (!RAW_ALLOWED.has(file)) {
     for (const m of src.matchAll(RAW)) {
       found.push(
-        `${file} line ${lineOf(src, m.index!)}: calls syncVariantPricesFromCostings; use repriceFromCostings and keep its result`,
+        `${file} line ${lineOf(src, m.index!)}: names syncVariantPricesFromCostings; use repriceFromCostings and keep its result`,
       );
     }
   }
   for (const m of src.matchAll(REPRICE)) {
     const at = m.index!;
+    const end = at + m[0].length;
+    const before = src.slice(Math.max(0, at - 400), at);
+    const rest = src.slice(end);
     if (declared(src, at)) continue;
-    const before = src.slice(Math.max(0, at - 200), at);
-    const after = src.slice(closeParen(src, at + m[0].length - 1) + 1);
-    if (!ASSIGNED.test(before) || CHAINED.test(after)) {
-      found.push(
-        `${file} line ${lineOf(src, at)}: repriceFromCostings must be assigned or spread (const x = await …, x = await …, ...(await …))`,
-      );
-    }
+    if (IMPORT_OPEN.test(before) && IMPORT_NEXT.test(rest)) continue;
+    const isCall = rest.startsWith("(");
+    if (isCall && ASSIGNED.test(before.slice(-200)) && !CHAINED.test(src.slice(closeParen(src, end) + 1))) continue;
+    found.push(
+      `${file} line ${lineOf(src, at)}: repriceFromCostings may only be imported by its own name or called as const x = await …, x = await … or ...(await …)`,
+    );
   }
   return found;
 }
@@ -75,6 +79,26 @@ for (const bad of [
 ]) {
   assert.equal(violations("lib/x.ts", bad).length, 1, `should fail: ${bad}`);
 }
+for (const bad of [
+  "await Promise.all(ids.map(syncVariantPricesFromCostings));",
+  "await Promise.all(rows.map(repriceFromCostings));",
+  'import { syncVariantPricesFromCostings as reprice } from "@/lib/shop/price-sync"; await reprice(id);',
+  'import { repriceFromCostings as r } from "@/lib/shop/price-sync";',
+  'import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";',
+  "const f = repriceFromCostings;",
+  'export { repriceFromCostings } from "@/lib/shop/price-sync";',
+]) {
+  assert.equal(violations("lib/ecommerce/x.ts", bad).length, 1, `should fail: ${bad}`);
+}
+assert.deepEqual(violations("lib/x.ts", 'import { repriceFromCostings } from "@/lib/shop/price-sync";'), []);
+assert.deepEqual(
+  violations("lib/x.ts", 'import {\n  productName,\n  repriceFromCostings,\n  type X,\n} from "@/lib/shop/price-sync";'),
+  [],
+);
+assert.deepEqual(
+  violations("scripts/costings-sync-prices.ts", 'import {\n  loadCostingsPriceMaps,\n  syncVariantPricesFromCostings,\n} from "@/lib/shop/price-sync";'),
+  [],
+);
 
 function walk(dir: string, out: string[]) {
   for (const name of readdirSync(dir)) {

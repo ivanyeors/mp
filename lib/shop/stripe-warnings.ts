@@ -5,7 +5,7 @@ export type NextStep =
   | { kind: "resync-prices" }
   | { kind: "run-again"; action: string };
 
-export type PriceProblem = { message: string; next?: NextStep };
+export type PriceProblem = { message: string; next?: NextStep; notice?: true };
 
 export type StripeWarning = { product?: string; message: string; next?: string };
 
