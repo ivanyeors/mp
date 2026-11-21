@@ -21,7 +21,7 @@
 //      STRIPE_SECRET_KEY_LIVE — only for --live
 
 import { createClient } from "@supabase/supabase-js";
-import { syncProductToStripe } from "@/lib/stripe/sync";
+import { StripeNeedsAttentionError, syncProductToStripe } from "@/lib/stripe/sync";
 import { stripeMode, stripeProductIdColumn } from "@/lib/stripe/mode";
 
 const dryRun = process.argv.includes("--dry-run");
@@ -112,6 +112,9 @@ async function main() {
       const reason = err instanceof Error ? err.message : String(err);
       failures.push({ slug: p.slug, id: p.id, reason });
       console.error(`  ERR ${p.slug}: ${reason}`);
+      if (err instanceof StripeNeedsAttentionError) {
+        for (const notice of err.notices) console.error(`      ${notice}`);
+      }
     }
   }
 
