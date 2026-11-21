@@ -955,12 +955,15 @@ export function MbolsterConfigClient({
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
+        if (cancelled) return;
         setShippingMethods(methods);
         setSelectedShippingId((prev) =>
           methods.some((m) => m.id === prev) ? prev : (methods[0]?.id ?? ""),
         );
       })
-      .catch(() => setShippingMethods([]));
+      .catch(() => {
+        if (!cancelled) setShippingMethods([]);
+      });
     return stale;
   }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant, paired]);
 
