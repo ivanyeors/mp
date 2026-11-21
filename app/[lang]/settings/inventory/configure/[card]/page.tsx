@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import Link from "next/link";
 import { notFound, useParams, usePathname } from "next/navigation";
@@ -405,7 +405,10 @@ export default function ConfigureCardPage() {
 
   const bolsterLength = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : null;
 
+  const loadRequest = useRef(0);
+  const bolsterLinesLoadedFor = useRef<BolsterLength | null>(null);
   const loadAll = useCallback(async (withBolsterLinesOf?: BolsterLength | null) => {
+    const request = ++loadRequest.current;
     setLoading(true);
     const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
@@ -416,9 +419,11 @@ export default function ConfigureCardPage() {
         ? supabaseClient.from("bolster_bom_lines").select("item_id,quantity").eq("variant", withBolsterLinesOf)
         : null,
     ]);
-    if (bolsterLinesRead) {
+    if (request !== loadRequest.current) return;
+    if (withBolsterLinesOf && bolsterLinesRead) {
       type LineRow = { item_id: number; quantity: number | string };
       setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+      bolsterLinesLoadedFor.current = withBolsterLinesOf;
     }
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
     const prods = (productsData ?? []) as Product[];
@@ -477,7 +482,7 @@ export default function ConfigureCardPage() {
   useEffect(() => {
     loadAll(bolsterLength);
     const onChanged = () => {
-      loadAll();
+      loadAll(bolsterLinesLoadedFor.current === bolsterLength ? null : bolsterLength);
     };
     if (typeof window !== "undefined") {
       window.addEventListener("inventory:changed", onChanged);

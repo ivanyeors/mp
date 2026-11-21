@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { settle, typeField, until } from "@/components/block-editor/__tests__/dom";
-import { act, type ReactNode } from "react";
+import { act, StrictMode, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;
-type Pending = { table: string; filters: Row; answer: (rows: Row[]) => Promise<void> };
+type Pending = { table: string; filters: Row; answer: (rows: Row[]) => Promise<void>; fail: () => Promise<void> };
 type Request = { url: string; method: string; body: unknown; answered: boolean; answer: (json: unknown) => Promise<void> };
 
 const db = vi.hoisted(() => ({ tables: {} as Record<string, Row[]>, pending: [] as Pending[] }));
@@ -52,6 +52,10 @@ vi.mock("@/lib/supabase/client", () => {
                   await act(async () => done({ data: rows, error: null }));
                   await settle();
                 },
+                fail: async () => {
+                  await act(async () => done({ data: null, error: { message: "network down" } }));
+                  await settle();
+                },
               }),
             )
           : Promise.resolve({ data: structuredClone(db.tables[table] ?? []), error: null });
@@ -78,12 +82,12 @@ const autoAnswers = (url: string, method: string) => {
 };
 
 let root: Root | null = null;
-async function mount(card: string) {
+async function mount(card: string, strict = false) {
   route.card = card;
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<ConfigureCardPage />));
+  act(() => root!.render(strict ? <StrictMode><ConfigureCardPage /></StrictMode> : <ConfigureCardPage />));
   await settle();
 }
 
@@ -150,6 +154,18 @@ async function choose(select: HTMLSelectElement, value: string) {
   await settle();
 }
 const bolsterRead = () => db.pending.find((p) => p.table === "bolster_bom_lines") ?? null;
+const bolsterReads = () => db.pending.filter((p) => p.table === "bolster_bom_lines");
+const STORED_BOLSTER = [{ item_id: 1, quantity: 1 }];
+const bolsterSave = () =>
+  [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+    (b) => b.textContent?.trim() === "Save" && !b.parentElement?.querySelector('input[placeholder="Template name"]'),
+  )!;
+const posted = (path: string) => waiting((r) => r.url.endsWith(path) && r.method !== "GET").map((r) => `${r.method} ${JSON.stringify(r.body)}`);
+async function answerWarehouse(kind: "pillow" | "bolster", ids: number[]) {
+  await answerRequest((r) => r.url.includes(`kind=${kind}`) && r.url.includes("role=warehouse"), {
+    templates: ids.map((id) => ({ id, name: `Template ${id}`, notes: null })),
+  });
+}
 
 describe("Configure card: bolster lines", () => {
   it("saves the template picked as soon as the editor shows, not the BOM read that answers later", async () => {
@@ -176,6 +192,50 @@ describe("Configure card: bolster lines", () => {
     const saved = waiting((r) => r.url.endsWith("/configure/save") && r.method === "POST");
     expect(saved.map((r) => r.body)).toEqual([
       expect.objectContaining({ kind: "bolster", variant: "short", lines: [{ item_id: 2, quantity: 2 }] }),
+    ]);
+  });
+});
+
+describe("Configure card: overlapping first loads", () => {
+  it("keeps the bolster editor hidden when a reload lands before the load that reads its lines", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    expect(bolsterReads()).toHaveLength(1);
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    expect(templatePicker()).toBeNull();
+
+    const [first, latest] = bolsterReads();
+    await latest.answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 2, quantity: 2 }] });
+    await first.answer(STORED_BOLSTER);
+    await act(async () => bolsterSave().click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines: [{ item_id: 2, quantity: 2 }], defaultFillingTemplateId: null })}`,
+    ]);
+  });
+
+  it("applies only the newest first load under Strict Mode's double mount", async () => {
+    await mount("bolster-short", true);
+    await settle(50);
+    const [first, latest] = bolsterReads();
+    expect(latest).toBeDefined();
+    await latest.answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 2, quantity: 2 }] });
+    await first.answer(STORED_BOLSTER);
+    await act(async () => bolsterSave().click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines: [{ item_id: 2, quantity: 2 }], defaultFillingTemplateId: null })}`,
     ]);
   });
 });
