@@ -1940,6 +1940,7 @@ export function MpConfigClient({
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
+        if (cancelled) return;
         setShippingMethods(methods);
         setSelectedShippingId((prev) => {
           if (methods.some((m) => m.id === prev)) return prev;
@@ -1949,7 +1950,9 @@ export function MpConfigClient({
           return stored?.id ?? methods[0]?.id ?? "";
         });
       })
-      .catch(() => setShippingMethods([]));
+      .catch(() => {
+        if (!cancelled) setShippingMethods([]);
+      });
     return () => {
       cancelled = true;
     };
