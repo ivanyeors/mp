@@ -843,8 +843,9 @@ export function XrayCrossSection({
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       svgRef.current = null;
+      onDropSection?.(null);
     };
-  }, []);
+  }, [onDropSection]);
 
   useEffect(() => {
     const key = pendingFocus.current;
