@@ -4,10 +4,14 @@ import type { ProductVariant } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { loadVariantLabels, withPricingBlock, type VariantLabel } from "./variant-labels";
 import {
+  hasPaymentLinkColumns,
+  stripePaymentLinkColumns,
+  stripePaymentLinkIdOf,
   stripePriceIdColumn,
   stripePriceIdOf,
   stripeProductIdColumn,
   stripeProductIdOf,
+  type PaymentLinkRow,
 } from "./mode";
 
 const STRIPE_TAX_CODE = process.env.STRIPE_TAX_CODE || "txcd_33080301";
@@ -18,7 +22,35 @@ function isResourceMissing(err: unknown): boolean {
   return (err as { code?: string } | null)?.code === "resource_missing";
 }
 
-export async function syncProductToStripe(productId: string) {
+export type StripeSyncResult = {
+  stripeProductId: string;
+  variants: { id: string; stripePriceId: string }[];
+  notices: string[];
+  paymentLinkCleared: boolean;
+};
+
+export type StripeSyncOutcome = {
+  synced: boolean;
+  error?: string;
+  pricesInPlace: boolean;
+  notices: string[];
+  paymentLinkCleared: boolean;
+  result?: StripeSyncResult;
+};
+
+export class StripeNeedsAttentionError extends Error {
+  readonly notices: string[];
+  readonly paymentLinkCleared: boolean;
+
+  constructor(attention: string[], notices: string[], paymentLinkCleared: boolean) {
+    super(`The new prices are in place, but Stripe needs attention: ${attention.join("; ")}`);
+    this.name = "StripeNeedsAttentionError";
+    this.notices = notices;
+    this.paymentLinkCleared = paymentLinkCleared;
+  }
+}
+
+export async function syncProductToStripe(productId: string): Promise<StripeSyncResult> {
   const stripe = getStripe();
   const admin = supabaseAdmin();
 
@@ -117,32 +149,121 @@ export async function syncProductToStripe(productId: string) {
     throw new Error(`${errorMessage(err)}. Also in Stripe: ${stripeNotices.join("; ")}`);
   }
 
+  const priceIdOfVariant = new Map(variantResults.map((v) => [v.id, v.stripePriceId]));
+  const currentPriceIds = new Set(
+    variants
+      .filter((v) => v.is_active)
+      .map((v) => priceIdOfVariant.get(v.id))
+      .filter((id): id is string => Boolean(id)),
+  );
+  const notices: string[] = [];
+  const paymentLinkCleared = await retireStalePaymentLink(
+    product,
+    currentPriceIds,
+    stripeNotices,
+    notices,
+  );
+
   if (stripeNotices.length) {
-    throw new Error(
-      `The new prices are in place, but Stripe needs attention: ${stripeNotices.join("; ")}`,
-    );
+    throw new StripeNeedsAttentionError(stripeNotices, notices, paymentLinkCleared);
   }
 
-  return { stripeProductId, variants: variantResults };
+  return { stripeProductId, variants: variantResults, notices, paymentLinkCleared };
+}
+
+async function retireStalePaymentLink(
+  product: PaymentLinkRow & { id: string },
+  currentPriceIds: Set<string>,
+  stripeNotices: string[],
+  notices: string[],
+): Promise<boolean> {
+  const linkId = stripePaymentLinkIdOf(product);
+  if (!linkId) return false;
+
+  let linePriceIds: (string | null)[];
+  try {
+    const lines = await getStripe().paymentLinks.listLineItems(linkId, { limit: 100 });
+    linePriceIds = lines.data.map((line) => line.price?.id ?? null);
+  } catch (err) {
+    if (!isResourceMissing(err)) {
+      stripeNotices.push(`couldn't check Stripe payment link ${linkId} (${errorMessage(err)})`);
+      return false;
+    }
+    return clearPaymentLink(product.id, linkId, stripeNotices, notices, {
+      done: `Stripe payment link ${linkId} is not in this Stripe account, so it was removed from the product; generate a new one if you need it`,
+      stuck: `Stripe payment link ${linkId} is not in this Stripe account, but couldn't be removed from the product`,
+    });
+  }
+
+  if (linePriceIds.every((id) => id !== null && currentPriceIds.has(id))) return false;
+
+  try {
+    await deactivatePaymentLink(linkId);
+  } catch (err) {
+    stripeNotices.push(
+      `Stripe payment link ${linkId} still sells at a price this product no longer has and needs deactivating in Stripe (${errorMessage(err)})`,
+    );
+    return false;
+  }
+  return clearPaymentLink(product.id, linkId, stripeNotices, notices, {
+    done: `Stripe payment link ${linkId} sold at a price this product no longer has, so it was deactivated; generate a new one`,
+    stuck: `Stripe payment link ${linkId} was deactivated because it sold at a price this product no longer has, but the product still shows it`,
+    replaced: `Stripe payment link ${linkId} sold at a price this product no longer has, so it was deactivated; the product already shows a newer link`,
+  });
+}
+
+async function clearPaymentLink(
+  productId: string,
+  linkId: string,
+  stripeNotices: string[],
+  notices: string[],
+  say: { done: string; stuck: string; replaced?: string },
+): Promise<boolean> {
+  const column = stripePaymentLinkColumns();
+  const { data, error } = await supabaseAdmin()
+    .from("products")
+    .update({ [column.url]: null, [column.id]: null })
+    .eq("id", productId)
+    .eq(column.id, linkId)
+    .select("id");
+  if (error) {
+    stripeNotices.push(`${say.stuck} (${error.message})`);
+    return false;
+  }
+  if (!data?.length) {
+    if (say.replaced) notices.push(say.replaced);
+    return false;
+  }
+  notices.push(say.done);
+  return true;
 }
 
 // ponytail: best-effort + synchronous. Ceiling: if Stripe is down the DB edit still saves but
 // `stripe_price_id` stays stale until the next edit or a manual "Sync to Stripe". Upgrade path:
 // enqueue a background retry.
-export async function syncProductToStripeSafe(
-  productId: string
-): Promise<{
-  synced: boolean;
-  error?: string;
-  result?: Awaited<ReturnType<typeof syncProductToStripe>>;
-}> {
+export async function syncProductToStripeSafe(productId: string): Promise<StripeSyncOutcome> {
   try {
     const result = await syncProductToStripe(productId);
-    return { synced: true, result };
+    return {
+      synced: true,
+      pricesInPlace: true,
+      notices: result.notices,
+      paymentLinkCleared: result.paymentLinkCleared,
+      result,
+    };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Stripe sync failed";
     console.error(`[stripe/auto-sync] product ${productId}:`, error);
-    return { synced: false, error };
+    if (err instanceof StripeNeedsAttentionError) {
+      return {
+        synced: false,
+        error,
+        pricesInPlace: true,
+        notices: err.notices,
+        paymentLinkCleared: err.paymentLinkCleared,
+      };
+    }
+    return { synced: false, error, pricesInPlace: false, notices: [], paymentLinkCleared: false };
   }
 }
 
@@ -228,6 +349,11 @@ export async function createPaymentLink(productId: string) {
     .single();
 
   if (!product) throw new Error("Product not found");
+  if (!hasPaymentLinkColumns(product)) {
+    throw new Error(
+      "This database has no payment link columns for Stripe test mode yet. Apply supabase/migrations/20261121120000_stripe_payment_link_per_mode.sql first.",
+    );
+  }
 
   const variants = ((product.product_variants ?? []) as ProductVariant[])
     .filter((v) => v.is_active)
@@ -241,25 +367,20 @@ export async function createPaymentLink(productId: string) {
     throw new Error("Default variant has no Stripe Price ID. Sync to Stripe first.");
   }
 
-  if (product.stripe_payment_link_id) {
-    try {
-      await stripe.paymentLinks.update(product.stripe_payment_link_id, { active: false });
-    } catch (err) {
-      if (!isResourceMissing(err)) throw err;
-    }
-  }
+  await refuseOutOfDatePrice(defaultPriceId, defaultVariant);
+
+  const oldLinkId = stripePaymentLinkIdOf(product);
+  if (oldLinkId) await deactivatePaymentLink(oldLinkId);
 
   const paymentLink = await stripe.paymentLinks.create({
     line_items: [{ price: defaultPriceId, quantity: 1 }],
     metadata: { supabase_product_id: productId },
   });
 
+  const column = stripePaymentLinkColumns();
   const { error } = await admin
     .from("products")
-    .update({
-      stripe_payment_link: paymentLink.url,
-      stripe_payment_link_id: paymentLink.id,
-    })
+    .update({ [column.url]: paymentLink.url, [column.id]: paymentLink.id })
     .eq("id", productId);
   if (error) {
     throw new Error(
@@ -270,7 +391,32 @@ export async function createPaymentLink(productId: string) {
   return { url: paymentLink.url, id: paymentLink.id };
 }
 
-export async function deactivatePaymentLink(paymentLinkId: string) {
+async function refuseOutOfDatePrice(priceId: string, variant: ProductVariant) {
+  const syncFirst = `The default variant's Stripe price ${priceId} is out of date. Sync to Stripe first.`;
+  let price: Awaited<ReturnType<ReturnType<typeof getStripe>["prices"]["retrieve"]>>;
+  try {
+    price = await getStripe().prices.retrieve(priceId);
+  } catch (err) {
+    if (isResourceMissing(err)) throw new Error(syncFirst);
+    throw err;
+  }
+  if (
+    !price.active ||
+    price.unit_amount !== Math.round(variant.price * 100) ||
+    price.currency !== variant.currency.toLowerCase()
+  ) {
+    throw new Error(syncFirst);
+  }
+}
+
+async function deactivatePaymentLink(paymentLinkId: string) {
   const stripe = getStripe();
-  await stripe.paymentLinks.update(paymentLinkId, { active: false });
+  try {
+    await stripe.paymentLinks.update(paymentLinkId, { active: false });
+  } catch (err) {
+    if (isResourceMissing(err)) return;
+    const link = await stripe.paymentLinks.retrieve(paymentLinkId).catch(() => null);
+    if (link?.active === false) return;
+    throw err;
+  }
 }
