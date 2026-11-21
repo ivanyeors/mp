@@ -447,7 +447,9 @@ export default function CostingsPage() {
     commitDraft();
   }, [commitDraft, commitDraftDebounced]);
 
+  const latestLoad = useRef(0);
   const load = useCallback(async () => {
+    const id = ++latestLoad.current;
     setLoading(true);
     try {
       type RawItemRow = ItemRow & { pricing?: PriceRecord | PriceRecord[] | null };
@@ -514,6 +516,7 @@ export default function CostingsPage() {
         supabaseClient.from("inventory_balances").select("item_id,on_hand"),
         templatesRequest,
       ]);
+      if (id !== latestLoad.current) return;
 
       if (itemsError) throw new Error(itemsError.message);
       if (pillowError) throw new Error(pillowError.message);
@@ -726,10 +729,11 @@ export default function CostingsPage() {
       setHasPendingEdit(false);
       applyBaseline({ ...nextBaseline, ...productBaseline });
     } catch (err) {
+      if (id !== latestLoad.current) return;
       const message = err instanceof Error ? err.message : "Couldn't load costings.";
       toast.error(message);
     } finally {
-      setLoading(false);
+      if (id === latestLoad.current) setLoading(false);
     }
   }, [applyBaseline, commitDraftDebounced, settingsPath]);
 
@@ -837,9 +841,8 @@ export default function CostingsPage() {
     return map;
   }, [grouped]);
 
-  useEffect(() => {
-    setPartFilters((prev) => prev.filter((category) => categoryTitleByKey.has(category)));
-  }, [categoryTitleByKey]);
+  const livePartFilters = partFilters.filter((category) => categoryTitleByKey.has(category));
+  if (livePartFilters.length !== partFilters.length) setPartFilters(livePartFilters);
 
   const hasActiveFilters = partFilters.length > 0;
 
@@ -868,11 +871,6 @@ export default function CostingsPage() {
     if (collapsedVisibleFilterCount === null) return 0;
     return Math.max(0, activeFilterCategories.length - collapsedVisibleFilterCount);
   }, [activeFilterCategories.length, collapsedVisibleFilterCount, filtersExpanded]);
-
-  useLayoutEffect(() => {
-    if (filtersExpanded) return;
-    setCollapsedVisibleFilterCount(null);
-  }, [activeFilterCategories, filtersExpanded]);
 
   useLayoutEffect(() => {
     if (filtersExpanded) return;
@@ -906,8 +904,7 @@ export default function CostingsPage() {
       setCollapsedVisibleFilterCount(visibleCount);
     };
 
-    const frame = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(frame);
+    measure();
   }, [activeFilterCategories, filtersExpanded, filterMeasureVersion]);
 
   useEffect(() => {
