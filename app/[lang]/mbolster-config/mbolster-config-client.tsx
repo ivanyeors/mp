@@ -755,13 +755,16 @@ export function MbolsterConfigClient({
     }
   }, [state.step, heightFields, sleepFields, holdFields, pairedFields, paired]);
 
-  React.useEffect(() => {
+  const [errorsStep, setErrorsStep] = React.useState(state.step);
+  if (errorsStep !== state.step) {
+    setErrorsStep(state.step);
     setFieldErrors({});
-  }, [state.step]);
-
-  React.useEffect(() => {
+  }
+  const [errorsPrunedFor, setErrorsPrunedFor] = React.useState(activeFields);
+  if (errorsPrunedFor !== activeFields) {
+    setErrorsPrunedFor(activeFields);
     setFieldErrors((prev) => pruneFieldErrors(prev, activeFields));
-  }, [activeFields]);
+  }
 
   const tryAdvance = (fields: FieldCheck[], onOk: () => void | Promise<void>) => {
     const errors = buildFieldErrorMap(fields);
