@@ -114,9 +114,6 @@
   "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx": {
     "mp/no-effect": {
       "count": 2
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 6
     }
   },
   "app/[lang]/settings/campaigns/ai/rewrite-ai.tsx": {
