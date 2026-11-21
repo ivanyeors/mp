@@ -39,22 +39,19 @@ export const TikTokPlayer = React.forwardRef<TikTokPlayerHandle, TikTokPlayerPro
   const frame = React.useRef<HTMLIFrameElement>(null);
   const src = React.useMemo(() => tiktokPlayerSrc(postId, options), [postId, options]);
 
-  const handlers = React.useRef({ onEnded, onError, onEvent });
-  React.useEffect(() => {
-    handlers.current = { onEnded, onError, onEvent };
+  const onMessage = React.useEffectEvent((e: MessageEvent) => {
+    if (!frame.current || e.source !== frame.current.contentWindow) return;
+    const event = readTikTokPlayerMessage(e.origin, e.data);
+    if (!event) return;
+    onEvent?.(event);
+    if (event.type === "onStateChange" && event.value === TIKTOK_STATE_ENDED) onEnded?.();
+    if (event.type === "onPlayerError") onError?.(event.value ?? {});
   });
 
   React.useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      if (!frame.current || e.source !== frame.current.contentWindow) return;
-      const event = readTikTokPlayerMessage(e.origin, e.data);
-      if (!event) return;
-      handlers.current.onEvent?.(event);
-      if (event.type === "onStateChange" && event.value === TIKTOK_STATE_ENDED) handlers.current.onEnded?.();
-      if (event.type === "onPlayerError") handlers.current.onError?.(event.value ?? {});
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    const listener = (e: MessageEvent) => onMessage(e);
+    window.addEventListener("message", listener);
+    return () => window.removeEventListener("message", listener);
   }, []);
 
   React.useImperativeHandle(ref, () => {

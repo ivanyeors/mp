@@ -278,14 +278,6 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     }, []);
 
     useEffect(() => {
-        const byId: UsageMap = {};
-        for (const f of files) {
-            if (f.url && usageMap[f.url]) byId[f.id] = usageMap[f.url];
-        }
-        setUsageByAssetId(byId);
-    }, [files, usageMap]);
-
-    useEffect(() => {
         if (skipFilesFetch.current) {
             skipFilesFetch.current = false;
         } else {
@@ -299,6 +291,11 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         loadOverrides();
         loadUsages();
     }, [loadFiles, loadFolders, loadOverrides, loadUsages]);
+
+    const rereadUsagesAfterReferencesMoved = () => {
+        setUsageByAssetId({});
+        return loadUsages();
+    };
 
     const getFileUsages = useCallback(
         (file: MediaFile): UsageEntry[] => {
@@ -446,9 +443,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 const data = await res.json();
                 if (data.ok && Array.isArray(data.usages)) {
                     setDetailUsages(data.usages);
-                    if (data.usages.length > 0) {
-                        setUsageByAssetId((prev) => ({ ...prev, [file.id]: data.usages }));
-                    }
+                    setUsageByAssetId((prev) => ({ ...prev, [file.id]: data.usages }));
                 }
             } catch {}
         })();
@@ -646,7 +641,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
             if (data.ok) {
                 setOverrides((prev) => ({ ...prev, [slot.key]: url }));
                 toast.success(`Updated "${slot.label}" image`);
-                loadUsages();
+                rereadUsagesAfterReferencesMoved();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't update."));
             }
@@ -672,7 +667,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                     return copy;
                 });
                 toast.success(`Reset "${slot.label}" to default`);
-                loadUsages();
+                rereadUsagesAfterReferencesMoved();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't reset."));
             }
@@ -726,7 +721,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                 toast.success(parts.length > 0 ? `Replaced in ${parts.join(", ")}` : "No references found to replace");
                 setReplaceFile(null);
                 setDetailFile(null);
-                loadUsages();
+                rereadUsagesAfterReferencesMoved();
                 loadOverrides();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't replace."));

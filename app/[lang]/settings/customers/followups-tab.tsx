@@ -41,31 +41,27 @@ export function FollowUpsTab({
     const [loading, setLoading] = useState(!initialData);
     const [error, setError] = useState<string | null>(null);
     const hydrated = useRef(Boolean(initialData));
+    const latest = useRef(0);
 
     const load = useCallback(async (which: FollowUpScope) => {
+        const id = ++latest.current;
         setLoading(true);
         setError(null);
         try {
             const res = await fetch(`/api/settings/customers/followups?scope=${which}`);
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Could not load follow-ups.");
-            setData(json as FollowUpListData);
+            if (id === latest.current) setData(json as FollowUpListData);
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Could not load follow-ups.");
+            if (id === latest.current) setError(e instanceof Error ? e.message : "Could not load follow-ups.");
         } finally {
-            setLoading(false);
+            if (id === latest.current) setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        if (hydrated.current) {
-            hydrated.current = false;
-            return;
-        }
-        void load(scope);
-    }, [load, scope]);
-
-    useEffect(() => {
+        if (hydrated.current) hydrated.current = false;
+        else void load(scope);
         const reload = () => void load(scope);
         window.addEventListener(WORKING_AS_CHANGED_EVENT, reload);
         return () => window.removeEventListener(WORKING_AS_CHANGED_EVENT, reload);

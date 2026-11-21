@@ -95,10 +95,6 @@ export function TopLoadingBar() {
     });
   }, []);
 
-  React.useEffect(() => {
-    scheduleRefreshOffsets();
-  }, [pathname, scheduleRefreshOffsets]);
-
   React.useEffect(
     () => () => {
       if (offsetsFrameRef.current != null && typeof window !== "undefined") {

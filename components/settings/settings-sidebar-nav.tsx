@@ -213,7 +213,7 @@ function flattenNavItems(items: NavItem[]): NavItem[] {
   return items.flatMap(({ items: subs, ...item }) => [item, ...(subs ?? [])]);
 }
 
-type AdminStatus = "checking" | "authed" | "unauth";
+type AdminStatus = "authed" | "unauth";
 
 export type SettingsInitialAuth = {
   signedIn: boolean;
@@ -226,7 +226,7 @@ export function SettingsSidebarNav({
   initialAuth,
 }: {
   children: React.ReactNode;
-  initialAuth?: SettingsInitialAuth;
+  initialAuth: SettingsInitialAuth;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -237,22 +237,16 @@ export function SettingsSidebarNav({
 
   const isLoginRoute = basePathname === "/settings/login";
 
-  const [status, setStatus] = useState<AdminStatus>(() => {
-    if (!initialAuth) return "checking";
-    return initialAuth.signedIn ? "authed" : "unauth";
-  });
-  const [permissions, setPermissions] = useState<Permission[]>(
-    () => initialAuth?.permissions ?? [],
-  );
+  const [status, setStatus] = useState<AdminStatus>(initialAuth.signedIn ? "authed" : "unauth");
+  const [permissions, setPermissions] = useState<Permission[]>(initialAuth.permissions);
   const [menuOpen, setMenuOpen] = useState(false);
   const [resultsQueue, setResultsQueue] = useState(0);
   const [resultsStuck, setResultsStuck] = useState(0);
   const [followUpCounts, setFollowUpCounts] = useState<FollowUpCounts | null>(null);
 
-  const initialSignedIn = initialAuth?.signedIn;
-  const initialPermissionKey = initialAuth?.permissions.join(",");
+  const initialSignedIn = initialAuth.signedIn;
+  const initialPermissionKey = initialAuth.permissions.join(",");
   useEffect(() => {
-    if (!initialAuth) return;
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
   }, [initialSignedIn, initialPermissionKey]);
@@ -262,8 +256,10 @@ export function SettingsSidebarNav({
     return subscribeAdminPanelMenu(() => setMenuOpen(true));
   }, [isMobile]);
 
+  const canResults = permissions.includes("results");
+  const canCustomers = permissions.includes("customers");
   useEffect(() => {
-    if (status !== "authed" || !permissions.includes("results")) return;
+    if (status !== "authed" || !canResults) return;
     let cancelled = false;
     fetch("/api/results/queue-counts")
       .then((res) => (res.ok ? res.json() : null))
@@ -276,10 +272,10 @@ export function SettingsSidebarNav({
     return () => {
       cancelled = true;
     };
-  }, [status, permissions, basePathname]);
+  }, [status, canResults, basePathname]);
 
   useEffect(() => {
-    if (status !== "authed" || !permissions.includes("customers")) return;
+    if (status !== "authed" || !canCustomers) return;
     let cancelled = false;
     const read = () =>
       fetch("/api/settings/customers/followup-counts")
@@ -295,30 +291,8 @@ export function SettingsSidebarNav({
       cancelled = true;
       for (const e of events) window.removeEventListener(e, read);
     };
-  }, [status, permissions, basePathname]);
+  }, [status, canCustomers, basePathname]);
   const customersBadge = followUpBadge(followUpCounts);
-
-  useEffect(() => {
-    if (isLoginRoute || initialAuth) return;
-    let cancelled = false;
-    fetch("/api/admin/context")
-      .then((res) => res.json())
-      .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
-        if (cancelled) return;
-        if (data?.signedIn) {
-          setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
-          setStatus("authed");
-        } else {
-          setStatus("unauth");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setStatus("unauth");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoginRoute, initialAuth]);
 
   const firstPath = useRef(basePathname);
   const [permissionsPath, setPermissionsPath] = useState(basePathname);
@@ -404,7 +378,7 @@ export function SettingsSidebarNav({
       <div className="min-w-0 flex-1">
         <SettingsBreadcrumbTrail basePathname={basePathname} to={to} permissions={permissions} />
       </div>
-      {initialAuth?.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
+      {initialAuth.workingAs ? <WorkingAsPicker initial={initialAuth.workingAs} /> : null}
     </header>
   );
 

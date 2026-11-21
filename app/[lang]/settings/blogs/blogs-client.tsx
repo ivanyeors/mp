@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus, Trash2, Pencil, Eye, EyeOff, Loader2, MoreHorizontal } from "lucide-react";
@@ -38,25 +39,23 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
     const to = (href: string) => withLocale(href, locale);
 
     const [posts, setPosts] = useState<BlogRow[]>(initialData?.rows ?? []);
-    const [loading, setLoading] = useState(!initialData);
-    const skipFirstFetch = useRef(initialData != null);
-
-
+    const [loading, setLoading] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(!initialData);
     const fetchPosts = useCallback(async () => {
         setLoading(true);
-        const res = await fetch("/api/blogs");
-        const json = await res.json();
-        setPosts(json.rows ?? []);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        if (skipFirstFetch.current) {
-            skipFirstFetch.current = false;
-            return;
+        try {
+            const res = await fetch("/api/blogs");
+            if (!res.ok) throw new Error("Couldn't load blog posts.");
+            const json = await res.json();
+            setPosts(json.rows ?? []);
+            setLoadFailed(false);
+        } catch {
+            setLoadFailed(true);
+            toast.error("Couldn't load blog posts.");
+        } finally {
+            setLoading(false);
         }
-        fetchPosts();
-    }, [fetchPosts]);
+    }, []);
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === "published" ? "unpublished" : "published";
@@ -116,6 +115,16 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
+            ) : loadFailed && posts.length === 0 ? (
+                <EmptyState
+                    action={
+                        <Button size="sm" variant="outline" onClick={() => void fetchPosts()}>
+                            Try again
+                        </Button>
+                    }
+                >
+                    Couldn&apos;t load blog posts.
+                </EmptyState>
             ) : posts.length === 0 ? (
                 <EmptyState>No blog posts yet.</EmptyState>
             ) : (

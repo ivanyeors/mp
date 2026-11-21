@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { clipToConvex, parsePathPolygon, pouchOutline, type Pt as ConformPt } from "@/lib/spatial-fillings/conform";
 import { createSettle, resample, ringLength, signedArea, taubin, type Pt, type SoftPiece, type SoftSettle } from "@/lib/spatial-fillings/soft-body";
 import { solverOptionsFor, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
@@ -273,25 +273,20 @@ export function useSoftTopPaths(planes: readonly SoftTopPlane[] | null, settings
 
   const [frame, setFrame] = useState<{ of: Map<string, Pt[]>; rings: ReadonlyMap<string, Pt[]> } | null>(null);
   const shown = useRef<ReadonlyMap<string, Pt[]> | null>(null);
-  const planesRef = useRef(planes);
-  const ease = useRef(easeMs);
-
-  useLayoutEffect(() => {
-    planesRef.current = planes;
-    ease.current = easeMs;
-  });
+  const readLatest = useEffectEvent(() => ({ planes, easeMs }));
 
   useLayoutEffect(() => {
     const from = shown.current;
     shown.current = target;
     if (!target || !from || !settings.animate || prefersReducedMotion()) return;
+    const latest = readLatest();
     const seed = () => {
       const rings = new Map<string, Pt[]>();
-      for (const plane of planesRef.current ?? []) for (const [key, ring] of startRings(plane)) rings.set(key, ring);
+      for (const plane of latest.planes ?? []) for (const [key, ring] of startRings(plane)) rings.set(key, ring);
       return asShapes(rings);
     };
     const plan = morph(asShapes(from), asShapes(target), seed);
-    const duration = ease.current ?? Math.max(200, (settings.steps * 1000) / 60);
+    const duration = latest.easeMs ?? Math.max(200, (settings.steps * 1000) / 60);
     const t0 = performance.now();
     let raf = 0;
     const show = (rings: ReadonlyMap<string, Pt[]>) => {
