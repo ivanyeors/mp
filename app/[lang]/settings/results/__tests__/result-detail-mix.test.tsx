@@ -222,6 +222,33 @@ describe("Result detail: the assignment's size and filling template", () => {
     expect(packList()).toBe("0 pieces");
   });
 
+  it("drops a picked template's preview when the size goes to L and back to M before it answers", async () => {
+    await mount();
+    await preview(10).answer(pieces(1));
+    await choose(templateSelect(), "12");
+    await choose(sizeSelect(), "L");
+    await choose(sizeSelect(), "M");
+    await prepFor("M").answer(noDefault("M", 21));
+    await preview(12).answer(pieces(3));
+
+    expect(packList()).toBe("0 pieces");
+  });
+
+  it("keeps the saved mix restored while a picked template's preview is still on its way", async () => {
+    await mount(savedMix(2));
+    await preview(10).answer(pieces(1));
+    await choose(templateSelect(), "11");
+    await preview(11).answer(pieces(4));
+    expect(packList()).toBe("4 pieces");
+
+    await choose(templateSelect(), "12");
+    const back = [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Back to the saved mix")!;
+    await act(async () => back.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await preview(12).answer(pieces(3));
+
+    expect(packList()).toBe("2 pieces");
+  });
+
   it("keeps the template picked last when an earlier pick answers last", async () => {
     await mount();
     await preview(10).answer(pieces(1));
