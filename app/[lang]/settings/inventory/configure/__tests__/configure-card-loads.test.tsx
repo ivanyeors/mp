@@ -319,6 +319,43 @@ describe("Configure card: recovering from a failed lines read", () => {
   });
 });
 
+const buttonNamed = (text: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === text)!;
+
+describe("Configure card: cancelling a pick still loading", () => {
+  it("drops a bolster pick's lines when Unlink is pressed before they land", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+    await act(async () => buttonNamed("Unlink").click());
+    await settle();
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+    await act(async () => bolsterSave().click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([savedBolster(STORED_BOLSTER)]);
+  });
+
+  it("drops a premium pick's lines when the variant changes before they land", async () => {
+    db.tables.bom_lines = [{ product_id: 11, item_id: 2, quantity: 1 }];
+    await mount("premium-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    const variant = [...document.querySelectorAll("select")].find((s) => s.querySelector('option[value="fibrecool"]'))!;
+    await choose(variant, "fibrecool");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ productId: 11, lines: [{ item_id: 2, quantity: 1 }], defaultFillingTemplateId: null })}`,
+    ]);
+  });
+});
+
 describe("Configure card: premium warehouse templates", () => {
   it("lists the variant picked last when an older variant's templates answer after it", async () => {
     auto = (url, method) => (url.includes("role=warehouse") ? undefined : autoAnswers(url, method));
