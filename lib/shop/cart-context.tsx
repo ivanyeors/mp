@@ -166,37 +166,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated || !state.couponCode || state.items.length === 0) return;
     let live = true;
+    const checkedCode = state.couponCode;
     const subtotal = state.items.reduce(
       (sum, item) => sum + (item.price + (item.addonPrice ?? 0)) * item.quantity,
       0
     );
     validateCouponClient(
-      state.couponCode,
+      checkedCode,
       state.items,
       subtotal,
       state.customerEmail ?? undefined
     ).then((result) => {
       if (!live) return;
       if (!result.valid) {
-        setState((prev) => ({
-          ...prev,
-          couponCode: null,
-          couponKind: null,
-          couponPartnerName: null,
-          couponDiscount: 0,
-          couponFreeShipping: false,
-          couponError: result.error,
-        }));
+        setState((prev) =>
+          prev.couponCode !== checkedCode
+            ? prev
+            : {
+                ...prev,
+                couponCode: null,
+                couponKind: null,
+                couponPartnerName: null,
+                couponDiscount: 0,
+                couponFreeShipping: false,
+                couponError: result.error,
+              }
+        );
         return;
       }
-      setState((prev) => ({
-        ...prev,
-        couponKind: result.kind,
-        couponPartnerName: result.partnerName,
-        couponDiscount: result.discount,
-        couponFreeShipping: result.freeShipping,
-        couponError: null,
-      }));
+      setState((prev) =>
+        prev.couponCode !== checkedCode
+          ? prev
+          : {
+              ...prev,
+              couponKind: result.kind,
+              couponPartnerName: result.partnerName,
+              couponDiscount: result.discount,
+              couponFreeShipping: result.freeShipping,
+              couponError: null,
+            }
+      );
     });
     return () => {
       live = false;

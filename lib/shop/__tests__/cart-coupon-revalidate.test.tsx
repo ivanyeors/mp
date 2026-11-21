@@ -20,7 +20,7 @@ const item: CartItemClient = {
   quantity: 1,
 };
 
-type Held = { subtotal: number; answer: (status: number, body: unknown) => Promise<void> };
+type Held = { code: string; subtotal: number; answer: (status: number, body: unknown) => Promise<void> };
 let held: Held[] = [];
 beforeEach(() => {
   held = [];
@@ -29,9 +29,10 @@ beforeEach(() => {
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
       if (url !== "/api/checkout/code") return new Promise(() => {});
-      const body = JSON.parse(String(init?.body)) as { context: { subtotal: number } };
+      const body = JSON.parse(String(init?.body)) as { code: string; context: { subtotal: number } };
       return new Promise((resolve) => {
         held.push({
+          code: body.code,
           subtotal: body.context.subtotal,
           answer: (status, json) =>
             act(async () => {
@@ -60,8 +61,15 @@ function Probe() {
     <div>
       <output id="code">{cart.couponCode ?? "none"}</output>
       <output id="discount">{cart.couponDiscount}</output>
+      <output id="error">{cart.couponError ?? "none"}</output>
       <button type="button" onClick={() => cart.updateQuantity(line.variantId, line.quantity + 1)}>
         more
+      </button>
+      <button type="button" id="apply-welcome" onClick={() => void cart.applyCoupon("WELCOME")}>
+        apply
+      </button>
+      <button type="button" id="remove-code" onClick={() => void cart.applyCoupon(null)}>
+        remove
       </button>
     </div>
   );
@@ -76,8 +84,10 @@ const mount = async () => {
 };
 const text = (id: string) => host.querySelector(`#${id}`)?.textContent;
 const addOne = () => act(async () => host.querySelector("button")!.click());
+const press = (id: string) => act(async () => host.querySelector<HTMLButtonElement>(`#${id}`)!.click());
 const tooSmall = { kind: "invalid", reason: "Spend S$200 to use this code" };
 const valid = { kind: "discount", code: "SPEND200", discount_amount: 30, free_shipping: false };
+const welcome = { kind: "discount", code: "WELCOME", discount_amount: 10, free_shipping: false };
 
 describe("Cart: the stored code is checked again when the items change", () => {
   it("keeps the code when the check for the smaller cart answers after the check for the larger one", async () => {
@@ -107,5 +117,42 @@ describe("Cart: the stored code is checked again when the items change", () => {
     await held[1].answer(200, valid);
 
     expect(text("discount")).toBe("30");
+  });
+});
+
+describe("Cart: a code applied or removed while the stored code is being checked", () => {
+  it("keeps the newly applied code when the stored code's check answers invalid afterwards", async () => {
+    await mount();
+    await press("apply-welcome");
+    expect(held.map((h) => h.code)).toEqual(["SPEND200", "WELCOME"]);
+
+    await held[1].answer(200, welcome);
+    await held[0].answer(200, tooSmall);
+
+    expect(text("code")).toBe("WELCOME");
+    expect(text("discount")).toBe("10");
+    expect(text("error")).toBe("none");
+  });
+
+  it("keeps the newly applied code's discount when the stored code's check answers valid afterwards", async () => {
+    await mount();
+    await press("apply-welcome");
+
+    await held[1].answer(200, welcome);
+    await held[0].answer(200, valid);
+
+    expect(text("code")).toBe("WELCOME");
+    expect(text("discount")).toBe("10");
+  });
+
+  it("stays without a code when the shopper removed it before the check answered", async () => {
+    await mount();
+    await press("remove-code");
+
+    await held[0].answer(200, valid);
+
+    expect(text("code")).toBe("none");
+    expect(text("discount")).toBe("0");
+    expect(text("error")).toBe("none");
   });
 });
