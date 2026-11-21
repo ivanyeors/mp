@@ -599,7 +599,7 @@ export function ProductEditorClient({
             });
             const data = await res.json();
             if (data.ok) {
-                setStripePaymentLink(data.url ?? data.stripe_payment_link ?? null);
+                setStripePaymentLink(data.payment_link_url);
                 toast.success("Payment link generated");
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't generate the link."));

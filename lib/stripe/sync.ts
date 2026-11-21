@@ -14,6 +14,10 @@ const STRIPE_TAX_CODE = process.env.STRIPE_TAX_CODE || "txcd_33080301";
 
 const STRIPE_TAX_BEHAVIOR: "exclusive" | "inclusive" = "exclusive";
 
+function isResourceMissing(err: unknown): boolean {
+  return (err as { code?: string } | null)?.code === "resource_missing";
+}
+
 export async function syncProductToStripe(productId: string) {
   const stripe = getStripe();
   const admin = supabaseAdmin();
@@ -56,7 +60,7 @@ export async function syncProductToStripe(productId: string) {
         tax_code: STRIPE_TAX_CODE,
       });
     } catch (err) {
-      if ((err as { code?: string }).code !== "resource_missing") throw err;
+      if (!isResourceMissing(err)) throw err;
       stripeProductId = null;
     }
   }
@@ -84,20 +88,39 @@ export async function syncProductToStripe(productId: string) {
 
   const variants = (product.product_variants ?? []) as ProductVariant[];
   const variantResults: { id: string; stripePriceId: string }[] = [];
+  const stripeNotices: string[] = [];
 
-  for (const variant of variants) {
-    const priceId = await syncVariantPrice(stripeProductId, variant, labels.get(variant.id));
-    variantResults.push({ id: variant.id, stripePriceId: priceId });
-
-    const { error } = await admin
-      .from("product_variants")
-      .update({ [priceIdColumn]: priceId })
-      .eq("id", variant.id);
-    if (error) {
-      throw new Error(
-        `Couldn't save the Stripe price for variant ${variant.sku || variant.id}: ${error.message}`,
+  try {
+    for (const variant of variants) {
+      const { priceId, archiveAfterSave } = await syncVariantPrice(
+        stripeProductId,
+        variant,
+        stripeNotices,
+        labels.get(variant.id),
       );
+      variantResults.push({ id: variant.id, stripePriceId: priceId });
+
+      const { error } = await admin
+        .from("product_variants")
+        .update({ [priceIdColumn]: priceId })
+        .eq("id", variant.id);
+      if (error) {
+        throw new Error(
+          `Couldn't save the Stripe price for variant ${variant.sku || variant.id}: ${error.message}`,
+        );
+      }
+
+      if (archiveAfterSave) await archivePrice(archiveAfterSave, stripeNotices);
     }
+  } catch (err) {
+    if (!stripeNotices.length) throw err;
+    throw new Error(`${errorMessage(err)}. Also in Stripe: ${stripeNotices.join("; ")}`);
+  }
+
+  if (stripeNotices.length) {
+    throw new Error(
+      `The new prices are in place, but Stripe needs attention: ${stripeNotices.join("; ")}`,
+    );
   }
 
   return { stripeProductId, variants: variantResults };
@@ -123,11 +146,27 @@ export async function syncProductToStripeSafe(
   }
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function archivePrice(priceId: string, stripeNotices: string[]) {
+  try {
+    await getStripe().prices.update(priceId, { active: false });
+  } catch (err) {
+    if (isResourceMissing(err)) return;
+    stripeNotices.push(
+      `old price ${priceId} is still active and needs archiving in Stripe (${errorMessage(err)})`,
+    );
+  }
+}
+
 async function syncVariantPrice(
   stripeProductId: string,
   variant: ProductVariant,
+  stripeNotices: string[],
   label?: VariantLabel,
-): Promise<string> {
+): Promise<{ priceId: string; archiveAfterSave: string | null }> {
   const stripe = getStripe();
   const unitAmount = Math.round(variant.price * 100);
   const variantName = variant.title || variant.sku || "Default";
@@ -137,22 +176,33 @@ async function syncVariantPrice(
     variant_title: variantName,
   };
 
+  let archiveAfterSave: string | null = null;
   const existingPriceId = stripePriceIdOf(variant);
   if (existingPriceId) {
+    let existingPrice: Awaited<ReturnType<typeof stripe.prices.retrieve>> | null = null;
     try {
-      const existingPrice = await stripe.prices.retrieve(existingPriceId);
+      existingPrice = await stripe.prices.retrieve(existingPriceId);
+    } catch (err) {
+      if (!isResourceMissing(err)) archiveAfterSave = existingPriceId;
+    }
+
+    if (existingPrice) {
       if (
         existingPrice.unit_amount === unitAmount &&
         existingPrice.currency === variant.currency.toLowerCase() &&
         existingPrice.tax_behavior === STRIPE_TAX_BEHAVIOR
       ) {
         if (existingPrice.nickname !== nickname) {
-          await stripe.prices.update(existingPriceId, { nickname, metadata });
+          try {
+            await stripe.prices.update(existingPriceId, { nickname, metadata });
+          } catch (err) {
+            stripeNotices.push(`couldn't rename price ${existingPriceId} (${errorMessage(err)})`);
+          }
         }
-        return existingPriceId;
+        return { priceId: existingPriceId, archiveAfterSave: null };
       }
-      await stripe.prices.update(existingPriceId, { active: false });
-    } catch {}
+      await archivePrice(existingPriceId, stripeNotices);
+    }
   }
 
   const price = await stripe.prices.create({
@@ -164,7 +214,7 @@ async function syncVariantPrice(
     metadata,
   });
 
-  return price.id;
+  return { priceId: price.id, archiveAfterSave };
 }
 
 export async function createPaymentLink(productId: string) {
@@ -194,7 +244,9 @@ export async function createPaymentLink(productId: string) {
   if (product.stripe_payment_link_id) {
     try {
       await stripe.paymentLinks.update(product.stripe_payment_link_id, { active: false });
-    } catch {}
+    } catch (err) {
+      if (!isResourceMissing(err)) throw err;
+    }
   }
 
   const paymentLink = await stripe.paymentLinks.create({
@@ -202,13 +254,18 @@ export async function createPaymentLink(productId: string) {
     metadata: { supabase_product_id: productId },
   });
 
-  await admin
+  const { error } = await admin
     .from("products")
     .update({
       stripe_payment_link: paymentLink.url,
       stripe_payment_link_id: paymentLink.id,
     })
     .eq("id", productId);
+  if (error) {
+    throw new Error(
+      `Created Stripe payment link ${paymentLink.id} but couldn't save it: ${error.message}`,
+    );
+  }
 
   return { url: paymentLink.url, id: paymentLink.id };
 }
