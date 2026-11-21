@@ -1,10 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
+import { productName, warningsFor, type StripeWarning } from "@/lib/shop/stripe-warnings";
 
 interface SyncResult {
   pillows: { created: number; updated: number };
   bolsters: { created: number; updated: number };
   items: { archived: number; adopted: number; legacy: number };
+  stripeWarnings: StripeWarning[];
 }
 
 export async function syncPillowProducts(): Promise<{ created: number; updated: number }> {
@@ -319,15 +321,19 @@ export async function archiveUnsellableItemProducts(): Promise<{ archived: numbe
   return { archived };
 }
 
-export async function adoptManualProducts(): Promise<{ adopted: number; legacy: number }> {
+export async function adoptManualProducts(): Promise<{
+  adopted: number;
+  legacy: number;
+  stripeWarnings: StripeWarning[];
+}> {
   const admin = supabaseAdmin();
 
   const { data: products } = await admin
     .from("products")
-    .select("id, content, product_variants(id, item_id, sku, title, price_key)")
+    .select("id, slug, content, product_variants(id, item_id, sku, title, price_key)")
     .eq("is_auto_generated", false);
 
-  if (!products?.length) return { adopted: 0, legacy: 0 };
+  if (!products?.length) return { adopted: 0, legacy: 0, stripeWarnings: [] };
 
   const [{ data: items }, { data: prices }] = await Promise.all([
     admin.from("items").select("id, name, subtype, size, is_active").eq("is_active", true),
@@ -356,6 +362,7 @@ export async function adoptManualProducts(): Promise<{ adopted: number; legacy: 
 
   let adopted = 0;
   let legacy = 0;
+  const stripeWarnings: StripeWarning[] = [];
 
   for (const product of products) {
     const variants = (product.product_variants ?? []) as Array<{
@@ -401,17 +408,20 @@ export async function adoptManualProducts(): Promise<{ adopted: number; legacy: 
       .eq("id", matchedVariantId);
 
     await admin.from("products").update({ is_auto_generated: true }).eq("id", product.id);
-    await syncVariantPricesFromCostings(product.id).catch(() => {});
+    const priced = await syncVariantPricesFromCostings(product.id).catch((err: unknown) => ({
+      problems: [err instanceof Error ? err.message : "Couldn't reprice it from Costings"],
+    }));
+    stripeWarnings.push(...warningsFor(productName(product), priced.problems));
     adopted++;
   }
 
-  return { adopted, legacy };
+  return { adopted, legacy, stripeWarnings };
 }
 
 export async function syncAllProducts(): Promise<SyncResult> {
   const pillows = await syncPillowProducts();
   const bolsters = await syncBolsterProducts();
   const { archived } = await archiveUnsellableItemProducts();
-  const { adopted, legacy } = await adoptManualProducts();
-  return { pillows, bolsters, items: { archived, adopted, legacy } };
+  const { adopted, legacy, stripeWarnings } = await adoptManualProducts();
+  return { pillows, bolsters, items: { archived, adopted, legacy }, stripeWarnings };
 }

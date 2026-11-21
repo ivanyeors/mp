@@ -126,9 +126,10 @@ async function main() {
   for (const p of products ?? []) {
     const result = await syncVariantPricesFromCostings(p.id as string);
     console.log(
-      `  ${p.slug}: ${result.synced} variant(s) priced, stripe=${result.stripeSync}` +
+      `  ${p.slug}: ${result.synced} variant(s) priced` +
         (result.unresolvable.length ? `, unresolvable=${result.unresolvable.length}` : ""),
     );
+    for (const problem of result.problems) console.error(`    ${p.slug}: ${problem}`);
   }
 }
 

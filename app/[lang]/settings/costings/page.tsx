@@ -67,6 +67,7 @@ import {
 } from "@/lib/costings/build-costs";
 import { isEarPadItem, isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { parseCostingsItems } from "@/lib/ecommerce/inventory-families";
+import { stripeWarningToast, type StripeWarning } from "@/lib/shop/stripe-warnings";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -1416,7 +1417,9 @@ export default function CostingsPage() {
           );
         }
       }
-      toast.success("Costings saved");
+      const stripeWarnings: StripeWarning[] = payload?.stripe_warnings ?? [];
+      if (stripeWarnings.length === 0) toast.success("Costings saved");
+      else toast.warning(...stripeWarningToast("Costings saved, but a price did not reach Stripe", stripeWarnings));
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save costings.";
