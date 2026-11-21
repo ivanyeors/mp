@@ -321,7 +321,7 @@ type TemplatePreview = {
   dimensionOverrides: DimensionOverridesPayload | undefined;
 };
 
-type LandedPreview = { scope: string; keepMix: boolean; preview: TemplatePreview | null };
+type LandedPreview = { generation: number; keepMix: boolean; preview: TemplatePreview | null };
 
 function savedMixOf(mix: ResultFillingMixPayload | null): SavedMix {
   if (!mix) return EMPTY_SAVED_MIX;
@@ -458,8 +458,10 @@ export default function ResultDetailPage({
 
   const scope = `${productType}:${assignSize}:${assignTier}:${assignLength}`;
   const [shownScope, setShownScope] = useState(scope);
+  const [mixGeneration, setMixGeneration] = useState(0);
   if (shownScope !== scope) {
     setShownScope(scope);
+    setMixGeneration((g) => g + 1);
     setFillingTemplateId("");
     setAssignPrep(null);
     if (mixOrigin !== "saved") {
@@ -474,7 +476,7 @@ export default function ResultDetailPage({
   const [shownPreview, setShownPreview] = useState<LandedPreview | null>(null);
   if (shownPreview !== landedPreview) {
     setShownPreview(landedPreview);
-    if (landedPreview?.scope === scope) {
+    if (landedPreview?.generation === mixGeneration) {
       const { keepMix, preview } = landedPreview;
       if (!keepMix && !preview) {
         setPlacements([]);
@@ -647,7 +649,7 @@ export default function ResultDetailPage({
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string, opts: { keepMix?: boolean } = {}) => {
       const request = ++previewRequest.current;
-      const requestedFor = scope;
+      const requestedFor = mixGeneration;
       if (!templateId) {
         if (!opts.keepMix) {
           setPlacements([]);
@@ -667,7 +669,7 @@ export default function ResultDetailPage({
         if (request !== previewRequest.current) return;
         type LineRow = { item_id: number | string; quantity: number | string };
         setLandedPreview({
-          scope: requestedFor,
+          generation: requestedFor,
           keepMix: Boolean(opts.keepMix),
           preview: {
             placementRows: payload?.placements ?? [],
@@ -682,10 +684,10 @@ export default function ResultDetailPage({
         });
       } catch {
         if (opts.keepMix || request !== previewRequest.current) return;
-        setLandedPreview({ scope: requestedFor, keepMix: false, preview: null });
+        setLandedPreview({ generation: requestedFor, keepMix: false, preview: null });
       }
     },
-    [scope, to],
+    [mixGeneration, to],
   );
 
   const ownTemplateId = row?.filling_template_id ?? null;
@@ -730,6 +732,7 @@ export default function ResultDetailPage({
   }, [loadFillingMix]);
 
   const restoreSavedMix = useCallback(() => {
+    setMixGeneration((g) => g + 1);
     setPlacements(savedMix.pillow);
     setBolsterMix(savedMix.bolster);
     setMixOrigin("saved");
