@@ -343,9 +343,6 @@
     }
   },
   "app/[lang]/settings/faq/faq-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
     "react-hooks/purity": {
       "count": 1
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DragDropProvider } from "@dnd-kit/react";
@@ -312,18 +312,15 @@ export type FaqInitialData = {
   items: { ok: true; rows: ItemRow[] };
 };
 
-export default function SettingsFaqPage({ initialData }: { initialData?: FaqInitialData }) {
+export default function SettingsFaqPage({ initialData }: { initialData: FaqInitialData }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const faqPreviewHref = withLocale("/faq", locale);
 
-  const [categories, setCategories] = useState<CategoryRow[]>(
-    initialData?.categories.rows ?? [],
-  );
-  const [items, setItems] = useState<ItemRow[]>(initialData?.items.rows ?? []);
-  const [loading, setLoading] = useState(!initialData);
+  const [categories, setCategories] = useState<CategoryRow[]>(initialData.categories.rows);
+  const [items, setItems] = useState<ItemRow[]>(initialData.items.rows);
+  const [loading, setLoading] = useState(false);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
-  const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -342,14 +339,6 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
-    load();
-  }, [load]);
 
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, ItemRow[]>();
