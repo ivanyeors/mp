@@ -114,9 +114,6 @@
   "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx": {
     "mp/no-effect": {
       "count": 2
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 6
     }
   },
   "app/[lang]/settings/campaigns/ai/rewrite-ai.tsx": {
@@ -167,7 +164,7 @@
   },
   "app/[lang]/settings/campaigns/email-preview.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/campaigns/funnel/funnel-client.tsx": {
@@ -187,7 +184,7 @@
   },
   "app/[lang]/settings/campaigns/thumbnail-frame.tsx": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "app/[lang]/settings/costings/page.tsx": {
@@ -472,10 +469,7 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 3
     }
   },
   "app/[lang]/settings/products/categories-manager.tsx": {
@@ -491,7 +485,7 @@
   },
   "app/[lang]/settings/products/products-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/results/[id]/result-customer-panel.tsx": {

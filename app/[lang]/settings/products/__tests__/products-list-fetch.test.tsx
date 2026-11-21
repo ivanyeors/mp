@@ -3,7 +3,7 @@ import { click, settle } from "@/components/block-editor/__tests__/dom";
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProductRow, ProductsInitialData } from "../products-client";
+import type { Category, ProductRow, ProductsInitialData } from "../products-client";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/products",
@@ -41,10 +41,10 @@ const row = (id: string, product_type = "pillow"): ProductRow => ({
 
 const initialData: ProductsInitialData = {
   products: { ok: true, rows: [row("p1-a")], total: 100, page: 1, limit: 20 },
-  categories: { ok: true, rows: [{ id: "cat1", slug: "pillows", content: { "en-US": { name: "Pillows" } } }] },
 };
+const categories: Category[] = [{ id: "cat1", slug: "pillows", content: { "en-US": { name: "Pillows" } } }];
 
-let requests: { params: URLSearchParams; answer: (rows: ProductRow[], total?: number) => Promise<void> }[];
+let requests: { path: string; params: URLSearchParams; answer: (rows: ProductRow[], total?: number) => Promise<void> }[];
 
 let root: Root | null = null;
 beforeEach(async () => {
@@ -52,9 +52,10 @@ beforeEach(async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => {
-      const params = new URL(url, "http://x").searchParams;
+      const { pathname: path, searchParams: params } = new URL(url, "http://x");
       return new Promise((resolve) => {
         requests.push({
+          path,
           params,
           answer: async (rows, total = 100) => {
             await act(async () => resolve({ ok: true, json: async () => ({ ok: true, rows, total }) }));
@@ -67,7 +68,7 @@ beforeEach(async () => {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<ProductsClient initialData={initialData} stripeMode="test" />));
+  act(() => root!.render(<ProductsClient initialData={initialData} categories={categories} stripeMode="test" />));
   await settle(400);
 });
 afterEach(async () => {
@@ -79,7 +80,8 @@ afterEach(async () => {
 });
 
 const selects = () => [...document.querySelectorAll("select")];
-const [TYPE, STATUS] = [0, 1];
+const [TYPE, STATUS, CATEGORY] = [0, 1, 2];
+const optionsOf = (which: number) => [...selects()[which].options].map((o) => o.textContent);
 async function choose(which: number, value: string) {
   const el = selects()[which];
   await act(async () => {
@@ -140,5 +142,25 @@ describe("ProductsClient list", () => {
     await requests[0].answer([row("p3-a")]);
     await choose(TYPE, "bolster");
     expect(requests.slice(1).map((r) => `${r.params.get("page")}:${r.params.get("product_type")}`)).toEqual(["1:bolster"]);
+  });
+});
+
+describe("ProductsClient category filter", () => {
+  it("lists the categories the page read", () => {
+    expect(optionsOf(CATEGORY)).toEqual(["All categories", "Pillows"]);
+    expect(requests).toEqual([]);
+  });
+
+  it("lists the page's categories and asks only for the products when the server's products read failed", async () => {
+    act(() => root!.unmount());
+    document.body.innerHTML = "";
+    const host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    act(() => root!.render(<ProductsClient categories={categories} stripeMode="test" />));
+    await settle();
+
+    expect(optionsOf(CATEGORY)).toEqual(["All categories", "Pillows"]);
+    expect(requests.map((r) => r.path)).toEqual(["/api/shop/products"]);
   });
 });
