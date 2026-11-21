@@ -40,11 +40,6 @@
       "count": 8
     }
   },
-  "app/[lang]/mp-maker/page.tsx": {
-    "mp/no-effect": {
-      "count": 3
-    }
-  },
   "app/[lang]/results/[id]/page.tsx": {
     "@next/next/no-img-element": {
       "count": 1
@@ -124,11 +119,6 @@
       "count": 6
     }
   },
-  "app/[lang]/settings/blogs/blogs-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
   "app/[lang]/settings/campaigns/ai/rewrite-ai.tsx": {
     "mp/no-effect": {
       "count": 2
@@ -182,7 +172,7 @@
   },
   "app/[lang]/settings/campaigns/funnel/funnel-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/campaigns/kept-draft.ts": {
@@ -292,9 +282,6 @@
   "app/[lang]/settings/customers/customers-client.tsx": {
     "mp/no-effect": {
       "count": 4
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 4
     }
   },
   "app/[lang]/settings/customers/filters/filters-page-client.tsx": {
@@ -304,7 +291,7 @@
   },
   "app/[lang]/settings/customers/followups-tab.tsx": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "app/[lang]/settings/customers/review-match-parts.tsx": {
@@ -357,18 +344,10 @@
   },
   "app/[lang]/settings/faq/faq-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 2
     },
     "react-hooks/purity": {
       "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "app/[lang]/settings/forms/forms-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
     }
   },
   "app/[lang]/settings/general/general-client.tsx": {
@@ -425,7 +404,7 @@
   },
   "app/[lang]/settings/inventory/configure/soft-body-section.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/inventory/page.tsx": {
@@ -433,13 +412,13 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 12
+      "count": 11
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/media/media-client.tsx": {
@@ -447,10 +426,10 @@
       "count": 7
     },
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "app/[lang]/settings/orders/[id]/easyship-fulfilment.tsx": {
@@ -517,7 +496,7 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 5
+      "count": 4
     },
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -536,10 +515,7 @@
   },
   "app/[lang]/settings/products/products-client.tsx": {
     "mp/no-effect": {
-      "count": 7
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 4
     }
   },
   "app/[lang]/settings/results/[id]/result-customer-panel.tsx": {
@@ -660,10 +636,7 @@
   },
   "components/analytics/analytics-notice-bar.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/analytics/drop-off-question.tsx": {
@@ -688,10 +661,7 @@
   },
   "components/auth/login-form.tsx": {
     "mp/no-effect": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 3
     }
   },
   "components/auth/profile-menu.tsx": {
@@ -742,17 +712,12 @@
   },
   "components/block-editor/use-editor-history.ts": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "components/block-editor/use-unsaved-guard.ts": {
     "mp/no-effect": {
       "count": 6
-    }
-  },
-  "components/blog/blog-filters.tsx": {
-    "mp/no-effect": {
-      "count": 3
     }
   },
   "components/configurator/addon-cards.tsx": {
@@ -791,10 +756,7 @@
   },
   "components/customise-tier-picker.tsx": {
     "mp/no-effect": {
-      "count": 5
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 4
     }
   },
   "components/effects/Aurora.jsx": {
@@ -855,7 +817,7 @@
   },
   "components/explore/explore-experience.tsx": {
     "mp/no-effect": {
-      "count": 11
+      "count": 9
     }
   },
   "components/haptics.tsx": {
@@ -916,7 +878,7 @@
   },
   "components/settings/appointments-calendar.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/refs": {
       "count": 3
@@ -1015,7 +977,7 @@
   },
   "components/settings/settings-sidebar-nav.tsx": {
     "mp/no-effect": {
-      "count": 9
+      "count": 8
     },
     "react-hooks/exhaustive-deps": {
       "count": 4
@@ -1103,7 +1065,7 @@
   },
   "components/slide-in-pages/booking-flow.tsx": {
     "mp/no-effect": {
-      "count": 2
+      "count": 1
     },
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -1141,12 +1103,12 @@
   },
   "components/spatial/soft-cut.ts": {
     "mp/no-effect": {
-      "count": 4
+      "count": 2
     }
   },
   "components/spatial/soft-top.ts": {
     "mp/no-effect": {
-      "count": 5
+      "count": 4
     },
     "react-hooks/exhaustive-deps": {
       "count": 2
@@ -1159,7 +1121,7 @@
   },
   "components/spatial/xray-pillow.tsx": {
     "mp/no-effect": {
-      "count": 16
+      "count": 15
     },
     "react-hooks/refs": {
       "count": 1
@@ -1208,15 +1170,12 @@
   },
   "components/tiktok/tiktok-player.tsx": {
     "mp/no-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "components/ui/app-dock.tsx": {
     "react-hooks/preserve-manual-memoization": {
       "count": 7
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "components/ui/apple-cards-carousel.tsx": {
@@ -1230,16 +1189,10 @@
   "components/ui/bubble-menu.tsx": {
     "@next/next/no-img-element": {
       "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 2
     }
   },
   "components/ui/image-picker.tsx": {
     "@next/next/no-img-element": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1255,7 +1208,7 @@
   },
   "components/ui/shadcn-io/particles/index.tsx": {
     "react-hooks/exhaustive-deps": {
-      "count": 3
+      "count": 2
     },
     "react-hooks/immutability": {
       "count": 3
@@ -1272,11 +1225,6 @@
     }
   },
   "components/ui/top-loading-bar.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "hooks/use-mobile.ts": {
     "react-hooks/set-state-in-effect": {
       "count": 1
     }

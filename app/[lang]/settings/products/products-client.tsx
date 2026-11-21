@@ -242,11 +242,19 @@ export function ProductsClient({
         };
     }, [search]);
 
-    useEffect(() => { setPage(1); }, [statusFilter, categoryFilter]);
-    useEffect(() => {
+    const changeStatus = (value: string) => {
+        setStatusFilter(value);
+        setPage(1);
+    };
+    const changeCategory = (value: string) => {
+        setCategoryFilter(value);
+        setPage(1);
+    };
+    const changeType = (value: string) => {
+        setTypeFilter(value);
         setPage(1);
         setSelected(new Set());
-    }, [typeFilter]);
+    };
 
     useEffect(() => {
         if (initialData) return;
@@ -256,7 +264,9 @@ export function ProductsClient({
             .catch(() => {});
     }, [initialData]);
 
+    const latestRequest = useRef(0);
     const fetchProducts = useCallback(async () => {
+        const request = ++latestRequest.current;
         setLoading(true);
         const params = new URLSearchParams();
         if (debouncedSearch) params.set("search", debouncedSearch);
@@ -271,17 +281,19 @@ export function ProductsClient({
         else if (typeFilter === "accessory") params.set("product_type", "accessory");
         else if (typeFilter === "bundle") params.set("product_type", "bundle");
 
+        let rows: ProductRow[] = [];
+        let count = 0;
         try {
             const res = await fetch(`/api/shop/products?${params.toString()}`);
             const json = await res.json();
-            setProducts(json.rows ?? []);
-            setTotal(json.total ?? 0);
-        } catch {
-            setProducts([]);
-            setTotal(0);
-        } finally {
-            setLoading(false);
-        }
+            rows = json.rows ?? [];
+            count = json.total ?? 0;
+        } catch {}
+        if (request !== latestRequest.current) return;
+        setProducts(rows);
+        setTotal(count);
+        setSelected(new Set());
+        setLoading(false);
     }, [debouncedSearch, statusFilter, categoryFilter, page, typeFilter]);
 
     useEffect(() => {
@@ -291,8 +303,6 @@ export function ProductsClient({
         }
         fetchProducts();
     }, [fetchProducts]);
-
-    useEffect(() => { setSelected(new Set()); }, [products]);
 
     const syncFromInventory = async () => {
         setSyncing(true);
@@ -665,7 +675,7 @@ export function ProductsClient({
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:contents">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={changeType}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Type" />
                 </SelectTrigger>
@@ -678,7 +688,7 @@ export function ProductsClient({
                 </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={changeStatus}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -690,7 +700,7 @@ export function ProductsClient({
                 </SelectContent>
             </Select>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={changeCategory}>
                 <SelectTrigger className="w-full max-sm:col-span-2 max-sm:min-w-0 sm:w-44">
                     <SelectValue placeholder="Category" />
                 </SelectTrigger>

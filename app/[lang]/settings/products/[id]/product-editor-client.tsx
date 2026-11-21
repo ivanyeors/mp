@@ -70,14 +70,8 @@ export type ProductDetailResponse = {
     row: LoadedProduct;
 };
 
-export type CategoriesListResponse = {
-    ok: true;
-    rows: ProductCategory[];
-};
-
 export type ProductEditorInitialData = {
     product: ProductDetailResponse;
-    categories: CategoriesListResponse;
 };
 
 interface VariantFormState {
@@ -139,10 +133,12 @@ function formatPrice(val: number, currency = "SGD"): string {
 
 export function ProductEditorClient({
     initialData,
+    categories,
     ai = AI_OFF,
     stripeMode,
 }: {
     initialData?: ProductEditorInitialData;
+    categories: ProductCategory[];
     ai?: AiWritingAvailability;
     stripeMode: StripeMode;
 }) {
@@ -207,19 +203,7 @@ export function ProductEditorClient({
     const [syncingStripe, setSyncingStripe] = useState(false);
     const [generatingLink, setGeneratingLink] = useState(false);
 
-    const [categories, setCategories] = useState<ProductCategory[]>(
-        initialData?.categories.rows ?? [],
-    );
-
     const hydratedFromServer = useRef(Boolean(initialData));
-
-    useEffect(() => {
-        if (initialData) return;
-        fetch("/api/shop/categories")
-            .then((r) => r.json())
-            .then((data) => setCategories(data.rows ?? []))
-            .catch(() => {});
-    }, [initialData]);
 
     useEffect(() => {
         if (isNew) {

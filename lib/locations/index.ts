@@ -43,6 +43,10 @@ export function selectBookableLocations(rows: ResolvedLocation[]): ResolvedLocat
   return rows.filter((l) => l.bookable && !!l.address?.trim());
 }
 
+export async function readBookingLocations(): Promise<{ id: string; name: string; type: string; address: string }[]> {
+  return selectBookableLocations(await getLocations()).map(({ id, name, type, address }) => ({ id, name, type, address: address ?? "" }));
+}
+
 export function selectPartnerRows(rows: LocationRow[], includeHidden = false): LocationRow[] {
   return rows.filter(
     (r) => (r.type ?? "partner") === "partner" && !isBranch(r) && (includeHidden || r.visible),

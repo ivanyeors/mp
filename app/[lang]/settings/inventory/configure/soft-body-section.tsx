@@ -489,8 +489,6 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
   const [registry, setRegistry] = useState<DimensionRegistry>(CODE_REGISTRY);
   const [dimsFailed, setDimsFailed] = useState(false);
 
-  useEffect(() => writePreview(preview), [preview]);
-
   useEffect(() => {
     let live = true;
     void (async () => {
@@ -516,7 +514,11 @@ function SoftBodyPreview({ draft, settingsPath }: { draft: SoftBodySettings; set
     [placements, preview.size, itemDims, registry.loftAllowance],
   );
   const cut = useMemo(() => ({ section: preview.section }), [preview.section]);
-  const update = (patch: Partial<PreviewState>) => setPreview((p) => ({ ...p, ...patch }));
+  const update = (patch: Partial<PreviewState>) => {
+    const next = { ...preview, ...patch };
+    setPreview(next);
+    writePreview(next);
+  };
 
   const compare = preview.compare && draft.enabled;
   const problems = fit.cells.filter((c) => c.section === preview.section && c.status !== "ok");

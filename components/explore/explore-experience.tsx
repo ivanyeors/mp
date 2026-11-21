@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -159,10 +159,7 @@ export function ExploreExperience({
       setStage("error");
     }
   };
-  const claimRef = useRef(claim);
-  useEffect(() => {
-    claimRef.current = claim;
-  });
+  const finishClaimNow = useEffectEvent(() => void claim(false));
 
   const finished = useRef(false);
   useEffect(() => {
@@ -171,7 +168,7 @@ export function ExploreExperience({
     const url = new URL(window.location.href);
     url.searchParams.delete("claim");
     window.history.replaceState(window.history.state, "", url);
-    void claimRef.current(false);
+    finishClaimNow();
   }, [finishClaim]);
 
   const openPopup = () => {
@@ -223,10 +220,7 @@ export function ExploreExperience({
       float(at, "That did not go through. Try again later");
     }
   };
-  const onFlowerRef = useRef(onFlower);
-  useEffect(() => {
-    onFlowerRef.current = onFlower;
-  });
+  const pickFlower = useEffectEvent((index: number, at: { x: number; y: number }) => void onFlower(index, at));
 
   const skyRef = useRef(sky);
   const flowersRef = useRef(flowers);
@@ -248,7 +242,7 @@ export function ExploreExperience({
         if (cancelled || !hostRef.current) return;
         scene = createExploreScene(hostRef.current, {
           reducedMotion,
-          onFlower: (index, at) => void onFlowerRef.current(index, at),
+          onFlower: (index, at) => pickFlower(index, at),
         });
         scene.setSky(skyRef.current);
         scene.setFlowers(flowersRef.current.count, flowersRef.current.picked);
@@ -273,7 +267,7 @@ export function ExploreExperience({
       url.searchParams.delete("flower");
       window.history.replaceState(window.history.state, "", url);
       if (finishFlower >= flowersRef.current.count) return;
-      void onFlowerRef.current(finishFlower, { x: window.innerWidth * 0.72, y: window.innerHeight * 0.55 });
+      pickFlower(finishFlower, { x: window.innerWidth * 0.72, y: window.innerHeight * 0.55 });
     };
     const timer = window.setTimeout(go, sceneOn ? 1100 : 2500);
     return () => window.clearTimeout(timer);

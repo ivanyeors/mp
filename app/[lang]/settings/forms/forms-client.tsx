@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -72,13 +72,12 @@ export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog };
 export default function FormsSettingsPage({
   initialData,
 }: {
-  initialData?: FormsInitialData;
+  initialData: FormsInitialData;
 }) {
   const [options, setOptions] = useState<DiscoverySourceOption[]>(
-    initialData?.catalog?.options ?? [],
+    initialData.catalog?.options ?? [],
   );
-  const [loading, setLoading] = useState(!initialData);
-  const skipFirstFetch = useRef(initialData != null);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -98,14 +97,6 @@ export default function FormsSettingsPage({
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
-    void load();
-  }, [load]);
 
   const save = async (next: DiscoverySourceOption[]) => {
     setSaving(true);

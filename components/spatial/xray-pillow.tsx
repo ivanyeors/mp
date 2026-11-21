@@ -618,17 +618,30 @@ export function XrayPillow({
     selectedRef.current = selected;
   }, [selected]);
 
-  useEffect(() => {
-    onDiveChange?.(dived);
-  }, [dived, onDiveChange]);
+  const divedRef = useRef<Section | null>(null);
+  const changeDive = useCallback(
+    (next: Section | null) => {
+      divedRef.current = next;
+      setDived(next);
+      onDiveChange?.(next);
+    },
+    [onDiveChange],
+  );
+  const attachRootAndTellHostItMountedUndived = useCallback(
+    (el: HTMLDivElement | null) => {
+      rootRef.current = el;
+      if (el && divedRef.current === null) onDiveChange?.(null);
+    },
+    [onDiveChange],
+  );
 
   const endDive = useCallback(() => {
-    setDived(null);
+    changeDive(null);
     setOpenSub(null);
     setOpenLayer(null);
     setHoverSub(null);
     setSelected(null);
-  }, []);
+  }, [changeDive]);
 
   const openPicker = useCallback((subSection: SubSection, layer: number | null) => {
     setOpenLayer(layer);
@@ -827,7 +840,7 @@ export function XrayPillow({
   ) => {
     onPlacementsChange?.(next);
     setSelected(nextRef);
-    if (dived && nextRef.section !== dived) setDived(nextRef.section);
+    if (dived && nextRef.section !== dived) changeDive(nextRef.section);
     const label = pieceLabel(ref.itemId);
     toast.success(nudged ? `Moved ${label} within ${nextRef.section} ${nextRef.subSection}` : `Moved ${label} to ${nextRef.section} ${nextRef.subSection}`, {
       id: "xray-move",
@@ -1170,7 +1183,7 @@ export function XrayPillow({
   }, [editable]);
   const tapPouch = (ref: PieceRef, inDive: boolean) => {
     if (!inDive && !justDraggedRef.current) {
-      setDived(ref.section);
+      changeDive(ref.section);
       setOpenSub(null);
     }
     selectPiece(ref);
@@ -1550,7 +1563,7 @@ export function XrayPillow({
     );
 
   return (
-    <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
+    <div ref={attachRootAndTellHostItMountedUndived} className={className} style={{ pointerEvents: "none" }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${XRAY_VIEW.width} ${XRAY_VIEW.height}`}
@@ -1730,7 +1743,7 @@ export function XrayPillow({
               onClick={
                 editable
                   ? () => {
-                      setDived(section);
+                      changeDive(section);
                       setOpenSub(null);
                       setSelected(null);
                     }

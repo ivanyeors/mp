@@ -53,7 +53,6 @@ export function BubbleMenu({
 }: BubbleMenuProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   const isControlled = controlledOpen !== undefined;
   const isMenuOpen = isControlled ? controlledOpen : internalOpen;
@@ -80,15 +79,11 @@ export function BubbleMenu({
     setOpen(false);
   }, [setOpen]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isMenuOpen) {
-      setShowOverlay(true);
-    }
-  }, [isMenuOpen]);
+  // A parent opening the menu mounts the overlay in the same render. The close
+  // animation clears showOverlay once it ends. ponytail: this sets state during
+  // render, so with open={true} on the server the portal would run there; the
+  // app dock loads BubbleMenu with ssr: false. Restore a mounted guard to SSR it.
+  if (isMenuOpen && !showOverlay) setShowOverlay(true);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -268,7 +263,7 @@ export function BubbleMenu({
   };
 
   const overlay =
-    showOverlay && mounted
+    showOverlay
       ? createPortal(
           <div
             ref={overlayRef}

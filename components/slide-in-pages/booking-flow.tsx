@@ -27,7 +27,8 @@ import {
 import { cn } from "@/lib/utils";
 import { trackGaEvent } from "@/lib/analytics/ga-events";
 
-type Location = { id: string; name: string; type: string; address: string };
+export type BookingLocation = { id: string; name: string; type: string; address: string };
+type Location = BookingLocation;
 type Slot = { id: string; startIso: string; endIso: string };
 type DaySuggestion = { date: string; count: number };
 
@@ -92,9 +93,11 @@ export type ReadjustmentBooking = {
 export function BookingFlow({
   type,
   readjustment,
+  locations,
 }: {
   type: ApptType;
   readjustment?: ReadjustmentBooking;
+  locations: Location[];
 }) {
   const { m, locale } = useI18n();
   const router = useRouter();
@@ -126,7 +129,6 @@ export function BookingFlow({
     : null;
   const purchaseReady = !readjustment || (selection === UNLISTED ? unlistedWhere !== "" : !!selectedPurchase);
 
-  const [locations, setLocations] = React.useState<Location[]>([]);
   const [locationId, setLocationId] = React.useState<string>("");
   const [date, setDate] = React.useState<string>("");
   const [dateOpen, setDateOpen] = React.useState(false);
@@ -145,19 +147,6 @@ export function BookingFlow({
   const [confirmed, setConfirmed] = React.useState<Location | null>(null);
   const [redirecting, setRedirecting] = React.useState(false);
   const [confirmedEventId, setConfirmedEventId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    let alive = true;
-    fetch("/api/locations")
-      .then((r) => r.json())
-      .then((d) => {
-        if (alive && d?.ok) setLocations(d.locations);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   React.useEffect(() => {
     if (!date) return;

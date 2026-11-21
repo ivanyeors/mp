@@ -30,6 +30,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ReadjustmentPanel } from "@/components/settings/readjustment-panel";
 import {
   Collapsible,
@@ -78,8 +79,6 @@ type Props = {
 };
 
 const PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
-
-const MOBILE_BREAKPOINT_QUERY = "(max-width: 767px)";
 
 type ViewId = "timeGridDay" | "timeGridThreeDay" | "timeGridWeek" | "dayGridMonth";
 
@@ -258,20 +257,6 @@ function renderEventContent(arg: EventContentArg) {
   );
 }
 
-function useSyncIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window === "undefined" ? false : window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
-    const onChange = () => setIsMobile(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-  return isMobile;
-}
-
 function LegendSwatch({ className }: { className: string }) {
   return <span className={cn("inline-block size-2.5 shrink-0 rounded-sm", className)} />;
 }
@@ -282,7 +267,7 @@ export function AppointmentsCalendar({
   onAvailabilityChange,
   onOpenSettings,
 }: Props) {
-  const isMobile = useSyncIsMobile();
+  const isMobile = useIsMobile();
   const calendarRef = useRef<FullCalendar>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;

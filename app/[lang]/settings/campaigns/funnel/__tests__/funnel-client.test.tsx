@@ -250,6 +250,30 @@ describe("the second review of slice 03", () => {
   };
   const dialog = () => document.body.querySelector('[role="dialog"]') as HTMLElement | null;
 
+  it("asks for a hidden card's render when it is opened full size, once however often it opens", async () => {
+    window.localStorage.setItem("mp.emailFunnel.previews", "hidden");
+    try {
+      actions.renderFunnelEmails.mockClear();
+      await show(buildFunnel(withAutomatic), "new");
+      expect(actions.renderFunnelEmails).not.toHaveBeenCalled();
+      await press("Preview Review request");
+      expect(actions.renderFunnelEmails).toHaveBeenCalledTimes(1);
+      const [key] = actions.renderFunnelEmails.mock.calls[0][0];
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(dialog()?.textContent).toContain(`Subject of ${key}`.slice(0, 30));
+      await act(async () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      });
+      await press("Preview Review request");
+      expect(actions.renderFunnelEmails).toHaveBeenCalledTimes(1);
+      unmount();
+    } finally {
+      window.localStorage.removeItem("mp.emailFunnel.previews");
+    }
+  });
+
   it("opens one draft reminder with its own numbers, not the whole sequence's", async () => {
     await show(buildFunnel(withAutomatic), "lead");
     await press("Preview Finish your pillow · 1 month");

@@ -61,9 +61,11 @@ export function LoginForm({
   const focusEmailRef = useRef(false);
   const pushedHistoryRef = useRef(false);
 
-  useEffect(() => {
+  const [seenInitialEmail, setSeenInitialEmail] = useState(initialEmail);
+  if (initialEmail !== seenInitialEmail) {
+    setSeenInitialEmail(initialEmail);
     if (initialEmail) setEmail(initialEmail);
-  }, [initialEmail]);
+  }
 
   const leaveCodeStep = useCallback(() => {
     setCode("");

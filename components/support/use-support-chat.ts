@@ -156,25 +156,26 @@ export function useSupportChat() {
     if (!chatId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
+    let latestPoll = 0;
     const tick = async () => {
       const current = activeRef.current;
       if (!current || current.chat.id !== chatId) return;
       const settled = current.messages.filter((m) => !m.pending && !m.failed).length;
-      try {
-        const res = await call<{ chat: ChatView; messages?: ChatMessageView[]; unchanged?: boolean }>(
-          `/api/support/chat/${chatId}?have=${settled}`,
-          { token: current.token },
-        );
+      const thisPoll = ++latestPoll;
+      const res = await call<{ chat: ChatView; messages?: ChatMessageView[]; unchanged?: boolean }>(
+        `/api/support/chat/${chatId}?have=${settled}`,
+        { token: current.token },
+      ).catch(() => null);
+      if (stopped || thisPoll !== latestPoll) return;
+      if (res) {
         setActive((prev) => {
           if (!prev || prev.chat.id !== chatId) return prev;
           if (res.unchanged || !res.messages) return { ...prev, chat: res.chat };
           const local = prev.messages.filter((m) => m.pending || m.failed);
           return { ...prev, chat: res.chat, messages: [...res.messages, ...local] };
         });
-      } catch {}
-      if (!stopped) {
-        timer = setTimeout(tick, document.visibilityState === "visible" ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
       }
+      timer = setTimeout(tick, document.visibilityState === "visible" ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
     };
     timer = setTimeout(tick, POLL_VISIBLE_MS);
     const onVisible = () => {
