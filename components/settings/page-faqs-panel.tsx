@@ -116,8 +116,10 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
     } catch {}
   }, []);
 
+  const selectedSurface = useRef("home");
   const latestSetLoad = useRef(0);
   const loadSet = useCallback(async (key: string) => {
+    if (key !== selectedSurface.current) return;
     const request = ++latestSetLoad.current;
     setLoading(true);
     try {
@@ -153,14 +155,19 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
     loadSet(surfaceKey);
   }, [surfaceKey, loadSet]);
 
+  const selectSurface = (key: string) => {
+    selectedSurface.current = key;
+    setSurfaceKey(key);
+  };
+
   const selectFixed = (key: string) => {
     setProductPick("");
-    setSurfaceKey(key);
+    selectSurface(key);
   };
 
   const selectProduct = (productId: string) => {
     setProductPick(productId);
-    setSurfaceKey(productSurfaceKey(productId));
+    selectSurface(productSurfaceKey(productId));
   };
 
   const addItem = async () => {
