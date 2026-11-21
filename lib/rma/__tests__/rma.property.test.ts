@@ -68,21 +68,28 @@ const unitCentsOf = (lines: Array<{ id: string; quantity: number; total_price: n
   return Math.round((line.total_price * 100) / line.quantity);
 };
 
-const returnOnOrder = ({ discount }: { discount: boolean }) =>
+const returnOnOrder = ({ coupon, points }: { coupon: boolean; points: boolean }) =>
   fc
     .record({
       lines: fc.array(
         fc.record({ unitCents: fc.integer({ min: 1, max: 50_000 }), quantity: fc.integer({ min: 1, max: 5 }) }),
         { minLength: 1, maxLength: 6 },
       ),
-      offBasisPoints: discount ? fc.integer({ min: 0, max: 10_000 }) : fc.constant(0),
+      offBasisPoints: coupon ? fc.integer({ min: 0, max: 10_000 }) : fc.constant(0),
+      pointsShare: points ? fc.double({ min: 0, max: 1, noNaN: true }) : fc.constant(0),
       shippingCents: fc.integer({ min: 0, max: 2_000 }),
     })
-    .chain(({ lines: raw, offBasisPoints, shippingCents }) => {
+    .chain(({ lines: raw, offBasisPoints, pointsShare, shippingCents }) => {
       const lines = raw.map((l, i) => ({ id: `l${i}`, quantity: l.quantity, total_price: (l.unitCents * l.quantity) / 100 }));
       const subtotalCents = raw.reduce((t, l) => t + l.unitCents * l.quantity, 0);
-      const goodsCents = subtotalCents - Math.floor((subtotalCents * offBasisPoints) / 10_000);
-      const order = { subtotal: subtotalCents / 100, shipping_amount: shippingCents / 100, total: (goodsCents + shippingCents) / 100 };
+      const afterCouponCents = subtotalCents - Math.floor((subtotalCents * offBasisPoints) / 10_000);
+      const pointsCents = Math.floor((afterCouponCents * pointsShare) / 100) * 100;
+      const order = {
+        subtotal: subtotalCents / 100,
+        shipping_amount: shippingCents / 100,
+        points_discount: pointsCents / 100,
+        total: (afterCouponCents - pointsCents + shippingCents) / 100,
+      };
       const returned = fc
         .subarray(lines, { minLength: 0 })
         .chain((picked) =>
@@ -92,6 +99,11 @@ const returnOnOrder = ({ discount }: { discount: boolean }) =>
         );
       return returned.map((r) => ({ order, lines, returned: r }));
     });
+
+const listCentsOf = (lines: Array<{ id: string; quantity: number; total_price: number }>, returned: Array<{ order_item_id: string; quantity: number }>) =>
+  returned.reduce((t, r) => t + unitCentsOf(lines, r.order_item_id) * r.quantity, 0);
+
+const goodsCashCents = (order: { total: number; shipping_amount: number }) => Math.round(order.total * 100) - Math.round(order.shipping_amount * 100);
 
 describe("Returns / RMA lifecycle (ADR 0011)", () => {
   it("allows exactly the transitions the ADR's state machine lists, for every pair of states", () => {
@@ -219,38 +231,55 @@ describe("Returns / RMA lifecycle (ADR 0011)", () => {
     );
   });
 
-  it("with no discount, no tax and no points, a return refunds the list price of the units returned, to the cent", () => {
+  it("with no coupon, no tax and no points, a return refunds the list price of the units returned, to the cent", () => {
     fc.assert(
-      fc.property(returnOnOrder({ discount: false }), ({ order, lines, returned }) => {
-        const listCents = returned.reduce((t, r) => t + unitCentsOf(lines, r.order_item_id) * r.quantity, 0);
-        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCents);
+      fc.property(returnOnOrder({ coupon: false, points: false }), ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
       }),
     );
   });
 
-  it("with a discount, a return never refunds more than the list price of the units returned", () => {
+  it("with a coupon or points, a return never refunds more than the list price of the units returned", () => {
     fc.assert(
-      fc.property(returnOnOrder({ discount: true }), ({ order, lines, returned }) => {
-        const listCents = returned.reduce((t, r) => t + unitCentsOf(lines, r.order_item_id) * r.quantity, 0);
-        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBeLessThanOrEqual(listCents);
+      fc.property(returnOnOrder({ coupon: true, points: true }), ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBeLessThanOrEqual(listCentsOf(lines, returned));
       }),
     );
   });
 
-  it("returning every line of an Order at full quantity refunds exactly what it took for goods, total less shipping", () => {
+  it("with points and no coupon or tax, a return refunds the list price of the units returned until the goods cash runs out (points stay spent on what was kept)", () => {
     fc.assert(
-      fc.property(returnOnOrder({ discount: true }), ({ order, lines }) => {
-        const everything = lines.map((l) => ({ order_item_id: l.id, quantity: l.quantity }));
-        expect(Math.round(rmaRefundAmount(order, lines, everything) * 100)).toBe(
-          Math.round(order.total * 100) - Math.round(order.shipping_amount * 100),
+      fc.property(returnOnOrder({ coupon: false, points: true }), ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(
+          Math.min(listCentsOf(lines, returned), goodsCashCents(order)),
         );
       }),
     );
   });
 
-  it("a return refunds what Choose items gives for the same lines, without the shipping", () => {
+  it("a return never refunds more than the Order took for goods, total less shipping, with or without points", () => {
     fc.assert(
-      fc.property(returnOnOrder({ discount: true }), ({ order, lines, returned }) => {
+      fc.property(
+        fc.boolean().chain((points) => returnOnOrder({ coupon: true, points })),
+        ({ order, lines, returned }) => {
+          expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBeLessThanOrEqual(goodsCashCents(order));
+        },
+      ),
+    );
+  });
+
+  it("returning every line of an Order at full quantity refunds exactly what it took for goods, total less shipping, with or without points", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: true, points: true }), ({ order, lines }) => {
+        const everything = lines.map((l) => ({ order_item_id: l.id, quantity: l.quantity }));
+        expect(Math.round(rmaRefundAmount(order, lines, everything) * 100)).toBe(goodsCashCents(order));
+      }),
+    );
+  });
+
+  it("on an Order with no points, a return refunds what Choose items gives for the same lines, without the shipping", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: true, points: false }), ({ order, lines, returned }) => {
         expect(rmaRefundAmount(order, lines, returned)).toBe(
           selectionRefundAmount(order, lines, { items: returned, shipping: false }),
         );

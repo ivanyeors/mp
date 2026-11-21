@@ -20,15 +20,24 @@ vi.mock("@/lib/site-settings", () => ({ getSiteSettings: async () => ({}) }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
+      let columns = "";
       const b: Record<string, unknown> = {
-        select: () => b,
+        select: (c: string) => ((columns = c), b),
         eq: () => b,
-        maybeSingle: async () => ({ data: table === "rma_requests" ? h.rma : null, error: null }),
+        maybeSingle: async () => ({ data: table === "rma_requests" ? onlySelected(h.rma, columns) : null, error: null }),
       };
       return b;
     },
   }),
 }));
+
+function onlySelected(rma: Record<string, unknown>, columns: string) {
+  const orderColumns = /orders\(([^()]*)/.exec(columns)?.[1].split(",").map((c) => c.trim()) ?? [];
+  const order = rma.orders as Record<string, unknown> | null;
+  if (!order) return rma;
+  const kept = Object.fromEntries(Object.entries(order).filter(([k]) => k === "order_items" || orderColumns.includes(k)));
+  return { ...rma, orders: kept };
+}
 
 const { issueRmaRefund } = await import("@/app/[lang]/settings/rma/actions");
 
@@ -45,6 +54,7 @@ function twoPillowsTwentyOff(returned: Array<{ order_item_id: string; quantity: 
       payment_reference: "pi_rma",
       subtotal: 200,
       shipping_amount: 8,
+      points_discount: 0,
       total: 168,
       amount_captured: 168,
       amount_refunded: 0,
@@ -80,6 +90,13 @@ describe("issueRmaRefund — what Stripe is asked for", () => {
     ]);
     await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 160 });
     expect(stripeCall().amount).toBe(160);
+  });
+
+  it("on an Order paid S$50 in points, returning one line asks Stripe for its S$100.00: the points stay spent on the kept line", async () => {
+    h.rma = twoPillowsTwentyOff([{ order_item_id: "line-a", quantity: 1 }]);
+    Object.assign(h.rma.orders as Record<string, unknown>, { points_discount: 50, total: 158, amount_captured: 158 });
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 100 });
+    expect(stripeCall().amount).toBe(100);
   });
 
   it("is capped at what is left, and then sends no amount so Stripe refunds the rest", async () => {
