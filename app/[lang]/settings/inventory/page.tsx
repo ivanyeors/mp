@@ -156,7 +156,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [partDrawerOpen, setPartDrawerOpen] = useState(false);
-  const [partDrawerGroup, setPartDrawerGroup] = useState<Group | null>(null);
+  const [partDrawerKey, setPartDrawerKey] = useState<string | null>(null);
   type CartPillowLine = {
     id: string;
     kind: "pillow" | "bolster";
@@ -563,26 +563,14 @@ export default function InventoryPage() {
       }));
   }, [items]);
 
-  useEffect(() => {
-    if (!partDrawerOpen || !partDrawerGroup) return;
-    if (partDrawerGroup.key === 'custom') {
-      setPartDrawerGroup((prev) => {
-        if (!prev) return prev;
-        if (prev.items === items) return prev;
-        return { ...prev, items };
-      });
-      return;
-    }
-    const updated = partGroups.find((group) => group.key === partDrawerGroup.key);
-    if (!updated) {
-      setPartDrawerGroup(null);
-      setPartDrawerOpen(false);
-      return;
-    }
-    if (partDrawerGroup.items !== updated.items) {
-      setPartDrawerGroup(updated);
-    }
-  }, [items, partDrawerGroup, partDrawerOpen, partGroups]);
+  const partDrawerGroup = useMemo<Group | null>(
+    () =>
+      partDrawerKey === 'custom'
+        ? { key: 'custom', title: 'Custom parts', items }
+        : (partGroups.find((group) => group.key === partDrawerKey) ?? null),
+    [items, partDrawerKey, partGroups],
+  );
+  if (partDrawerOpen && !partDrawerGroup) setPartDrawerOpen(false);
 
   const lowStockCategories = useMemo(() => {
     const boms = [
@@ -921,10 +909,10 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
           <div
             className="rounded border p-3 hover:bg-muted/40 active:bg-press transition cursor-pointer flex flex-col gap-3"
-            onClick={() => { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); }}
+            onClick={() => { setPartDrawerKey('custom'); setPartDrawerOpen(true); }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerKey('custom'); setPartDrawerOpen(true); } }}
           >
             <div className="flex-1">
               <div className="font-medium">All Parts</div>
@@ -943,10 +931,10 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
               <div
                 key={group.key}
                 className="rounded border p-3 hover:bg-muted/40 active:bg-press transition cursor-pointer flex flex-col gap-3"
-                onClick={() => { setPartDrawerGroup(group); setPartDrawerOpen(true); }}
+                onClick={() => { setPartDrawerKey(group.key); setPartDrawerOpen(true); }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup(group); setPartDrawerOpen(true); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerKey(group.key); setPartDrawerOpen(true); } }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
