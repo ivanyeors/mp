@@ -499,6 +499,7 @@ export default function ConfigureCardPage() {
   }, [loadAll, bolsterLength]);
 
   useEffect(() => {
+    let live = true;
     const load = async () => {
       if (!open || !selectedSize || !selectedPillowKind) return;
       try {
@@ -508,12 +509,15 @@ export default function ConfigureCardPage() {
           selectedPillowKind,
           selectedPillowKind === 'premium' ? premiumVariant : undefined,
         );
-        setPillowTemplates(list);
+        if (live) setPillowTemplates(list);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
+        if (live) toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
       }
     };
     load();
+    return () => {
+      live = false;
+    };
   }, [open, selectedSize, selectedPillowKind, premiumVariant, loadTemplates]);
 
   useEffect(() => {
