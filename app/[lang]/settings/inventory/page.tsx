@@ -636,10 +636,7 @@ export default function InventoryPage() {
   };
 
   const [selling, setSelling] = useState(false);
-  const saleIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    saleIdRef.current = null;
-  }, [cart]);
+  const lastSale = useRef<{ cart: typeof cart; id: string } | null>(null);
 
   const sellFromCart = async () => {
     if (selling) return;
@@ -658,10 +655,11 @@ export default function InventoryPage() {
       builds.push({ templateId: line.templateId, fillingTemplateId: line.fillingTemplateId, quantity: line.quantity });
     }
     const parts = partEntries.map(([itemId, qty]) => ({ itemId: Number(itemId), quantity: Number(qty) }));
-    saleIdRef.current ??= crypto.randomUUID();
+    const saleId = lastSale.current?.cart === cart ? lastSale.current.id : crypto.randomUUID();
+    lastSale.current = { cart, id: saleId };
     setSelling(true);
     try {
-      const result = await sellCart({ saleId: saleIdRef.current, builds, parts });
+      const result = await sellCart({ saleId, builds, parts });
       setCart({ pillows: [], parts: {} });
       await load();
       toast.success(result.alreadySold ? "This cart was already sold" : "Sale completed");
