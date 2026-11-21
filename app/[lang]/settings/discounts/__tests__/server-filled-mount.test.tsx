@@ -134,6 +134,17 @@ describe("Discount editor", () => {
     expect(codeField().value).toBe("");
   });
 
+  it("fetches only the catalog for a new discount when the server read failed", async () => {
+    route.id = "new";
+    fetchMock.mockImplementation(async (url: string) =>
+      url.startsWith("/api/shop/coupons/") ? { ok: false, status: 404, json: async () => ({}) } : { ok: true, json: async () => ({ ok: true, rows: [] }) },
+    );
+    await mount(<DiscountEditorClient />);
+    expect(urls().sort()).toEqual(["/api/shop/categories", "/api/shop/products?limit=100"]);
+    expect(host.textContent).not.toContain("Couldn't load the discount.");
+    expect(codeField().value).toBe("");
+  });
+
   it("fetches the coupon and the catalog on mount when the server read failed", async () => {
     await mount(<DiscountEditorClient />);
     expect(urls().sort()).toEqual(["/api/shop/categories", "/api/shop/coupons/c1", "/api/shop/products?limit=100"]);
