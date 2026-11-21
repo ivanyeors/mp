@@ -586,10 +586,7 @@
   },
   "app/[lang]/shop/[slug]/product-reviews.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "app/[lang]/shop/checkout/confirmation/page.tsx": {

@@ -35,7 +35,7 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import { ProductCard } from "@/components/shop/product-card";
 
 import { PillowCustomizer } from "@/components/shop/pillow-customizer";
-import { ProductReviews, ReviewStars, useApprovedReviews } from "./product-reviews";
+import { ProductReviews, ReviewStars } from "./product-reviews";
 import { useCart } from "@/lib/shop/cart-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -43,7 +43,7 @@ import {
   hasSpecifications,
   SPEC_FIELDS,
 } from "@/lib/shop/product-specifications";
-import type { Product, ProductVariant } from "@/lib/types/ecommerce";
+import type { Product, ProductVariant, PublicProductReview } from "@/lib/types/ecommerce";
 import { cn } from "@/lib/utils";
 
 function getTitle(product: Product, lang: string): string {
@@ -103,6 +103,7 @@ const DETAIL_TABS = new Set(["description", "specifications", "reviews"]);
 interface ProductDetailClientProps {
   product: Product;
   relatedProducts: Product[];
+  reviews: PublicProductReview[];
   lang: string;
   answerLede?: string | null;
   initialVariantId?: string;
@@ -112,6 +113,7 @@ interface ProductDetailClientProps {
 export function ProductDetailClient({
   product,
   relatedProducts,
+  reviews,
   lang,
   answerLede,
   initialVariantId,
@@ -129,12 +131,8 @@ export function ProductDetailClient({
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [stickyBarVisible, setStickyBarVisible] = useState(false);
 
-  const {
-    reviews,
-    average: reviewAverage,
-    count: reviewCount,
-    loading: reviewsLoading,
-  } = useApprovedReviews(product.id);
+  const reviewCount = reviews.length;
+  const reviewAverage = reviewCount > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
 
   const addToCartRef = useRef<HTMLButtonElement>(null);
 
@@ -352,11 +350,9 @@ export function ProductDetailClient({
             <div className="flex items-center gap-2">
               <ReviewStars rating={reviewCount > 0 ? reviewAverage : 0} size={16} />
               <span className="text-sm text-muted-foreground">
-                {reviewsLoading
-                  ? "Loading reviews…"
-                  : reviewCount > 0
-                    ? `${reviewAverage.toFixed(1)} (${reviewCount} review${reviewCount === 1 ? "" : "s"})`
-                    : "(No reviews yet)"}
+                {reviewCount > 0
+                  ? `${reviewAverage.toFixed(1)} (${reviewCount} review${reviewCount === 1 ? "" : "s"})`
+                  : "(No reviews yet)"}
               </span>
             </div>
 
@@ -548,7 +544,6 @@ export function ProductDetailClient({
                 reviews={reviews}
                 average={reviewAverage}
                 count={reviewCount}
-                loading={reviewsLoading}
               />
             </TabsContent>
           </Tabs>
