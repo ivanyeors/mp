@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import Link from "next/link";
 import { notFound, useParams, usePathname } from "next/navigation";
@@ -1511,7 +1511,66 @@ function FillingConfigPanel({
     settleOn("", templateDraftOf(kind, { name: "", notes: "", active: true, keys: [templateKey], placements: [], bolsterMix: [] }));
   }, [templateKey, kind, settleOn]);
 
-  const openLastDraft = useRef<(list: FillingTemplateRow[]) => void>(() => {});
+  const selectTemplate = async (id: number | "", list: FillingTemplateRow[] = templates) => {
+    if (id === "") {
+      resetEditor();
+      return;
+    }
+    setSelectedId(id);
+    setBaseline(null);
+    setRestored(null);
+    const meta = list.find((t) => t.id === id);
+    setName(meta?.name ?? "");
+    setNotes(meta?.notes ?? "");
+    setActive(meta?.is_active ?? true);
+    setScopeKeys(meta?.keys?.length ? meta.keys : [templateKey]);
+    setDeleteConfirm(false);
+    try {
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error ?? "Couldn't load the template.";
+        throw new Error(typeof message === "string" ? message : "Couldn't load the template.");
+      }
+      const served = (payload?.keys ?? []) as string[];
+      if (served.length) setScopeKeys(served);
+      type LineRow = { item_id: number | string; quantity: number | string };
+      setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
+      let loadedPlacements: PillowPlacement[] = [];
+      let loadedMix: BolsterPlacement[] = [];
+      if (kind === "pillow") {
+        const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
+        loadedPlacements = rowsToPillowPlacements(placementRows);
+        setPlacements(loadedPlacements);
+        setHadPlacements(placementRows.length > 0);
+      } else {
+        const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
+        loadedMix = rowsToBolsterPlacements(placementRows);
+        setBolsterMix(loadedMix);
+        setHadPlacements(placementRows.length > 0);
+      }
+      settleOn(
+        id,
+        templateDraftOf(kind, {
+          name: meta?.name ?? "",
+          notes: meta?.notes ?? "",
+          active: meta?.is_active ?? true,
+          keys: served.length ? served : meta?.keys?.length ? meta.keys : [templateKey],
+          placements: loadedPlacements,
+          bolsterMix: loadedMix,
+        }),
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't load the template.");
+    }
+  };
+
+  const openLastDraft = useEffectEvent((list: FillingTemplateRow[]) => {
+    const last = listDrafts(draftScope)[0];
+    if (!last || last.key === "new") return;
+    const t = list.find((x) => String(x.id) === last.key);
+    if (t) void selectTemplate(t.id, list);
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -1521,7 +1580,7 @@ function FillingConfigPanel({
         const list = await loadFillingTemplates(kind, templateKey);
         if (cancelled) return;
         setTemplates(list);
-        openLastDraft.current(list);
+        openLastDraft(list);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load filling templates.");
       }
@@ -1594,60 +1653,6 @@ function FillingConfigPanel({
     }
   };
 
-  const selectTemplate = async (id: number | "", list: FillingTemplateRow[] = templates) => {
-    if (id === "") {
-      resetEditor();
-      return;
-    }
-    setSelectedId(id);
-    setBaseline(null);
-    setRestored(null);
-    const meta = list.find((t) => t.id === id);
-    setName(meta?.name ?? "");
-    setNotes(meta?.notes ?? "");
-    setActive(meta?.is_active ?? true);
-    setScopeKeys(meta?.keys?.length ? meta.keys : [templateKey]);
-    setDeleteConfirm(false);
-    try {
-      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        const message = payload?.error ?? "Couldn't load the template.";
-        throw new Error(typeof message === "string" ? message : "Couldn't load the template.");
-      }
-      const served = (payload?.keys ?? []) as string[];
-      if (served.length) setScopeKeys(served);
-      type LineRow = { item_id: number | string; quantity: number | string };
-      setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
-      let loadedPlacements: PillowPlacement[] = [];
-      let loadedMix: BolsterPlacement[] = [];
-      if (kind === "pillow") {
-        const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-        loadedPlacements = rowsToPillowPlacements(placementRows);
-        setPlacements(loadedPlacements);
-        setHadPlacements(placementRows.length > 0);
-      } else {
-        const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
-        loadedMix = rowsToBolsterPlacements(placementRows);
-        setBolsterMix(loadedMix);
-        setHadPlacements(placementRows.length > 0);
-      }
-      settleOn(
-        id,
-        templateDraftOf(kind, {
-          name: meta?.name ?? "",
-          notes: meta?.notes ?? "",
-          active: meta?.is_active ?? true,
-          keys: served.length ? served : meta?.keys?.length ? meta.keys : [templateKey],
-          placements: loadedPlacements,
-          bolsterMix: loadedMix,
-        }),
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load the template.");
-    }
-  };
-
   const spatialRows = () =>
     kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
   const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
@@ -1676,14 +1681,6 @@ function FillingConfigPanel({
       const data = { ...b.data, ...patch };
       return { id, data, sig: JSON.stringify(data) };
     });
-  useEffect(() => {
-    openLastDraft.current = (list) => {
-      const last = listDrafts(draftScope)[0];
-      if (!last || last.key === "new") return;
-      const t = list.find((x) => String(x.id) === last.key);
-      if (t) void selectTemplate(t.id, list);
-    };
-  });
 
   const putTemplatePlacements = async (templateId: number, nextName?: string) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {
