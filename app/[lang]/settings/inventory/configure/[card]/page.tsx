@@ -403,14 +403,23 @@ export default function ConfigureCardPage() {
     return bolsterTemplates.find((t) => t.id === bolsterSelectedTemplateId) ?? null;
   }, [bolsterTemplates, bolsterSelectedTemplateId]);
 
-  const loadAll = useCallback(async () => {
+  const bolsterLength = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : null;
+
+  const loadAll = useCallback(async (withBolsterLinesOf?: BolsterLength | null) => {
     setLoading(true);
-    const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }] = await Promise.all([
+    const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("pillow_products").select("id,size,kind,default_filling_template_id").eq("is_active", true),
       supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
       supabaseClient.from("bolster_length_config").select("variant,default_filling_template_id"),
+      withBolsterLinesOf
+        ? supabaseClient.from("bolster_bom_lines").select("item_id,quantity").eq("variant", withBolsterLinesOf)
+        : null,
     ]);
+    if (bolsterLinesRead) {
+      type LineRow = { item_id: number; quantity: number | string };
+      setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+    }
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
     const prods = (productsData ?? []) as Product[];
     setProducts(prods);
@@ -466,7 +475,7 @@ export default function ConfigureCardPage() {
   }, []);
 
   useEffect(() => {
-    loadAll();
+    loadAll(bolsterLength);
     const onChanged = () => {
       loadAll();
     };
@@ -487,24 +496,7 @@ export default function ConfigureCardPage() {
       };
     }
     return;
-  }, [loadAll]);
-
-  useEffect(() => {
-    const loadVariant = async () => {
-      if (!bolsterOpen || !bolsterVariant) return;
-      const variant = bolsterVariant === 'Short (0.8m)'
-        ? 'short' : bolsterVariant === 'Long (1.2m)'
-        ? 'long' : 'medium';
-      type LineRow = { item_id: number; quantity: number | string };
-      const { data } = await supabaseClient
-        .from('bolster_bom_lines')
-        .select('item_id,quantity')
-        .eq('variant', variant);
-      const rows = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
-      setBolsterLines(rows);
-    };
-    loadVariant();
-  }, [bolsterOpen, bolsterVariant]);
+  }, [loadAll, bolsterLength]);
 
   useEffect(() => {
     const load = async () => {

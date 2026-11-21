@@ -375,7 +375,7 @@
   },
   "app/[lang]/settings/inventory/configure/[card]/page.tsx": {
     "mp/no-effect": {
-      "count": 10
+      "count": 9
     },
     "react-hooks/set-state-in-effect": {
       "count": 3
