@@ -79,10 +79,10 @@
   },
   "app/[lang]/settings/analytics/ProspectJourneyCard.tsx": {
     "mp/no-effect": {
-      "count": 12
+      "count": 10
     },
     "react-hooks/set-state-in-effect": {
-      "count": 4
+      "count": 2
     }
   },
   "app/[lang]/settings/analytics/SalesTab.tsx": {
