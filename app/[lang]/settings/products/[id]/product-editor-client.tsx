@@ -69,6 +69,7 @@ export type LoadedProduct = Product & {
 type StripeSyncReply = {
     synced: boolean;
     error?: string;
+    pricesInPlace?: boolean;
     notices?: string[];
     paymentLinkCleared?: boolean;
 };
@@ -552,6 +553,9 @@ export function ProductEditorClient({
             const data = await res.json();
             if (data.ok) {
                 setVariants((prev) => prev.map((x) => x.id === v.id ? data.row : x));
+                showStripeOutcome(data.stripe);
+            } else {
+                toast.error(getApiErrorMessage(data.error, "Couldn't update the variant."));
             }
         } catch {
             toast.error("Couldn't update the variant.");
@@ -567,7 +571,9 @@ export function ProductEditorClient({
 
     const showStripeOutcome = (stripe: StripeSyncReply | undefined) => {
         if (!stripe) return;
-        if (stripe.synced === false) {
+        if (stripe.synced === false && stripe.pricesInPlace) {
+            toast.warning(`Saved. ${stripe.error ?? "The new prices are in place, but Stripe needs attention."}`);
+        } else if (stripe.synced === false) {
             toast.warning(`Saved, but couldn't sync to Stripe: ${stripe.error ?? "unknown error"}. Use Sync to Stripe to try again.`);
         }
         showStripeNotices(stripe.notices, stripe.paymentLinkCleared);
@@ -597,10 +603,12 @@ export function ProductEditorClient({
                     ),
                 );
                 toast.success("Synced to Stripe");
-                showStripeNotices(data.notices, data.paymentLinkCleared);
+            } else if (data.pricesInPlace) {
+                toast.warning(data.error);
             } else {
                 toast.error(getApiErrorMessage(data.error, "Couldn't sync to Stripe."));
             }
+            showStripeNotices(data.notices, data.paymentLinkCleared);
         } catch {
             toast.error("Couldn't sync to Stripe.");
         } finally {

@@ -93,8 +93,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     stripe: stripe && {
       synced: stripe.synced,
       error: stripe.error,
-      notices: stripe.result?.notices ?? [],
-      paymentLinkCleared: stripe.result?.paymentLinkCleared ?? false,
+      pricesInPlace: stripe.pricesInPlace,
+      notices: stripe.notices,
+      paymentLinkCleared: stripe.paymentLinkCleared,
     },
   });
 }

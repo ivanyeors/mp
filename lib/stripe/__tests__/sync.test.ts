@@ -8,6 +8,7 @@ const pricesCreate = vi.fn();
 const paymentLinksUpdate = vi.fn();
 const paymentLinksCreate = vi.fn();
 const paymentLinksListLineItems = vi.fn();
+const paymentLinksRetrieve = vi.fn();
 vi.mock("../client", () => ({
   getStripe: () => ({
     products: { update: productsUpdate, create: productsCreate },
@@ -16,6 +17,7 @@ vi.mock("../client", () => ({
       update: paymentLinksUpdate,
       create: paymentLinksCreate,
       listLineItems: paymentLinksListLineItems,
+      retrieve: paymentLinksRetrieve,
     },
   }),
 }));
@@ -71,7 +73,24 @@ vi.mock("@/lib/supabase/server", () => ({
           callLog.push(`save ${String(values.stripe_price_id_test)}`);
         }
         if (table === "products") callLog.push(`row ${JSON.stringify(values)}`);
-        return { eq: async () => ({ error: updateErrorFor[table] ?? null }) };
+        const filters: [string, unknown][] = [];
+        const answer = () => {
+          const error = updateErrorFor[table] ?? null;
+          const row = product as unknown as Record<string, unknown>;
+          const matches = filters.every(([column, value]) => column === "id" || row[column] === value);
+          return { error, data: error ? null : matches ? [{ id: product.id }] : [] };
+        };
+        type Chain = {
+          eq: (column: string, value: unknown) => Chain;
+          select: () => Promise<ReturnType<typeof answer>>;
+          then: (resolve: (v: ReturnType<typeof answer>) => unknown) => unknown;
+        };
+        const chain: Chain = {
+          eq: (column, value) => (filters.push([column, value]), chain),
+          select: async () => answer(),
+          then: (resolve) => resolve(answer()),
+        };
+        return chain;
       },
     }),
   }),
@@ -94,6 +113,7 @@ function variant(id = "v1", priceId = "price_old"): Variant {
 }
 
 const samePrice = {
+  active: true,
   unit_amount: 1000,
   currency: "sgd",
   tax_behavior: "exclusive",
@@ -110,7 +130,8 @@ const archiveFails = new Map<string, Error>();
 const renameFails = new Map<string, Error>();
 let createQueue: (string | Error)[] = [];
 const linkFailures: Error[] = [];
-const linkLines = new Map<string, string[] | Error>();
+const linkLines = new Map<string, (string | null)[] | Error>();
+const linkActive = new Map<string, boolean | Error>();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -121,6 +142,7 @@ beforeEach(() => {
     paymentLinksUpdate,
     paymentLinksCreate,
     paymentLinksListLineItems,
+    paymentLinksRetrieve,
   ]) {
     fn.mockReset();
   }
@@ -141,6 +163,7 @@ beforeEach(() => {
   delete process.env.STRIPE_SECRET_KEY;
   linkFailures.length = 0;
   linkLines.clear();
+  linkActive.clear();
   pricesRetrieve.mockImplementation(async (id: string) => {
     const found = retrieveFor.get(id) ?? samePrice;
     if (found instanceof Error) throw found;
@@ -168,7 +191,13 @@ beforeEach(() => {
     callLog.push(`read link ${id}`);
     const found = linkLines.get(id) ?? [];
     if (found instanceof Error) throw found;
-    return { data: found.map((price) => ({ price: { id: price } })), has_more: false };
+    return { data: found.map((price) => ({ price: price === null ? null : { id: price } })), has_more: false };
+  });
+  paymentLinksRetrieve.mockImplementation(async (id: string) => {
+    callLog.push(`retrieve link ${id}`);
+    const active = linkActive.get(id) ?? true;
+    if (active instanceof Error) throw active;
+    return { id, active };
   });
   paymentLinksCreate.mockResolvedValue({ id: "plink_new", url: "https://buy.stripe.com/new" });
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -351,6 +380,8 @@ describe("syncProductToStripe: a variant's Stripe Price", () => {
 });
 
 
+const { StripeNeedsAttentionError } = await import("../sync");
+
 const LIVE_LINK_SAVED = { stripe_payment_link: "https://buy.stripe.com/new", stripe_payment_link_id: "plink_new" };
 const SANDBOX_LINK_SAVED = {
   stripe_payment_link_test: "https://buy.stripe.com/new",
@@ -358,6 +389,17 @@ const SANDBOX_LINK_SAVED = {
 };
 const SANDBOX_LINK_CLEARED = { stripe_payment_link_test: null, stripe_payment_link_id_test: null };
 const LIVE_LINK_CLEARED = { stripe_payment_link: null, stripe_payment_link_id: null };
+const RETIRED =
+  "Stripe payment link plink_old sold at a price this product no longer has, so it was deactivated; generate a new one";
+
+async function attentionFrom(run: Promise<unknown>) {
+  const err = await run.then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(StripeNeedsAttentionError);
+  return err as InstanceType<typeof StripeNeedsAttentionError>;
+}
 
 describe("createPaymentLink", () => {
   beforeEach(() => {
@@ -375,11 +417,27 @@ describe("createPaymentLink", () => {
     expect(rowUpdates).toContainEqual({ table: "products", values: SANDBOX_LINK_SAVED });
   });
 
-  it("fails without a new link or a row change when deactivating the old link fails", async () => {
+  it("fails without a new link or a row change when deactivating the old link fails and it is still active", async () => {
     linkFailures.push(rateLimited);
     await expect(createPaymentLink("p1")).rejects.toBe(rateLimited);
+    expect(callLog).toEqual(["deactivate plink_old", "retrieve link plink_old"]);
     expect(paymentLinksCreate).not.toHaveBeenCalled();
     expect(rowUpdates).toEqual([]);
+  });
+
+  it("D. an old link that is already inactive counts as deactivated, so a new one is made", async () => {
+    linkFailures.push(Object.assign(new Error("This link is already inactive"), { code: "parameter_invalid" }));
+    linkActive.set("plink_old", false);
+    const out = await createPaymentLink("p1");
+    expect(out.id).toBe("plink_new");
+    expect(rowUpdates).toContainEqual({ table: "products", values: SANDBOX_LINK_SAVED });
+  });
+
+  it("D. the original error stands when the link can't be read back either", async () => {
+    linkFailures.push(rateLimited);
+    linkActive.set("plink_old", rateLimited);
+    await expect(createPaymentLink("p1")).rejects.toBe(rateLimited);
+    expect(paymentLinksCreate).not.toHaveBeenCalled();
   });
 
   it("creates and saves a new link when the old one is not in this Stripe account", async () => {
@@ -395,6 +453,25 @@ describe("createPaymentLink", () => {
     await expect(createPaymentLink("p1")).rejects.toThrow(
       /plink_new.*couldn't save.*connection reset/,
     );
+  });
+
+  it.each([
+    ["archived", { ...samePrice, active: false }],
+    ["at another amount", oldAmount],
+    ["in another currency", { ...samePrice, currency: "usd" }],
+    ["missing", missing],
+  ])("E. refuses, before touching any link, when the default Variant's Price is %s", async (_, price) => {
+    retrieveFor.set("price_old", price);
+    await expect(createPaymentLink("p1")).rejects.toThrow(/out of date\. Sync to Stripe first/);
+    expect(paymentLinksUpdate).not.toHaveBeenCalled();
+    expect(paymentLinksCreate).not.toHaveBeenCalled();
+    expect(rowUpdates).toEqual([]);
+  });
+
+  it("E. a Price that can't be read stops the link with Stripe's error", async () => {
+    retrieveFor.set("price_old", rateLimited);
+    await expect(createPaymentLink("p1")).rejects.toBe(rateLimited);
+    expect(paymentLinksCreate).not.toHaveBeenCalled();
   });
 
   it("test mode: reads and writes only the _test columns; the live link is neither deactivated nor overwritten", async () => {
@@ -469,9 +546,7 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
       "deactivate plink_old",
       `row ${JSON.stringify(SANDBOX_LINK_CLEARED)}`,
     ]);
-    expect(out.notices).toEqual([
-      "payment link plink_old was retired because its price changed; generate a new one",
-    ]);
+    expect(out.notices).toEqual([RETIRED]);
     expect(out.paymentLinkCleared).toBe(true);
   });
 
@@ -499,6 +574,29 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
     expect(out.paymentLinkCleared).toBe(false);
   });
 
+  it("G. a two-line link where one Price is current and one is not is retired", async () => {
+    product.product_variants = [variant("v1", "price_old"), { ...variant("v2", "price_b"), position: 1 }];
+    linkLines.set("plink_old", ["price_old", "price_gone"]);
+    const out = await syncProductToStripe("p1");
+    expect(callLog).toContain("deactivate plink_old");
+    expect(out.paymentLinkCleared).toBe(true);
+  });
+
+  it("G. a two-line link whose Prices are both current is left alone", async () => {
+    product.product_variants = [variant("v1", "price_old"), { ...variant("v2", "price_b"), position: 1 }];
+    linkLines.set("plink_old", ["price_old", "price_b"]);
+    const out = await syncProductToStripe("p1");
+    expect(paymentLinksUpdate).not.toHaveBeenCalled();
+    expect(out.paymentLinkCleared).toBe(false);
+  });
+
+  it("G. a line with no Price is retired", async () => {
+    linkLines.set("plink_old", [null]);
+    const out = await syncProductToStripe("p1");
+    expect(callLog).toContain("deactivate plink_old");
+    expect(out.paymentLinkCleared).toBe(true);
+  });
+
   it("a link selling only an inactive Variant's Price is retired", async () => {
     product.product_variants = [
       variant("v1", "price_other"),
@@ -512,9 +610,11 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
   it("deactivate fails with a rate limit: rejects naming the link, keeps the row, and the next sync tries again", async () => {
     retrieveFor.set("price_old", oldAmount);
     linkFailures.push(rateLimited);
-    await expect(syncProductToStripe("p1")).rejects.toThrow(
-      "The new prices are in place, but Stripe needs attention: payment link plink_old still sells at an old price and needs deactivating in Stripe (Too many requests)",
+    const err = await attentionFrom(syncProductToStripe("p1"));
+    expect(err.message).toBe(
+      "The new prices are in place, but Stripe needs attention: Stripe payment link plink_old still sells at a price this product no longer has and needs deactivating in Stripe (Too many requests)",
     );
+    expect(err.paymentLinkCleared).toBe(false);
     expect(rowUpdates.filter((u) => u.table === "products")).toEqual([]);
 
     callLog.length = 0;
@@ -529,10 +629,23 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
     expect(out.paymentLinkCleared).toBe(true);
   });
 
+  it("D. deactivate refused but the link is already inactive: counts as deactivated, row cleared, resolves", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    linkFailures.push(Object.assign(new Error("already inactive"), { code: "parameter_invalid" }));
+    linkActive.set("plink_old", false);
+    const out = await syncProductToStripe("p1");
+    expect(callLog.slice(-3)).toEqual([
+      "deactivate plink_old",
+      "retrieve link plink_old",
+      `row ${JSON.stringify(SANDBOX_LINK_CLEARED)}`,
+    ]);
+    expect(out.notices).toEqual([RETIRED]);
+  });
+
   it("the link read fails with a rate limit: attention message, row untouched", async () => {
     linkLines.set("plink_old", rateLimited);
     await expect(syncProductToStripe("p1")).rejects.toThrow(
-      "Stripe needs attention: couldn't check payment link plink_old (Too many requests)",
+      "Stripe needs attention: couldn't check Stripe payment link plink_old (Too many requests)",
     );
     expect(paymentLinksUpdate).not.toHaveBeenCalled();
     expect(rowUpdates.filter((u) => u.table === "products")).toEqual([]);
@@ -544,7 +657,7 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
     expect(paymentLinksUpdate).not.toHaveBeenCalled();
     expect(rowUpdates).toContainEqual({ table: "products", values: SANDBOX_LINK_CLEARED });
     expect(out.notices).toEqual([
-      "payment link plink_old is not in this Stripe account, so it was removed from the product; generate a new one if you need it",
+      "Stripe payment link plink_old is not in this Stripe account, so it was removed from the product; generate a new one if you need it",
     ]);
     expect(out.paymentLinkCleared).toBe(true);
   });
@@ -554,16 +667,45 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
     linkFailures.push(missing);
     const out = await syncProductToStripe("p1");
     expect(rowUpdates).toContainEqual({ table: "products", values: SANDBOX_LINK_CLEARED });
-    expect(out.notices).toHaveLength(1);
+    expect(out.notices).toEqual([RETIRED]);
     expect(out.paymentLinkCleared).toBe(true);
   });
 
-  it("the old Price's archive failed and the link was bound to it: the link is still deactivated, and both are reported", async () => {
+  it("C. a link regenerated while the sync ran is not cleared, and nothing claims it was", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    paymentLinksUpdate.mockImplementationOnce(async (id: string) => {
+      callLog.push(`deactivate ${id}`);
+      product.stripe_payment_link_test = "https://buy.stripe.com/test_newer";
+      product.stripe_payment_link_id_test = "plink_newer";
+      return {};
+    });
+    const out = await syncProductToStripe("p1");
+    expect(out.paymentLinkCleared).toBe(false);
+    expect(out.notices).toEqual([
+      "Stripe payment link plink_old sold at a price this product no longer has, so it was deactivated; the product already shows a newer link",
+    ]);
+  });
+
+  it("C. the clear is filtered on the link that was checked", async () => {
+    linkLines.set("plink_old", missing);
+    product.stripe_payment_link_id_test = "plink_old";
+    paymentLinksListLineItems.mockImplementationOnce(async () => {
+      product.stripe_payment_link_id_test = "plink_newer";
+      throw missing;
+    });
+    const out = await syncProductToStripe("p1");
+    expect(out.paymentLinkCleared).toBe(false);
+    expect(out.notices).toEqual([]);
+  });
+
+  it("A. the old Price's archive failed and the link was bound to it: the link is still deactivated, and the error carries the notice and the clear", async () => {
     retrieveFor.set("price_old", oldAmount);
     archiveFails.set("price_old", rateLimited);
-    const run = syncProductToStripe("p1");
-    await expect(run).rejects.toThrow(/old price price_old is still active and needs archiving in Stripe/);
-    await expect(run).rejects.toThrow(/payment link plink_old was retired because its price changed/);
+    const err = await attentionFrom(syncProductToStripe("p1"));
+    expect(err.message).toMatch(/old price price_old is still active and needs archiving in Stripe/);
+    expect(err.message).not.toMatch(/plink_old/);
+    expect(err.notices).toEqual([RETIRED]);
+    expect(err.paymentLinkCleared).toBe(true);
     expect(callLog).toEqual([
       "archive price_old",
       "create",
@@ -586,15 +728,81 @@ describe("syncProductToStripe: a payment link never outlives its Price", () => {
     retrieveFor.set("price_old", oldAmount);
     updateErrorFor.products = { message: "connection reset" };
     await expect(syncProductToStripe("p1")).rejects.toThrow(
-      "payment link plink_old was deactivated because its price changed, but the product still shows it (connection reset)",
+      "Stripe payment link plink_old was deactivated because it sold at a price this product no longer has, but the product still shows it (connection reset)",
     );
   });
+});
 
-  it("syncProductToStripeSafe carries the notice on a successful sync", async () => {
+describe("A. syncProductToStripeSafe always answers the whole outcome", () => {
+  beforeEach(() => {
+    product.product_variants = [variant()];
+    product.stripe_payment_link_test = "https://buy.stripe.com/test_old";
+    product.stripe_payment_link_id_test = "plink_old";
+    linkLines.set("plink_old", ["price_old"]);
+  });
+
+  it("success: synced, prices in place, the notice and the clear", async () => {
     retrieveFor.set("price_old", oldAmount);
     const out = await syncProductToStripeSafe("p1");
-    expect(out.synced).toBe(true);
-    expect(out.result?.notices).toHaveLength(1);
-    expect(out.result?.paymentLinkCleared).toBe(true);
+    expect(out).toMatchObject({
+      synced: true,
+      pricesInPlace: true,
+      notices: [RETIRED],
+      paymentLinkCleared: true,
+    });
+    expect(out.result?.stripeProductId).toBe("prod_x");
+  });
+
+  it("housekeeping failed after the loop: not synced, but prices in place, with the notice and the clear", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    archiveFails.set("price_old", rateLimited);
+    const out = await syncProductToStripeSafe("p1");
+    expect(out).toEqual({
+      synced: false,
+      error:
+        "The new prices are in place, but Stripe needs attention: old price price_old is still active and needs archiving in Stripe (Too many requests)",
+      pricesInPlace: true,
+      notices: [RETIRED],
+      paymentLinkCleared: true,
+    });
+  });
+
+  it("an archive failure with no link is still prices in place", async () => {
+    product.stripe_payment_link_id_test = null;
+    retrieveFor.set("price_old", oldAmount);
+    archiveFails.set("price_old", rateLimited);
+    const out = await syncProductToStripeSafe("p1");
+    expect(out.pricesInPlace).toBe(true);
+    expect(out.notices).toEqual([]);
+  });
+
+  it("a throw from inside the Variant loop: prices not in place", async () => {
+    retrieveFor.set("price_old", oldAmount);
+    createQueue = [createFailed];
+    const out = await syncProductToStripeSafe("p1");
+    expect(out).toEqual({
+      synced: false,
+      error: "Stripe is unavailable",
+      pricesInPlace: false,
+      notices: [],
+      paymentLinkCleared: false,
+    });
+  });
+
+  it("a throw before the loop (the Stripe Product): prices not in place", async () => {
+    productsUpdate.mockRejectedValueOnce(rateLimited);
+    const out = await syncProductToStripeSafe("p1");
+    expect(out.pricesInPlace).toBe(false);
+  });
+
+  it("a loop throw after an earlier archive notice is still prices not in place", async () => {
+    product.product_variants = [variant("v1", "price_old"), variant("v2", "price_old_2")];
+    retrieveFor.set("price_old", oldAmount);
+    retrieveFor.set("price_old_2", oldAmount);
+    archiveFails.set("price_old", rateLimited);
+    createQueue = ["price_new_1", createFailed];
+    const out = await syncProductToStripeSafe("p1");
+    expect(out.pricesInPlace).toBe(false);
+    expect(out.error).toMatch(/Also in Stripe: old price price_old/);
   });
 });

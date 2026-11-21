@@ -12,27 +12,53 @@ const productRoutes = [
 ];
 for (const path of productRoutes) {
   const src = read(path);
-  assert.match(src, /notices: stripe\.result\?\.notices \?\? \[\]/, `${path} does not return the sync's notices`);
-  assert.match(
-    src,
-    /paymentLinkCleared: stripe\.result\?\.paymentLinkCleared \?\? false/,
-    `${path} does not say when the payment link was cleared`,
-  );
+  for (const field of ["pricesInPlace", "notices", "paymentLinkCleared"]) {
+    assert.match(
+      src,
+      new RegExp(`${field}: stripe\\.${field},`),
+      `${path} does not pass the sync's ${field} on`,
+    );
+  }
 }
 
 const syncRoute = read("app/api/stripe/sync/route.ts");
-assert.match(syncRoute, /notices: result\.notices/, "Sync to Stripe does not return the notices");
-assert.match(syncRoute, /paymentLinkCleared: result\.paymentLinkCleared/);
+assert.match(syncRoute, /const \{ pricesInPlace, notices, paymentLinkCleared \} = outcome;/);
+assert.equal(
+  syncRoute.match(/pricesInPlace,\s+notices,\s+paymentLinkCleared,/g)?.length,
+  2,
+  "Sync to Stripe must pass pricesInPlace, notices and paymentLinkCleared on in both its answers",
+);
 
 const editor = read("app/[lang]/settings/products/[id]/product-editor-client.tsx");
-assert.equal(
-  editor.match(/showStripeOutcome\(data\.stripe\)/g)?.length,
-  2,
-  "the product and variant saves must both show the Stripe outcome",
+
+const handlers = [...editor.matchAll(/\n {4}const (\w+) = async \([^)]*\) => \{([\s\S]*?)\n {4}\};/g)];
+const productRouteCall =
+  /fetch\(\s*`\/api\/shop\/products\/\$\{id\}(?:\/variants(?:\/\$\{[^}]+\})?)?`,\s*\{\s*method: "(?:PATCH|POST)"/;
+const callers = handlers.filter(([, , body]) => productRouteCall.test(body));
+assert.deepEqual(
+  callers.map(([, name]) => name).sort(),
+  ["handleSave", "handleVariantSave", "toggleVariantActive"],
+  "the handlers that write through the product routes changed; check each shows the Stripe outcome",
 );
-assert.match(editor, /showStripeNotices\(data\.notices, data\.paymentLinkCleared\)/);
-assert.match(editor, /toast\.warning\(`\$\{notice/);
+for (const [, name, body] of callers) {
+  assert.match(body, /showStripeOutcome\(data\.stripe\)/, `${name} ignores the Stripe sync outcome`);
+}
+
+const sync = handlers.find(([, name]) => name === "handleSyncToStripe");
+assert.ok(sync, "handleSyncToStripe not found");
+const afterBranches = sync[2].split(/\n {12}\}\n/).slice(1).join("\n");
+assert.match(
+  afterBranches,
+  /showStripeNotices\(data\.notices, data\.paymentLinkCleared\)/,
+  "Sync to Stripe must show notices and clear the link whether or not the sync threw",
+);
+assert.match(sync[2], /else if \(data\.pricesInPlace\)/);
+
+const outcome = editor.match(/const showStripeOutcome = [\s\S]*?\n {4}\};/)?.[0] ?? "";
+assert.match(outcome, /stripe\.synced === false && stripe\.pricesInPlace/);
+assert.match(outcome, /showStripeNotices\(stripe\.notices, stripe\.paymentLinkCleared\);\n {4}\};$/);
 assert.match(editor, /if \(paymentLinkCleared\) setStripePaymentLink\(null\)/);
+
 assert.doesNotMatch(
   editor,
   /\.stripe_payment_link\b/,

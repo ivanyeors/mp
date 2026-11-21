@@ -25,7 +25,6 @@ const UpdateProductSchema = z.object({
   category_id: z.string().uuid().nullable().optional(),
   featured: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
-  stripe_product_id: z.string().nullable().optional(),
 }).partial();
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -83,8 +82,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     stripe: stripe && {
       synced: stripe.synced,
       error: stripe.error,
-      notices: stripe.result?.notices ?? [],
-      paymentLinkCleared: stripe.result?.paymentLinkCleared ?? false,
+      pricesInPlace: stripe.pricesInPlace,
+      notices: stripe.notices,
+      paymentLinkCleared: stripe.paymentLinkCleared,
     },
   });
 }

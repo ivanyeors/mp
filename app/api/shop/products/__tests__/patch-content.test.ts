@@ -39,13 +39,15 @@ describe("PATCH /api/shop/products/[id]", () => {
     expect(saved.content["zh-CN"]!.seo_answer).toBe("斜坡床垫是一块泡沫斜坡垫。");
   });
 
-  it("never writes a payment link the browser sends, in either mode", async () => {
+  it("never writes a Stripe payment link or Product id the browser sends, in either mode", async () => {
     const body = {
       featured: true,
       stripe_payment_link: "https://evil.example/pay",
       stripe_payment_link_id: "plink_evil",
       stripe_payment_link_test: "https://evil.example/pay",
       stripe_payment_link_id_test: "plink_evil",
+      stripe_product_id: "prod_evil",
+      stripe_product_id_test: "prod_evil",
     };
     const res = await PATCH(
       new Request("http://x/api/shop/products/p1", { method: "PATCH", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }),
@@ -55,6 +57,6 @@ describe("PATCH /api/shop/products/[id]", () => {
     expect(h.update).toHaveBeenCalledTimes(1);
     const saved = h.update.mock.calls[0]![0] as Record<string, unknown>;
     expect(saved.featured).toBe(true);
-    expect(Object.keys(saved).filter((k) => k.includes("payment_link"))).toEqual([]);
+    expect(Object.keys(saved).filter((k) => k.startsWith("stripe_"))).toEqual([]);
   });
 });

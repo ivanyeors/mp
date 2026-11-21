@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { syncProductToStripe } from "@/lib/stripe/sync";
+import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
@@ -19,18 +19,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  try {
-    const result = await syncProductToStripe(parsed.data.product_id);
-    return NextResponse.json({
-      ok: true,
-      stripeProductId: result.stripeProductId,
-      variant_count: result.variants.length,
-      variants: result.variants,
-      notices: result.notices,
-      paymentLinkCleared: result.paymentLinkCleared,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to sync product to Stripe";
-    return NextResponse.json({ error: message }, { status: 500 });
+  const outcome = await syncProductToStripeSafe(parsed.data.product_id);
+  const { pricesInPlace, notices, paymentLinkCleared } = outcome;
+  if (!outcome.result) {
+    return NextResponse.json(
+      {
+        error: outcome.error ?? "Failed to sync product to Stripe",
+        pricesInPlace,
+        notices,
+        paymentLinkCleared,
+      },
+      { status: 500 },
+    );
   }
+
+  return NextResponse.json({
+    ok: true,
+    stripeProductId: outcome.result.stripeProductId,
+    variant_count: outcome.result.variants.length,
+    variants: outcome.result.variants,
+    pricesInPlace,
+    notices,
+    paymentLinkCleared,
+  });
 }
