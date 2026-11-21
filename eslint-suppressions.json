@@ -352,11 +352,6 @@
       "count": 2
     }
   },
-  "app/[lang]/settings/integrations/shopify/shopify-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
   "app/[lang]/settings/inventory/ShopifyAdminPanel.tsx": {
     "mp/no-effect": {
       "count": 4
