@@ -23,33 +23,50 @@ const question = {
   position: 0,
   visible: true,
 };
+const sizeQuestion = {
+  ...question,
+  id: "q2",
+  slug: "size",
+  content: {
+    "en-US": { question: "Which size?", answer: "Measure first." },
+    "zh-CN": { question: "哪个尺寸?", answer: "先量。" },
+  },
+  position: 1,
+};
+let homeItems: (typeof question)[];
 const setFor = (key: string) => ({
   id: `set-${key}`,
   surface_key: key,
   titles: { "en-US": `Questions for ${key}` },
   visible: true,
-  items: key === "home" ? [question] : [],
+  items: key === "home" ? homeItems : [],
 });
 
 type Held = { key: string; release: () => void };
 let held: Held[];
-let holdKeys: Set<string>;
+let holdWhen: (url: string, method: string) => string | null;
+let failWhen: (url: string, method: string) => boolean;
 let savedRow: (body: Record<string, unknown>) => unknown;
 
 const respond = (body: unknown) => ({ ok: true, json: async () => body });
 
 beforeEach(() => {
   held = [];
-  holdKeys = new Set();
+  holdWhen = () => null;
+  failWhen = () => false;
+  homeItems = [question];
   savedRow = (body) => ({ ...question, ...body });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const hold = holdWhen(url, method);
+      if (hold) await new Promise<void>((release) => held.push({ key: hold, release }));
+      if (failWhen(url, method)) return { ok: false, json: async () => ({}) };
       if (url.startsWith("/api/shop/products")) return respond({ rows: [] });
       if (url === "/api/page-faq/sets") return respond({ ok: true });
       if (url.startsWith("/api/page-faq/sets?surface_key=")) {
         const key = decodeURIComponent(url.split("=")[1]);
-        if (holdKeys.has(key)) await new Promise<void>((release) => held.push({ key, release }));
         return respond({ set: setFor(key) });
       }
       if (url.startsWith("/api/page-faq/items/")) {
@@ -78,6 +95,13 @@ afterEach(async () => {
 });
 
 const heading = () => document.querySelector("h2")?.textContent;
+const release = async (key: string) => {
+  await act(async () => held.find((h) => h.key === key)!.release());
+  await settle();
+};
+const setReads = (key: string) =>
+  vi.mocked(fetch).mock.calls.filter(([u]) => String(u) === `/api/page-faq/sets?surface_key=${key}`).length;
+const loadOf = (key: string) => (url: string) => (url === `/api/page-faq/sets?surface_key=${key}` ? key : null);
 const surfaceKey = () => document.querySelector("code")?.textContent;
 
 function fieldAfter(text: string) {
@@ -99,17 +123,54 @@ describe("Page FAQs surface switch", () => {
     await mount();
     expect(heading()).toBe("Questions for home");
 
-    holdKeys.add("mp-config");
+    holdWhen = loadOf("mp-config");
     await click(byLabel("mp-config")!);
     await click(byLabel("mbolster-config")!);
     await settle();
     expect(heading()).toBe("Questions for mbolster-config");
 
-    await act(async () => held.find((h) => h.key === "mp-config")!.release());
-    await settle();
+    await release("mp-config");
 
     expect(surfaceKey()).toBe("mbolster-config");
     expect(heading()).toBe("Questions for mbolster-config");
+  });
+
+  it("keeps the new surface when an Add question on the old one finishes after the switch", async () => {
+    await mount();
+    holdWhen = (url, method) =>
+      url === "/api/page-faq/items" && method === "POST" ? "add" : loadOf("mp-config")(url);
+    await click(byLabel("Add question")!);
+    await click(byLabel("mp-config")!);
+
+    await release("add");
+    await release("mp-config");
+
+    expect(surfaceKey()).toBe("mp-config");
+    expect(heading()).toBe("Questions for mp-config");
+  });
+
+  it("keeps the new surface when a failed reorder on the old one answers after the switch", async () => {
+    homeItems = [question, sizeQuestion];
+    await mount();
+    holdWhen = (url) => (url.endsWith("/reorder") ? "reorder" : loadOf("mp-config")(url));
+    failWhen = (url) => url.endsWith("/reorder");
+    await click(byLabel("Move down")!);
+    await click(byLabel("mp-config")!);
+
+    await release("reorder");
+    await release("mp-config");
+
+    expect(surfaceKey()).toBe("mp-config");
+    expect(heading()).toBe("Questions for mp-config");
+  });
+
+  it("reloads the surface after Add question when it is still the one selected", async () => {
+    await mount();
+    expect(setReads("home")).toBe(1);
+    await click(byLabel("Add question")!);
+    await settle();
+    expect(setReads("home")).toBe(2);
+    expect(heading()).toBe("Questions for home");
   });
 });
 
