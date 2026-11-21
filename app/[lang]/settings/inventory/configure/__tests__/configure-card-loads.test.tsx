@@ -8,7 +8,7 @@ type Row = Record<string, unknown>;
 type Pending = { table: string; filters: Row; answer: (rows: Row[]) => Promise<void>; fail: () => Promise<void> };
 type Request = { url: string; method: string; body: unknown; answered: boolean; answer: (json: unknown) => Promise<void> };
 
-const db = vi.hoisted(() => ({ tables: {} as Record<string, Row[]>, pending: [] as Pending[] }));
+const db = vi.hoisted(() => ({ tables: {} as Record<string, Row[]>, pending: [] as Pending[], fails: [] as string[] }));
 const route = vi.hoisted(() => ({ card: "bolster-short" }));
 
 vi.mock("next/navigation", () => ({
@@ -58,7 +58,9 @@ vi.mock("@/lib/supabase/client", () => {
                 },
               }),
             )
-          : Promise.resolve({ data: structuredClone(db.tables[table] ?? []), error: null });
+          : db.fails.includes(table)
+            ? Promise.resolve({ data: null, error: { message: "network down" } })
+            : Promise.resolve({ data: structuredClone(db.tables[table] ?? []), error: null });
         return answered.then(resolve, reject);
       },
     };
@@ -93,6 +95,7 @@ async function mount(card: string, strict = false) {
 
 beforeEach(() => {
   db.pending = [];
+  db.fails = [];
   db.tables = {
     items: [
       { id: 1, category: "bolster_case", name: "Linen", size: "S", subtype: null, is_active: true },
@@ -291,6 +294,128 @@ describe("Configure card: bolster lines that fail to load", () => {
 
     expect([...posted("/configure/save"), ...posted("/configure/templates")]).toEqual([]);
     expect(document.body.textContent).toContain("Couldn't load this bolster's parts.");
+  });
+});
+
+const savedBolster = (lines: unknown) =>
+  `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines, defaultFillingTemplateId: null })}`;
+
+describe("Configure card: recovering from a failed lines read", () => {
+  it("unlinks a bolster template picked while its lines had failed once a reload reads them", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].fail();
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    await bolsterReads()[1].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await act(async () => bolsterSave().click());
+    await settle();
+
+    expect(posted("/templates/7")).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBolster(STORED_BOLSTER)]);
+  });
+});
+
+const buttonNamed = (text: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === text)!;
+
+describe("Configure card: cancelling a pick still loading", () => {
+  it("drops a bolster pick's lines when Unlink is pressed before they land", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+    await act(async () => buttonNamed("Unlink").click());
+    await settle();
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+    await act(async () => bolsterSave().click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([savedBolster(STORED_BOLSTER)]);
+  });
+
+  it("drops a premium pick's lines when the variant changes before they land", async () => {
+    db.tables.bom_lines = [{ product_id: 11, item_id: 2, quantity: 1 }];
+    await mount("premium-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    const variant = [...document.querySelectorAll("select")].find((s) => s.querySelector('option[value="fibrecool"]'))!;
+    await choose(variant, "fibrecool");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ productId: 11, lines: [{ item_id: 2, quantity: 1 }], defaultFillingTemplateId: null })}`,
+    ]);
+  });
+});
+
+const savedBasicM = (lines: unknown) => `POST ${JSON.stringify({ productId: 10, lines, defaultFillingTemplateId: 42 })}`;
+
+describe("Configure card: pillow lines after a reload", () => {
+  it("keeps a picked template's lines when a reload lands after the pick", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    await until(() => templatePicker());
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/templates/7")).toEqual([`PUT ${JSON.stringify({ lines: [{ item_id: 1, quantity: 5 }] })}`]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 1, quantity: 5 }])]);
+  });
+});
+
+describe("Configure card: pillow lines that fail to load", () => {
+  it("shows an error and writes nothing when the pillow BOM cannot be read", async () => {
+    db.fails = ["bom_lines"];
+    await mount("basic-M");
+    await until(() => document.querySelector("h1"));
+    typeField(document.querySelector<HTMLInputElement>('input[placeholder="Template name"]')!, "Backup");
+    for (const text of ["Save", "Save changes"]) {
+      for (const b of document.querySelectorAll<HTMLButtonElement>("button")) {
+        if (b.textContent?.trim() === text) await act(async () => b.click());
+      }
+    }
+    await settle();
+
+    expect(requests.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.url}`)).toEqual([]);
+    expect(document.body.textContent).toContain("Couldn't load this pillow's parts.");
+  });
+
+  it("unlinks a template picked while the pillow BOM had failed once a reload reads it", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    db.fails = ["bom_lines"];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    db.fails = [];
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    await until(() => templatePicker());
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/templates/7")).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 2, quantity: 1 }])]);
   });
 });
 
