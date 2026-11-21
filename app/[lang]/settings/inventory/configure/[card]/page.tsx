@@ -412,7 +412,7 @@ export default function ConfigureCardPage() {
   const loadAll = useCallback(async (readLines: boolean) => {
     const request = ++loadRequest.current;
     setLoading(true);
-    const [{ data: itemsData }, { data: productsData }, { data: bomData, error: bomError }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
+    const [{ data: itemsData }, { data: productsData, error: productsError }, { data: bomData, error: bomError }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("pillow_products").select("id,size,kind,default_filling_template_id").eq("is_active", true),
       supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
@@ -482,12 +482,11 @@ export default function ConfigureCardPage() {
         lines[existingIdx] = { item_id: itemId, quantity };
       }
     });
-    if (readLines && !bolsterLength && bomError) {
+    if (!bolsterLength && (bomError || productsError)) {
       setLinesFailed(true);
-    } else if (readLines && !bolsterLength) {
+    } else if (!bolsterLength) {
       setBomByKind(next);
       setLinesFailed(false);
-      linesLoaded.current = true;
       templatePick.current += 1;
       setPillowSelectedTemplateId('');
     }

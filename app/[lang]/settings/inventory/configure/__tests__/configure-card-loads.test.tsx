@@ -361,8 +361,14 @@ describe("Configure card: cancelling a pick still loading", () => {
 
 const savedBasicM = (lines: unknown) => `POST ${JSON.stringify({ productId: 10, lines, defaultFillingTemplateId: 42 })}`;
 
+const reload = async () => {
+  act(() => void window.dispatchEvent(new Event("inventory:changed")));
+  await settle(50);
+  await until(() => templatePicker());
+};
+
 describe("Configure card: pillow lines after a reload", () => {
-  it("keeps a picked template's lines when a reload lands after the pick", async () => {
+  it("unlinks a picked template when a reload rebuilds the lines from the server", async () => {
     db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
     await mount("basic-M");
     await until(() => templatePicker());
@@ -370,20 +376,45 @@ describe("Configure card: pillow lines after a reload", () => {
     await choose(templatePicker()!, "7");
     await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
 
-    act(() => void window.dispatchEvent(new Event("inventory:changed")));
-    await settle(50);
-    await until(() => templatePicker());
+    await reload();
     await act(async () => buttonNamed("Save changes").click());
     await settle();
 
-    expect(posted("/templates/7")).toEqual([`PUT ${JSON.stringify({ lines: [{ item_id: 1, quantity: 5 }] })}`]);
-    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 1, quantity: 5 }])]);
+    expect(posted("/templates/7")).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 2, quantity: 1 }])]);
+  });
+
+  it("shows another tab's saved lines after a reload", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    db.tables.bom_lines = [{ product_id: 10, item_id: 3, quantity: 4 }];
+
+    await reload();
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 3, quantity: 4 }])]);
+  });
+
+  it("does not save empty lines after the products read failed on the first load", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    db.fails = ["pillow_products"];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    db.fails = [];
+
+    await reload();
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 2, quantity: 1 }])]);
   });
 });
 
 describe("Configure card: pillow lines that fail to load", () => {
-  it("shows an error and writes nothing when the pillow BOM cannot be read", async () => {
-    db.fails = ["bom_lines"];
+  it.each(["bom_lines", "pillow_products"])("shows an error and writes nothing when %s cannot be read", async (table) => {
+    db.fails = [table];
     await mount("basic-M");
     await until(() => document.querySelector("h1"));
     typeField(document.querySelector<HTMLInputElement>('input[placeholder="Template name"]')!, "Backup");
