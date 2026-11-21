@@ -407,6 +407,7 @@ export default function ConfigureCardPage() {
   const bolsterLength = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : null;
 
   const loadRequest = useRef(0);
+  const templatePick = useRef(0);
   const bolsterLinesLoadedFor = useRef<BolsterLength | null>(null);
   const loadAll = useCallback(async (withBolsterLinesOf?: BolsterLength | null) => {
     const request = ++loadRequest.current;
@@ -428,6 +429,8 @@ export default function ConfigureCardPage() {
       setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
       setBolsterLinesFailed(false);
       bolsterLinesLoadedFor.current = withBolsterLinesOf;
+      templatePick.current += 1;
+      setBolsterSelectedTemplateId('');
     }
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
     const prods = (productsData ?? []) as Product[];
@@ -772,7 +775,6 @@ export default function ConfigureCardPage() {
     }
   };
 
-  const templatePick = useRef(0);
   const selectPillowTemplate = async (next: number | '') => {
     const pick = ++templatePick.current;
     setPillowSelectedTemplateId(next);

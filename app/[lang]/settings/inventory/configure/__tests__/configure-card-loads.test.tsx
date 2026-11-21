@@ -294,6 +294,31 @@ describe("Configure card: bolster lines that fail to load", () => {
   });
 });
 
+const savedBolster = (lines: unknown) =>
+  `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines, defaultFillingTemplateId: null })}`;
+
+describe("Configure card: recovering from a failed lines read", () => {
+  it("unlinks a bolster template picked while its lines had failed once a reload reads them", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].fail();
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    await bolsterReads()[1].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await act(async () => bolsterSave().click());
+    await settle();
+
+    expect(posted("/templates/7")).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBolster(STORED_BOLSTER)]);
+  });
+});
+
 describe("Configure card: premium warehouse templates", () => {
   it("lists the variant picked last when an older variant's templates answer after it", async () => {
     auto = (url, method) => (url.includes("role=warehouse") ? undefined : autoAnswers(url, method));
