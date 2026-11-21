@@ -13,6 +13,7 @@ vi.mock("next/navigation", () => ({
 
 const { FollowUpsTab } = await import("../followups-tab");
 const { CustomersClient } = await import("../customers-client");
+const { FindCustomerLink } = await import("../review-match-parts");
 
 type Held = { url: string; answer: (body: unknown) => Promise<void> };
 let held: Held[] = [];
@@ -55,6 +56,11 @@ const button = (label: string) =>
 const pastDebounce = () => act(() => new Promise<void>((r) => setTimeout(r, 400)));
 const click = (el: Element) => act(async () => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
 const lastFor = (part: string) => [...held].reverse().find((h) => h.url.includes(part))!;
+const typeInto = (input: HTMLInputElement, value: string) =>
+  act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 
 const followUps = (scope: FollowUpScope, title: string): FollowUpListData & { ok: true } => ({
   ok: true,
@@ -170,5 +176,42 @@ describe("Customers list: page 2 then page 3, answered out of order", () => {
     expect(one).toBeDefined();
     await one.answer(customersPage(1, "Pageone"));
     expect(host.textContent).toContain("Pageone");
+  });
+});
+
+describe("Find customer on a Google review: 'jo' then 'john', answered out of order", () => {
+  const box = () => host.querySelector("input")!;
+  const searchFor = async (text: string) => {
+    await typeInto(box(), text);
+    await pastDebounce();
+  };
+
+  it("shows the matches for 'john' when the 'jo' search answers last", async () => {
+    await mount(<FindCustomerLink reviewId="r1" onLinked={() => {}} />);
+    await click(button("Find customer…"));
+    await searchFor("jo");
+    await searchFor("john");
+    const jo = lastFor("search=jo&");
+    const john = lastFor("search=john&");
+
+    await john.answer({ ok: true, rows: [customerRow("Johnny")] });
+    await jo.answer({ ok: true, rows: [customerRow("Joanne")] });
+
+    expect(host.textContent).toContain("Johnny");
+    expect(host.textContent).not.toContain("Joanne");
+    expect(host.textContent).not.toContain("Searching…");
+  });
+
+  it("stops saying Searching… when a search answers after the box was emptied", async () => {
+    await mount(<FindCustomerLink reviewId="r1" onLinked={() => {}} />);
+    await click(button("Find customer…"));
+    await searchFor("jo");
+    await typeInto(box(), "");
+    expect(host.textContent).toContain("Searching…");
+
+    await lastFor("search=jo&").answer({ ok: true, rows: [customerRow("Joanne")] });
+
+    expect(host.textContent).not.toContain("Searching…");
+    expect(host.textContent).toContain("Type at least two letters.");
   });
 });

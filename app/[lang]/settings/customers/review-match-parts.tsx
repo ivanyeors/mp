@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -150,19 +150,21 @@ export function FindCustomerLink({ reviewId, onLinked }: { reviewId: string; onL
     const [results, setResults] = useState<CustomerOverviewRow[] | null>(null);
     const [searching, setSearching] = useState(false);
     const [linking, setLinking] = useState<string | null>(null);
+    const latestSearch = useRef(0);
     const q = query.trim();
 
     useEffect(() => {
         if (!open || q.length < 2) return;
         const timer = setTimeout(async () => {
+            const search = ++latestSearch.current;
             setSearching(true);
             try {
                 const params = new URLSearchParams({ search: q, limit: "5", page: "1" });
                 const res = await fetch(`/api/shop/customers?${params.toString()}`);
                 const json = await res.json().catch(() => null);
-                setResults(res.ok ? ((json?.rows ?? []) as CustomerOverviewRow[]) : []);
+                if (search === latestSearch.current) setResults(res.ok ? ((json?.rows ?? []) as CustomerOverviewRow[]) : []);
             } finally {
-                setSearching(false);
+                if (search === latestSearch.current) setSearching(false);
             }
         }, 300);
         return () => clearTimeout(timer);
