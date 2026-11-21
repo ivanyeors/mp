@@ -8,7 +8,7 @@ type Row = Record<string, unknown>;
 type Pending = { table: string; filters: Row; answer: (rows: Row[]) => Promise<void>; fail: () => Promise<void> };
 type Request = { url: string; method: string; body: unknown; answered: boolean; answer: (json: unknown) => Promise<void> };
 
-const db = vi.hoisted(() => ({ tables: {} as Record<string, Row[]>, pending: [] as Pending[] }));
+const db = vi.hoisted(() => ({ tables: {} as Record<string, Row[]>, pending: [] as Pending[], fails: [] as string[] }));
 const route = vi.hoisted(() => ({ card: "bolster-short" }));
 
 vi.mock("next/navigation", () => ({
@@ -58,7 +58,9 @@ vi.mock("@/lib/supabase/client", () => {
                 },
               }),
             )
-          : Promise.resolve({ data: structuredClone(db.tables[table] ?? []), error: null });
+          : db.fails.includes(table)
+            ? Promise.resolve({ data: null, error: { message: "network down" } })
+            : Promise.resolve({ data: structuredClone(db.tables[table] ?? []), error: null });
         return answered.then(resolve, reject);
       },
     };
@@ -93,6 +95,7 @@ async function mount(card: string, strict = false) {
 
 beforeEach(() => {
   db.pending = [];
+  db.fails = [];
   db.tables = {
     items: [
       { id: 1, category: "bolster_case", name: "Linen", size: "S", subtype: null, is_active: true },
@@ -375,6 +378,44 @@ describe("Configure card: pillow lines after a reload", () => {
 
     expect(posted("/templates/7")).toEqual([`PUT ${JSON.stringify({ lines: [{ item_id: 1, quantity: 5 }] })}`]);
     expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 1, quantity: 5 }])]);
+  });
+});
+
+describe("Configure card: pillow lines that fail to load", () => {
+  it("shows an error and writes nothing when the pillow BOM cannot be read", async () => {
+    db.fails = ["bom_lines"];
+    await mount("basic-M");
+    await until(() => document.querySelector("h1"));
+    typeField(document.querySelector<HTMLInputElement>('input[placeholder="Template name"]')!, "Backup");
+    for (const text of ["Save", "Save changes"]) {
+      for (const b of document.querySelectorAll<HTMLButtonElement>("button")) {
+        if (b.textContent?.trim() === text) await act(async () => b.click());
+      }
+    }
+    await settle();
+
+    expect(requests.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.url}`)).toEqual([]);
+    expect(document.body.textContent).toContain("Couldn't load this pillow's parts.");
+  });
+
+  it("unlinks a template picked while the pillow BOM had failed once a reload reads it", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    db.fails = ["bom_lines"];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    db.fails = [];
+    act(() => void window.dispatchEvent(new Event("inventory:changed")));
+    await settle(50);
+    await until(() => templatePicker());
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+
+    expect(posted("/templates/7")).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 2, quantity: 1 }])]);
   });
 });
 

@@ -371,7 +371,7 @@ export default function ConfigureCardPage() {
   const [saving, setSaving] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
-  const [bolsterLinesFailed, setBolsterLinesFailed] = useState(false);
+  const [linesFailed, setLinesFailed] = useState(false);
   const [pillowTemplates, setPillowTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
   const [pillowSelectedTemplateId, setPillowSelectedTemplateId] = useState<number | ''>('');
   const [pillowTemplateName, setPillowTemplateName] = useState('');
@@ -412,7 +412,7 @@ export default function ConfigureCardPage() {
   const loadAll = useCallback(async (readLines: boolean) => {
     const request = ++loadRequest.current;
     setLoading(true);
-    const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
+    const [{ data: itemsData }, { data: productsData }, { data: bomData, error: bomError }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("pillow_products").select("id,size,kind,default_filling_template_id").eq("is_active", true),
       supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
@@ -423,11 +423,11 @@ export default function ConfigureCardPage() {
     ]);
     if (request !== loadRequest.current) return;
     if (bolsterLinesRead?.error) {
-      setBolsterLinesFailed(true);
+      setLinesFailed(true);
     } else if (bolsterLinesRead) {
       type LineRow = { item_id: number; quantity: number | string };
       setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
-      setBolsterLinesFailed(false);
+      setLinesFailed(false);
       linesLoaded.current = true;
       templatePick.current += 1;
       setBolsterSelectedTemplateId('');
@@ -482,8 +482,11 @@ export default function ConfigureCardPage() {
         lines[existingIdx] = { item_id: itemId, quantity };
       }
     });
-    if (readLines && !bolsterLength) {
+    if (readLines && !bolsterLength && bomError) {
+      setLinesFailed(true);
+    } else if (readLines && !bolsterLength) {
       setBomByKind(next);
+      setLinesFailed(false);
       linesLoaded.current = true;
       templatePick.current += 1;
       setPillowSelectedTemplateId('');
@@ -909,7 +912,7 @@ export default function ConfigureCardPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" onClick={() => saveSelected(selectedPillowKind, selectedSize)} disabled={saving}>
+                    <Button size="sm" onClick={() => saveSelected(selectedPillowKind, selectedSize)} disabled={saving || linesFailed}>
                       {saving ? 'Saving…' : 'Save changes'}
                     </Button>
                   </>
@@ -971,6 +974,7 @@ export default function ConfigureCardPage() {
                     </Button>
                     <Button
                       variant="secondary"
+                      disabled={linesFailed}
                       onClick={async () => {
                         const name = pillowTemplateName.trim();
                         if (!name) { toast.message('Enter a template name.'); return; }
@@ -1057,17 +1061,23 @@ export default function ConfigureCardPage() {
                 loadTemplateLines={loadTemplateLines}
               />
               <Separator className="lg:hidden" />
-              <SizeEditor
-                size={selectedSize}
-                items={items}
-                bom={bomByKind[selectedPillowKind]}
-                setBom={(next) => {
-                  setBomByKind((prev) => ({
-                    ...prev,
-                    [selectedPillowKind]: typeof next === 'function' ? (next as (p: BomState) => BomState)(prev[selectedPillowKind]) : next,
-                  }))
-                }}
-              />
+              {linesFailed ? (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn&apos;t load this pillow&apos;s parts. Refresh the page to try again.
+                </p>
+              ) : (
+                <SizeEditor
+                  size={selectedSize}
+                  items={items}
+                  bom={bomByKind[selectedPillowKind]}
+                  setBom={(next) => {
+                    setBomByKind((prev) => ({
+                      ...prev,
+                      [selectedPillowKind]: typeof next === 'function' ? (next as (p: BomState) => BomState)(prev[selectedPillowKind]) : next,
+                    }))
+                  }}
+                />
+              )}
               </div>
               </div>
               </TabsContent>
@@ -1092,7 +1102,7 @@ export default function ConfigureCardPage() {
                     if (!selectedPillowKind || !selectedSize) return;
                     saveSelected(selectedPillowKind, selectedSize);
                   }}
-                  disabled={saving}
+                  disabled={saving || linesFailed}
                 >
                   {saving ? 'Saving…' : 'Save changes'}
                 </Button>
@@ -1114,7 +1124,7 @@ export default function ConfigureCardPage() {
                       if (!selectedPillowKind || !selectedSize) return;
                       saveSelected(selectedPillowKind, selectedSize);
                     }}
-                    disabled={saving}
+                    disabled={saving || linesFailed}
                   >
                     {saving ? 'Saving…' : 'Save changes'}
                   </Button>
@@ -1168,7 +1178,7 @@ export default function ConfigureCardPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" onClick={saveBolster} disabled={saving || bolsterLinesFailed}>
+                    <Button size="sm" onClick={saveBolster} disabled={saving || linesFailed}>
                       {saving ? 'Saving…' : 'Save'}
                     </Button>
                   </>
@@ -1216,7 +1226,7 @@ export default function ConfigureCardPage() {
                     </Button>
                     <Button
                       variant="secondary"
-                      disabled={bolsterLinesFailed}
+                      disabled={linesFailed}
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
                         if (!name) { toast.message('Enter a template name.'); return; }
@@ -1295,7 +1305,7 @@ export default function ConfigureCardPage() {
                 loadTemplateLines={loadTemplateLines}
               />
               <Separator className="lg:hidden" />
-              {bolsterLinesFailed ? (
+              {linesFailed ? (
                 <p role="alert" className="text-sm text-destructive">
                   Couldn&apos;t load this bolster&apos;s parts. Refresh the page to try again.
                 </p>
@@ -1326,7 +1336,7 @@ export default function ConfigureCardPage() {
           {bolsterDrawerTab === "product" && (
             <>
               <div className="hidden justify-end md:flex lg:hidden">
-                <Button onClick={saveBolster} disabled={saving || bolsterLinesFailed}>{saving ? 'Saving…' : 'Save'}</Button>
+                <Button onClick={saveBolster} disabled={saving || linesFailed}>{saving ? 'Saving…' : 'Save'}</Button>
               </div>
               <MobileStickyActionBar>
                 <div className="flex items-center justify-between gap-3">
@@ -1338,7 +1348,7 @@ export default function ConfigureCardPage() {
                       {bolsterSelectedTemplate ? 'Saving also updates this template.' : 'No template linked.'}
                     </div>
                   </div>
-                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving || bolsterLinesFailed}>
+                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving || linesFailed}>
                     {saving ? 'Saving…' : 'Save'}
                   </Button>
                 </div>
