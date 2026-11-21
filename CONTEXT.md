@@ -487,7 +487,7 @@ A customer-initiated, **item-level** request against a delivered **Order** to se
 _Avoid_: "refund request" (that is the separate order-level Result flow, migration 0048); "return" when you mean a code `return`
 
 **Resolution**:
-What the customer asks for on a **Return**: `refund` (money back via the existing `refundPayment` + money-ledger webhook: each returned line's share of the goods price after coupons and before points, in cash, up to the cash the Order took for goods, never the shipping; points stay spent on what was kept, ADR 0030), `exchange` (same item re-sent), or `replacement` (corrected/like item re-sent). Fixed at request time.
+What the customer asks for on a **Return**: `refund` (money back via the existing `refundPayment` + money-ledger webhook: each returned line's share of the goods price after coupons and before points, in cash, up to the cash still unrefunded on the Order; where a coupon was scoped to products or categories, its row is gone, or the Order has a service line, the list price of the returned units instead. On an Order without points the shares add up to what it took for goods, so the shipping stays; points stay spent on what was kept, ADR 0030), `exchange` (same item re-sent), or `replacement` (corrected/like item re-sent). Fixed at request time.
 _Avoid_: "outcome" (that is the terminal status the resolution drives)
 
 **RMA status**:

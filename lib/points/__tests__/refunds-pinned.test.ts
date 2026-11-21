@@ -6,7 +6,7 @@ const ORDER = "0b0b0b0b-0000-4000-8000-000000000001";
 
 const h = vi.hoisted(() => ({
   order: {} as Record<string, unknown>,
-  rmaItems: [] as Array<{ quantity: number; order_items: { unit_price: number } }>,
+  rmaItems: [] as Array<{ order_item_id: string; quantity: number }>,
   tables: [] as string[],
   writes: [] as string[],
   refundPayment: vi.fn(),
@@ -69,6 +69,7 @@ beforeEach(() => {
     currency: "SGD",
     status: "delivered",
     subtotal: 100,
+    shipping_amount: 0,
     discount_amount: 20,
     points_spent: 2000,
     points_discount: 20,
@@ -78,6 +79,11 @@ beforeEach(() => {
     shipped_at: null,
     delivered_at: null,
     refund_request_status: null,
+    coupons: null,
+    order_items: [
+      { id: "line-1", quantity: 1, total_price: 50, unit_price: 50, kind: "goods" },
+      { id: "line-2", quantity: 1, total_price: 50, unit_price: 50, kind: "goods" },
+    ],
   };
 });
 
@@ -98,15 +104,16 @@ const refundedAmountArg = (call: number) => (h.refundPayment.mock.calls[call][0]
 
 describe("refunds with points used (rule l)", () => {
   it("returning one item through an RMA refunds its S$50 in cash", async () => {
-    h.rmaItems = [{ quantity: 1, order_items: { unit_price: 50 } }];
+    h.rmaItems = [{ order_item_id: "line-1", quantity: 1 }];
     expect(await issueRmaRefund("rma-1")).toEqual({ ok: true, amount: 50 });
     expect(refundedAmountArg(0)).toBe(50);
   });
 
   it("returning the other then refunds the S$30 of cash left: the points stay spent", async () => {
-    h.rmaItems = [{ quantity: 1, order_items: { unit_price: 50 } }];
+    h.rmaItems = [{ order_item_id: "line-1", quantity: 1 }];
     await issueRmaRefund("rma-1");
     settle(50);
+    h.rmaItems = [{ order_item_id: "line-2", quantity: 1 }];
     expect(await issueRmaRefund("rma-2")).toEqual({ ok: true, amount: 30 });
     expect(refundedAmountArg(1)).toBeUndefined();
     settle(30);
@@ -121,7 +128,10 @@ describe("refunds with points used (rule l)", () => {
   });
 
   it("no refund writes a points entry, or calls a points function", async () => {
-    h.rmaItems = [{ quantity: 2, order_items: { unit_price: 50 } }];
+    h.rmaItems = [
+      { order_item_id: "line-1", quantity: 1 },
+      { order_item_id: "line-2", quantity: 1 },
+    ];
     await issueRmaRefund("rma-1");
     await adminRefund(fullRefund(), { params: Promise.resolve({ id: ORDER }) });
     expect(h.tables).not.toContain("points_ledger");

@@ -121,8 +121,8 @@ off a later shop order. The Claim gives each **Migrated customer** a starting ba
   (`lib/ecommerce/admin-refund.ts:9-18`; RMA `app/[lang]/settings/rma/actions.ts:157-164`), and
   `amount_captured` is cash.
 - **A return refunds cash first.** An RMA refunds each returned line's share of the goods price
-  after coupons and before points, in cash, up to the cash the Order took for goods
-  (`lib/rma/refund.ts`), and then up to the cash still unrefunded.
+  after coupons and before points, in cash (`lib/rma/refund.ts`), up to the cash still
+  unrefunded.
 - **So points end up spent on what was kept.** A full refund returns the cash paid and nothing
   more. A partial return refunds the item's price after coupons in cash until the Order's cash runs out.
 

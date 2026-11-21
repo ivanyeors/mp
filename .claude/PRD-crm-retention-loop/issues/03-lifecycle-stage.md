@@ -127,7 +127,7 @@ The *Last order* filter, sort and column stay on `last_purchase_at`.
 ## Known limits
 
 - **A full return by RMA can leave a Customer *New*.** An RMA refunds the lines' share of the goods
-  price after coupons, in cash, and keeps shipping (`lib/rma/refund.ts`), so the Order ends `partially_refunded`, which is still a
+  price after coupons, in cash, and on an Order without points keeps shipping (`lib/rma/refund.ts`), so the Order ends `partially_refunded`, which is still a
   purchase. The stage reads Order status only, as decided (never returns). For the owner: count
   an Order whose every goods line was returned as no purchase, or leave it.
 - **The list's *Orders* column is `customers.total_orders`**, which counts a paid re-adjustment fee;
