@@ -36,7 +36,9 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A green run took 13 to 14 minutes in November 2026, and 15 cut off runs
+    # whose runner was a little slower, mid-test, with nothing failing.
+    timeout-minutes: 25
 
     steps:
       # Full history for gitleaks, but without old file contents: those are
