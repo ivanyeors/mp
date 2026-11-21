@@ -11,7 +11,7 @@ const scene = vi.hoisted(() => ({ options: null as ExploreSceneOptions | null })
 vi.mock("@/app/[lang]/explore/actions", () => actions);
 vi.mock("@/lib/auth/sign-in-actions", () => ({ resubscribeMe: vi.fn() }));
 vi.mock("next/image", () => ({ default: () => null }));
-vi.mock("next/link", () => ({ default: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("next/link", () => ({ default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a> }));
 vi.mock("../explore-claim-dialog", () => ({ ExploreClaimDialog: ({ open, stage }: { open: boolean; stage: string }) => (open ? <div data-claim={stage} /> : null) }));
 vi.mock("../explore-flower-dialog", () => ({ ExploreFlowerDialog: ({ popup }: { popup: { kind: string } | null }) => (popup ? <div data-flower={popup.kind} /> : null) }));
 vi.mock("../explore-scene", () => ({
@@ -100,5 +100,17 @@ describe("ExploreExperience", () => {
     expect(actions.pickExploreFlower).toHaveBeenCalledWith(1);
     expect(host.querySelector("[data-flower]")?.getAttribute("data-flower")).toBe("won");
     expect(window.location.search).toBe("");
+  });
+
+  it("before launch, a button below the main action goes to the home page; after launch Enter Mpillow does", async () => {
+    const homeButton = () => [...host.querySelectorAll("a")].find((a) => a.textContent === "Go to home page");
+    await act(async () => root.render(<ExploreExperience {...props({ locale: "zh-CN" })} />));
+    expect(homeButton()?.getAttribute("href")).toBe("/zh-CN");
+    const main = [...host.querySelectorAll("button")].find((b) => b.textContent === "Sign in or create an account")!;
+    expect(main.compareDocumentPosition(homeButton()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await act(async () => root.render(<ExploreExperience {...props({ locale: "zh-CN", serverNow: NOW, launchAt: NOW - 1000 })} />));
+    expect(homeButton()).toBeUndefined();
+    expect([...host.querySelectorAll("a")].find((a) => a.textContent === "Enter Mpillow")?.getAttribute("href")).toBe("/zh-CN");
   });
 });

@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, House } from "lucide-react";
 
 import { claimExplorePoints, pickExploreFlower } from "@/app/[lang]/explore/actions";
 import { ExploreClaimDialog, type ClaimStage } from "@/components/explore/explore-claim-dialog";
@@ -416,6 +416,18 @@ export function ExploreExperience({
                 </p>
               </div>
             ) : null}
+            {launched ? null : (
+              <Link
+                href={links.home}
+                className={cn(
+                  "inline-flex h-11 items-center gap-2 rounded-button px-5 text-sm font-medium backdrop-blur-sm transition-transform active:scale-[0.97] motion-reduce:transition-none",
+                  dark ? "border border-[#0d1b33]/40 bg-white/40 text-[#0d1b33]" : "border border-white/50 bg-white/10 text-white",
+                )}
+              >
+                <House className="size-4" aria-hidden="true" />
+                Go to home page
+              </Link>
+            )}
           </div>
         </div>
 
