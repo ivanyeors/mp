@@ -24,6 +24,7 @@ import { formatTemplateKeys, PILLOW_TEMPLATE_KEYS } from "@/lib/filling-template
 import { rowsToPillowPlacements } from "@/lib/spatial-fillings/core";
 import type { MatchableTemplate, PillowSizeKey } from "@/lib/customer-pillow/match";
 import { matchNotices } from "@/lib/customer-pillow/notices";
+import { pillowGuideOffered } from "@/lib/customer-pillow/sheet";
 import { customerFacingPillow, type CustomerPillowResult, type CustomerPillowView } from "@/lib/customer-pillow/view";
 import type { FittingAnswersView } from "@/lib/fitting-import/view";
 import { PillowSheetButton } from "@/components/customer-pillow/pillow-sheet-button";
@@ -69,7 +70,7 @@ export function CustomerPillowCard({
         setOpen(null);
     };
 
-    const canDownload = forCustomer !== null && forCustomer.placements.length > 0;
+    const canDownload = forCustomer !== null && pillow !== null && pillowGuideOffered(pillow);
 
     if (initial === undefined) return null;
     if (pillow === null) {
@@ -233,6 +234,9 @@ function Drawing({ pillow }: { pillow: CustomerPillowView }) {
         );
     }
     const pieces = placements.length;
+    if (pillow.source === "fitting" && pieces > 0 && !pillowGuideOffered(pillow)) {
+        notices.push("Download PDF appears once you link the pillow they have: this drawing is the nearest template, so its fill order may not match theirs.");
+    }
     const drawn = pillow.template !== null || pieces > 0;
     return (
         <>

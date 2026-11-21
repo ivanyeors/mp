@@ -16,6 +16,7 @@ const SHEET_ART_THEME = {
     "--xray-shell": "#475569",
     "--xray-interior": "#eef2f7",
     "--xray-veil": "#ffffff",
+    "--xray-piece-edge": "rgba(30,41,59,0.7)",
 } as CSSProperties;
 
 export function PillowSheetArt({ pillow }: { pillow: OwnPillowView }) {

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { FittingAnswersView } from "@/lib/fitting-import/view";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { customerFacingPillow } from "../view";
-import { buildPillowSheet } from "../sheet";
+import type { FittingTemplateMatch } from "../match";
+import { buildPillowSheet, pillowGuideOffered } from "../sheet";
 import type { CustomerPillowView } from "../view";
 
 const row = (section: string, sub_section: string, slot: number, item_id: number, over: Partial<PillowPlacementRow> = {}): PillowPlacementRow => ({
@@ -131,6 +132,7 @@ describe("buildPillowSheet", () => {
         fitting("f-empty", "2026-11-01T02:00:00.000Z"),
         fitting("f-new", "2026-10-15T02:00:00.000Z", {
           shoulderLengthIn: 15.5,
+          neckToBackIn: 2.75,
           neckLengthIn: 4.25,
           recommendedSize: "S",
           configurationType: "T12",
@@ -139,12 +141,34 @@ describe("buildPillowSheet", () => {
       ],
     );
     expect(sheet.fitting?.fittedOn).toBe("15 October 2026");
-    expect(sheet.fitting?.measurements.map((m) => `${m.letter} ${m.value}`)).toEqual(["A 15.5 in", "B —", "C —", "D 4.25 in"]);
+    expect(sheet.fitting?.measurements.map((m) => `${m.letter} ${m.value}`)).toEqual(["A 15.5 in", "B 2.75 in", "C —", "D 4.25 in"]);
     expect(sheet.fitting?.facts).toEqual([
       ["Recommended size", "S"],
       ["Configuration type", "T12"],
       ["Profile side", "S-SN"],
     ]);
+  });
+
+  it("lets the last of two overrides for one filling win, as the x-ray does, however it is spelt", () => {
+    const sheet = sheetOf([row("left", "front", 1, 1)], [], {
+      colorOverrides: [
+        { subtype: "6D", color: "#111111" },
+        { subtype: "6d", color: "#3b82f6" },
+      ],
+    });
+    expect(sheet.fillings[0].color).toBe("#3b82f6");
+  });
+
+  it("offers the guide only for a pillow known exactly, never for the nearest template to a fitting", () => {
+    const rows = [row("left", "front", 1, 1)];
+    const exact: FittingTemplateMatch = { size: "S", code: "12", neck: "long", template: { id: 12, name: "Type-12", keys: ["S"] }, otherSize: false, otherNeck: false };
+    const fitted = (match: FittingTemplateMatch) => view(rows, { source: "fitting", link: null, match });
+    expect(pillowGuideOffered(view(rows))).toBe(true);
+    expect(pillowGuideOffered(fitted(exact))).toBe(true);
+    expect(pillowGuideOffered(fitted({ ...exact, otherSize: true }))).toBe(false);
+    expect(pillowGuideOffered(fitted({ ...exact, neck: "short", otherNeck: true }))).toBe(false);
+    expect(pillowGuideOffered(view([]))).toBe(false);
+    expect(pillowGuideOffered(view(rows, { source: "none", link: null }))).toBe(false);
   });
 
   it("has no fitting block when no fitting recorded anything", () => {

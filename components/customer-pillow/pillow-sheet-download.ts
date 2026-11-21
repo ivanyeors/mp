@@ -1,4 +1,5 @@
 import { pdf } from "@react-pdf/renderer";
+import { softTopSettling } from "@/components/spatial/soft-top";
 import type { PillowSheet } from "@/lib/customer-pillow/sheet";
 import { FITTING_MEASUREMENTS } from "@/lib/fitting-import/view";
 import { SECTIONS, type Section } from "@/lib/spatial-fillings/core";
@@ -6,7 +7,7 @@ import { pillowSheetDocument, registerSheetFonts, SHEET_FONT_WEIGHTS, type Sheet
 
 const ART_SCALE = 2.5;
 const SETTLE_POLL_MS = 120;
-const SETTLE_TIMEOUT_MS = 6000;
+const SETTLE_TIMEOUT_MS = 8000;
 const LOGO = "/mpillow_logo_2026.png";
 const fontUrl = (weight: number) => `/fonts/figtree/figtree-${weight}.woff`;
 
@@ -74,6 +75,9 @@ function inlineStyles(from: Element, to: Element) {
         const value = computed.getPropertyValue(prop);
         if (value) style.setProperty(prop, value);
     }
+    if (computed.getPropertyValue("vector-effect") === "non-scaling-stroke") {
+        style.setProperty("stroke-width", `${parseFloat(computed.getPropertyValue("stroke-width")) * ART_SCALE}px`);
+    }
     to.removeAttribute("class");
     for (let i = 0; i < from.children.length; i++) inlineStyles(from.children[i], to.children[i]);
 }
@@ -102,9 +106,6 @@ async function rasterizeSvg(svg: SVGSVGElement, fontCss: string, background: str
     const xml = new XMLSerializer().serializeToString(clone);
     const img = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`);
     return paint(width, height, (ctx) => {
-        ctx.beginPath();
-        ctx.roundRect(0, 0, width, height, 14 * ART_SCALE);
-        ctx.clip();
         ctx.fillStyle = background;
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
@@ -117,21 +118,25 @@ async function rasterizeFile(src: string, width: number): Promise<SheetImage> {
     return paint(width, height, (ctx) => ctx.drawImage(img, 0, 0, width, height));
 }
 
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
 async function settledArt(timeoutMs: number): Promise<HTMLElement> {
-    const started = Date.now();
+    let waited = 0;
     let last = "";
     let same = 0;
     for (;;) {
         const art = document.querySelector<HTMLElement>("[data-pillow-sheet-art]");
         const markup = art?.querySelector("svg") ? art.innerHTML : "";
-        same = markup && markup === last ? same + 1 : 0;
+        same = markup && markup === last && !softTopSettling() ? same + 1 : 0;
         last = markup;
         if (art && same >= 3) return art;
-        if (Date.now() - started > timeoutMs) {
+        if (waited > timeoutMs) {
             if (art?.querySelector("svg")) return art;
             throw new Error("The pillow drawing did not load");
         }
         await wait(SETTLE_POLL_MS);
+        await nextFrame();
+        waited += SETTLE_POLL_MS;
     }
 }
 

@@ -5,7 +5,8 @@ import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { flattenToPackList, rowsToPillowPlacements, SECTIONS, type PillowPlacement, type Section } from "@/lib/spatial-fillings/core";
 import { fillingDescriptor, fillingLabel } from "@/lib/spatial-fillings/filling-groups";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
-import type { OwnPillowView } from "./view";
+import { matchNotices } from "./notices";
+import type { CustomerPillowView, OwnPillowView } from "./view";
 
 export const SHEET_ART_BACKGROUND = "#ffffff";
 
@@ -37,6 +38,11 @@ export type PillowSheetInput = {
   now: Date;
 };
 
+export function pillowGuideOffered(pillow: CustomerPillowView): boolean {
+  if (pillow.source === "none" || pillow.placements.length === 0) return false;
+  return pillow.source !== "fitting" || matchNotices(pillow.match).length === 0;
+}
+
 export const longDate = (iso: string | Date) =>
   new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Singapore" });
 
@@ -50,10 +56,10 @@ function story(p: OwnPillowView): string {
 
 function colorFor(descriptor: string, overrides: readonly ColorOverrideRow[]): string {
   const visual = fillingVisual(descriptor);
-  return overrides.find((o) => fillingVisual(o.subtype).cssVar === visual.cssVar)?.color ?? visual.defaultColor;
+  return overrides.filter((o) => fillingVisual(o.subtype).cssVar === visual.cssVar).at(-1)?.color ?? visual.defaultColor;
 }
 
-const PRINTABLE = /^[ -ÿ’]+$/;
+const PRINTABLE = /^[\u0020-\u00ff\u2019]+$/;
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
