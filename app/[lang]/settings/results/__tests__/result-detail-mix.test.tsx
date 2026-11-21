@@ -100,6 +100,13 @@ const prep = (size: string, id: number, extra: Array<{ id: number; name: string 
   fillingTemplates: [{ id, name: `${size} default` }, ...extra],
 });
 
+const noDefault = (size: string, id: number) => ({
+  productLines: [],
+  defaultFillingTemplate: null,
+  hintSource: "default",
+  fillingTemplates: [{ id, name: `${size} firm` }],
+});
+
 const pieces = (n: number) => ({
   lines: [],
   placements: Array.from({ length: n }, (_, i) => ({ section: "center", sub_section: "middle", slot: i, item_id: 1 })),
@@ -189,6 +196,30 @@ describe("Result detail: the assignment's size and filling template", () => {
     await preview(10).answer(pieces(1));
 
     expect(packList()).toBe("3 pieces");
+  });
+
+  it("drops the old size's template preview when it answers after the size changed", async () => {
+    await mount();
+    await choose(sizeSelect(), "L");
+    await preview(10).answer(pieces(1));
+    await prepFor("L").answer(noDefault("L", 21));
+
+    expect(packList()).toBe("0 pieces");
+  });
+
+  it("drops the old size's template preview when a re-read after Save brings a new size", async () => {
+    await mount();
+    const save = [...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Save")!;
+    await act(async () => save.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await held.find((h) => h.method === "POST" && h.url === "/api/mp-config/responses")!.answer({ ok: true });
+    await held
+      .find((h) => h.url === "/api/mp-config/responses/r1")!
+      .answer({ ok: true, response: response({ suggested_size: "L" }), suggestion: null });
+    await prepFor("L").answer(noDefault("L", 21));
+    await preview(10).answer(pieces(1));
+
+    expect(sizeSelect().value).toBe("L");
+    expect(packList()).toBe("0 pieces");
   });
 
   it("keeps the template picked last when an earlier pick answers last", async () => {
