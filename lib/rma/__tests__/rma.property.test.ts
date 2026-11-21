@@ -63,7 +63,7 @@ const requestFor = (items: PlanOrderItem[]) =>
     { minLength: 0, maxLength: items.length + 1 },
   );
 
-type GenLine = { id: string; quantity: number; total_price: number; unit_price: number; kind: string };
+type GenLine = { id: string; quantity: number; total_price: number; unit_price: number; kind: string; customization_snapshot: unknown };
 
 const unitCentsOf = (lines: GenLine[], id: string) => Math.round(lines.find((l) => l.id === id)!.unit_price * 100);
 
@@ -93,9 +93,10 @@ const returnOnOrder = ({ coupon, points, fallback = false }: { coupon: boolean; 
         total_price: (l.unitCents * l.quantity) / 100,
         unit_price: l.unitCents / 100,
         kind: "goods",
+        customization_snapshot: null,
       }));
       const lines = fallback && why === "service line"
-        ? [...goodsLines, { id: "svc", quantity: 1, total_price: 50, unit_price: 50, kind: "service" }]
+        ? [...goodsLines, { id: "svc", quantity: 1, total_price: 50, unit_price: 50, kind: "service", customization_snapshot: null }]
         : goodsLines;
       const subtotalCents = lines.reduce((t, l) => t + Math.round(l.total_price * 100), 0);
       const couponOffCents = Math.max(fallback ? 1 : 0, Math.floor((subtotalCents * offBasisPoints) / 10_000));
@@ -115,6 +116,7 @@ const returnOnOrder = ({ coupon, points, fallback = false }: { coupon: boolean; 
         shipping_amount: shippingCents / 100,
         discount_amount: (couponOffCents + pointsCents) / 100,
         points_discount: pointsCents / 100,
+        self_purchase_units: 0,
         total: (afterCouponCents - pointsCents + shippingCents) / 100,
         coupons,
       };
@@ -127,6 +129,18 @@ const returnOnOrder = ({ coupon, points, fallback = false }: { coupon: boolean; 
         );
       return returned.map((r) => ({ order, lines, returned: r }));
     });
+
+const RESULT_BUILD = { result_id: "res-1", product_type: "pillow", build_lines: [] };
+
+const notPlainShopOrder = fc
+  .tuple(fc.boolean(), fc.constantFrom("partner self-purchase", "Result build line"), fc.nat())
+  .chain(([points, why, k]) =>
+    returnOnOrder({ coupon: true, points }).map(({ order, lines, returned }) =>
+      why === "partner self-purchase"
+        ? { order: { ...order, self_purchase_units: 1 + (k % 3) }, lines, returned }
+        : { order, lines: lines.map((l, i) => (i === k % lines.length ? { ...l, customization_snapshot: RESULT_BUILD } : l)), returned },
+    ),
+  );
 
 describe("Returns / RMA lifecycle (ADR 0011)", () => {
   it("allows exactly the transitions the ADR's state machine lists, for every pair of states", () => {
@@ -286,6 +300,14 @@ describe("Returns / RMA lifecycle (ADR 0011)", () => {
           expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
         },
       ),
+    );
+  });
+
+  it("a partner self-purchase Order or one with a Result build line refunds exactly the list price of the units returned, whatever its coupon and points", () => {
+    fc.assert(
+      fc.property(notPlainShopOrder, ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
+      }),
     );
   });
 

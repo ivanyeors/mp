@@ -75,7 +75,7 @@ type RefundArgs = { paymentIntentId: string; amount?: number; idempotencyKey: st
 const stripeCall = (n = 0) => h.refundPayment.mock.calls[n][0] as RefundArgs;
 const order = () => h.rma.orders as Record<string, unknown>;
 
-const goods = (id: string, price: number) => ({ id, quantity: 1, total_price: price, unit_price: price, kind: "goods" });
+const goods = (id: string, price: number) => ({ id, quantity: 1, total_price: price, unit_price: price, kind: "goods", customization_snapshot: null });
 
 function returnOn(orderPatch: Record<string, unknown>, returned: string[]) {
   return {
@@ -89,6 +89,7 @@ function returnOn(orderPatch: Record<string, unknown>, returned: string[]) {
       shipping_amount: 8,
       discount_amount: 40,
       points_discount: 0,
+      self_purchase_units: 0,
       total: 168,
       amount_captured: 168,
       amount_refunded: 0,
@@ -131,13 +132,73 @@ describe("issueRmaRefund — what Stripe is asked for", () => {
     expect(stripeCall().amount).toBe(100);
   });
 
+  it("a 20% Order-wide code then S$50 of points (paid S$110): returning one line asks Stripe for S$80.00", async () => {
+    h.rma = returnOn({ shipping_amount: 0, discount_amount: 90, points_discount: 50, total: 110, amount_captured: 110 }, ["line-a"]);
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 80 });
+    expect(stripeCall().amount).toBe(80);
+  });
+
+  it("a 30% partner self-purchase with a free-shipping code refunds the case at its S$100.00 list price", async () => {
+    h.rma = returnOn(
+      {
+        subtotal: 300,
+        shipping_amount: 0,
+        discount_amount: 60,
+        total: 240,
+        amount_captured: 240,
+        self_purchase_units: 1,
+        order_items: [goods("pillow", 200), goods("line-a", 100)],
+      },
+      ["line-a"],
+    );
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 100 });
+    expect(stripeCall().amount).toBe(100);
+  });
+
+  it("a partner self-purchase Order with no code refunds the list price", async () => {
+    h.rma = returnOn(
+      {
+        subtotal: 300,
+        shipping_amount: 0,
+        discount_amount: 60,
+        total: 240,
+        amount_captured: 240,
+        self_purchase_units: 1,
+        coupons: null,
+        order_items: [goods("pillow", 200), goods("line-a", 100)],
+      },
+      ["line-a"],
+    );
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 100 });
+  });
+
+  it("a paired Result Order with a 10% code on the anchor refunds the bolster at its S$100.00 list price", async () => {
+    const build = (product_type: string) => ({ result_id: `res-${product_type}`, product_type, build_lines: [] });
+    h.rma = returnOn(
+      {
+        subtotal: 400,
+        shipping_amount: 0,
+        discount_amount: 30,
+        total: 370,
+        amount_captured: 370,
+        order_items: [
+          { ...goods("pillow", 300), customization_snapshot: build("pillow") },
+          { ...goods("line-a", 100), customization_snapshot: build("bolster") },
+        ],
+      },
+      ["line-a"],
+    );
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 100 });
+    expect(stripeCall().amount).toBe(100);
+  });
+
   it("a staff Order with a service line and a code refunds the list price of the returned goods line", async () => {
     h.rma = returnOn(
       {
         subtotal: 250,
         total: 218,
         amount_captured: 218,
-        order_items: [goods("line-a", 100), goods("line-b", 100), { id: "svc", quantity: 1, total_price: 50, unit_price: 50, kind: "service" }],
+        order_items: [goods("line-a", 100), goods("line-b", 100), { id: "svc", quantity: 1, total_price: 50, unit_price: 50, kind: "service", customization_snapshot: null }],
       },
       ["line-a"],
     );

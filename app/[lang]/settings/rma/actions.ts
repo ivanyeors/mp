@@ -108,7 +108,7 @@ export async function issueRmaRefund(rmaId: string) {
   const { data, error } = await admin
     .from("rma_requests")
     .select(
-      "id, status, resolution, orders(id, payment_reference, subtotal, shipping_amount, discount_amount, points_discount, total, amount_refunded, amount_captured, currency, coupons!coupon_id(applies_to), order_items(id, quantity, total_price, unit_price, kind)), rma_request_items(order_item_id, quantity)",
+      "id, status, resolution, orders(id, payment_reference, subtotal, shipping_amount, discount_amount, points_discount, self_purchase_units, total, amount_refunded, amount_captured, currency, coupons!coupon_id(applies_to), order_items(id, quantity, total_price, unit_price, kind, customization_snapshot)), rma_request_items(order_item_id, quantity)",
     )
     .eq("id", rmaId)
     .maybeSingle();

@@ -79,10 +79,11 @@ beforeEach(() => {
     shipped_at: null,
     delivered_at: null,
     refund_request_status: null,
+    self_purchase_units: 0,
     coupons: null,
     order_items: [
-      { id: "line-1", quantity: 1, total_price: 50, unit_price: 50, kind: "goods" },
-      { id: "line-2", quantity: 1, total_price: 50, unit_price: 50, kind: "goods" },
+      { id: "line-1", quantity: 1, total_price: 50, unit_price: 50, kind: "goods", customization_snapshot: null },
+      { id: "line-2", quantity: 1, total_price: 50, unit_price: 50, kind: "goods", customization_snapshot: null },
     ],
   };
 });
