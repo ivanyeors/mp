@@ -26,11 +26,18 @@ describe("each problem carries its own next step", () => {
     expect(stripeWarningText(w!)).not.toMatch(/Sync to Stripe/);
   });
 
-  it("a thrown error points at the action that triggered it", () => {
-    const [w] = warningsFor("Silk Cover", [thrownProblem(new Error("db down"), "Sync from Inventory")]);
+  it("a thrown reprice points at Resync prices, which retries for every auto-generated product", () => {
+    const [w] = warningsFor("Silk Cover", [thrownProblem(new Error("db down"))]);
     expect(stripeWarningText(w!)).toBe(
-      "Silk Cover: Couldn't update its prices from Costings: db down. Try Sync from Inventory again.",
+      "Silk Cover: Couldn't update its prices from Costings: db down. Use Resync prices in Products to try again.",
     );
+  });
+
+  it("a failed Inventory step points at running it again", () => {
+    const [w] = warningsFor(undefined, [
+      { message: "Couldn't read items", next: { kind: "run-again", action: "Sync from Inventory" } },
+    ]);
+    expect(stripeWarningText(w!)).toBe("Couldn't read items. Run Sync from Inventory again.");
   });
 
   it("a problem with no next step shows only its message", () => {

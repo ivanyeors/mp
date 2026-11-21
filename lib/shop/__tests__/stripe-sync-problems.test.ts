@@ -25,12 +25,12 @@ describe("stripeSyncProblems: the one place a Stripe sync result becomes problem
 });
 
 describe("repriceFromCostings", () => {
-  it("turns a thrown error into a warning that names the product and the action to run again", async () => {
-    await expect(repriceFromCostings({ id: "p1", name: "Ear Pad" }, "Add from Inventory")).resolves.toEqual([
+  it("turns a thrown error into a warning that names the product and points at Resync prices", async () => {
+    await expect(repriceFromCostings({ id: "p1", name: "Ear Pad" })).resolves.toEqual([
       {
         product: "Ear Pad",
         message: "Couldn't update its prices from Costings: SUPABASE_SERVICE_ROLE_KEY is not set",
-        next: "Try Add from Inventory again.",
+        next: "Use Resync prices in Products to try again.",
       },
     ]);
   });

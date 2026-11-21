@@ -21,13 +21,13 @@ export function nextStepText(next: NextStep, product?: string): string {
     case "resync-prices":
       return "Use Resync prices in Products to try again.";
     case "run-again":
-      return `Try ${next.action} again.`;
+      return `Run ${next.action} again.`;
   }
 }
 
-export function thrownProblem(err: unknown, action: string): PriceProblem {
+export function thrownProblem(err: unknown): PriceProblem {
   const reason = err instanceof Error ? err.message : String(err);
-  return { message: `Couldn't update its prices from Costings: ${reason}`, next: { kind: "run-again", action } };
+  return { message: `Couldn't update its prices from Costings: ${reason}`, next: { kind: "resync-prices" } };
 }
 
 export function warningsFor(product: string | undefined, problems: PriceProblem[]): StripeWarning[] {

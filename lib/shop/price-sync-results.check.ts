@@ -4,9 +4,11 @@ import { join, relative } from "node:path";
 
 const ROOT = process.cwd();
 const DIRS = ["app", "lib", "components", "hooks", "scripts"];
-const CALL = /\b(syncVariantPricesFromCostings|repriceFromCostings)\(/g;
-const KEPT_PREFIX = /(=|return|\(|,|\.\.\.|=>)\s*(await\s+)?$/;
-const SWALLOW = /^\s*\.(catch|then)\(\s*\(\s*\)\s*=>/;
+const RAW_ALLOWED = new Set(["lib/shop/price-sync.ts", "scripts/costings-sync-prices.ts"]);
+const RAW = /\bsyncVariantPricesFromCostings\(/g;
+const REPRICE = /\brepriceFromCostings\(/g;
+const ASSIGNED = /(?:^|[^=!<>])=\s*await\s+$|\.\.\.\(\s*await\s+$/;
+const CHAINED = /^\s*\.\s*(catch|then|finally)\b/;
 
 function closeParen(src: string, open: number): number {
   let depth = 0;
@@ -17,33 +19,62 @@ function closeParen(src: string, open: number): number {
   return src.length;
 }
 
-export function discardedCalls(src: string): string[] {
+const lineOf = (src: string, at: number) => src.slice(0, at).split("\n").length;
+const declared = (src: string, at: number) => /\bfunction\s+$/.test(src.slice(Math.max(0, at - 20), at));
+
+export function violations(file: string, src: string): string[] {
   const found: string[] = [];
-  for (const m of src.matchAll(CALL)) {
+  if (!RAW_ALLOWED.has(file)) {
+    for (const m of src.matchAll(RAW)) {
+      found.push(
+        `${file} line ${lineOf(src, m.index!)}: calls syncVariantPricesFromCostings; use repriceFromCostings and keep its result`,
+      );
+    }
+  }
+  for (const m of src.matchAll(REPRICE)) {
     const at = m.index!;
-    const lineStart = src.lastIndexOf("\n", at) + 1;
-    const prefix = src.slice(lineStart, at);
-    if (/\bfunction\s+$/.test(prefix) || /^\s*(import|\/\/|\*)/.test(prefix) || /`[^`]*$/.test(prefix)) continue;
-    const line = src.slice(0, at).split("\n").length;
+    if (declared(src, at)) continue;
+    const before = src.slice(Math.max(0, at - 200), at);
     const after = src.slice(closeParen(src, at + m[0].length - 1) + 1);
-    if (!KEPT_PREFIX.test(src.slice(Math.max(0, at - 200), at))) found.push(`line ${line}: result of ${m[1]} is not kept`);
-    else if (SWALLOW.test(after)) found.push(`line ${line}: ${m[1]}'s error is swallowed`);
+    if (!ASSIGNED.test(before) || CHAINED.test(after)) {
+      found.push(
+        `${file} line ${lineOf(src, at)}: repriceFromCostings must be assigned or spread (const x = await …, x = await …, ...(await …))`,
+      );
+    }
   }
   return found;
 }
 
-assert.deepEqual(discardedCalls("  await syncVariantPricesFromCostings(id).catch(() => {});"), [
-  "line 1: result of syncVariantPricesFromCostings is not kept",
-]);
-assert.equal(discardedCalls("  const r = await syncVariantPricesFromCostings(id).catch(() => {});").length, 1);
-assert.equal(discardedCalls("  void repriceFromCostings({ id, name }, 'x');").length, 1);
-assert.equal(discardedCalls("  await repriceFromCostings({ id, name }, 'x');").length, 1);
-assert.deepEqual(discardedCalls("  const w = await repriceFromCostings({ id, name }, 'x');"), []);
-assert.deepEqual(discardedCalls("  w.push(...(await repriceFromCostings({ id, name }, 'x')));"), []);
-assert.deepEqual(discardedCalls("  rows.map((p) => syncVariantPricesFromCostings(p.id).catch((err) => toProblem(err)))"), []);
-assert.deepEqual(discardedCalls("  rows.map((p) =>\n    syncVariantPricesFromCostings(p.id).catch(\n (err) => toProblem(err)))"), []);
-assert.equal(discardedCalls("  x = 1;\n  await syncVariantPricesFromCostings(id);").length, 1);
-assert.equal(discardedCalls("  if (a) {\n    await repriceFromCostings(p, 'x');\n  }").length, 1);
+const REVIEW_LINES = [
+  "await Promise.all(ids.map((id) => syncVariantPricesFromCostings(id)));",
+  "await Promise.all(ids.map((id) => syncVariantPricesFromCostings(id).catch((e) => console.error(e))));",
+  "const r = await syncVariantPricesFromCostings(id).catch((e) => null);",
+  "return syncVariantPricesFromCostings(id).catch(console.error);",
+];
+for (const line of REVIEW_LINES) {
+  assert.equal(violations("lib/ecommerce/x.ts", line).length, 1, `should fail: ${line}`);
+  const viaReprice = line.replaceAll("syncVariantPricesFromCostings(id)", "repriceFromCostings(p)");
+  assert.equal(violations("lib/ecommerce/x.ts", viaReprice).length, 1, `should fail: ${viaReprice}`);
+}
+assert.equal(violations("app/api/x/route.ts", "  const r = await syncVariantPricesFromCostings(id);").length, 1);
+assert.deepEqual(violations("scripts/costings-sync-prices.ts", "  const r = await syncVariantPricesFromCostings(id);"), []);
+assert.deepEqual(violations("lib/shop/price-sync.ts", "rows.map((p) => syncVariantPricesFromCostings(p.id).catch(f))"), []);
+assert.deepEqual(violations("lib/x.ts", "  const w = await repriceFromCostings({ id, name });"), []);
+assert.deepEqual(violations("lib/x.ts", "  w = await repriceFromCostings({ id, name });"), []);
+assert.deepEqual(violations("lib/x.ts", "  w.push(...(await repriceFromCostings({ id, name })));"), []);
+assert.deepEqual(violations("lib/x.ts", "  w.push(\n    ...(await repriceFromCostings({ id, name })),\n  );"), []);
+assert.deepEqual(violations("lib/x.ts", "export async function repriceFromCostings(p) {}"), []);
+for (const bad of [
+  "  await repriceFromCostings(p);",
+  "  void repriceFromCostings(p);",
+  "  return repriceFromCostings(p);",
+  "  f(repriceFromCostings(p));",
+  "  const ok = a, w = repriceFromCostings(p);",
+  "  if (x === await repriceFromCostings(p)) {}",
+  "  const w = await repriceFromCostings(p).then((w) => w);",
+]) {
+  assert.equal(violations("lib/x.ts", bad).length, 1, `should fail: ${bad}`);
+}
 
 function walk(dir: string, out: string[]) {
   for (const name of readdirSync(dir)) {
@@ -58,18 +89,18 @@ const files: string[] = [];
 for (const dir of DIRS) walk(join(ROOT, dir), files);
 
 const problems: string[] = [];
-let calls = 0;
-for (const file of files) {
-  const src = readFileSync(file, "utf8");
-  calls += [...src.matchAll(CALL)].length;
-  for (const p of discardedCalls(src)) problems.push(`${relative(ROOT, file)} ${p}`);
+let reprices = 0;
+for (const path of files) {
+  const src = readFileSync(path, "utf8");
+  reprices += [...src.matchAll(REPRICE)].length;
+  problems.push(...violations(relative(ROOT, path), src));
 }
 
-assert.ok(calls >= 8, `expected to find the price-sync call sites, found ${calls}`);
+assert.ok(reprices >= 8, `expected to find the repriceFromCostings call sites, found ${reprices}`);
 assert.deepEqual(
   problems,
   [],
-  `A Costings reprice that drops its problems tells staff a price was saved when Stripe may still charge the old one. Keep the result and carry stripeWarnings to the route's response:\n${problems.join("\n")}`,
+  `A Costings reprice that drops its problems tells staff a price was saved when Stripe may still charge the old one:\n${problems.join("\n")}`,
 );
 
-console.log(`price-sync-results.check.ts: ok (${calls} call sites)`);
+console.log(`price-sync-results.check.ts: ok (${reprices} repriceFromCostings matches)`);
