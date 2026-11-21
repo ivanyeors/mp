@@ -167,6 +167,40 @@ describe("Follow-ups tab: its first list", () => {
     expect(host.textContent).toContain("Mine row");
   });
 
+  const kai = (scope: FollowUpScope, title: string) => ({ ...followUps(scope, title), me: { id: "p-kai", name: "Kai" } });
+  const changeWorkingAs = () => act(async () => window.dispatchEvent(new Event(WORKING_AS_CHANGED_EVENT)));
+
+  it("shows the new Working-as list when Working-as changes during the first read, answered last", async () => {
+    await mount(page({ initialView: "list" }));
+    await openTab("Follow-ups");
+    await changeWorkingAs();
+    expect(followUpReads().map((h) => h.url)).toEqual([
+      "/api/settings/customers/followups?scope=mine",
+      "/api/settings/customers/followups?scope=mine",
+    ]);
+    const [asJess, asKai] = followUpReads();
+
+    await asKai!.answer(kai("mine", "Kai row"));
+    await asJess!.answer(followUps("mine", "Jess row"));
+
+    expect(host.textContent).toContain("Working as Kai");
+    expect(host.textContent).toContain("Kai row");
+    expect(host.textContent).not.toContain("Jess row");
+  });
+
+  it("shows the new Working-as list when Working-as changes during the first read, answered first", async () => {
+    await mount(page({ initialView: "list" }));
+    await openTab("Follow-ups");
+    await changeWorkingAs();
+    const [asJess, asKai] = followUpReads();
+
+    await asJess!.answer(followUps("mine", "Jess row"));
+    await asKai!.answer(kai("mine", "Kai row"));
+
+    expect(host.textContent).toContain("Working as Kai");
+    expect(host.textContent).not.toContain("Jess row");
+  });
+
   it("reloads the chosen scope when Working-as changes", async () => {
     await mount(<FollowUpsTab canEdit={false} initialData={followUps("mine", "Mine row")} />);
     await click(button("All"));
