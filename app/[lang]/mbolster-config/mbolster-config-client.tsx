@@ -403,10 +403,12 @@ export function MbolsterConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
-  React.useEffect(() => {
+  const [assistLength, setAssistLength] = React.useState(suggestedLength);
+  if (assistLength !== suggestedLength) {
+    setAssistLength(suggestedLength);
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
-  }, [suggestedLength]);
+  }
 
   const previewRecord = parseRecommendationRecord(
     shopRecommendation?.recommendation_record ?? null,

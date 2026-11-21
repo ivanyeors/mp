@@ -11,13 +11,13 @@
   },
   "app/[lang]/mbolster-config/mbolster-config-client.tsx": {
     "mp/no-effect": {
-      "count": 11
+      "count": 10
     },
     "react-hooks/exhaustive-deps": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {

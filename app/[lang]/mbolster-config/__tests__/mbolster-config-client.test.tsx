@@ -28,8 +28,29 @@ vi.mock("next/dynamic", () => ({
 }));
 vi.mock("@/components/ui/particles", () => ({ Particles: () => null }));
 vi.mock("@/components/ui/shadcn-io/dot-pattern", () => ({ DotPattern: () => null }));
+vi.mock("@/components/spatial/xray-bolster", () => ({ XrayBolster: () => null }));
+vi.mock("@/components/spatial/xray-section-dock", () => ({ XraySectionDock: () => null }));
+vi.mock("@/components/spatial/xray-cross-section", () => ({ BolsterCrossSection: () => null }));
+vi.mock("@/components/configurator/config-image-upload", () => ({ ConfigImageUpload: () => null }));
+
+const panelRenders = vi.hoisted(() => [] as { length: string; template: number | null; slots: number[] }[]);
+vi.mock("@/components/configurator/staff-assist-bolster-panel", () => ({
+  StaffAssistBolsterPanel: ({
+    length,
+    placements,
+    loadedTemplate,
+  }: {
+    length: string;
+    placements: { slot: number; itemId: number }[];
+    loadedTemplate: { id: number } | null;
+  }) => {
+    panelRenders.push({ length, template: loadedTemplate?.id ?? null, slots: placements.map((p) => p.itemId) });
+    return <div data-assist-length={length} data-assist-template={loadedTemplate?.id ?? ""} />;
+  },
+}));
 
 const { MbolsterConfigClient } = await import("../mbolster-config-client");
+const { PAIRED_HANDOFF_KEY } = await import("@/lib/configurator/paired-mbolster");
 
 const INFO = { h1: "Customise your Mbolster", lede: "", faqTitle: null, faqItems: [] };
 
@@ -46,6 +67,11 @@ const SHIPPING: Record<string, ReturnType<typeof shippingMethod>[]> = {
   MY: [shippingMethod("my-post", "Malaysia post")],
 };
 
+const TEMPLATE_FOR: Record<string, { id: number; itemId: number }> = {
+  medium: { id: 11, itemId: 501 },
+  long: { id: 12, itemId: 502 },
+};
+
 const recommendation = (length: string) => ({
   ok: true,
   product_type: "bolster",
@@ -59,9 +85,16 @@ const recommendation = (length: string) => ({
     protectors: [],
     packaging: [],
   },
-  templates: [],
+  templates: [
+    {
+      id: TEMPLATE_FOR[length].id,
+      name: `${length} mix`,
+      lines: [],
+      placements: [{ slot: 1, item_id: TEMPLATE_FOR[length].itemId }],
+    },
+  ],
   available_fillings: [],
-  recommendation_record: null,
+  recommendation_record: { flow: "mbolster", size: length, templateId: TEMPLATE_FOR[length].id, flowRoute: null },
 });
 
 type Held = { url: string; answer: (body: unknown) => Promise<void> };
@@ -186,6 +219,46 @@ describe("MbolsterConfigClient preview shipping", () => {
     await mount(<MbolsterConfigClient info={INFO} />);
     await until(() => shippingNames().length > 0);
     expect(shippingNames()).toEqual(["Malaysia post"]);
+  });
+});
+
+describe("MbolsterConfigClient staff assist mix", () => {
+  const pairedFromPillow = () => {
+    window.history.replaceState({}, "", "/en-US/mbolster-config?paired=1");
+    window.sessionStorage.setItem(
+      PAIRED_HANDOFF_KEY,
+      JSON.stringify({
+        v: 2,
+        anchorId: "anchor-1",
+        companionId: "companion-1",
+        sleepPosition: "side",
+        reason: "",
+        configPath: "/mp-config",
+        pillow: { label: "Mpillow", ballpark: 200, currency: "SGD" },
+        bolster: { heightUnit: "cm", heightCm: "170" },
+      }),
+    );
+  };
+  const sizeAt = async (height: string) => {
+    await until(() => heightInput());
+    typeField(heightInput(), height);
+    await click(byLabel("Continue")!);
+    await until(() => host.querySelector("[data-assist-length]"));
+    await settle();
+  };
+
+  it("seeds each length's suggested mix and never shows the old length's mix at the new length", async () => {
+    panelRenders.length = 0;
+    pairedFromPillow();
+    await mount(<MbolsterConfigClient info={INFO} staffAssist />);
+
+    await sizeAt("170");
+    expect(panelRenders.at(-1)).toEqual({ length: "medium", template: 11, slots: [501] });
+
+    await click(byLabel("Back")!);
+    await sizeAt("190");
+    expect(panelRenders.at(-1)).toEqual({ length: "long", template: 12, slots: [502] });
+    expect(panelRenders.filter((r) => r.length === "long" && r.slots.includes(501))).toEqual([]);
   });
 });
 
