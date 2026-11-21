@@ -57,6 +57,6 @@ Parent: Slice 00 (`issues/00-domain-migration.md`) + Slice 11 (`issues/11-gsc-an
 
 The code side of the 30 Oct report is fixed in the repo. Two items are Ahrefs settings, not code:
 
-- [ ] **Changed pages not submitted to IndexNow.** Ahrefs counts pages *it* has not submitted. In Site Audit → project settings → IndexNow, paste the key served at `https://custom.mpillow.com/indexnow-key.txt` (`INDEXNOW_KEY`) and turn on automatic submission. The site itself pings IndexNow on blog saves, product saves and Page Builder publishes (`lib/seo/indexnow.ts`).
+- [ ] **Changed pages not submitted to IndexNow.** Ahrefs counts pages *it* has not submitted. Since the cutover (20 Nov 2026) the site is www.mpillow.com, so this goes on the **Mpillow** (www) project: Project settings → Site Audit → Crawl settings → IndexNow, paste the key served at `https://www.mpillow.com/indexnow-key.txt` (`INDEXNOW_KEY`). Ahrefs verifies it at `/<key>.txt`, which the proxy serves. Automatic submission is a paid Ahrefs add-on; the site itself pings IndexNow on blog saves, product saves and Page Builder publishes (`lib/seo/indexnow.ts`).
 - [ ] **HTTP to HTTPS redirect, Redirect chain, the root 3XX and "Redirected page has no incoming internal links".** The crawl starts at `http://custom.mpillow.com/`: Vercel's HTTPS hop, then the locale redirect from `/`. Set the project's start URL to `https://custom.mpillow.com/en-US`. Nothing on the site links to `/` any more.
 - [ ] Re-crawl and confirm the rest cleared.

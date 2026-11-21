@@ -13,3 +13,8 @@ c10f42d2cdd1c82a2fe4baa7c14798ce546ce40b:app/api/staff-orders/__tests__/routes.t
 34bff5d819d50f799375fc428c00869fe75ec809:lib/results/__tests__/resume-draft.test.ts:generic-api-key:26
 34bff5d819d50f799375fc428c00869fe75ec809:lib/email/__fixtures__/samples.ts:generic-api-key:416
 34bff5d819d50f799375fc428c00869fe75ec809:lib/draft-reminders/__tests__/job.test.ts:generic-api-key:23
+
+# PR #447: a made-up IndexNow key (32 hex characters) in the key-file proxy
+# test, flagged as a generic API key. Replaced with a low-entropy value in the
+# next commit; the original stays listed for the same reason as above.
+2744451a5976192b40002cec742ad62d6abad488:lib/seo/__tests__/indexnow-key-file.test.ts:generic-api-key:10

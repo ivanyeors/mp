@@ -10,6 +10,11 @@ export function getIndexNowKey(): string | null {
   return key && /^[A-Za-z0-9-]{8,128}$/.test(key) ? key : null;
 }
 
+export function indexNowKeyFilePath(): string | null {
+  const key = getIndexNowKey();
+  return key ? `/${key}.txt` : null;
+}
+
 export function localePageUrls(path: string): string[] {
   return SUPPORTED_LOCALES.map((lang) => localeUrl(lang, path));
 }
