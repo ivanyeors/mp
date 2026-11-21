@@ -609,7 +609,7 @@ export default function ConfigureCardPage() {
     }));
   }, [settingsPath]);
 
-  const loadTemplateLines = async (templateId: number) => {
+  const loadTemplateLines = useCallback(async (templateId: number) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), { method: 'GET' })
     const payload = await res.json().catch(() => null)
     if (!res.ok) {
@@ -618,7 +618,7 @@ export default function ConfigureCardPage() {
     }
     type LineRow = { item_id: number | string; quantity: number | string }
     return ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }))
-  }
+  }, [settingsPath]);
 
   const deleteTemplateById = async (templateId: number) => {
     const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
