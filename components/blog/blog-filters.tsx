@@ -19,14 +19,20 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
 
     const [query, setQuery] = useState(urlQuery);
     const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
-    const [sent, setSent] = useState(urlQuery);
+    const [ownQueriesInFlight, setOwnQueriesInFlight] = useState<string[]>([]);
+    const [outsideNavigations, setOutsideNavigations] = useState(0);
     if (urlQuery !== seenUrlQuery) {
         setSeenUrlQuery(urlQuery);
-        if (urlQuery !== sent) {
-            setSent(urlQuery);
+        const landed = ownQueriesInFlight.indexOf(urlQuery);
+        if (landed >= 0) {
+            setOwnQueriesInFlight(ownQueriesInFlight.slice(landed + 1));
+        } else {
+            setOwnQueriesInFlight([]);
+            setOutsideNavigations(outsideNavigations + 1);
             setQuery(urlQuery);
         }
     }
+    const settlingQuery = ownQueriesInFlight.at(-1) ?? urlQuery;
 
     const go = (q: string, label: string | null | undefined) => {
         const params = new URLSearchParams(searchParams?.toString() ?? "");
@@ -34,13 +40,15 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
         else params.delete("q");
         if (label) params.set("label", label);
         else params.delete("label");
-        setSent(q);
-        if (params.toString() !== (searchParams?.toString() ?? "")) {
+        if (q !== settlingQuery) setOwnQueriesInFlight([...ownQueriesInFlight, q]);
+        if (q !== settlingQuery || params.toString() !== (searchParams?.toString() ?? "")) {
             router.push(`${pathname}?${params.toString()}`);
         }
     };
 
-    const pushQuery = useDebouncedCallback((q: string) => go(q, activeLabel), 300);
+    const pushQuery = useDebouncedCallback((q: string, typedDuring: number) => {
+        if (typedDuring === outsideNavigations) go(q, activeLabel);
+    }, 300);
 
     const toggleLabel = (label: string) => {
         pushQuery.cancel();
@@ -58,7 +66,7 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
                     value={query}
                     onChange={(e) => {
                         setQuery(e.target.value);
-                        pushQuery(e.target.value);
+                        pushQuery(e.target.value, outsideNavigations);
                     }}
                     className="block w-full pl-10 pr-3 py-2 border border-input rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm shadow-sm"
                     placeholder="Search articles..."

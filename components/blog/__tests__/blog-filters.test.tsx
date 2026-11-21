@@ -131,6 +131,69 @@ describe("BlogFilters", () => {
     expect(nav.current()).toBe("/en-US/blog?q=necks");
   });
 
+  function holdPushes() {
+    const held: string[] = [];
+    nav.push.mockImplementation((url: string) => void held.push(url));
+    const land = () => {
+      nav.push.mockRestore();
+      const url = held.shift()!;
+      act(() => nav.push(url));
+    };
+    return { held, land };
+  }
+  const urlQ = () => new URLSearchParams(nav.current().split("?")[1]).get("q");
+
+  it("keeps a cleared box cleared when the search it pushed earlier lands late", () => {
+    mount();
+    const slow = holdPushes();
+    type("neck");
+    wait(300);
+    type("");
+    wait(300);
+    while (slow.held.length) {
+      slow.land();
+      expect(input().value).toBe("");
+    }
+    expect(urlQ()).toBeNull();
+  });
+
+  it("keeps an edit back to the URL's own search when the longer search it pushed earlier lands late", () => {
+    mount("/en-US/blog?q=sleep");
+    const slow = holdPushes();
+    type("sleepy");
+    wait(300);
+    type("sleep");
+    wait(300);
+    while (slow.held.length) {
+      slow.land();
+      expect(input().value).toBe("sleep");
+    }
+    expect(urlQ()).toBe("sleep");
+  });
+
+  it("still follows a link to another search while its own push is in flight", () => {
+    mount();
+    holdPushes();
+    type("neck");
+    wait(300);
+    nav.push.mockRestore();
+    act(() => nav.push("/en-US/blog?q=pillow"));
+    expect(input().value).toBe("pillow");
+  });
+
+  it("drops a search still waiting to be written when Back moves the URL under it", () => {
+    mount();
+    type("neck");
+    wait(300);
+    type("necks");
+    act(() => nav.back());
+    expect(input().value).toBe("");
+    wait(1000);
+    expect(nav.push).toHaveBeenCalledTimes(1);
+    expect(nav.current()).toBe("/en-US/blog");
+    expect(input().value).toBe("");
+  });
+
   it("keeps the search when a label is picked, also while the search is still waiting to be written", () => {
     mount();
     type("neck");
