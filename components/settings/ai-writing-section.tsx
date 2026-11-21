@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { CircleAlert, CircleCheck, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -224,33 +224,12 @@ export function AiWritingForm({
   );
 }
 
-type LoadedState = { configured: boolean; usage: AiUsageThisMonth | null };
+export type AiWritingInitial = { settings: AiWritingSettings; usage: AiUsageThisMonth | null } | { error: string };
 
-export function AiWritingSection({ configured }: { configured?: boolean } = {}) {
+export function AiWritingSection({ configured, initial }: { configured: boolean; initial: AiWritingInitial }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<AiWritingSettings>(AI_WRITING_DEFAULTS);
-  const [loaded, setLoaded] = useState<LoadedState | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [form, setForm] = useState<AiWritingSettings>("settings" in initial ? initial.settings : AI_WRITING_DEFAULTS);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/settings/ai-writing", { cache: "no-store" });
-        const payload = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the AI writing settings.");
-        if (cancelled) return;
-        setForm(payload.settings as AiWritingSettings);
-        setLoaded({ configured: payload.configured === true, usage: (payload.usage ?? null) as AiUsageThisMonth | null });
-      } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Couldn't load the AI writing settings.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const save = useCallback(async () => {
     setSaving(true);
@@ -290,16 +269,14 @@ export function AiWritingSection({ configured }: { configured?: boolean } = {}) 
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent className="pt-4">
-        {loadError ? (
-          <p className="text-xs text-destructive">{loadError}</p>
-        ) : !loaded ? (
-          <p className="text-xs text-muted-foreground">Loading AI writing settings…</p>
+        {"error" in initial ? (
+          <p className="text-xs text-destructive">{initial.error}</p>
         ) : (
           <AiWritingForm
             value={form}
             onChange={setForm}
-            configured={configured ?? loaded.configured}
-            usage={loaded.usage}
+            configured={configured}
+            usage={initial.usage}
             saving={saving}
             onSave={() => void save()}
           />

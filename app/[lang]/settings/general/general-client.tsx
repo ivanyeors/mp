@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ReviewSlaSection } from "@/components/settings/review-sla-section";
-import { AiWritingSection } from "@/components/settings/ai-writing-section";
+import { AiWritingSection, type AiWritingInitial } from "@/components/settings/ai-writing-section";
 import { ClaudeKeySection } from "@/components/settings/claude-key-section";
 import { EmptyState } from "@/components/settings/empty-state";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
@@ -67,9 +67,11 @@ export type GeneralInitialData = ApiConfig[];
 export default function GeneralSettingsPage({
   initialData,
   claudeCredentials = null,
+  aiWriting,
 }: {
   initialData?: GeneralInitialData;
   claudeCredentials?: ClaudeCredentialSource | null;
+  aiWriting: AiWritingInitial;
 }) {
   const [configs, setConfigs] = useState<ApiConfig[]>(initialData ?? []);
   const [claudeSource, setClaudeSource] = useState(claudeCredentials);
@@ -307,7 +309,7 @@ export default function GeneralSettingsPage({
 
       <ReviewSlaSection />
 
-      <AiWritingSection configured={claudeSource !== null} />
+      <AiWritingSection configured={claudeSource !== null} initial={aiWriting} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">

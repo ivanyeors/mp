@@ -863,11 +863,6 @@
       "count": 1
     }
   },
-  "components/settings/ai-writing-section.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
   "components/settings/appointments-calendar.tsx": {
     "mp/no-effect": {
       "count": 3
