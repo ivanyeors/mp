@@ -24,7 +24,11 @@ found no Order in the `charge.refunded` webhook and never reached the ledger.
   refundable. *Choose items* ticks lines (and a quantity of each) and the
   shipping; each line refunds its share of the cash the Order took for goods
   (`total − shipping`, spread by list price), so the coupon, points and tax come
-  off in proportion and the whole Order adds up to what was paid. The figure is
+  off in proportion and the whole Order adds up to what was paid. The shares
+  are handed out in whole cents by largest remainder, and a part of a line
+  rounds up to the cent (2026-11-21): however the lines and units are split
+  across refunds, nothing is left once all of them have been chosen, at the
+  cost of up to a cent over the exact share on a part-line refund. The figure is
   filled in and Staff may change it. *Custom amount* is a figure. The amount is
   what moves; the lines are the record of what it was for.
 - **A reason, always.** *Charged in error*, *Duplicate charge*, *Customer
