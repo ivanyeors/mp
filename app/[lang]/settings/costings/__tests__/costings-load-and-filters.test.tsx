@@ -82,6 +82,7 @@ vi.mock("@/components/ui/select", () => ({
 }));
 
 const { default: CostingsPage } = await import("../page");
+const { toast } = await import("sonner");
 
 const item = (id: number, category: string, msrp = "20.00"): Item => ({ id, category, name: `Part ${id}`, msrp });
 const FIVE_CATEGORIES = ["cover", "filling", "packaging", "accessories", "other"];
@@ -89,16 +90,25 @@ const TITLES: Record<string, string> = { cover: "Covers", filling: "Fillings", p
 
 let frames: FrameRequestCallback[] = [];
 let holdFrames = false;
+let holdSave = false;
+let releaseSave: (() => void) | null = null;
 const offsetTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetTop")!;
 
 let root: Root | null = null;
 beforeEach(() => {
   db.loads = [];
+  holdSave = false;
+  releaseSave = null;
+  vi.mocked(toast.error).mockClear();
   frames = [];
   holdFrames = false;
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, templates: [] }) })),
+    vi.fn((url: string) => {
+      const answer = { ok: true, json: async () => ({ ok: true, templates: [] }) };
+      if (holdSave && url.includes("/costings/save")) return new Promise((resolve) => (releaseSave = () => resolve(answer)));
+      return Promise.resolve(answer);
+    }),
   );
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
     if (holdFrames) frames.push(cb);
@@ -189,9 +199,34 @@ describe("Costings load", () => {
     await db.loads[1].answer([item(1, "cover", "30.00")]);
     await db.loads[2].fail("network down");
     await settle();
+    expect(toast.error).toHaveBeenCalledWith("network down");
     expect(text()).toContain("MSRP $30.00");
     expect(text()).not.toContain("Unsaved changes");
     expect(saveButton().disabled).toBe(true);
+  });
+
+  it("ignores a reload that started during Save and answers after Save's own reload failed", async () => {
+    await db.loads[0].answer([item(1, "cover")]);
+    await editPartMsrp("30.00");
+
+    holdSave = true;
+    await click(saveButton());
+    await reload();
+    expect(db.loads).toHaveLength(2);
+    await act(async () => releaseSave!());
+    await settle();
+    expect(db.loads).toHaveLength(3);
+
+    await db.loads[2].fail("network down");
+    await settle();
+    expect(toast.error).toHaveBeenCalledWith("network down");
+    expect(text()).toContain("Unsaved changes");
+
+    await db.loads[1].answer([item(1, "cover", "20.00")]);
+    await settle();
+    expect(text()).toContain("MSRP $30.00");
+    expect(text()).toContain("Unsaved changes");
+    expect(saveButton().disabled).toBe(false);
   });
 
   it("keeps showing Loading until the newest load answers", async () => {
