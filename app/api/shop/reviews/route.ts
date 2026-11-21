@@ -5,10 +5,9 @@ import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { notifyNewShopReview } from "@/lib/reviews/shop-reviews";
 import { shopReviewByline } from "@/lib/reviews/shop-review-byline";
+import { PUBLIC_REVIEW_COLUMNS, readApprovedReviews } from "@/lib/reviews/approved-reviews";
 
 export const runtime = "nodejs";
-
-const PUBLIC_COLUMNS = "id, rating, title, body, author_name, created_at, store_reply, store_reply_at";
 
 const CreateReviewSchema = z.object({
   product_id: z.string().uuid(),
@@ -27,21 +26,14 @@ export async function GET(req: Request) {
   // ponytail: 1000 pages of approved reviews is far past any real product; it keeps the offset sane.
   const page = Math.min(Math.max(parseInt(searchParams.get("page") ?? "1", 10) || 1, 1), 1000);
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "20", 10) || 20, 1), 100);
-  const from = (page - 1) * limit;
 
-  const { data, error, count } = await supabaseAdmin()
-    .from("product_reviews")
-    .select(PUBLIC_COLUMNS, { count: "exact" })
-    .eq("product_id", product_id.data)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false })
-    .range(from, from + limit - 1);
-
-  if (error) {
-    console.error("[shop/reviews] list failed", error.message);
+  try {
+    const { rows, total } = await readApprovedReviews(product_id.data, page, limit);
+    return NextResponse.json({ ok: true, rows, total, page, limit });
+  } catch (err) {
+    console.error("[shop/reviews] list failed", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "Failed to load reviews" }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
 }
 
 export async function POST(req: Request) {
@@ -81,7 +73,7 @@ export async function POST(req: Request) {
   const { data, error } = await admin
     .from("product_reviews")
     .insert({ ...parsed.data, author_name: shopReviewByline(customer), customer_id: customer.id, status: "pending" })
-    .select(PUBLIC_COLUMNS)
+    .select(PUBLIC_REVIEW_COLUMNS)
     .single();
   if (error) {
     console.error("[shop/reviews] insert failed", error.message);

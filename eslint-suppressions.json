@@ -586,10 +586,7 @@
   },
   "app/[lang]/shop/[slug]/product-reviews.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "app/[lang]/shop/checkout/confirmation/page.tsx": {
@@ -991,33 +988,9 @@
       "count": 2
     }
   },
-  "components/shop/cart-page-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "components/shop/cart-shell.tsx": {
     "mp/no-effect": {
       "count": 2
-    }
-  },
-  "components/shop/cart/cart-content.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "components/shop/cart/cart-coupon-field.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "components/shop/cart/cart-shipping-bar.tsx": {

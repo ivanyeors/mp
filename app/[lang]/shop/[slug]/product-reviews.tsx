@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Star, Loader2, CheckCircle2, LogIn, UserRound } from "lucide-react";
@@ -15,61 +15,6 @@ import type { PublicProductReview } from "@/lib/types/ecommerce";
 import type { ReviewAuthorState } from "@/lib/reviews/shop-review-byline";
 
 export { ReviewStars } from "@/components/shop/review-stars";
-
-interface ApprovedReviewsState {
-  reviews: PublicProductReview[];
-  count: number;
-  average: number;
-  loading: boolean;
-  error: boolean;
-  reload: () => void;
-}
-
-export function useApprovedReviews(productId: string): ApprovedReviewsState {
-  const [reviews, setReviews] = useState<PublicProductReview[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [nonce, setNonce] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(false);
-
-    fetch(
-      `/api/shop/reviews?product_id=${encodeURIComponent(
-        productId
-      )}&status=approved&limit=100`
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load reviews");
-        return res.json();
-      })
-      .then((data: { rows?: PublicProductReview[] }) => {
-        if (active) setReviews(data.rows ?? []);
-      })
-      .catch(() => {
-        if (active) setError(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [productId, nonce]);
-
-  const average = useMemo(() => {
-    if (reviews.length === 0) return 0;
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
-    return sum / reviews.length;
-  }, [reviews]);
-
-  const reload = useCallback(() => setNonce((n) => n + 1), []);
-
-  return { reviews, count: reviews.length, average, loading, error, reload };
-}
 
 function useReviewAuthor(): ReviewAuthorState | "error" | null {
   const [state, setState] = useState<ReviewAuthorState | "error" | null>(null);
@@ -374,22 +319,15 @@ export function ProductReviews({
   reviews,
   average,
   count,
-  loading,
 }: {
   productId: string;
   reviews: PublicProductReview[];
   average: number;
   count: number;
-  loading: boolean;
 }) {
   return (
     <div className="flex flex-col gap-8">
-      {loading ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading reviews…
-        </div>
-      ) : count > 0 ? (
+      {count > 0 ? (
         <>
           <div className="flex items-center gap-4">
             <div className="text-4xl font-bold">{average.toFixed(1)}</div>
