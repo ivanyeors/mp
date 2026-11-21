@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { AftercareSettingsCard } from "./aftercare-settings-card";
 import type { FollowUpScope } from "@/lib/crm/followup-rules";
-import { FollowUpsTab } from "./followups-tab";
+import { FollowUpsLoading, FollowUpsTab, readFollowUpsFirst, type FollowUpsFirstRead } from "./followups-tab";
 import type { ReviewTabScope } from "@/lib/crm/reviews";
 import { ReviewsTab } from "./reviews-tab";
 import { TelegramUpdatesCard, type TelegramUpdatesCardData } from "./telegram-updates-card";
@@ -24,6 +24,7 @@ export function CustomersPageTabs({
   importHref,
   importFittingsHref,
   followUpScope = "mine",
+  followUps,
   reviewScope = "to-match",
   children,
 }: {
@@ -35,19 +36,28 @@ export function CustomersPageTabs({
   importHref?: string;
   importFittingsHref?: string;
   followUpScope?: FollowUpScope;
+  followUps?: FollowUpsFirstRead;
   reviewScope?: ReviewTabScope;
   children: ReactNode;
 }) {
   const [view, setView] = useState<CustomersView>(initialView);
   const [settingsSeen, setSettingsSeen] = useState(initialView === "settings");
   const [followUpsSeen, setFollowUpsSeen] = useState(initialView === "followups");
+  const [followUpsFirst, setFollowUpsFirst] = useState<FollowUpsFirstRead | null>(followUps ?? null);
+  const followUpsRequested = useRef(followUps !== undefined);
   const [reviewsSeen, setReviewsSeen] = useState(initialView === "reviews");
 
   const selectView = (next: string) => {
     const value = parseCustomersView(next);
     setView(value);
     if (value === "settings") setSettingsSeen(true);
-    if (value === "followups") setFollowUpsSeen(true);
+    if (value === "followups") {
+      setFollowUpsSeen(true);
+      if (!followUpsRequested.current) {
+        followUpsRequested.current = true;
+        void readFollowUpsFirst(followUpScope).then(setFollowUpsFirst);
+      }
+    }
     if (value === "reviews") setReviewsSeen(true);
     const url = new URL(window.location.href);
     if (value === "list") url.searchParams.delete("view");
@@ -106,7 +116,11 @@ export function CustomersPageTabs({
           forceMount={followUpsSeen || undefined}
           className="pt-4 data-[state=inactive]:hidden"
         >
-          {followUpsSeen ? <FollowUpsTab canEdit={canEdit} initialScope={followUpScope} /> : null}
+          {followUpsFirst ? (
+            <FollowUpsTab canEdit={canEdit} initialScope={followUpScope} initialData={followUpsFirst} />
+          ) : followUpsSeen ? (
+            <FollowUpsLoading />
+          ) : null}
         </TabsContent>
         <TabsContent
           value="reviews"

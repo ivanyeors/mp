@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ListTodo, Loader2, Mail, MessageCircle, Plus, RefreshCw, Sparkles, StickyNote, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,10 +53,13 @@ export function JourneyComposer({
     const noteRef = useRef<HTMLTextAreaElement>(null);
     const titleRef = useRef<HTMLInputElement>(null);
 
+    const focusField = useEffectEvent(() =>
+        (mode === "note" ? noteRef.current : mode === "followup" ? titleRef.current : null)?.focus({ preventScroll: true }),
+    );
     useEffect(() => {
         if (focusSignal === 0) return;
-        (mode === "note" ? noteRef.current : mode === "followup" ? titleRef.current : null)?.focus({ preventScroll: true });
-    }, [focusSignal, mode]);
+        focusField();
+    }, [focusSignal]);
 
     return (
         <Card id="composer" className="scroll-mt-28 gap-0 overflow-hidden py-0">

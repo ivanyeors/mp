@@ -380,7 +380,8 @@ export default function ResultDetailPage({
   const skipDetailFetch = useRef(Boolean(initialData?.detail));
   const skipPrepFetch = useRef(Boolean(initialData?.assignPrep));
   const skipFillingItemsFetch = useRef(Boolean(initialData?.fillingItems));
-  const skipScopeReset = useRef(Boolean(initialData?.detail));
+  const prepRequest = useRef(0);
+  const previewRequest = useRef(0);
   const [prepLoading, setPrepLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -444,6 +445,20 @@ export default function ResultDetailPage({
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const mixMode = row ? fillingMixMode(row) : "view";
   const canEditMix = mixMode !== "view";
+
+  const scope = `${productType}:${assignSize}:${assignTier}:${assignLength}`;
+  const [shownScope, setShownScope] = useState(scope);
+  if (shownScope !== scope) {
+    setShownScope(scope);
+    setFillingTemplateId("");
+    setAssignPrep(null);
+    if (mixOrigin !== "saved") {
+      setPlacements([]);
+      setBolsterMix([]);
+    }
+    setTemplateHadPlacements(true);
+    setTemplateLegacyLines([]);
+  }
   const hasSavedMix = savedMix.pillow.length > 0 || savedMix.bolster.length > 0;
   const canReconfigure =
     productType === "pillow" &&
@@ -475,9 +490,12 @@ export default function ResultDetailPage({
   }, [row, productType, assignLength, assignSize, assignTier]);
 
   const loadAssignPrep = useCallback(async () => {
+    const request = ++prepRequest.current;
     if (!canEditMix || !sizeKey) {
       setAssignPrep(null);
       setFillingTemplates([]);
+      setPrepLoading(false);
+      setTemplatesLoading(false);
       return;
     }
     setPrepLoading(true);
@@ -510,6 +528,7 @@ export default function ResultDetailPage({
       const res = await fetch(`/api/results/assign/prep?${qs.toString()}`);
       const payload = (await res.json().catch(() => null)) as AssignPrepData | { error?: string } | null;
       if (!res.ok) throw new Error((payload as { error?: string })?.error ?? "Couldn't load the assignment preview.");
+      if (request !== prepRequest.current) return;
       const prep = payload as AssignPrepData;
       setAssignPrep(prep);
       setFillingTemplates(
@@ -523,12 +542,15 @@ export default function ResultDetailPage({
         })),
       );
     } catch (e) {
+      if (request !== prepRequest.current) return;
       toast.error(e instanceof Error ? e.message : "Couldn't load the assignment preview.");
       setAssignPrep(null);
       setFillingTemplates([]);
     } finally {
-      setPrepLoading(false);
-      setTemplatesLoading(false);
+      if (request === prepRequest.current) {
+        setPrepLoading(false);
+        setTemplatesLoading(false);
+      }
     }
   }, [
     canEditMix,
@@ -546,21 +568,6 @@ export default function ResultDetailPage({
   useEffect(() => {
     mixOriginRef.current = mixOrigin;
   }, [mixOrigin]);
-
-  useEffect(() => {
-    if (skipScopeReset.current) {
-      skipScopeReset.current = false;
-      return;
-    }
-    setFillingTemplateId("");
-    setAssignPrep(null);
-    if (mixOriginRef.current !== "saved") {
-      setPlacements([]);
-      setBolsterMix([]);
-    }
-    setTemplateHadPlacements(true);
-    setTemplateLegacyLines([]);
-  }, [assignSize, assignTier, assignLength, productType]);
 
   useEffect(() => {
     if (skipPrepFetch.current) {
@@ -605,6 +612,7 @@ export default function ResultDetailPage({
 
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string, opts: { keepMix?: boolean } = {}) => {
+      const request = ++previewRequest.current;
       if (!templateId) {
         if (!opts.keepMix) {
           setPlacements([]);
@@ -621,6 +629,7 @@ export default function ResultDetailPage({
         );
         const payload = await res.json().catch(() => null);
         if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the template.");
+        if (request !== previewRequest.current) return;
         type LineRow = { item_id: number | string; quantity: number | string };
         const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({
           item_id: Number(l.item_id),
@@ -641,7 +650,7 @@ export default function ResultDetailPage({
         setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
         setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
       } catch {
-        if (opts.keepMix) return;
+        if (opts.keepMix || request !== previewRequest.current) return;
         setPlacements([]);
         setBolsterMix([]);
       }

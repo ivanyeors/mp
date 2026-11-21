@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { useRouter, usePathname } from "next/navigation";
 import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -217,18 +218,15 @@ export function CustomersClient({
     };
     const changeFilters = (patch: Partial<CustomerListFilters>) => applyFilters((f) => ({ ...f, ...patch }));
 
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            const next = search.trim() || null;
-            setFilters((f) => (f.search === next ? f : { ...f, search: next }));
-            setPage(1);
-        }, 350);
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [search]);
+    const pushSearch = useDebouncedCallback((typed: string) => {
+        const next = typed.trim() || null;
+        setFilters((f) => (f.search === next ? f : { ...f, search: next }));
+        setPage(1);
+    }, 350);
+    const typeSearch = (typed: string) => {
+        setSearch(typed);
+        pushSearch(typed);
+    };
 
     const filtersQuery = customerFilterParams(filters).toString();
     const panelCount = MEGA_FILTER_KEYS.filter((k) => isCustomerFilterActive(filters, k)).length;
@@ -245,16 +243,21 @@ export function CustomersClient({
     const changeSort = (sort: CustomerSort) => changeFilters({ sort });
 
     const clearFilter = (key: CustomerFilterKey) => {
-        if (key === "search") setSearch("");
+        if (key === "search") {
+            pushSearch.cancel();
+            setSearch("");
+        }
         applyFilters((f) => clearCustomerFilter(f, key));
     };
     const clearAll = () => {
+        pushSearch.cancel();
         setSearch("");
         setSegmentId(null);
         applyFilters(clearCustomerFilters);
     };
 
     const chooseSegment = (segment: CustomerSegment) => {
+        pushSearch.cancel();
         setSearch(segment.params.search ?? "");
         setSegmentId(segment.id);
         applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
@@ -332,7 +335,7 @@ export function CustomersClient({
                     <Input
                         placeholder="Search by name or email…"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => typeSearch(e.target.value)}
                         className="pl-9"
                     />
                 </div>

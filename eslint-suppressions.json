@@ -213,14 +213,6 @@
       "count": 3
     }
   },
-  "app/[lang]/settings/customers/[id]/customer-detail-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "app/[lang]/settings/customers/[id]/customer-fittings-card.tsx": {
     "@next/next/no-img-element": {
       "count": 2
@@ -242,11 +234,6 @@
   "app/[lang]/settings/customers/[id]/customer-pillow-readjust.tsx": {
     "mp/no-effect": {
       "count": 2
-    }
-  },
-  "app/[lang]/settings/customers/[id]/customer-reviews-card.tsx": {
-    "mp/no-effect": {
-      "count": 3
     }
   },
   "app/[lang]/settings/customers/[id]/customer-shortcuts.tsx": {
@@ -281,7 +268,7 @@
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/customers/filters/filters-page-client.tsx": {
@@ -522,7 +509,7 @@
   },
   "app/[lang]/settings/results/[id]/result-detail-client.tsx": {
     "mp/no-effect": {
-      "count": 8
+      "count": 7
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 1
