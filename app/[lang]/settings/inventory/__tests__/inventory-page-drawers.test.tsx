@@ -224,6 +224,43 @@ describe("Inventory custom bolster drawer", () => {
   });
 });
 
+describe("Inventory custom drawers while the next parts load", () => {
+  const qtyField = () => [...dialog()!.querySelectorAll<HTMLInputElement>("input")].find((i) => i.placeholder === "Qty")!;
+  const cartCount = () => /Cart \((\d+)\)/.exec(buttonIn(document.body, "Open cart")!.textContent ?? "")?.[1];
+
+  it("does not sell the previous size's parts while the picked size's parts load", async () => {
+    await openCustomPillow();
+    typeField(qtyField(), "1");
+    await choose(dialog()!.querySelector("select")!, "S");
+
+    await click(buttonIn(dialog(), "Sell")!);
+    expect(sellCart).not.toHaveBeenCalled();
+    expect(buttonIn(dialog(), "Sell")!.disabled).toBe(true);
+    expect(qtyInput("Hollow")).toBeNull();
+
+    await answerOne("S");
+    await click(buttonIn(dialog(), "Sell")!);
+    expect(sellCart.mock.calls.map(([arg]) => (arg as { parts: unknown }).parts)).toEqual([
+      [{ itemId: 2, quantity: 1 }, { itemId: 3, quantity: 5 }],
+    ]);
+  });
+
+  it("does not add the previous length's parts to the cart while the picked length's parts load", async () => {
+    await click(tile("Custom bolster")!);
+    await answerOne("medium");
+    typeField(qtyField(), "1");
+    await choose(dialog()!.querySelector("select")!, "long");
+
+    await click(buttonIn(dialog(), "Add to cart")!);
+    expect(cartCount()).toBe("0");
+    expect(buttonIn(dialog(), "Add to cart")!.disabled).toBe(true);
+
+    await answerOne("long");
+    await click(buttonIn(dialog(), "Add to cart")!);
+    expect(cartCount()).toBe("8");
+  });
+});
+
 describe("Inventory part drawer", () => {
   it("follows a reload of its group and closes when the group empties, without reopening when it returns", async () => {
     await click(tile("Covers")!);
