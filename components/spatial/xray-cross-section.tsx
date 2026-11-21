@@ -729,10 +729,6 @@ export function XrayCrossSection({
   const tapRef = useRef<{ pointerId: number; x: number; y: number; closing: boolean } | null>(null);
   const [addState, setAddAt] = useState<{ target: SlabDropTarget; left: number; top: number } | null>(null);
   const addAt = addState?.target.section === cut.section ? addState : null;
-  const addOpen = useRef(false);
-  useEffect(() => {
-    addOpen.current = addAt !== null;
-  }, [addAt]);
   const [hoverState, setHoverColumn] = useState<Cell | null>(null);
   const hoverColumn = hoverState?.section === cut.section ? hoverState.subSection : null;
 
@@ -1060,13 +1056,13 @@ export function XrayCrossSection({
     onPointerDown: (e) => {
       if (!canAdd || e.button !== 0 || holdRef.current || following) return;
       if (e.target instanceof Element && e.target.closest("[data-slab-hit]")) return;
-      tapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, closing: addOpen.current };
+      tapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, closing: addAt !== null };
     },
     onPointerLeave: () => setHoverColumn(null),
     onPointerMove: (e) => {
       const hold = holdRef.current;
       if (!hold || hold.pointerId !== e.pointerId) {
-        if (canAdd && e.pointerType === "mouse" && !addOpen.current && !holdRef.current) {
+        if (canAdd && e.pointerType === "mouse" && addAt === null && !holdRef.current) {
           const onPouch = e.target instanceof Element && e.target.closest("[data-slab-hit]");
           const next = onPouch ? null : (cellAt(e.clientX, e.clientY)?.cell ?? null);
           setHoverColumn((c) => (c?.section === next?.section && c?.subSection === next?.subSection ? c : next));
