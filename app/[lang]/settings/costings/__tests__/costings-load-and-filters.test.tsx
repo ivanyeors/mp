@@ -205,6 +205,27 @@ describe("Costings load", () => {
     expect(saveButton().disabled).toBe(true);
   });
 
+  it("ignores a reload that started during Save and answers before Save's own reload fails", async () => {
+    await db.loads[0].answer([item(1, "cover")]);
+    await editPartMsrp("30.00");
+
+    holdSave = true;
+    await click(saveButton());
+    await reload();
+    expect(db.loads).toHaveLength(2);
+    await act(async () => releaseSave!());
+    await settle();
+    expect(db.loads).toHaveLength(3);
+
+    await db.loads[1].answer([item(1, "cover", "20.00")]);
+    await db.loads[2].fail("network down");
+    await settle();
+    expect(toast.error).toHaveBeenCalledWith("network down");
+    expect(text()).toContain("MSRP $30.00");
+    expect(text()).toContain("Unsaved changes");
+    expect(saveButton().disabled).toBe(false);
+  });
+
   it("ignores a reload that started during Save and answers after Save's own reload failed", async () => {
     await db.loads[0].answer([item(1, "cover")]);
     await editPartMsrp("30.00");
