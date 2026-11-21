@@ -74,6 +74,7 @@ import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } fr
 import { draftSoftBody, HELD_EASE_MS, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 import { topPlanes, useSoftTopPaths } from "./soft-top";
+import { XRAY_PIECE_EDGE_VAR } from "./xray-theme";
 import { acrossText, landingText } from "./drag-badge";
 import { badgeFontFor, buzz, HeldGhost, pastThreshold, pickUp, stepHold, svgScale, useHeldGhost } from "./held-pouch";
 import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
@@ -340,7 +341,7 @@ function MorphPieceImpl({
     "data-item-subtype": subtype ?? "",
     fill: `var(${visual.cssVar}, ${visual.defaultColor})`,
     fillOpacity: 0.9,
-    stroke: "rgba(255,255,255,0.9)",
+    stroke: XRAY_PIECE_EDGE_VAR,
     strokeWidth: 2,
     strokeDasharray: status === "ok" ? undefined : "6 3",
     vectorEffect: "non-scaling-stroke",

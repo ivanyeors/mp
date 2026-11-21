@@ -5,3 +5,4 @@ export const XRAY_THEME = [
 
 export const XRAY_SHELL_VAR = "var(--xray-shell, rgba(255,255,255,0.9))";
 export const XRAY_INTERIOR_VAR = "var(--xray-interior, rgba(15,23,42,0.5))";
+export const XRAY_PIECE_EDGE_VAR = "var(--xray-piece-edge, rgba(255,255,255,0.9))";
