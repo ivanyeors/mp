@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { syncProductToStripeSafe } from "@/lib/stripe/sync";
+import { syncProductToStripeSafe, type StripeSyncOutcome } from "@/lib/stripe/sync";
 import {
   productName,
   thrownProblem,
@@ -174,9 +174,14 @@ export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdm
 
 const RESYNC: NextStep = { kind: "resync-prices" };
 
-export function stripeSyncProblems(stripe: Awaited<ReturnType<typeof syncProductToStripeSafe>>): PriceProblem[] {
-  if (stripe.synced) return [];
+export function stripeSyncProblems(stripe: StripeSyncOutcome): PriceProblem[] {
+  const notices: PriceProblem[] = stripe.notices.map((message) => ({ message }));
+  if (stripe.synced) return notices;
+  if (stripe.pricesInPlace) {
+    return [...notices, { message: stripe.error ?? "The new prices are in place, but Stripe needs attention." }];
+  }
   return [
+    ...notices,
     {
       message: `Couldn't sync to Stripe, so customers may still be charged the old price: ${stripe.error ?? "unknown error"}`,
       next: { kind: "sync-to-stripe" },
