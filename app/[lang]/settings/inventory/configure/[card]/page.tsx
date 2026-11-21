@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import Link from "next/link";
 import { notFound, useParams, usePathname } from "next/navigation";
@@ -371,6 +371,7 @@ export default function ConfigureCardPage() {
   const [saving, setSaving] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
+  const [bolsterLinesFailed, setBolsterLinesFailed] = useState(false);
   const [pillowTemplates, setPillowTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
   const [pillowSelectedTemplateId, setPillowSelectedTemplateId] = useState<number | ''>('');
   const [pillowTemplateName, setPillowTemplateName] = useState('');
@@ -405,7 +406,10 @@ export default function ConfigureCardPage() {
 
   const bolsterLength = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : null;
 
+  const loadRequest = useRef(0);
+  const bolsterLinesLoadedFor = useRef<BolsterLength | null>(null);
   const loadAll = useCallback(async (withBolsterLinesOf?: BolsterLength | null) => {
+    const request = ++loadRequest.current;
     setLoading(true);
     const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
@@ -416,9 +420,14 @@ export default function ConfigureCardPage() {
         ? supabaseClient.from("bolster_bom_lines").select("item_id,quantity").eq("variant", withBolsterLinesOf)
         : null,
     ]);
-    if (bolsterLinesRead) {
+    if (request !== loadRequest.current) return;
+    if (withBolsterLinesOf && bolsterLinesRead?.error) {
+      setBolsterLinesFailed(true);
+    } else if (withBolsterLinesOf && bolsterLinesRead) {
       type LineRow = { item_id: number; quantity: number | string };
       setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+      setBolsterLinesFailed(false);
+      bolsterLinesLoadedFor.current = withBolsterLinesOf;
     }
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
     const prods = (productsData ?? []) as Product[];
@@ -477,7 +486,7 @@ export default function ConfigureCardPage() {
   useEffect(() => {
     loadAll(bolsterLength);
     const onChanged = () => {
-      loadAll();
+      loadAll(bolsterLinesLoadedFor.current === bolsterLength ? null : bolsterLength);
     };
     if (typeof window !== "undefined") {
       window.addEventListener("inventory:changed", onChanged);
@@ -763,36 +772,42 @@ export default function ConfigureCardPage() {
     }
   };
 
+  const templatePick = useRef(0);
   const selectPillowTemplate = async (next: number | '') => {
+    const pick = ++templatePick.current;
     setPillowSelectedTemplateId(next);
     if (next === '' || !selectedPillowKind || !selectedSize) return;
     try {
       const lines = await loadTemplateLines(next);
+      if (pick !== templatePick.current) return;
       setBomByKind((prev) => ({
         ...prev,
         [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: lines },
       }));
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
+      if (pick === templatePick.current) toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
   const selectBolsterTemplate = async (next: number | '') => {
+    const pick = ++templatePick.current;
     setBolsterSelectedTemplateId(next);
     if (next === '') return;
     try {
-      setBolsterLines(await loadTemplateLines(next));
+      const lines = await loadTemplateLines(next);
+      if (pick !== templatePick.current) return;
+      setBolsterLines(lines);
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
+      if (pick === templatePick.current) toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
   const changePremiumVariant = (value: string) => {
     if (value === 'linen' || value === 'fibrecool') {
       setPremiumVariant(value);
-      setPillowSelectedTemplateId('');
+      void selectPillowTemplate('');
     }
   };
 
@@ -872,7 +887,7 @@ export default function ConfigureCardPage() {
                   <>
                     {pillowSelectedTemplate && (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setPillowSelectedTemplateId('')}>
+                        <Button variant="ghost" size="sm" onClick={() => void selectPillowTemplate('')}>
                           Unlink
                         </Button>
                         <Button
@@ -1131,7 +1146,7 @@ export default function ConfigureCardPage() {
                   <>
                     {bolsterSelectedTemplate && (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setBolsterSelectedTemplateId('')}>
+                        <Button variant="ghost" size="sm" onClick={() => void selectBolsterTemplate('')}>
                           Unlink
                         </Button>
                         <Button
@@ -1145,7 +1160,7 @@ export default function ConfigureCardPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" onClick={saveBolster} disabled={saving}>
+                    <Button size="sm" onClick={saveBolster} disabled={saving || bolsterLinesFailed}>
                       {saving ? 'Saving…' : 'Save'}
                     </Button>
                   </>
@@ -1193,6 +1208,7 @@ export default function ConfigureCardPage() {
                     </Button>
                     <Button
                       variant="secondary"
+                      disabled={bolsterLinesFailed}
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
                         if (!name) { toast.message('Enter a template name.'); return; }
@@ -1271,12 +1287,18 @@ export default function ConfigureCardPage() {
                 loadTemplateLines={loadTemplateLines}
               />
               <Separator className="lg:hidden" />
-              <BolsterEditor
-                items={items}
-                lines={bolsterLines}
-                setLines={setBolsterLines}
-                variant={bolsterVariant}
-              />
+              {bolsterLinesFailed ? (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn&apos;t load this bolster&apos;s parts. Refresh the page to try again.
+                </p>
+              ) : (
+                <BolsterEditor
+                  items={items}
+                  lines={bolsterLines}
+                  setLines={setBolsterLines}
+                  variant={bolsterVariant}
+                />
+              )}
               </div>
               </div>
               </TabsContent>
@@ -1296,7 +1318,7 @@ export default function ConfigureCardPage() {
           {bolsterDrawerTab === "product" && (
             <>
               <div className="hidden justify-end md:flex lg:hidden">
-                <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+                <Button onClick={saveBolster} disabled={saving || bolsterLinesFailed}>{saving ? 'Saving…' : 'Save'}</Button>
               </div>
               <MobileStickyActionBar>
                 <div className="flex items-center justify-between gap-3">
@@ -1308,7 +1330,7 @@ export default function ConfigureCardPage() {
                       {bolsterSelectedTemplate ? 'Saving also updates this template.' : 'No template linked.'}
                     </div>
                   </div>
-                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving}>
+                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving || bolsterLinesFailed}>
                     {saving ? 'Saving…' : 'Save'}
                   </Button>
                 </div>

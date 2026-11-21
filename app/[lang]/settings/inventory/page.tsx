@@ -186,6 +186,8 @@ export default function InventoryPage() {
   const [customBolsterDrawerOpen, setCustomBolsterDrawerOpen] = useState(false);
   const [customPillowLines, setCustomPillowLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [customBolsterLines, setCustomBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [customPillowLinesLoading, setCustomPillowLinesLoading] = useState(false);
+  const [customBolsterLinesLoading, setCustomBolsterLinesLoading] = useState(false);
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
   const [composedImageUrls, setComposedImageUrls] = useState<Partial<Record<ComposedProductSlug, string>>>({});
 
@@ -506,11 +508,13 @@ export default function InventoryPage() {
   const loadCustomPillowLines = async (size: string) => {
     const request = ++customPillowLinesRequest.current;
     const product = products.find(p => p.size === size && p.kind === 'basic');
-    if (!product) { setCustomPillowLines([]); return; }
+    if (!product) { setCustomPillowLines([]); setCustomPillowLinesLoading(false); return; }
+    setCustomPillowLinesLoading(true);
     type BomRow = { item_id: number; quantity: number | string };
     const { data } = await supabaseClient.from('bom_lines').select('item_id,quantity').eq('product_id', product.id);
     if (request !== customPillowLinesRequest.current) return;
     setCustomPillowLines((data ?? []).map((r: BomRow) => ({ item_id: r.item_id, quantity: Number(r.quantity) })));
+    setCustomPillowLinesLoading(false);
   };
   const openCustomPillowDrawer = () => {
     setCustomPillowDrawerOpen(true);
@@ -524,6 +528,7 @@ export default function InventoryPage() {
   const customBolsterLinesRequest = useRef(0);
   const loadCustomBolsterLines = async (variant: 'short' | 'medium' | 'long') => {
     const request = ++customBolsterLinesRequest.current;
+    setCustomBolsterLinesLoading(true);
     type LineRow = { item_id: number; quantity: number | string };
     const { data } = await supabaseClient
       .from('bolster_bom_lines')
@@ -531,6 +536,7 @@ export default function InventoryPage() {
       .eq('variant', variant);
     if (request !== customBolsterLinesRequest.current) return;
     setCustomBolsterLines((data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+    setCustomBolsterLinesLoading(false);
   };
   const openCustomBolsterDrawer = () => {
     setCustomBolsterDrawerOpen(true);
@@ -1216,6 +1222,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         setSize={changeCustomPillowSize}
         items={items}
         lines={customPillowLines}
+        loading={customPillowLinesLoading}
         setLines={setCustomPillowLines}
         qty={customPillowQty}
         setQty={setCustomPillowQty}
@@ -1231,6 +1238,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         setVariant={changeCustomBolsterVariant}
         items={items}
         lines={customBolsterLines}
+        loading={customBolsterLinesLoading}
         setLines={setCustomBolsterLines}
         qty={customBolsterQty}
         setQty={setCustomBolsterQty}
@@ -2620,13 +2628,14 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   );
 }
 
-function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, setLines, qty, setQty, saving, onSell, onAdd }: {
+function CustomPillowDrawer({ open, onOpenChange, loading, size, setSize, items, lines, setLines, qty, setQty, saving, onSell, onAdd }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   size: string;
   setSize: (s: string) => void;
   items: Item[];
   lines: Array<{ item_id: number; quantity: number }>;
+  loading: boolean;
   setLines: Dispatch<SetStateAction<Array<{ item_id: number; quantity: number }>>>;
   qty: string;
   setQty: (v: string) => void;
@@ -2684,134 +2693,139 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
               <Input type="number" min={0} placeholder="Qty" value={qty} onChange={(e)=> setQty(e.target.value)} className="w-24" />
             </div>
           </div>
-
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Cover (1)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sized('cover').map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading parts…</p>
+          ) : (
+            <>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Cover (1)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sized('cover').map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Pillow Case (1)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sized('case').map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Pillow Case (1)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sized('case').map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Pillow protector (1)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sized('protector').map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Pillow protector (1)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sized('protector').map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Fillings</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fillings.map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
-                        const v = Math.max(0, parseInt(e.target.value||'0',10));
-                        if (v===0) remove(it.id); else upsert(it.id, v);
-                      }} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Fillings</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {fillings.map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
+                          const v = Math.max(0, parseInt(e.target.value||'0',10));
+                          if (v===0) remove(it.id); else upsert(it.id, v);
+                        }} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Packaging (1 vacuum + 1 net)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {packaging.map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Packaging (1 vacuum + 1 net)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {packaging.map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            </>
+          )}
         </div>
         <SheetFooter>
           <div className="flex w-full gap-2">
-            <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
-            <Button onClick={onAdd} variant="secondary" className="shrink-0" aria-label="Add to cart">Add another</Button>
+            <Button onClick={onSell} disabled={saving || loading} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
+            <Button onClick={onAdd} disabled={loading} variant="secondary" className="shrink-0" aria-label="Add to cart">Add another</Button>
           </div>
         </SheetFooter>
       </SheetContent>
@@ -2819,13 +2833,14 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
   );
 }
 
-function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, lines, setLines, qty, setQty, saving, onSell, onAdd }: {
+function CustomBolsterDrawer({ open, onOpenChange, loading, variant, setVariant, items, lines, setLines, qty, setQty, saving, onSell, onAdd }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   variant: 'short'|'medium'|'long';
   setVariant: (v: 'short'|'medium'|'long') => void;
   items: Item[];
   lines: Array<{ item_id: number; quantity: number }>;
+  loading: boolean;
   setLines: Dispatch<SetStateAction<Array<{ item_id: number; quantity: number }>>>;
   qty: string;
   setQty: (v: string) => void;
@@ -2881,110 +2896,115 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
               <Input type="number" min={0} placeholder="Qty" value={qty} onChange={(e)=> setQty(e.target.value)} className="w-24" />
             </div>
           </div>
-
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Case (Bolster)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sized('case').map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading parts…</p>
+          ) : (
+            <>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Case (Bolster)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sized('case').map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Protector (Bolster)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sized('protector').map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Protector (Bolster)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sized('protector').map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Fillings (6D-L)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fillings.map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
-                        const v = Math.max(0, parseInt(e.target.value||'0',10));
-                        if (v===0) remove(it.id); else upsert(it.id, v);
-                      }} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Fillings (6D-L)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {fillings.map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
+                          const v = Math.max(0, parseInt(e.target.value||'0',10));
+                          if (v===0) remove(it.id); else upsert(it.id, v);
+                        }} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium text-muted-foreground">Packaging (1 vacuum + 1 net typical)</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[140px]">Qty</TableHead>
-                  <TableHead className="w-[110px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {packaging.map(it => (
-                  <TableRow key={it.id}>
-                    <TableCell><InventoryItemLabel item={it} /></TableCell>
-                    <TableCell className="w-[140px]">
-                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-                    </TableCell>
-                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-muted-foreground">Packaging (1 vacuum + 1 net typical)</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                    <TableHead className="w-[110px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {packaging.map(it => (
+                    <TableRow key={it.id}>
+                      <TableCell><InventoryItemLabel item={it} /></TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                      </TableCell>
+                      <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            </>
+          )}
         </div>
         <SheetFooter>
           <div className="flex w-full gap-2">
-            <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
-            <Button onClick={onAdd} variant="secondary" className="shrink-0" aria-label="Add to cart">Add another</Button>
+            <Button onClick={onSell} disabled={saving || loading} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
+            <Button onClick={onAdd} disabled={loading} variant="secondary" className="shrink-0" aria-label="Add to cart">Add another</Button>
           </div>
         </SheetFooter>
       </SheetContent>
