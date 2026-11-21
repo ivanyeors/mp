@@ -22,7 +22,6 @@ export function registerSheetFonts(src: (weight: number) => string) {
     Font.registerHyphenationCallback((word) => [word]);
 }
 
-const INK = SHEET_ART_BACKGROUND;
 const NAVY = "#1d3f75";
 const TINT = "#eef3fa";
 const MARGIN = 30;
@@ -64,14 +63,14 @@ const s = StyleSheet.create({
     },
     cardValue: { fontSize: 12.5, fontWeight: 600, marginTop: 1 },
     column: { width: COLUMN_WIDTH },
-    cutBox: { backgroundColor: INK, borderRadius: 6, justifyContent: "center", overflow: "hidden" },
+    artBox: { backgroundColor: SHEET_ART_BACKGROUND, borderWidth: 0.75, borderColor: LIGHT.border, borderRadius: 8, justifyContent: "center", overflow: "hidden" },
     step: { flexDirection: "row", alignItems: "center", paddingVertical: 1.8 },
     stepNo: { width: 13, height: 13, borderRadius: 6.5, backgroundColor: NAVY, color: "#ffffff", fontSize: 7, fontWeight: 700, textAlign: "center", lineHeight: 1, paddingTop: 3, marginRight: 5 },
     stepDot: { width: 7, height: 7, borderRadius: 3.5, marginLeft: 3, marginRight: 8 },
     stepBar: { width: 2.5, height: 11, borderRadius: 1.25, marginRight: 5 },
     tip: { width: COLUMN_WIDTH, backgroundColor: TINT, borderRadius: 9, padding: 9 },
-    help: { width: COLUMN_WIDTH, backgroundColor: INK, borderRadius: 9, padding: 9 },
-    helpLink: { color: "#ffffff", fontWeight: 600, textDecoration: "none", marginTop: 3 },
+    help: { width: COLUMN_WIDTH, backgroundColor: "#ffffff", borderWidth: 1, borderColor: NAVY, borderRadius: 9, padding: 9 },
+    helpLink: { color: NAVY, fontWeight: 600, textDecoration: "none", marginTop: 3 },
     footer: { position: "absolute", left: MARGIN, right: MARGIN, bottom: 16, flexDirection: "row", justifyContent: "space-between", fontSize: 7, color: LIGHT.mutedFg },
 });
 
@@ -207,8 +206,8 @@ function Refill({ sheet, art }: { sheet: PillowSheet; art: SheetArt }) {
                                 <Text style={[s.small, { marginLeft: 5 }]}>{plural(section.steps.length, "piece")}</Text>
                             </View>
                             {cutHeight > 0 ? (
-                                <View style={[s.cutBox, cut ? { height: cutHeight } : { height: cutHeight, backgroundColor: LIGHT.mutedBg }]}>
-                                    {cut ? <Picture image={cut} width={COLUMN_WIDTH} /> : null}
+                                <View style={[s.artBox, cut ? { height: cutHeight } : { height: cutHeight, backgroundColor: LIGHT.mutedBg }]}>
+                                    {cut ? <Picture image={cut} width={COLUMN_WIDTH - 1.5} /> : null}
                                 </View>
                             ) : null}
                             <Text style={[s.small, { marginTop: 6, marginBottom: 2 }]}>
@@ -237,8 +236,8 @@ function Care({ sheet }: { sheet: PillowSheet }) {
                 <Text style={[s.p, { marginTop: 3 }]}>Before refilling, loosen and air the fillings so they get back their shape and fluff.</Text>
             </View>
             <View style={s.help}>
-                <Text style={[s.h3, { color: "#ffffff" }]}>Does your pillow feel different?</Text>
-                <Text style={[s.p, { marginTop: 3, color: "#cbd5e1" }]}>If the height or support no longer feels right, we can re-adjust it for you.</Text>
+                <Text style={[s.h3, { color: NAVY }]}>Does your pillow feel different?</Text>
+                <Text style={[s.p, { marginTop: 3 }]}>If the height or support no longer feels right, we can re-adjust it for you.</Text>
                 <Link src={sheet.links.readjust.href} style={[s.helpLink, { marginTop: 5 }]}>
                     Book a re-adjustment ›
                 </Link>
@@ -282,7 +281,7 @@ export function pillowSheetDocument(sheet: PillowSheet, art: SheetArt) {
                 <Header sheet={sheet} logo={art.logo} />
                 <View style={[s.row, { marginTop: GAP }]} wrap={false}>
                     {art.top ? (
-                        <View style={{ marginRight: 16 }}>
+                        <View style={[s.artBox, { marginRight: 16 }]}>
                             <Picture image={art.top} width={TOP_WIDTH} />
                         </View>
                     ) : null}

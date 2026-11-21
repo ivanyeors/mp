@@ -7,7 +7,7 @@ import { fillingDescriptor, fillingLabel } from "@/lib/spatial-fillings/filling-
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import type { OwnPillowView } from "./view";
 
-export const SHEET_ART_BACKGROUND = "#020617";
+export const SHEET_ART_BACKGROUND = "#ffffff";
 
 export type SheetFilling = { label: string; color: string; count: number };
 export type SheetStep = { label: string; color: string; where: string };

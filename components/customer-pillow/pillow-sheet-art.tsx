@@ -13,9 +13,9 @@ import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import { XRAY_VIEW } from "@/lib/spatial-fillings/xray-stage";
 
 const SHEET_ART_THEME = {
-    "--xray-shell": "rgba(255,255,255,0.9)",
-    "--xray-interior": "rgba(15,23,42,0.5)",
-    "--xray-veil": "rgb(2,6,23)",
+    "--xray-shell": "#475569",
+    "--xray-interior": "#eef2f7",
+    "--xray-veil": "#ffffff",
 } as CSSProperties;
 
 export function PillowSheetArt({ pillow }: { pillow: OwnPillowView }) {
