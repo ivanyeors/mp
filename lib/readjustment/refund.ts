@@ -1,8 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { whenLabel } from "@/lib/appointments/messages";
 import { refundableAmount } from "@/lib/ecommerce/admin-refund";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
-import { refundPayment } from "@/lib/stripe/refunds";
+import { getEmailTransport } from "@/lib/email";
+import { loadEmailCopy } from "@/lib/email/copy-store";
+import {
+  READJUSTMENT_CANCELLED_EMAIL_COPY,
+  renderReadjustmentCancelledEmail,
+  type CancelledFee,
+} from "@/lib/email/readjustment";
+import { getDefaultFromAddress } from "@/lib/email/transport";
+import { formatPointsCount, POINTS_PER_DOLLAR } from "@/lib/points/value";
+import { intentPaymentMethodType, refundPayment } from "@/lib/stripe/refunds";
 import { sendTelegram } from "@/lib/telegram/notify";
 
 import { sgtDate } from "./eligibility";
@@ -16,9 +26,12 @@ export type CancelledBooking = {
   start_at: string;
   guest_name: string;
   product_label: string;
+  email: string | null;
+  location_name: string | null;
 };
 
-export const CANCELLED_BOOKING_COLUMNS = "id, complimentary, fee_order_id, start_at, guest_name, product_label";
+export const CANCELLED_BOOKING_COLUMNS =
+  "id, complimentary, fee_order_id, start_at, guest_name, product_label, email, location_name";
 
 export type CancellationRefund = "refund" | "staff_decides" | "nothing";
 
@@ -36,12 +49,15 @@ export function cancellationRefund(
   return sgtDate(now) < sgtDate(booking.start_at) ? "refund" : "staff_decides";
 }
 
+type Fee = { amount: number; currency: string; orderNumber: string | null };
+
 export type RefundOutcome =
   | { kind: "nothing" }
   | { kind: "already_settled" }
-  | { kind: "staff_alerted" }
-  | { kind: "refunded"; refundId: string; amount: number }
-  | { kind: "failed"; error: string };
+  | { kind: "visit_day"; fee: Fee }
+  | { kind: "paynow"; fee: Fee }
+  | { kind: "refunded"; refundId: string; fee: Fee }
+  | { kind: "failed"; error: string; fee?: Fee };
 
 type FeeOrder = {
   id: string;
@@ -64,16 +80,63 @@ async function note(orderId: string, eventType: string, message: string, metadat
   );
 }
 
-// ponytail: the status move to `cancelled` is the claim and a failed Stripe call is not retried —
-// Staff get a Telegram alert to refund from the Order by hand. Ceiling: a crash between the claim
-// and the Stripe call leaves no alert. Upgrade path: a sweep over cancelled paid bookings whose
-// fee Order is still confirmed.
 export async function refundCancelledReadjustment(
   admin: SupabaseClient,
   booking: CancelledBooking,
   cancelledFrom: string,
   by: CancelledBy,
   now: Date = new Date(),
+): Promise<RefundOutcome> {
+  const outcome = await settleFee(admin, booking, cancelledFrom, by, now);
+  await tellCustomer(booking, outcome);
+  return outcome;
+}
+
+const CUSTOMER_LINE: Partial<Record<RefundOutcome["kind"], CancelledFee>> = {
+  refunded: "refunded",
+  visit_day: "visit_day",
+  paynow: "paynow",
+  failed: "refund_failed",
+};
+
+async function tellCustomer(booking: CancelledBooking, outcome: RefundOutcome) {
+  const line = CUSTOMER_LINE[outcome.kind];
+  const fee = "fee" in outcome ? outcome.fee : undefined;
+  if (!line || !fee || !booking.email) return;
+  try {
+    const copy = await loadEmailCopy(READJUSTMENT_CANCELLED_EMAIL_COPY);
+    await getEmailTransport().send({
+      to: booking.email,
+      from: getDefaultFromAddress(),
+      ...renderReadjustmentCancelledEmail(
+        {
+          fee: line,
+          guestName: booking.guest_name,
+          productLabel: booking.product_label,
+          visit: whenLabel(booking.start_at),
+          locationName: booking.location_name,
+          amount: fee.amount,
+          currency: fee.currency,
+          orderNumber: fee.orderNumber,
+        },
+        copy,
+      ),
+    });
+  } catch (e) {
+    console.error("[readjustment] cancel email", e instanceof Error ? e.message : e);
+  }
+}
+
+// ponytail: the status move to `cancelled` is the claim and a failed Stripe call is not retried —
+// Staff get a Telegram alert to refund from the Order by hand. Ceiling: a crash between the claim
+// and the Stripe call leaves no alert. Upgrade path: a sweep over cancelled paid bookings whose
+// fee Order is still confirmed.
+async function settleFee(
+  admin: SupabaseClient,
+  booking: CancelledBooking,
+  cancelledFrom: string,
+  by: CancelledBy,
+  now: Date,
 ): Promise<RefundOutcome> {
   const decision = cancellationRefund(booking, cancelledFrom, by, now);
   if (decision === "nothing") return { kind: "nothing" };
@@ -94,6 +157,7 @@ export async function refundCancelledReadjustment(
     if (amount <= 0) return { kind: "already_settled" };
     const currency = String(order.currency ?? "SGD").toUpperCase();
     const orderRef = `Order #${order.order_number ?? "?"}`;
+    const fee: Fee = { amount, currency, orderNumber: order.order_number == null ? null : String(order.order_number) };
 
     if (decision === "staff_decides") {
       await sendTelegram(
@@ -101,7 +165,7 @@ export async function refundCancelledReadjustment(
           "Paid re-adjustment cancelled by the customer on the visit day",
           who,
           `${orderRef} · ${sgd(amount, currency)} paid`,
-          "Not refunded automatically. If they told you before the visit day, refund from the Order.",
+          "Not refunded automatically: visit-day cancellations are refunded by hand only. They've been told our team will review it.",
         ].join("\n"),
       );
       await note(
@@ -110,7 +174,49 @@ export async function refundCancelledReadjustment(
         "Re-adjustment cancelled by the customer on the visit day. Not refunded automatically.",
         { readjustment_booking_id: booking.id },
       );
-      return { kind: "staff_alerted" };
+      return { kind: "visit_day", fee };
+    }
+
+    const stripeFailed = async (e: unknown): Promise<RefundOutcome> => {
+      const message = e instanceof Error ? e.message : String(e);
+      await sendTelegram(
+        [
+          "⚠️ Automatic refund failed for a cancelled re-adjustment",
+          who,
+          `${orderRef} · ${sgd(amount, currency)}`,
+          `Stripe: ${message}`,
+          "Refund it from the Order today. They've been told our team will refund it.",
+        ].join("\n"),
+      );
+      await note(order.id, "refund_failed", `Automatic refund failed: ${message}. Refund from the Order.`, {
+        readjustment_booking_id: booking.id,
+      });
+      return { kind: "failed", error: message, fee };
+    };
+
+    let method: string | null;
+    try {
+      method = await intentPaymentMethodType(order.payment_reference);
+    } catch (e) {
+      return stripeFailed(e);
+    }
+
+    if (method === "paynow") {
+      await sendTelegram(
+        [
+          "Paid re-adjustment cancelled — paid by PayNow, so not refunded automatically",
+          who,
+          `${orderRef} · ${sgd(amount, currency)} paid`,
+          `Refund it by hand, or add ${formatPointsCount(Math.round(amount * POINTS_PER_DOLLAR))} on their customer page, then tell them which.`,
+        ].join("\n"),
+      );
+      await note(
+        order.id,
+        "readjustment_cancelled",
+        `Re-adjustment cancelled by ${by === "customer" ? "the customer" : "Staff"}. Paid by PayNow: refund by hand or add points.`,
+        { readjustment_booking_id: booking.id },
+      );
+      return { kind: "paynow", fee };
     }
 
     try {
@@ -139,22 +245,9 @@ export async function refundCancelledReadjustment(
           readjustment_booking_id: booking.id,
         },
       );
-      return { kind: "refunded", refundId: refund.id, amount: refunded };
+      return { kind: "refunded", refundId: refund.id, fee: { ...fee, amount: refunded } };
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      await sendTelegram(
-        [
-          "⚠️ Automatic refund failed for a cancelled re-adjustment",
-          who,
-          `${orderRef} · ${sgd(amount, currency)}`,
-          `Stripe: ${message}`,
-          "Refund it from the Order today.",
-        ].join("\n"),
-      );
-      await note(order.id, "refund_failed", `Automatic refund failed: ${message}. Refund from the Order.`, {
-        readjustment_booking_id: booking.id,
-      });
-      return { kind: "failed", error: message };
+      return stripeFailed(e);
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

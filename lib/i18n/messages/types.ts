@@ -339,6 +339,7 @@ export type Messages = {
         priceLabel: string;
         complimentary: string;
         payAndBook: string;
+        refundTerms: string;
         redirecting: string;
         emailLocked: string;
         errorRequote: string;

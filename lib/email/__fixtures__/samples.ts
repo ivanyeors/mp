@@ -4,6 +4,7 @@ import type { CampaignContent, ChineseBlockWords, EmailBlock, EmailBlockType } f
 import type { OrderEmailData } from "../types";
 import type { RmaEmailData } from "../rma";
 import type { ChatTranscript } from "../support-chat";
+import type { CancelledFee } from "../readjustment";
 
 export type EmailFixture = "happy" | "hostile";
 
@@ -215,6 +216,22 @@ export function sampleReadjustmentReschedule(fixture: EmailFixture = "happy") {
     guestName: pick(fixture, "Ada Tan"),
     productLabel: pick(fixture, "Premium Mpillow · Size M"),
     wanted: "Fri, 14 Nov, 2:30 pm",
+    locationName: pick(fixture, "Mpillow Studio"),
+    amount: 30,
+    currency: "SGD",
+    orderNumber: "1077",
+  };
+}
+
+export function sampleReadjustmentCancelled(
+  fixture: EmailFixture,
+  fee: CancelledFee,
+) {
+  return {
+    fee,
+    guestName: pick(fixture, "Ada Tan"),
+    productLabel: pick(fixture, "Premium Mpillow · Size M"),
+    visit: "Fri, 14 Nov, 2:30 pm",
     locationName: pick(fixture, "Mpillow Studio"),
     amount: 30,
     currency: "SGD",
