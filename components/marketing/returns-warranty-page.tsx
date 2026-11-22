@@ -25,7 +25,7 @@ import { withLocale } from "@/lib/i18n/routing";
 import { interpolateServiceCopyDeep, loadServiceCopyValues } from "@/lib/pricing/service-copy";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
-const LAST_UPDATED = "5 July 2026";
+const LAST_UPDATED = "22 November 2026";
 
 type ProductWarranty = {
   id: string;
@@ -400,6 +400,14 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
                   Book a re-adjustment
                 </Link>{" "}
                 and we will help you tune firmness for your side-sleeping preference.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold">Cancelling a paid visit</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Cancel a paid visit before the day of your appointment and we&apos;ll issue a full refund
+                of the fee the same day.
               </p>
             </div>
           </div>

@@ -36,7 +36,12 @@ export async function cancelAppointment(
   if (!t.ok || t.noop) return { kind: "not_live" };
 
   if (opts.cause !== "removed") await deleteEvent(row.calendar_event_id);
-  await markReadjustmentCancelledByEvent(row.calendar_event_id);
+  await markReadjustmentCancelledByEvent(
+    row.calendar_event_id,
+    opts.cause === "removed" ? "staff" : "customer",
+    undefined,
+    now,
+  );
 
   const claimed = await updateReminder(
     row.calendar_event_id,

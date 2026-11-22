@@ -2,18 +2,35 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { supabaseAdmin } from "@/lib/supabase/server";
 
+import {
+  CANCELLED_BOOKING_COLUMNS,
+  refundCancelledReadjustment,
+  type CancelledBooking,
+  type CancelledBy,
+} from "./refund";
+
 export async function markReadjustmentCancelledByEvent(
   calendarEventId: string,
+  by: CancelledBy,
   admin: SupabaseClient = supabaseAdmin(),
+  now: Date = new Date(),
 ): Promise<void> {
+  let moved: CancelledBooking[];
   try {
-    await admin
+    const { data, error } = await admin
       .from("readjustment_bookings")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .update({ status: "cancelled", updated_at: now.toISOString() })
       .eq("calendar_event_id", calendarEventId)
-      .eq("status", "booked");
+      .eq("status", "booked")
+      .select(CANCELLED_BOOKING_COLUMNS);
+    if (error) throw new Error(error.message);
+    moved = (data ?? []) as CancelledBooking[];
   } catch (e) {
     console.error("[readjustment] cancel sync failed", e instanceof Error ? e.message : e);
+    return;
+  }
+  for (const booking of moved) {
+    await refundCancelledReadjustment(admin, booking, "booked", by, now);
   }
 }
 

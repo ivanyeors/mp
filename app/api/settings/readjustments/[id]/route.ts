@@ -12,6 +12,7 @@ import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { STAFF_ACTIONS, type StaffAction } from "@/lib/readjustment/lifecycle";
+import { refundCancelledReadjustment } from "@/lib/readjustment/refund";
 import { getSiteSettings } from "@/lib/site-settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -116,6 +117,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (current?.status !== rule.to) {
       return NextResponse.json({ error: "This booking just changed — refresh" }, { status: 409 });
     }
+  }
+
+  if (action === "cancel" && moved?.length) {
+    await refundCancelledReadjustment(
+      admin,
+      {
+        id,
+        complimentary: before.complimentary as boolean,
+        fee_order_id: (before.fee_order_id as string | null) ?? null,
+        start_at: before.start_at as string,
+        guest_name: before.guest_name as string,
+        product_label: before.product_label as string,
+      },
+      before.status as string,
+      "staff",
+    );
   }
 
   if (action === "attended" && before.fee_order_id && before.fee_order_status === "confirmed") {
