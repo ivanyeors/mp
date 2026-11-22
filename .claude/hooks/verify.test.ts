@@ -301,6 +301,11 @@ const editFile = (rel: string, env: Record<string, string> = {}) => verify("edit
 const allowed = (rel: string) => readBaseline()[rel]?.[RULE]?.count;
 const removeOneComment = (rel: string) => writeFileSync(path.join(repo, rel), PRODUCT.replace("// second\n", ""));
 const addOneComment = (rel: string) => writeFileSync(path.join(repo, rel), `${readFileSync(path.join(repo, rel), "utf8")}// one more\n`);
+// edit does not prune; this is the prune an agent may run itself (guard.mjs allows it).
+function pruneByHand(...files: string[]) {
+  const r = spawnSync(path.join(repo, "node_modules/.bin/eslint"), ["--prune-suppressions", ...files], { cwd: repo, encoding: "utf8" });
+  expect(r.status, r.stdout + r.stderr).toBe(0);
+}
 const stateFile = () => path.join(tmpdir(), "mp-claude-verify", `${createHash("sha1").update(repo).digest("hex").slice(0, 12)}.json`);
 
 describe("verify.mjs edit against the baseline, with the real rules", () => {
@@ -315,10 +320,31 @@ describe("verify.mjs edit against the baseline, with the real rules", () => {
     expect(allowed("lib/x.ts")).toBe(n);
   }, 60_000);
 
-  it("a comment removed exits 0 and lowers the file's count", () => {
+  // An edit made in steps: one that parses with a suppressed violation gone,
+  // then the finished file with it back. A prune on the first step would fail
+  // the second, and only the owner can raise a count.
+  it("a step with a comment gone exits 0 and leaves the baseline byte for byte, so the finished file with it back passes", () => {
+    realLintRepo();
+    const before = readFileSync(baselineFile(), "utf8");
+    removeOneComment("lib/x.ts");
+    const step = editFile("lib/x.ts");
+    expect(step.err).toBe("");
+    expect(step.code).toBe(0);
+    const afterStep = readFileSync(baselineFile(), "utf8");
+    writeFileSync(path.join(repo, "lib/x.ts"), PRODUCT);
+    const finished = editFile("lib/x.ts");
+    expect(finished.err).toBe("");
+    expect(finished.code).toBe(0);
+    expect(afterStep).toBe(before);
+    expect(readFileSync(baselineFile(), "utf8")).toBe(before);
+  }, 60_000);
+
+  it.each(["task", "stop"])("%s on the state with a comment gone lowers the file's count", (mode) => {
     const n = realLintRepo()["lib/x.ts"][RULE].count;
     removeOneComment("lib/x.ts");
-    const r = editFile("lib/x.ts");
+    expect(editFile("lib/x.ts").code).toBe(0);
+    expect(allowed("lib/x.ts")).toBe(n);
+    const r = verify(mode);
     expect(r.err).toBe("");
     expect(r.code).toBe(0);
     expect(allowed("lib/x.ts")).toBe(n - 1);
@@ -365,35 +391,38 @@ describe("verify.mjs edit against the baseline, with the real rules", () => {
     expect(readBaseline()["lib/y.ts"]).toEqual(original["lib/x.ts"]);
   }, 60_000);
 
+  // A comment added: only an edit that linted names the rule and the counts.
+  const overBy1 = (n: number) => `the baseline allows ${n} of ${RULE} in this file and it now has ${n + 1}`;
+
   it("waits for another holder of the baseline lock, and says so if it cannot lint", () => {
     const n = realLintRepo()["lib/x.ts"][RULE].count;
-    removeOneComment("lib/x.ts");
+    addOneComment("lib/x.ts");
     const lockFile = `${stateFile()}.baseline.lock`;
     writeFileSync(lockFile, String(process.pid));
     try {
       const r = editFile("lib/x.ts", { MP_VERIFY_LOCK_WAIT_MS: "1500" });
       expect(r.code).toBe(2);
       expect(r.err).toMatch(/eslint did not run on lib\/x\.ts: another hook run held the lint baseline/);
-      expect(allowed("lib/x.ts")).toBe(n);
+      expect(r.err).not.toContain(COMMENT);
     } finally {
       rmSync(lockFile, { force: true });
     }
-    expect(editFile("lib/x.ts").code).toBe(0);
-    expect(allowed("lib/x.ts")).toBe(n - 1);
+    const linted = editFile("lib/x.ts");
+    expect(linted.code).toBe(2);
+    expect(linted.err).toContain(overBy1(n));
   }, 30_000);
 
   it("takes over a lock older than any holder can live, even when its PID is alive (reused)", () => {
     const n = realLintRepo()["lib/x.ts"][RULE].count;
-    removeOneComment("lib/x.ts");
+    addOneComment("lib/x.ts");
     const lockFile = `${stateFile()}.baseline.lock`;
     writeFileSync(lockFile, String(process.pid));
     const old = new Date(Date.now() - 20 * 60_000);
     utimesSync(lockFile, old, old);
     try {
       const r = editFile("lib/x.ts");
-      expect(r.err).toBe("");
-      expect(r.code).toBe(0);
-      expect(allowed("lib/x.ts")).toBe(n - 1);
+      expect(r.code).toBe(2);
+      expect(r.err).toContain(overBy1(n));
       expect(existsSync(lockFile)).toBe(false);
     } finally {
       rmSync(lockFile, { force: true });
@@ -402,26 +431,30 @@ describe("verify.mjs edit against the baseline, with the real rules", () => {
 
   it("takes over a lock whose holder is dead", () => {
     const n = realLintRepo()["lib/x.ts"][RULE].count;
-    removeOneComment("lib/x.ts");
+    addOneComment("lib/x.ts");
     const lockFile = `${stateFile()}.baseline.lock`;
     writeFileSync(lockFile, "999999 dead 60000");
     try {
-      expect(editFile("lib/x.ts").code).toBe(0);
-      expect(allowed("lib/x.ts")).toBe(n - 1);
+      const r = editFile("lib/x.ts");
+      expect(r.code).toBe(2);
+      expect(r.err).toContain(overBy1(n));
     } finally {
       rmSync(lockFile, { force: true });
     }
   }, 30_000);
 
-  it("two edits started together both lower their file's count and leave valid JSON", async () => {
+  // edit's one write: a moved file's entry, restored before linting.
+  it("two edits started together both restore their moved file's entry and leave valid JSON", async () => {
     const original = realLintRepo();
-    removeOneComment("lib/x.ts");
-    removeOneComment("lib/w.ts");
-    const both = await Promise.all(["lib/x.ts", "lib/w.ts"].map((f) => verifyAsync("edit", { tool_input: { file_path: path.join(repo, f) } })));
+    gitIn("mv", "lib/x.ts", "lib/x2.ts");
+    gitIn("mv", "lib/w.ts", "lib/w2.ts");
+    const both = await Promise.all(["lib/x2.ts", "lib/w2.ts"].map((f) => verifyAsync("edit", { tool_input: { file_path: path.join(repo, f) } })));
     expect(both.map((r) => r.code)).toEqual([0, 0]);
     const now = readBaseline();
-    expect(now["lib/x.ts"][RULE].count).toBe(original["lib/x.ts"][RULE].count - 1);
-    expect(now["lib/w.ts"][RULE].count).toBe(original["lib/w.ts"][RULE].count - 1);
+    expect(now["lib/x2.ts"]).toEqual(original["lib/x.ts"]);
+    expect(now["lib/w2.ts"]).toEqual(original["lib/w.ts"]);
+    expect(now["lib/x.ts"]).toBeUndefined();
+    expect(now["lib/w.ts"]).toBeUndefined();
   }, 60_000);
 });
 
@@ -542,10 +575,12 @@ describe.each([
     expect(readFileSync(baselineFile(), "utf8")).toBe(headBaseline());
   }, 60_000);
 
-  it("4. an edit on another file between a move and the first stop (its prune drops the old entry)", () => {
+  it("4. a prune of another file between a move and the first stop (it drops the old entry); an edit does not", () => {
     const original = fixture();
     renameSync(path.join(repo, "lib/x.ts"), path.join(repo, "lib/y.ts"));
     expect(editFile("lib/w.ts").code).toBe(0);
+    expect(readBaseline()["lib/x.ts"]).toEqual(original["lib/x.ts"]);
+    pruneByHand("lib/w.ts");
     expect(readBaseline()["lib/x.ts"]).toBeUndefined();
     stopPasses();
     expect(readBaseline()["lib/y.ts"]).toEqual(original["lib/x.ts"]);
@@ -565,7 +600,7 @@ describe.each([
     gitIn("mv", "lib/x.ts", "lib/y.ts");
     stopPasses();
     writeFileSync(path.join(repo, "lib/w.ts"), NO_COMMENTS);
-    expect(editFile("lib/w.ts").code).toBe(0);
+    stopPasses();
     expect(readBaseline()["lib/w.ts"]).toBeUndefined();
     writeFileSync(path.join(repo, "lib/x.ts"), NEW_X);
     const r = editFile("lib/x.ts");
@@ -643,14 +678,16 @@ describe.each([
   }, 60_000);
 
   it("7. every comment removed (not committed), then two added back: the entry is 2", () => {
-    fixture();
+    const n = fixture()["lib/x.ts"][RULE].count;
     writeFileSync(path.join(repo, "lib/x.ts"), NO_COMMENTS);
-    expect(editFile("lib/x.ts").code).toBe(0);
+    stopPasses();
     expect(readBaseline()["lib/x.ts"]).toBeUndefined();
     writeFileSync(path.join(repo, "lib/x.ts"), `${NO_COMMENTS}// back one\nexport const d = 4;\n// back two\n`);
     const r = editFile("lib/x.ts");
     expect(r.err).toBe("");
     expect(r.code).toBe(0);
+    expect(allowed("lib/x.ts")).toBe(n);
+    stopPasses();
     expect(allowed("lib/x.ts")).toBe(2);
   }, 60_000);
 });
@@ -666,7 +703,7 @@ describe("verify.mjs allowances follow HEAD, with the real rules", () => {
     // The branch starts here; its merge base still holds x's entry.
     gitIn("update-ref", "refs/remotes/origin/main", "HEAD");
     writeFileSync(path.join(repo, "lib/x.ts"), NO_COMMENTS);
-    expect(editFile("lib/x.ts").code).toBe(0);
+    stopPasses();
     commitAll("clean x");
     expect(headBaseline()).not.toContain('"lib/x.ts"');
     addOneComment("lib/x.ts");
@@ -790,7 +827,7 @@ describe("verify.mjs claims and moves, review round 4", () => {
     expect(at["lib/bx.ts"][RULE].count).toBe(5);
     expect(at["lib/by.ts"][RULE].count).toBe(3);
     writeFileSync(path.join(repo, "lib/by.ts"), big("y", 0));
-    expect(editFile("lib/by.ts").code).toBe(0);
+    stopPasses();
     renameSync(path.join(repo, "lib/bx.ts"), path.join(repo, "lib/by.ts"));
     stopPasses();
     expect(allowed("lib/by.ts")).toBe(5);
@@ -827,7 +864,7 @@ describe("verify.mjs claims and moves, review round 4", () => {
     withBig({ "lib/bx.ts": big("x", 5) });
     gitIn("mv", "lib/bx.ts", "lib/by.ts");
     writeFileSync(path.join(repo, "lib/bx.ts"), big("n", 1));
-    expect(editFile("lib/bx.ts").code).toBe(0);
+    pruneByHand("lib/bx.ts");
     expect(allowed("lib/bx.ts")).toBe(1);
     const r = verify("stop");
     expect(r.code).toBe(2);
@@ -892,7 +929,7 @@ describe("verify.mjs claims and moves, review round 5", () => {
     const n = realLintRepo()["lib/x.ts"][RULE].count;
     gitIn("mv", "lib/x.ts", "lib/y.ts");
     writeFileSync(path.join(repo, "lib/x.ts"), "// one\nexport const other = 1;\n");
-    expect(editFile("lib/x.ts").code).toBe(0);
+    pruneByHand("lib/x.ts");
     expect(allowed("lib/x.ts")).toBe(1);
     rmSync(path.join(repo, "lib/x.ts"));
     stopPasses();

@@ -167,3 +167,25 @@ Known limits, also in the header of `verify.mjs`:
 - The guard parses commands; it does not stop a script written to edit the
   baseline. The pull request gate (a grown total waits for the owner) is
   the backstop.
+
+## Changed: `edit` no longer prunes (owner, 2026-11-22)
+
+Requirement 1 had `edit` prune on every write. An edit made in steps can
+pass through a state that parses with a suppressed violation gone. That
+run lowered the count, and the finished file, which still had the violation,
+then failed. Only the owner can raise a count back.
+
+- `edit` lints with `--pass-on-unpruned-suppressions` and no
+  `--prune-suppressions`: a count that fell neither fails nor is written.
+  A count that rose still fails, with the same "allows N, now has M" line.
+- `task` and `stop` keep `--prune-suppressions`, so the baseline still only
+  goes down, at task end and at stop. `guard.mjs` is unchanged.
+- Until then the working baseline can hold counts above what the files have.
+  A commit made before a task or stop run carries them, and `pnpm lint`
+  fails on them ("suppressions left that do not occur anymore") until they
+  are pruned: by the next task or stop run, or by
+  `eslint --prune-suppressions <files>`.
+- Checked by `.claude/hooks/verify.test.ts`: "a step with a comment gone
+  exits 0 and leaves the baseline byte for byte, so the finished file with it
+  back passes", and "task/stop on the state with a comment gone lowers the
+  file's count".
