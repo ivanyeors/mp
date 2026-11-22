@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { listAdminProducts } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
 import { stripeMode } from "@/lib/stripe/mode";
@@ -22,11 +23,12 @@ export default async function SettingsProductsPage({
     const [{ lang }, { tab }] = await Promise.all([params, searchParams]);
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-    await requireAdminPage("products", locale);
+    const ctx = await requireAdminPage("products", locale);
 
     const [products, categoryTree] = await Promise.all([
         listAdminProducts(
             new URLSearchParams({ page: "1", limit: "20", include_custom: "true" }),
+            { canSeeCost: hasPermission(ctx, "costings") },
         ),
         getCategoryTree(),
     ]);
