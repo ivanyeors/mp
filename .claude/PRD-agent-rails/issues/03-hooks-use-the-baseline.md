@@ -175,17 +175,41 @@ pass through a state that parses with a suppressed violation gone. That
 run lowered the count, and the finished file, which still had the violation,
 then failed. Only the owner can raise a count back.
 
-- `edit` lints with `--pass-on-unpruned-suppressions` and no
+The baseline still only goes down. It now goes down at commit, at task end
+and at stop, never on an edit. `guard.mjs` is unchanged.
+
+- **Edit** lints with `--pass-on-unpruned-suppressions` and no
   `--prune-suppressions`: a count that fell neither fails nor is written.
   A count that rose still fails, with the same "allows N, now has M" line.
-- `task` and `stop` keep `--prune-suppressions`, so the baseline still only
-  goes down, at task end and at stop. `guard.mjs` is unchanged.
-- Until then the working baseline can hold counts above what the files have.
-  A commit made before a task or stop run carries them, and `pnpm lint`
-  fails on them ("suppressions left that do not occur anymore") until they
-  are pruned: by the next task or stop run, or by
-  `eslint --prune-suppressions <files>`.
+- **Commit**: `.githooks/pre-commit` runs `scripts/lint-baseline.mjs
+  --prune-staged`. For each code file being committed that has an entry in
+  the staged baseline, it lints the staged content and lowers that entry to
+  what it has (ESLint's prune: a count only falls, a rule with none left
+  goes). A file deleted in the commit loses its entry. It writes the result
+  as the staged baseline and stages nothing else. It starts from the staged
+  baseline, not the working file, so a count lowered in the working file for
+  a file outside the commit stays out of it. The working file's entries for
+  the committed files are lowered to what was committed. So no commit carries
+  a count `pnpm lint` fails as unused ("suppressions left that do not occur
+  anymore"), a commit made before any task or stop run and a worker's in its
+  own worktree included. It never fails a commit: without `node_modules` or
+  `node` it says the baseline is not pruned, and CI's lint is the backstop.
+  It costs nothing when no staged code file has an entry, and about as long
+  as one ESLint run when one does (5 s for a 2,100-line component).
+- **Task and stop** keep `--prune-suppressions` on every changed file, in the
+  working file.
+- **Installed** with `pre-push`: `scripts/git-identity` sets `core.hooksPath`
+  to the relative `.githooks`, so git runs the hook from the root of the
+  worktree that is committing, from that worktree's own checkout.
 - Checked by `.claude/hooks/verify.test.ts`: "a step with a comment gone
   exits 0 and leaves the baseline byte for byte, so the finished file with it
-  back passes", and "task/stop on the state with a comment gone lowers the
-  file's count".
+  back passes", "task/stop on the state with a comment gone lowers the
+  file's count", and the block "the pre-commit step commits a pruned
+  baseline" (lowered count committed; unrelated commit leaves the baseline
+  untouched; a commit cannot raise a count; staged content, not the working
+  copy; a worker's worktree; no `node_modules`). `scripts/lint-baseline.test.ts`
+  checks `lowerEntry` never raises.
+
+Known limit: a move committed without staging the baseline is not carried
+over by the commit step either (it drops the old path's entry, as ESLint's
+prune would). CI is red on that commit, as before.

@@ -8,13 +8,31 @@
 //   node scripts/lint-baseline.mjs --against <ref>    ... against <ref> (or --against=<ref>)
 //
 //   node scripts/lint-baseline.mjs --resolve          settle a merge conflict in the file
+//   node scripts/lint-baseline.mjs --prune-staged     the pre-commit step (.githooks/pre-commit)
 //
 // A ref that exists but has no baseline file counts as zero, and says so; a
 // ref that does not exist is named as such, not read as zero. Reporting
 // exits 0 on every outcome, problems included, so nothing gates on it by
 // accident; slice 03's hooks do the gating.
 //
-// --resolve is the one mode that writes. After a merge leaves conflict
+// --prune-staged makes every commit carry a pruned baseline (owner,
+// 2026-11-22). verify.mjs's edit hook does not prune, so without it a commit
+// made before a task or stop run carries counts above what its files have,
+// which `pnpm lint` fails as unused suppressions. For each code file being
+// committed that has an entry in the staged baseline, it lints the STAGED
+// content with ESLint and lowers that entry to what it has (ESLint's prune:
+// a count only falls, a rule with none left goes); a file deleted in the
+// commit loses its entry. The result goes in the index as the baseline and
+// nothing else is staged: it starts from the index's baseline, not the
+// working file, so a count lowered in the working file for a file not in
+// this commit stays out of it. The working file's entries for those files
+// are lowered to what was committed, never raised, so the per-commit ratchet
+// holds there too. It never fails the commit: if it cannot run it says so,
+// and CI's lint is the backstop. A run of verify.mjs writing the working
+// file at the same moment can lose one of the two writes; both only lower
+// or restore HEAD's amount, and the next task or stop run redoes either.
+//
+// --resolve and --prune-staged are the modes that write. After a merge leaves conflict
 // markers in the baseline, Claude can neither edit the file (settings.json
 // denies it) nor take one side (guard.mjs blocks checkout over changes), and
 // every hook run would fail. It reads the three index stages of the file and
@@ -23,7 +41,8 @@
 // conflict it says so, changes nothing and exits 1.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -159,9 +178,104 @@ function resolve() {
   return 0;
 }
 
+// The files verify.mjs lints.
+const CODE = /\.(ts|tsx|mts|js|jsx|mjs)$/;
+
+/**
+ * Lower `file`'s entry in `baseline` to `cap` ({ rule: { count } }, or
+ * undefined for none), in place: a count above the cap falls to it, a rule
+ * the cap does not hold goes, and so does an entry left empty. Never raises.
+ */
+export function lowerEntry(baseline, file, cap) {
+  const entry = baseline[file];
+  if (!entry) return;
+  for (const rule of Object.keys(entry)) {
+    const max = cap?.[rule]?.count ?? 0;
+    if (max === 0) delete entry[rule];
+    else if (entry[rule].count > max) entry[rule] = { count: max };
+  }
+  if (Object.keys(entry).length === 0) delete baseline[file];
+}
+
+// ESLint counts a suppressed violation the same way: an error with a rule id.
+const countByRule = (messages) => {
+  const counts = {};
+  for (const m of messages) if (m.severity === 2 && m.ruleId) (counts[m.ruleId] ??= { count: 0 }).count++;
+  return counts;
+};
+
+async function pruneStaged() {
+  const root = git(["rev-parse", "--show-toplevel"]).trim();
+  const at = (args, input) =>
+    execFileSync("git", ["-C", root, ...args], {
+      encoding: "utf8",
+      input,
+      stdio: [input === undefined ? "ignore" : "pipe", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  let staged;
+  try {
+    staged = JSON.parse(at(["show", `:${FILE}`]));
+  } catch {
+    return;
+  }
+  const withEntry = (filter) =>
+    at(["diff", "--cached", "--no-renames", "--name-only", "-z", `--diff-filter=${filter}`])
+      .split("\0")
+      .filter((f) => f && CODE.test(f) && staged[f]);
+  const committed = withEntry("AMT");
+  const deleted = withEntry("D");
+  if (committed.length === 0 && deleted.length === 0) return;
+
+  // This checkout's own eslint only: one installed elsewhere on the machine
+  // resolves too, and lints by a config it cannot load.
+  const own = path.join(root, "node_modules/eslint");
+  if (!existsSync(path.join(own, "package.json"))) {
+    console.error(`lint-baseline: no eslint in ${root}/node_modules, so ${FILE} in this commit is not pruned. Run \`pnpm install --frozen-lockfile\`.`);
+    return;
+  }
+  const { ESLint } = createRequire(path.join(root, "package.json"))(own);
+  const eslint = new ESLint({ cwd: root });
+  const lowered = [];
+  const lower = (f, cap) => {
+    const was = JSON.stringify(staged[f]);
+    lowerEntry(staged, f, cap);
+    if (JSON.stringify(staged[f]) !== was) lowered.push(f);
+  };
+  for (const f of committed) {
+    const [result] = await eslint.lintText(at(["show", `:${f}`]), { filePath: path.join(root, f), warnIgnored: false });
+    // A file ESLint ignores or cannot parse keeps its entry, as verify.mjs keeps it.
+    if (result && result.fatalErrorCount === 0) lower(f, countByRule(result.messages));
+  }
+  for (const f of deleted) lower(f, undefined);
+  if (lowered.length === 0) return;
+  const blob = at(["hash-object", "-w", "--stdin"], formatBaseline(staged)).trim();
+  at(["update-index", "--cacheinfo", `100644,${blob},${FILE}`]);
+
+  const workingFile = path.join(root, FILE);
+  let working = null;
+  try {
+    working = JSON.parse(readFileSync(workingFile, "utf8"));
+  } catch {}
+  if (working) {
+    const was = formatBaseline(working);
+    for (const f of lowered) lowerEntry(working, f, staged[f]);
+    if (formatBaseline(working) !== was) {
+      const tmp = `${workingFile}.${process.pid}.tmp`;
+      writeFileSync(tmp, formatBaseline(working));
+      renameSync(tmp, workingFile);
+    }
+  }
+  console.error(`lint-baseline: lowered ${FILE} in this commit for ${lowered.join(", ")}`);
+}
+
 function main(argv) {
   if (argv.includes("--resolve")) {
     process.exitCode = resolve();
+    return;
+  }
+  if (argv.includes("--prune-staged")) {
+    pruneStaged().catch((e) => console.error(`lint-baseline: ${FILE} in this commit is not pruned: ${e?.message ?? e}`));
     return;
   }
   const current = readWorkingTree();

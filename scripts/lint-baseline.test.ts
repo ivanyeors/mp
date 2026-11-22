@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { formatBaseline, mergeBaselines, parseAgainst, totalsByRule } from "./lint-baseline.mjs";
+import { formatBaseline, lowerEntry, mergeBaselines, parseAgainst, totalsByRule } from "./lint-baseline.mjs";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "lint-baseline.mjs");
 const repo = path.resolve(path.dirname(script), "..");
@@ -91,6 +91,22 @@ describe("mergeBaselines", () => {
 
   it("is symmetric", () => {
     expect(mergeBaselines(base, ours, theirs)).toEqual(mergeBaselines(base, theirs, ours));
+  });
+});
+
+describe("lowerEntry (the pre-commit step's prune)", () => {
+  const c = (count: number) => ({ count });
+  it("lowers a count to the cap, drops a rule the cap lacks, and never raises", () => {
+    const b = { "lib/a.ts": { fell: c(3), same: c(2), rose: c(1), gone: c(4) }, "lib/b.ts": { r: c(1) } };
+    lowerEntry(b, "lib/a.ts", { fell: c(1), same: c(2), rose: c(9) });
+    expect(b).toEqual({ "lib/a.ts": { fell: c(1), same: c(2), rose: c(1) }, "lib/b.ts": { r: c(1) } });
+  });
+
+  it("drops an entry left empty, and leaves a file with no entry alone", () => {
+    const b = { "lib/a.ts": { r: c(2) } };
+    lowerEntry(b, "lib/a.ts", undefined);
+    lowerEntry(b, "lib/none.ts", { r: c(5) });
+    expect(b).toEqual({});
   });
 });
 

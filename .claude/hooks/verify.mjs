@@ -33,11 +33,14 @@
 // --pass-on-unpruned-suppressions, so a count that fell neither fails nor is
 // written. An edit is often one step of several, and a step that parses with
 // a suppressed violation gone would lower the count, then fail the finished
-// file that still has it; only the owner can raise a count back. Until a task
-// completes or the session stops, the baseline can hold counts above what the
-// files have. A commit made before then carries them, and `pnpm lint`, strict
-// about unused suppressions, fails until a task or stop run (or `eslint
-// --prune-suppressions` on those files) lowers them.
+// file that still has it; only the owner can raise a count back. So a count
+// that fell goes down at two other points. A commit lowers the entries of the
+// code files it commits to what their staged content has, in the commit and
+// in the working file (.githooks/pre-commit, `scripts/lint-baseline.mjs
+// --prune-staged`), so no commit carries a count `pnpm lint` fails as unused,
+// a worker's in its own worktree included. task and stop prune every changed
+// file in the working file. In between, the working baseline can hold counts
+// above what the files have, and nothing fails on that.
 //
 // The baseline is keyed by path, and an entry can go missing: a move (git mv
 // or a plain mv), several moves in a row, a move back, a prune run between a

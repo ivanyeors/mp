@@ -494,6 +494,104 @@ describe("verify.mjs edit in a worker's worktree", () => {
   });
 });
 
+// The pre-commit step (.githooks/pre-commit, which runs scripts/lint-baseline.mjs
+// --prune-staged), installed in the fixture the way scripts/git-identity
+// installs it: core.hooksPath set to the relative path .githooks.
+describe("the pre-commit step commits a pruned baseline, with the real rules", () => {
+  function withHook() {
+    const original = realLintRepo();
+    mkdirSync(path.join(repo, ".githooks"));
+    copyFileSync(path.join(HERE, ".githooks/pre-commit"), path.join(repo, ".githooks/pre-commit"));
+    chmodSync(path.join(repo, ".githooks/pre-commit"), 0o755);
+    copyFileSync(path.join(HERE, "scripts/lint-baseline.mjs"), path.join(repo, "scripts/lint-baseline.mjs"));
+    gitIn("config", "core.hooksPath", ".githooks");
+    gitIn("add", ".githooks", "scripts/lint-baseline.mjs");
+    gitIn("commit", "-q", "-m", "hooks");
+    return original;
+  }
+  const commit = (cwd: string, ...files: string[]) => {
+    execFileSync("git", ["-C", cwd, "add", "--", ...files]);
+    return spawnSync("git", ["-C", cwd, "commit", "-q", "-m", "change"], { encoding: "utf8" });
+  };
+  const committedCount = (rel: string, cwd = repo) =>
+    JSON.parse(execFileSync("git", ["-C", cwd, "show", "HEAD:eslint-suppressions.json"], { encoding: "utf8" }))[rel]?.[RULE]?.count;
+  const lines = (s: string) => s.split("\n").filter(Boolean).sort();
+
+  it("a commit that removes a suppressed violation commits the lowered count, and the working baseline matches", () => {
+    const n = withHook()["lib/x.ts"][RULE].count;
+    removeOneComment("lib/x.ts");
+    const r = commit(repo, "lib/x.ts");
+    expect(r.status, r.stderr).toBe(0);
+    expect(committedCount("lib/x.ts")).toBe(n - 1);
+    expect(allowed("lib/x.ts")).toBe(n - 1);
+    expect(lines(gitIn("show", "--name-only", "--format=", "HEAD"))).toEqual(["eslint-suppressions.json", "lib/x.ts"]);
+    expect(gitIn("status", "--porcelain")).toBe("");
+  }, 60_000);
+
+  it("a commit of unrelated files leaves the baseline untouched, and a count lowered for a file not committed stays out", () => {
+    const n = withHook()["lib/w.ts"][RULE].count;
+    const atHead = headBaseline();
+    removeOneComment("lib/w.ts");
+    pruneByHand("lib/w.ts");
+    const working = readFileSync(baselineFile(), "utf8");
+    writeFileSync(path.join(repo, "lib/other.ts"), "export const other = 1;\n");
+    writeFileSync(path.join(repo, "lib/x.ts"), PRODUCT.replace("export const c = 3;", "export const c = 4;"));
+    const r = commit(repo, "lib/other.ts", "lib/x.ts");
+    expect(r.status, r.stderr).toBe(0);
+    expect(headBaseline()).toBe(atHead);
+    expect(readFileSync(baselineFile(), "utf8")).toBe(working);
+    expect(allowed("lib/w.ts")).toBe(n - 1);
+    expect(lines(gitIn("show", "--name-only", "--format=", "HEAD"))).toEqual(["lib/other.ts", "lib/x.ts"]);
+    expect(lines(gitIn("status", "--porcelain"))).toEqual([" M eslint-suppressions.json", " M lib/w.ts"]);
+  }, 60_000);
+
+  it("a commit cannot raise a count: a file over its count is committed with the count it had", () => {
+    const n = withHook()["lib/x.ts"][RULE].count;
+    addOneComment("lib/x.ts");
+    const r = commit(repo, "lib/x.ts");
+    expect(r.status, r.stderr).toBe(0);
+    expect(committedCount("lib/x.ts")).toBe(n);
+    expect(allowed("lib/x.ts")).toBe(n);
+  }, 60_000);
+
+  it("prunes what is staged, not the working copy, and the working entry follows what was committed", () => {
+    withHook();
+    writeFileSync(path.join(repo, "lib/x.ts"), NO_COMMENTS);
+    gitIn("add", "lib/x.ts");
+    writeFileSync(path.join(repo, "lib/x.ts"), PRODUCT);
+    const r = spawnSync("git", ["-C", repo, "commit", "-q", "-m", "clean x"], { encoding: "utf8" });
+    expect(r.status, r.stderr).toBe(0);
+    expect(committedCount("lib/x.ts")).toBeUndefined();
+    expect(readBaseline()["lib/x.ts"]).toBeUndefined();
+    expect(editFile("lib/x.ts").code).toBe(2);
+  }, 60_000);
+
+  it("runs in a worker's worktree from that worktree's own checkout, and prunes that worktree's baseline", () => {
+    const n = withHook()["lib/x.ts"][RULE].count;
+    const worktree = path.join(repo, ".claude/worktrees/w");
+    gitIn("worktree", "add", "-q", "-b", "worker", worktree);
+    linkedNodeModules(worktree);
+    rmSync(path.join(repo, ".githooks/pre-commit"));
+    writeFileSync(path.join(worktree, "lib/x.ts"), PRODUCT.replace("// second\n", ""));
+    const r = commit(worktree, "lib/x.ts");
+    expect(r.status, r.stderr).toBe(0);
+    expect(committedCount("lib/x.ts", worktree)).toBe(n - 1);
+    expect(committedCount("lib/x.ts")).toBe(n);
+    expect(allowed("lib/x.ts")).toBe(n);
+  }, 60_000);
+
+  it("without node_modules the commit goes through and says the baseline in it is not pruned", () => {
+    const n = withHook()["lib/x.ts"][RULE].count;
+    rmSync(path.join(repo, "node_modules"), { recursive: true, force: true });
+    removeOneComment("lib/x.ts");
+    const r = commit(repo, "lib/x.ts");
+    expect(r.status).toBe(0);
+    expect(r.stderr).toContain("eslint-suppressions.json in this commit is not pruned");
+    expect(r.stderr).toContain("pnpm install --frozen-lockfile");
+    expect(committedCount("lib/x.ts")).toBe(n);
+  }, 60_000);
+});
+
 // The allowance rule (verify.mjs header): a file with no working entry gets
 // what HEAD's baseline holds for the file git says it was at HEAD; a file new
 // since HEAD gets nothing. Scenarios 1 to 7 run twice: with the merge base at
