@@ -47,6 +47,61 @@ and scope by membership via `templateIdsForKey` from
 
 ---
 
+## A Balance payment refunded before Accept still counts as paid
+
+**Where:** `app/api/results/[id]/accept/route.ts` (the intent check: `status` and
+`amount_received` only); `app/api/stripe/webhook/route.ts` →
+`settleSucceededRefunds` (no Order, nothing recorded)
+**Status:** open, pre-existing, found 2026-11-22 in the money review of the
+`refund.updated` handler, by reading. Accept was not traced through to its
+ledger write.
+
+A Result's Balance payment is stamped on `mp_config_responses.topup_payment_intent_id`
+before any Order exists. If it is refunded then (Staff in the Stripe Dashboard,
+as the webhook's own "refund or settle it by hand" alert suggests), neither
+`charge.refunded` nor `refund.updated` finds an Order, so nothing is recorded and
+nobody is told. Accept checks only the intent's status and `amount_received`,
+which a refund does not change, so it can still treat the payment as paid.
+
+**If you fix it:** have Accept refuse an intent whose charge has refunds, and
+alert Staff when a succeeded refund matches no Order.
+
+## A refund webhook that fails after its ledger row loses its side effects
+
+**Where:** `app/api/stripe/webhook/route.ts` → `settleSucceededRefunds`
+(`if (newlyRecorded === 0) return;`); `lib/ecommerce/money-ledger.ts` →
+`rollupOrderMoney`
+**Status:** open, pre-existing (moved unchanged from the `charge.refunded` case),
+found 2026-11-22 in the money review, by reading
+
+The ledger insert is the idempotency claim. If anything after it throws (the
+timeline event, the points clawback), Stripe redelivers, the insert hits the
+unique index and the handler stops. The Order then gets no refund email, label
+cancel, commission void or coupon decrement, and maybe no points clawback.
+`rollupOrderMoney` also ignores its own update error, so `orders.amount_refunded`
+and status can stay stale while the ledger row exists.
+
+**If you fix it:** on a redelivery that records nothing, still roll up and re-run
+the steps that are idempotent per refund id (the clawback already is), and make
+the email and the full-refund steps idempotent too.
+
+## A retried `charge.refunded` after `refund.failed` records a refund that failed
+
+**Where:** `app/api/stripe/webhook/route.ts`, the `charge.refunded` case
+**Status:** open, pre-existing, found 2026-11-22 in the money review. Fixed for
+`refund.updated`, which re-reads the refund from Stripe before recording it.
+
+`refund.failed` posts its reversal only when the refund already has a ledger
+row. If a `charge.refunded` delivery carrying the refund as `succeeded` fails
+(a 500), the refund then fails, and the retry lands after `refund.failed`, the
+retry records the refund and nothing reverses it: the Order reads refunded,
+points are clawed back and the customer is emailed for money that never left.
+
+**If you fix it:** re-read each refund not yet in the ledger from Stripe before
+recording it, as `refund.updated` does.
+
+---
+
 ## A refunded return frees its lines to be returned and refunded again
 
 **Where:** `lib/rma/create.ts` → `openReturnedQtyByOrder`

@@ -699,7 +699,8 @@ export async function POST(req: Request) {
       }
 
       case "refund.updated": {
-        const refund = event.data.object as Stripe.Refund;
+        if ((event.data.object as Stripe.Refund).status !== "succeeded") break;
+        const refund = await getStripe().refunds.retrieve((event.data.object as Stripe.Refund).id);
         if (refund.status !== "succeeded") break;
         const paymentIntentId =
           typeof refund.payment_intent === "string"

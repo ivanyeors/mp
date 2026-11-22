@@ -32,8 +32,15 @@ describe("cancel words", () => {
     expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel", bare: false, anyway: false }]);
   });
 
-  it.each(["cancel anyway", "Cancel Anyway "])("%j confirms a cancel after the visit-day warning", (body) => {
-    expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel", bare: false, anyway: true }]);
+  it.each(["cancel anyway", "Cancel Anyway ", '"cancel anyway"', "“Cancel anyway”", "Cancel anyway.", "cancel anyway!"])(
+    "%j confirms a cancel after the visit-day warning",
+    (body) => {
+      expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel", bare: false, anyway: true }]);
+    },
+  );
+
+  it.each(['"cancel appointment"', "Cancel booking.", "cancel."])("%j still reads as a cancel", (body) => {
+    expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel" }]);
   });
 });
 

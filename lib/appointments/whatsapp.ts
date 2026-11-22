@@ -281,6 +281,8 @@ const CANCEL_WORDS = new Set([...BARE_CANCEL_WORDS, "cancel appointment", "cance
 
 const STOP_WORDS = new Set(["stop", "unsubscribe", "stop messages", "stop sending"]);
 
+const QUOTES_AND_FULL_STOP = /^["'“”‘’]+|["'“”‘’.!]+$/g;
+
 export function parseInboundActions(
   payload: unknown,
   phoneNumberId?: string,
@@ -356,7 +358,7 @@ export function parseInboundActions(
         }
 
         if (msg.type === "text") {
-          const body = (msg.text?.body ?? "").trim().toLowerCase();
+          const body = (msg.text?.body ?? "").trim().toLowerCase().replace(QUOTES_AND_FULL_STOP, "");
           if (body === "confirm" || body === "yes") {
             out.push({ kind: "confirm", fromE164, messageId });
           } else if (body === "reschedule" || body === "no") {

@@ -79,15 +79,21 @@ generally, of which PayNow is simply the first.
 `refund.updated` with `succeeded` runs the same code as `charge.refunded`
 (`settleSucceededRefunds` in `app/api/stripe/webhook/route.ts`): ledger row,
 rollup, RMA settle, points clawback, full-refund side effects and the refund
-email, all once per refund id. Test: `app/api/stripe/webhook/__tests__/async-refund.test.ts`.
+email, all once per refund id. It first re-reads the refund from Stripe and
+trusts that status, not the event's: a retried "succeeded" event that lands
+after `refund.failed` would otherwise record a refund that never happened.
+Test: `app/api/stripe/webhook/__tests__/async-refund.test.ts`.
 
 Deliberately not built:
 
-- **A timeline event for a pending refund.** Every refund this site issues
-  already writes `refund_initiated` on the Order when it is created.
+- **A timeline event for a pending refund.** The Order refund, refund-request
+  and RMA paths already note the refund on the Order when they create it (the
+  Order cancel writes `cancel_initiated`). A refund made in the Stripe Dashboard
+  is not noted until it settles.
 - **Dead-lettering an unmatched refund.** It does what `charge.refunded` does:
-  records nothing. Since ADR 0038 the Order is found by its ledger charge rows
-  too, so a Result's Balance payment is matched.
+  records nothing. Nothing reads `stripe_webhook_failures`, so a dead-letter row
+  would tell no one. The one real case, a Balance payment refunded before
+  Accept, is in `docs/known-issues.md`.
 
 Still open: subscribing `we_1UEpVxCMlMx7bA76xFJYdCCj` to `refund.updated`
 (checked 2026-11-22: 10 events, `refund.updated` not among them). Until then

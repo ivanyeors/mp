@@ -10,9 +10,20 @@ const h = vi.hoisted(() => ({
   ledger: [] as Array<{ orderId: string; amount: number; stripeObjectId: string }>,
   emails: [] as Array<{ orderId: string; amountRefunded: number }>,
   rma: [] as string[],
+  liveStatus: null as string | null,
 }));
 
-vi.mock("@/lib/stripe/client", () => ({ getStripe: () => ({ webhooks: { constructEvent: () => h.event } }) }));
+vi.mock("@/lib/stripe/client", () => ({
+  getStripe: () => ({
+    webhooks: { constructEvent: () => h.event },
+    refunds: {
+      retrieve: async (id: string) => {
+        const sent = (h.event as { data: { object: { id: string } } }).data.object;
+        return { ...sent, id, status: h.liveStatus ?? (sent as { status: string }).status };
+      },
+    },
+  }),
+}));
 vi.mock("@/lib/supabase/server", async () => {
   const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
   return { supabaseAdmin: () => fakeSupabaseAdmin(h.db) };
@@ -94,6 +105,7 @@ beforeEach(() => {
   h.ledger = [];
   h.emails = [];
   h.rma = [];
+  h.liveStatus = null;
   h.db = {
     orders: [
       {
@@ -148,6 +160,16 @@ describe("Stripe webhook — a refund that settles later (PayNow)", () => {
   it("settles the return a refund was issued for", async () => {
     await deliver("refund.updated", refund("succeeded", { rma_request_id: "rma-7" }));
     expect(h.rma).toEqual(["rma-7"]);
+  });
+
+  it("a stale succeeded retry after the refund failed records nothing, since Stripe now says failed", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    await deliver("refund.failed", { ...refund("failed"), failure_reason: "expired_or_canceled_card" });
+    err.mockRestore();
+    h.liveStatus = "failed";
+    expect((await deliver("refund.updated", refund("succeeded"))).status).toBe(200);
+    expect(h.ledger).toEqual([]);
+    expect(h.emails).toEqual([]);
   });
 
   it("a refund on an intent no Order was paid on records nothing", async () => {

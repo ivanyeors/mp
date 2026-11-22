@@ -205,7 +205,7 @@ async function settleFee(
     };
     const REFUND_BY_HAND = "Refund it from the Order today.";
     const CHECK_METHOD =
-      "Check how it was paid, then refund it from the Order; for PayNow you can add points instead.";
+      "Check how it was paid: refund a card from the Order; for PayNow, refund by hand or add points.";
 
     let method: string | null;
     try {
@@ -221,13 +221,13 @@ async function settleFee(
           "Paid re-adjustment cancelled — paid by PayNow, so not refunded automatically",
           who,
           `${orderRef} · ${sgd(amount, currency)} paid`,
-          `Refund it from the Order, or add ${formatPointsCount(Math.round(amount * POINTS_PER_DOLLAR))} on their customer page, then tell them which.`,
+          `Refund it by hand, or add ${formatPointsCount(Math.round(amount * POINTS_PER_DOLLAR))} on their customer page, then tell them which.`,
         ].join("\n"),
       );
       await note(
         order.id,
         "readjustment_cancelled",
-        `Re-adjustment cancelled by ${by === "customer" ? "the customer" : "Staff"}. Paid by PayNow: refund it from the Order or add points.`,
+        `Re-adjustment cancelled by ${by === "customer" ? "the customer" : "Staff"}. Paid by PayNow: refund by hand or add points.`,
         { readjustment_booking_id: booking.id },
       );
       return { kind: "paynow", fee };
