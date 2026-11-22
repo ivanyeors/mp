@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
+import { Tabs as TabsPrimitive } from "radix-ui"
 import { ChevronDown } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 /**
  * The active value, mirrored out of Radix. Radix keeps it in a private context,

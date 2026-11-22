@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 // Padding and gap read --card-py / --card-px / --card-gap (default 1.5rem), so a
 // surface can tighten every card inside it at once: the Admin Panel shell sets

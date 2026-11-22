@@ -1,9 +1,4 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+export { cn } from "cn";
 
 export function getApiErrorMessage(error: unknown, fallback = "Something went wrong"): string {
   if (error == null) return fallback;

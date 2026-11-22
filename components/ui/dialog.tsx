@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { Dialog as DialogPrimitive } from "radix-ui"
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
@@ -165,5 +165,4 @@ export {
   DialogTitle,
   DialogDescription,
 }
-
 
