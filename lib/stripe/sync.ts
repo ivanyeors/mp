@@ -378,7 +378,7 @@ export async function createPaymentLink(productId: string) {
   if (!product) throw new Error("Product not found");
   if (!hasPaymentLinkColumns(product)) {
     throw new Error(
-      "This database has no payment link columns for Stripe test mode yet. Apply supabase/migrations/20261121120000_stripe_payment_link_per_mode.sql first.",
+      "This database has no payment link columns for Stripe test mode yet. Apply supabase/migrations/20261122094459_stripe_payment_link_per_mode.sql first.",
     );
   }
 
