@@ -57,6 +57,7 @@ vi.mock("@/lib/supabase/server", async () => {
   };
 });
 vi.mock("@/lib/shop/customer-addresses", () => ({ getCurrentCustomerId: vi.fn(async () => h.session) }));
+vi.mock("@/lib/analytics/journey/stitch-server", () => ({ stitchShopperVisitor: async () => {} }));
 vi.mock("@/lib/auth/partner", () => ({
   getPartnerContext: h.getPartnerContext,
   isPartnerActive: (ctx: { status?: string; partnerId?: string | null } | null) =>
