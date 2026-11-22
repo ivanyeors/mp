@@ -166,3 +166,5 @@ Four facts about today's code shape the rest:
   precedent for chaining a daily job onto `results-sla` instead of a third cron.
 - [ADR 0023 — RBAC: roles are data, permissions are code](0023-rbac-roles-are-data-permissions-are-code.md):
   the permission catalog `customers-edit` joins.
+- [ADR 0055 — View and Edit keys per page](0055-view-and-edit-keys-per-page.md):
+  makes decision (i) the rule for every Admin Panel page.
