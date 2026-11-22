@@ -25,6 +25,7 @@ import {
   marginPct,
   sizesToPush,
   unsyncedSizes,
+  waitingOnCostings,
   type InventoryFamily,
 } from "@/lib/ecommerce/inventory-families";
 
@@ -75,11 +76,10 @@ function PushForm({
   const [error, setError] = useState<string | null>(null);
 
   const pushingSizes = sizesToPush(family.sizes);
-  const unsynced = unsyncedSizes(family.category, pushingSizes, canSeeCost);
+  const unsynced = unsyncedSizes(family.category, pushingSizes);
   const belowCost = canSeeCost
     ? pushingSizes.filter((s) => s.costCents != null && s.msrpCents != null && s.msrpCents <= s.costCents)
     : [];
-  const needs = canSeeCost ? "a cost and MSRP" : "an MSRP";
   const ready = pushingSizes.length > 0 && unsynced.length === 0;
   const adding = family.push === "partial";
   const inShop = family.productStatus === "active";
@@ -177,19 +177,25 @@ function PushForm({
         </table>
       </div>
 
-      {unsynced.length > 0 ? (
+      {unsynced.length > 0 && !canSeeCost ? (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <CircleDollarSign className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div className="space-y-1">
+            <p className="font-medium">Waiting on Costings</p>
+            <p>{waitingOnCostings(family.category, unsynced)}</p>
+          </div>
+        </div>
+      ) : unsynced.length > 0 ? (
         <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           <CircleDollarSign className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <div className="space-y-2">
             <p>
               {unsynced.length === pushingSizes.length && !many
-                ? `Add ${needs} in Costings before this goes to Products.`
-                : `${unsynced.length} of ${pushingSizes.length} sizes need ${needs} in Costings before this goes to Products.`}
+                ? "Add a cost and MSRP in Costings before this goes to Products."
+                : `${unsynced.length} of ${pushingSizes.length} sizes need a cost and MSRP in Costings before this goes to Products.`}
             </p>
             <Button asChild size="sm" variant="outline">
-              <Link href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}>
-                {canSeeCost ? "Add cost in Costings" : "Add MSRP in Costings"}
-              </Link>
+              <Link href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}>Add cost in Costings</Link>
             </Button>
           </div>
         </div>

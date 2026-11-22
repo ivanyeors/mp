@@ -47,6 +47,7 @@ import {
   familyKey,
   needsCosting,
   unsyncedSizes,
+  waitingOnCostings,
   type CostingPrices,
   type InventoryFamily,
 } from "@/lib/ecommerce/inventory-families";
@@ -937,7 +938,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             const category = group.key.startsWith("category:") ? group.key.slice("category:".length) : null;
             const hasLowStock = category != null && lowStockCategories.has(category);
             const unpricedCount = costing
-              ? group.items.filter((it) => needsCosting(it.category, pricesOf(it.id), canSeeCost)).length
+              ? group.items.filter((it) => needsCosting(it.category, pricesOf(it.id))).length
               : 0;
             return (
               <div
@@ -959,7 +960,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                         variant="outline"
                         className="border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300"
                       >
-                        {unpricedCount} need{unpricedCount === 1 ? "s" : ""} {canSeeCost ? "a cost" : "an MSRP"}
+                        {unpricedCount} need{unpricedCount === 1 ? "s" : ""} a cost
                       </Badge>
                     ) : null}
                     {hasLowStock ? <Badge variant="destructive">Low stock</Badge> : null}
@@ -2137,11 +2138,11 @@ function ComposedSectionHeading({ label, slug, imageUrls, setImageUrls }: {
   );
 }
 
-function CostingLine({ item, prices, canSeeCost }: { item: Item; prices: CostingPrices; canSeeCost: boolean }) {
-  const gaps = costingGaps(item.category, prices, canSeeCost);
+function CostingLine({ item, prices }: { item: Item; prices: CostingPrices }) {
+  const gaps = costingGaps(item.category, prices);
   const money = (cents: number) => formatCurrency(cents / 100);
   const known = [
-    canSeeCost && prices.costCents != null ? `Cost ${money(prices.costCents)}` : null,
+    prices.costCents != null ? `Cost ${money(prices.costCents)}` : null,
     prices.msrpCents != null ? `MSRP ${money(prices.msrpCents)}` : null,
   ].filter(Boolean);
   if (gaps.length === 0) {
@@ -2213,22 +2214,37 @@ function FamilyPushBar({ name, family, canSeeCost, onPush }: {
   onPush: (family: InventoryFamily) => void;
 }) {
   if (!family || family.push === "pushed") return null;
-  if (unsyncedSizes(family.category, family.sizes, canSeeCost).length > 0) return null;
+  const unsynced = unsyncedSizes(family.category, family.sizes);
+  if (unsynced.length > 0 && canSeeCost) return null;
+  const waiting = unsynced.length > 0;
   const partial = family.push === "partial";
   const newSizes = family.sizes.filter((s) => s.productId == null).length;
   return (
     <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-3 py-2">
-      <p className="text-xs text-muted-foreground">
-        {partial
-          ? `${newSizes} new size${newSizes === 1 ? " isn't" : "s aren't"} in Products yet.`
-          : "Priced in Costings. Ready for Products."}
-      </p>
+      {waiting ? (
+        <div className="min-w-0 space-y-1">
+          <Badge
+            variant="outline"
+            className="border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300"
+          >
+            Waiting on Costings
+          </Badge>
+          <p className="text-xs text-muted-foreground">{waitingOnCostings(family.category, unsynced)}</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {partial
+            ? `${newSizes} new size${newSizes === 1 ? " isn't" : "s aren't"} in Products yet.`
+            : "Priced in Costings. Ready for Products."}
+        </p>
+      )}
       <Button
         type="button"
         size="sm"
         variant="outline"
         className="h-8 shrink-0 gap-1.5 px-2.5"
         aria-label={partial ? `Add new sizes of ${name} to Products` : `Push ${name} to Products`}
+        disabled={waiting}
         onClick={() => onPush(family)}
       >
         <PackagePlus className="h-4 w-4" />
@@ -2528,7 +2544,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                                 <InventoryItemLabel item={variant} />
                               )}
                               <div className="mt-1 text-xs text-muted-foreground">On hand: {onHand}</div>
-                              {costing ? <CostingLine item={variant} prices={costing.prices[variant.id] ?? NO_PRICES} canSeeCost={costing.canSeeCost} /> : null}
+                              {costing ? <CostingLine item={variant} prices={costing.prices[variant.id] ?? NO_PRICES} /> : null}
                             </div>
                             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                               {isRenaming ? (

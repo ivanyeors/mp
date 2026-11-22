@@ -67,22 +67,22 @@ export function toCents(value: string | number | null | undefined): number | nul
   return Number.isFinite(v) ? Math.round(v * 100) : null;
 }
 
-export type CostingPrices = { costCents: number | null; msrpCents: number | null };
+export type CostingPrices = { costCents: number | null; msrpCents: number | null; costHidden?: boolean };
 export type CostingField = "cost" | "msrp";
 
-export function costingGaps(category: string, prices: CostingPrices, canSeeCost = true): CostingField[] {
+export function costingGaps(category: string, prices: CostingPrices): CostingField[] {
   const gaps: CostingField[] = [];
-  if (canSeeCost && prices.costCents == null) gaps.push("cost");
+  if (prices.costCents == null && !prices.costHidden) gaps.push("cost");
   if (isShopListableCategory(category) && prices.msrpCents == null) gaps.push("msrp");
   return gaps;
 }
 
-export function needsCosting(category: string, prices: CostingPrices, canSeeCost = true): boolean {
-  return costingGaps(category, prices, canSeeCost).length > 0;
+export function needsCosting(category: string, prices: CostingPrices): boolean {
+  return costingGaps(category, prices).length > 0;
 }
 
 export function withoutCost<T extends CostingPrices>(prices: T): T {
-  return { ...prices, costCents: null };
+  return prices.costCents == null ? prices : { ...prices, costCents: null, costHidden: true };
 }
 
 export function familiesWithoutCost(families: InventoryFamily[]): InventoryFamily[] {
@@ -92,6 +92,16 @@ export function familiesWithoutCost(families: InventoryFamily[]): InventoryFamil
 export function describeCostingGaps(gaps: CostingField[]): string {
   if (gaps.length === 2) return "a cost and an MSRP";
   return gaps[0] === "msrp" ? "an MSRP" : "a cost";
+}
+
+function whoAddsIt(gaps: CostingField[]): string {
+  return `Someone with Costings access needs to add ${describeCostingGaps(gaps)}.`;
+}
+
+export function waitingOnCostings(category: string, unsynced: CostingPrices[]): string {
+  const gaps = [...new Set(unsynced.flatMap((s) => costingGaps(category, s)))];
+  const lead = unsynced.length === 1 ? "A size isn't" : `${unsynced.length} sizes aren't`;
+  return `${lead} priced in Costings yet. ${whoAddsIt(gaps)}`;
 }
 
 export function marginPct(costCents: number | null, msrpCents: number | null): number | null {
@@ -104,6 +114,7 @@ export type FamilySize = {
   size: string | null;
   costCents: number | null;
   msrpCents: number | null;
+  costHidden?: boolean;
   productId: string | null;
 };
 
@@ -131,8 +142,8 @@ export function sizesToPush<T extends Pick<FamilySize, "productId">>(sizes: T[])
   return sizes.filter((s) => s.productId == null);
 }
 
-export function unsyncedSizes<T extends CostingPrices>(category: string, sizes: T[], canSeeCost = true): T[] {
-  return sizes.filter((s) => needsCosting(category, s, canSeeCost));
+export function unsyncedSizes<T extends CostingPrices>(category: string, sizes: T[]): T[] {
+  return sizes.filter((s) => needsCosting(category, s));
 }
 
 export function mainProductId(sizes: Pick<FamilySize, "productId">[]): string | null {
@@ -176,7 +187,9 @@ export function checkPushPrices(
     if (gaps.length > 0) {
       return {
         reason: "not_synced",
-        message: `${sizeLabel(size.size)} needs ${describeCostingGaps(gaps)} in Costings first.`,
+        message: canSeeCost
+          ? `${sizeLabel(size.size)} needs ${describeCostingGaps(gaps)} in Costings first.`
+          : `${sizeLabel(size.size)} isn't priced in Costings yet. ${whoAddsIt(gaps)}`,
       };
     }
     if ((size.msrpCents ?? 0) <= 0) {

@@ -91,7 +91,10 @@ const signInAs = (role: AdminRole) => {
 };
 
 beforeEach(() => {
-  h.itemPrices = new Map([[1, { item_id: 1, cost_price: "12.50", msrp: "39.00" }]]);
+  h.itemPrices = new Map([
+    [1, { item_id: 1, cost_price: "12.50", msrp: "39.00" }],
+    [3, { item_id: 3, cost_price: null, msrp: "20.00" }],
+  ]);
   h.upserts = [];
   h.inserts = [];
   h.inactiveDuplicate = null;
@@ -107,9 +110,14 @@ describe("a role with inventory but not costings (Staff)", () => {
   it("gets no item cost from getInventoryCostingState, in prices or in families", async () => {
     const state = await getInventoryCostingState();
     expect(state.canSeeCost).toBe(false);
-    expect(state.prices[1]).toEqual({ costCents: null, msrpCents: 3900 });
-    expect(state.families[0]!.sizes[0]).toMatchObject({ costCents: null, msrpCents: 3900 });
+    expect(state.prices[1]).toEqual({ costCents: null, msrpCents: 3900, costHidden: true });
+    expect(state.families[0]!.sizes[0]).toMatchObject({ costCents: null, msrpCents: 3900, costHidden: true });
     expect(JSON.stringify(state)).not.toContain("1250");
+  });
+
+  it("is told an item has no cost yet, so it can wait on Costings", async () => {
+    const state = await getInventoryCostingState();
+    expect(state.prices[3]).toEqual({ costCents: null, msrpCents: 2000 });
   });
 
   it("cannot set a cost on a new item, and nothing is written", async () => {

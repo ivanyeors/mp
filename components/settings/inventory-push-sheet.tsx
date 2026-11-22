@@ -22,6 +22,7 @@ import {
   costingsHrefFor,
   sizesToPush,
   unsyncedSizes,
+  waitingOnCostings,
   type InventoryFamily,
 } from "@/lib/ecommerce/inventory-families";
 
@@ -113,8 +114,7 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
     list.push(family);
     byCategory.set(family.category, list);
   }
-  const ready = rows.filter((f) => unsyncedSizes(f.category, sizesToPush(f.sizes), canSeeCost).length === 0).length;
-  const needs = canSeeCost ? "a cost and MSRP" : "an MSRP";
+  const ready = rows.filter((f) => unsyncedSizes(f.category, sizesToPush(f.sizes)).length === 0).length;
 
   return (
     <>
@@ -139,34 +139,40 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                 </div>
                 <ul className="divide-y">
                   {group.map((family) => {
-                    const unsynced = unsyncedSizes(family.category, sizesToPush(family.sizes), canSeeCost);
+                    const unsynced = unsyncedSizes(family.category, sizesToPush(family.sizes));
+                    const waiting = unsynced.length > 0 && !canSeeCost;
                     return (
                       <li key={family.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{family.title}</div>
                           <div className="text-xs text-muted-foreground">{detail(family)}</div>
-                          {unsynced.length > 0 ? (
+                          {waiting ? (
+                            <div className="text-xs text-amber-700 dark:text-amber-300">
+                              Waiting on Costings. {waitingOnCostings(family.category, unsynced)}
+                            </div>
+                          ) : unsynced.length > 0 ? (
                             <div className="text-xs text-amber-700 dark:text-amber-300">
                               {unsynced.length === 1 && sizesToPush(family.sizes).length === 1
-                                ? `Needs ${needs} in Costings`
-                                : `${unsynced.length} size${unsynced.length === 1 ? " needs" : "s need"} ${needs} in Costings`}
+                                ? "Needs a cost and MSRP in Costings"
+                                : `${unsynced.length} size${unsynced.length === 1 ? " needs" : "s need"} a cost and MSRP in Costings`}
                             </div>
                           ) : null}
                         </div>
-                        {unsynced.length > 0 ? (
+                        {unsynced.length > 0 && canSeeCost ? (
                           <Button asChild size="sm" variant="outline" className="shrink-0">
                             <Link
                               href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}
-                              aria-label={`Add ${canSeeCost ? "cost" : "MSRP"} for ${family.title} in Costings`}
+                              aria-label={`Add cost for ${family.title} in Costings`}
                             >
                               <CircleDollarSign className="mr-1.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
-                              {canSeeCost ? "Add cost" : "Add MSRP"}
+                              Add cost
                             </Link>
                           </Button>
                         ) : (
                           <Button
                             size="sm"
                             className="shrink-0"
+                            disabled={waiting}
                             onClick={() => setPushing(family)}
                             aria-label={`Push ${family.title} to Products`}
                           >

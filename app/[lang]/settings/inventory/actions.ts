@@ -16,7 +16,7 @@ import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
 import { setProductBaseImage, syncItemImageToProducts } from '@/lib/ecommerce/item-image-sync'
 import { resolveAddonImageUrls } from '@/lib/results/addon-images'
 import { listInventoryFamilies } from '@/lib/ecommerce/shop-listings'
-import { familiesWithoutCost, toCents, type CostingPrices, type InventoryFamily } from '@/lib/ecommerce/inventory-families'
+import { familiesWithoutCost, toCents, withoutCost, type CostingPrices, type InventoryFamily } from '@/lib/ecommerce/inventory-families'
 
 function scheduleMirrorReResolve(variantIds: number[]) {
   after(() => {
@@ -430,10 +430,8 @@ export async function getInventoryCostingState(): Promise<{
   if (error) throw new Error(error.message)
   const prices: Record<number, CostingPrices> = {}
   for (const row of data ?? []) {
-    prices[Number(row.item_id)] = {
-      costCents: canSeeCost ? toCents(row.cost_price) : null,
-      msrpCents: toCents(row.msrp),
-    }
+    const price = { costCents: toCents(row.cost_price), msrpCents: toCents(row.msrp) }
+    prices[Number(row.item_id)] = canSeeCost ? price : withoutCost(price)
   }
   return { canSeeCost, prices, families: canSeeCost ? families : familiesWithoutCost(families) }
 }

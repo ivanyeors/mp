@@ -3,10 +3,22 @@ import { click, settle, until } from "@/components/block-editor/__tests__/dom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CostingPrices } from "@/lib/ecommerce/inventory-families";
+import type { CostingPrices, FamilySize, InventoryFamily } from "@/lib/ecommerce/inventory-families";
 
 type Row = Record<string, unknown>;
-type CostingState = { canSeeCost: boolean; prices: Record<number, CostingPrices>; families: [] };
+type CostingState = { canSeeCost: boolean; prices: Record<number, CostingPrices>; families: InventoryFamily[] };
+
+const coverFamily = (name: string, size: FamilySize): InventoryFamily => ({
+  key: `cover\u0000${name}`,
+  category: "cover",
+  name,
+  title: `${name} Cover`,
+  sizes: [size],
+  push: "new",
+  productId: null,
+  productSlug: null,
+  productStatus: null,
+});
 
 const h = vi.hoisted(() => ({ costing: null as CostingState | null }));
 
@@ -102,11 +114,17 @@ async function openCovers() {
   return until(() => sheetTitled("Covers"));
 }
 
+const buttonIn = (root: ParentNode, label: string) =>
+  root.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
 describe("Inventory for a role with inventory but not costings", () => {
   const hidden: CostingState = {
     canSeeCost: false,
-    prices: { 1: { costCents: null, msrpCents: 3900 }, 2: { costCents: null, msrpCents: null } },
-    families: [],
+    prices: { 1: { costCents: null, msrpCents: 3900, costHidden: true }, 2: { costCents: null, msrpCents: 4200 } },
+    families: [
+      coverFamily("Silk", { itemId: 1, size: "M", costCents: null, msrpCents: 3900, costHidden: true, productId: null }),
+      coverFamily("Satin", { itemId: 2, size: "S", costCents: null, msrpCents: 4200, productId: null }),
+    ],
   };
 
   it("has no cost price input when adding an item, only the MSRP", async () => {
@@ -117,15 +135,28 @@ describe("Inventory for a role with inventory but not costings", () => {
     expect(sheet.querySelector("#add-item-msrp-0")).not.toBeNull();
   });
 
-  it("shows no cost and no missing-cost prompt on the tile or in the drawer, only the MSRP", async () => {
+  it("shows no cost figure, only which item still needs one, and no Costings link", async () => {
     await mountWith(hidden);
-    expect(coversTile()!.textContent).toContain("1 needs an MSRP");
-    expect(coversTile()!.textContent).not.toContain("a cost");
+    expect(coversTile()!.textContent).toContain("1 needs a cost");
     const drawer = await openCovers();
     expect(drawer.textContent).toMatch(/MSRP \S*39\.00/);
-    expect(drawer.textContent).toContain("Needs an MSRP in Costings");
-    expect(drawer.textContent).not.toMatch(/Cost \S*\d|a cost/);
+    expect(drawer.textContent).toContain("Needs a cost in Costings");
+    expect(drawer.textContent).not.toMatch(/Cost \S*\d/);
     expect(drawer.querySelector('[aria-label^="Add cost for"]')).toBeNull();
+  });
+
+  it("can push a family whose sizes all have a cost, and sees one with no cost waiting on Costings", async () => {
+    await mountWith(hidden);
+    const drawer = await openCovers();
+    expect(buttonIn(drawer, "Push Silk to Products")?.disabled).toBe(false);
+    const satinPush = buttonIn(drawer, "Push Satin to Products")!;
+    expect(satinPush.disabled).toBe(true);
+    const satinBar = satinPush.parentElement!;
+    expect(satinBar.textContent).toContain("Waiting on Costings");
+    expect(satinBar.textContent).toContain(
+      "A size isn't priced in Costings yet. Someone with Costings access needs to add a cost.",
+    );
+    expect(satinBar.textContent).not.toContain("Ready for Products");
   });
 });
 
@@ -133,7 +164,10 @@ describe("Inventory for a role with costings keeps today's view", () => {
   const visible: CostingState = {
     canSeeCost: true,
     prices: { 1: { costCents: 1250, msrpCents: 3900 }, 2: { costCents: null, msrpCents: null } },
-    families: [],
+    families: [
+      coverFamily("Silk", { itemId: 1, size: "M", costCents: 1250, msrpCents: 3900, productId: null }),
+      coverFamily("Satin", { itemId: 2, size: "S", costCents: null, msrpCents: null, productId: null }),
+    ],
   };
 
   it("has the cost price input when adding an item", async () => {
@@ -149,5 +183,8 @@ describe("Inventory for a role with costings keeps today's view", () => {
     expect(drawer.textContent).toMatch(/Cost \S*12\.50/);
     expect(drawer.textContent).toContain("Needs a cost and an MSRP in Costings");
     expect(drawer.querySelector('[aria-label^="Add cost for"]')).not.toBeNull();
+    expect(buttonIn(drawer, "Push Silk to Products")?.disabled).toBe(false);
+    expect(buttonIn(drawer, "Push Satin to Products")).toBeNull();
+    expect(drawer.textContent).not.toContain("Waiting on Costings");
   });
 });
