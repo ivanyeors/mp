@@ -8,7 +8,13 @@ import {
 } from "./actions-minutes.mjs";
 
 const report = (usageItems: unknown[]) => ({ usageItems });
-const linux = (quantity: number) => ({ product: "actions", sku: "actions_linux", unitType: "minutes", quantity });
+const linux = (quantity: number) => ({
+  product: "actions",
+  sku: "actions_linux",
+  unitType: "minutes",
+  quantity,
+  grossAmount: quantity * 0.006,
+});
 
 const answer = (status: number, body: unknown) => async () =>
   new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
@@ -17,35 +23,41 @@ const base = { token: "t", owner: "ivanyeors", pauseAtValue: "", now: new Date("
 
 describe("minutesUsed", () => {
   it("adds Actions minutes across days and repositories", () => {
-    expect(minutesUsed(report([linux(1200), linux(400)]))).toBe(1600);
+    expect(minutesUsed(report([linux(1200), linux(400)]))).toBeCloseTo(1600);
+  });
+
+  it("counts a one-CPU ubuntu-slim minute as the third of a standard minute it costs", () => {
+    const slim = { product: "actions", sku: "actions_linux_slim", unitType: "minutes", quantity: 300, grossAmount: 0.6 };
+    expect(minutesUsed(report([linux(100), slim]))).toBeCloseTo(200);
   });
 
   it("leaves out storage and other products", () => {
     const items = [
       linux(100),
-      { product: "actions", sku: "actions_storage", unitType: "GigabyteHours", quantity: 9000 },
-      { product: "packages", sku: "packages_storage", unitType: "GigabyteHours", quantity: 500 },
-      { product: "copilot", sku: "copilot_premium_request", unitType: "requests", quantity: 70 },
+      { product: "actions", sku: "actions_storage", unitType: "GigabyteHours", quantity: 9000, grossAmount: 2 },
+      { product: "packages", sku: "packages_storage", unitType: "GigabyteHours", quantity: 500, grossAmount: 1 },
+      { product: "copilot", sku: "copilot_premium_request", unitType: "requests", quantity: 70, grossAmount: 2.8 },
     ];
-    expect(minutesUsed(report(items))).toBe(100);
+    expect(minutesUsed(report(items))).toBeCloseTo(100);
   });
 
-  it("reads both spellings of the product, unit and amount", () => {
+  it("reads both spellings of the product and unit", () => {
     const items = [
-      { product: "Actions", sku: "Actions Linux", unitType: "Minutes", quantity: 10 },
-      { product: "actions", sku: "actions_linux", unitType: "minutes", grossQuantity: 20, netQuantity: 0 },
+      { product: "Actions", sku: "Actions Linux", unitType: "Minutes", grossAmount: 0.06 },
+      { product: "actions", sku: "actions_linux", unitType: "minutes", grossAmount: 0.12 },
     ];
-    expect(minutesUsed(report(items))).toBe(30);
+    expect(minutesUsed(report(items))).toBeCloseTo(30);
   });
 
-  it("counts gross minutes, not only what was billed past the allowance", () => {
-    const item = { product: "actions", unitType: "minutes", grossQuantity: 1900, discountQuantity: 1900, netQuantity: 0 };
-    expect(minutesUsed(report([item]))).toBe(1900);
+  it("counts gross use, not only what was billed past the allowance", () => {
+    const item = { product: "actions", unitType: "minutes", grossAmount: 11.4, discountAmount: 11.4, netAmount: 0 };
+    expect(minutesUsed(report([item]))).toBeCloseTo(1900);
   });
 
   it("refuses an answer it does not recognise rather than reading it as none used", () => {
     expect(() => minutesUsed({})).toThrow(/usageItems/);
-    expect(() => minutesUsed(report([{ product: "actions", unitType: "minutes" }]))).toThrow(/no quantity/);
+    expect(() => minutesUsed(report([{ product: "actions", unitType: "minutes", quantity: 5 }]))).toThrow(/no grossAmount/);
+    expect(() => minutesUsed(report([{ product: "actions", unitType: "minutes", grossAmount: null }]))).toThrow(/no grossAmount/);
   });
 });
 

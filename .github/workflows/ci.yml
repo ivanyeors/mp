@@ -131,9 +131,13 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: pnpm install --frozen-lockfile
 
+      # Two threads for the runner's two CPUs: ESLint is single-threaded by
+      # default. Same rules, same baseline, same result (measured November
+      # 2026: 110 s to 95 s on two CPUs). Most of the time is the React
+      # Compiler rules, which are worth keeping.
       - name: Lint
         if: steps.scope.outputs.code == 'true'
-        run: pnpm lint
+        run: pnpm lint --concurrency=2
 
       # `pnpm typecheck` runs `next typegen` first: next-env.d.ts and
       # .next/types/** are gitignored build artefacts that tsconfig.json
@@ -167,7 +171,8 @@ jobs:
   unverified:
     needs: verify
     if: needs.verify.outputs.paused == 'true'
-    runs-on: ubuntu-26.04
+    # One CPU at a third of the 2-core price, for a job that takes seconds.
+    runs-on: ubuntu-slim
     timeout-minutes: 5
     permissions:
       checks: write

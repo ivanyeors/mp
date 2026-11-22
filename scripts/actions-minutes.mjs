@@ -39,24 +39,30 @@ import { pathToFileURL } from "node:url";
 // cost a minute each. On GitHub Free set CI_PAUSE_AT_MINUTES to about 1800.
 export const DEFAULT_PAUSE_AT = 2700;
 
-// Minutes of Actions compute in a usage report from
-// GET /users/{username}/settings/billing/usage. Storage (gigabyte-hours) and
-// other products are not minutes. The report has called the product "Actions"
-// and "actions", and the amount `quantity` and `grossQuantity`, so both of each
-// are read. Gross, not net: net is only what is billed past the allowance, and
-// the point is to stop before there is any.
+// What a "minute" means here: one on the standard 2-core Linux runner. The
+// allowance is dollars, not minutes, and a minute on ubuntu-slim (the small
+// jobs) costs a third as much, so usage is read in dollars and converted.
+export const LINUX_MINUTE_USD = 0.006;
+
+// Minutes of Actions compute, in standard Linux minutes, in a usage report
+// from GET /users/{username}/settings/billing/usage. Storage (gigabyte-hours)
+// and other products are not compute. The report has called the product
+// "Actions" and "actions", so both are read. Gross, not net: net is only what
+// is billed past the allowance, and the point is to stop before there is any.
 export function minutesUsed(report) {
   const items = report?.usageItems;
   if (!Array.isArray(items)) throw new Error("the usage report has no usageItems list");
-  let used = 0;
+  let dollars = 0;
   for (const item of items) {
     if (String(item?.product).toLowerCase() !== "actions") continue;
     if (String(item?.unitType).toLowerCase() !== "minutes") continue;
-    const quantity = Number(item.grossQuantity ?? item.quantity);
-    if (!Number.isFinite(quantity)) throw new Error(`an Actions usage item has no quantity: ${JSON.stringify(item)}`);
-    used += quantity;
+    const amount = Number(item.grossAmount);
+    if (item.grossAmount === null || !Number.isFinite(amount)) {
+      throw new Error(`an Actions usage item has no grossAmount: ${JSON.stringify(item)}`);
+    }
+    dollars += amount;
   }
-  return used;
+  return dollars / LINUX_MINUTE_USD;
 }
 
 export function pauseAt(value) {

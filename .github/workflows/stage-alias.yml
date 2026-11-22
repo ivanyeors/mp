@@ -32,7 +32,8 @@ jobs:
     if: >-
       github.event.deployment_status.state == 'success' &&
       startsWith(github.event.deployment.environment, 'Production')
-    runs-on: ubuntu-latest
+    # One CPU at a third of the 2-core price, for a job that takes seconds.
+    runs-on: ubuntu-slim
     timeout-minutes: 5
     env:
       HAS_TOKEN: ${{ secrets.VERCEL_TOKEN != '' }}
