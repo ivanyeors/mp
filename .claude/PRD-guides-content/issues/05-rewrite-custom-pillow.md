@@ -17,7 +17,7 @@ Triage: ready
 - [ ] `pnpm checks guides` passes.
 - [ ] 1,800–2,800 words; every H2 opens with a direct answer.
 - [ ] At least one fact only Mpillow can state, nothing invented.
-- [ ] `pnpm checks claims guides` passes, then the owner reads the claims against `media-plan.md` §5 and signs off in this file.
+- [ ] `pnpm checks lib/claims.check.ts lib/seo/guides.check.ts` passes, then the owner reads the claims against `media-plan.md` §5 and signs off in this file.
 - [ ] Preview screenshots, desktop and phone, sent to the owner.
 
 ## Blocked by

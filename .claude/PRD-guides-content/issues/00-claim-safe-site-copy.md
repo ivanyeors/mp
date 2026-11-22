@@ -1,8 +1,8 @@
 # Slice 00 — Claim-safe site copy and a claims check (D2, D2b)
 
-Type: AFK (copy plus one check); owner approves the wording below before merge
+Type: AFK (copy plus one check)
 Parent: PRD `guides-content`
-Triage: ready
+Status: built 22 Nov 2026; the owner approved the wording by asking for this slice to ship.
 
 ## Why first
 
@@ -11,17 +11,17 @@ D2 sets the wording for every guide. The same risk already sits in live copy, so
 ## What to build
 
 1. **One shared list** in `lib/claims.ts`: the banned phrases (English and Chinese) and the banned "who it's for" conditions, exported for every check.
-2. **`lib/claims.check.ts`** runs over `lib/i18n/messages/en-US.ts` and `zh-CN.ts`. It must fail on today's copy, and pass after the rewrite below. Slice 02 points the same list at `data/guides/*.md`.
+2. **`lib/claims.check.ts`** runs over every string in `lib/i18n/messages/en-US.ts` and `zh-CN.ts`, plus the copy held in code: the site meta description (`app/layout.tsx`), the Organization JSON-LD, the blog index description, the mp-config ledes, `lib/seo/guides-content.ts`, and the product seeds in `lib/ecommerce/inventory-sync.ts`. It must fail on today's copy (34 problems) and pass after the rewrite below. Slice 02 points the same list at `data/guides/*.md`.
 3. **Rules:** in `docs/marketing-page/persona.md` rule 2 and `.claude/rules/storefront-copy.md`, replace "relief, alignment, posture, sleep quality" with: "support, alignment, comfort, fit, less strain, sleep quality. Never relieve, treat, cure, heal, correct or rehab; never pain-free, orthopaedic pillow, clinically proven or doctor-recommended; never a medical condition as who a product is for (HSA GL-06: a product presented for pain relief is a medical device)."
 4. **Rewrite these strings** (en-US, then the zh-CN equivalents):
 
 | Key | Today | Draft for approval |
 |---|---|---|
-| landing feature (`en-US.ts` ~226) "Ergonomic support, made simple" | "A supportive shape designed to help relieve neck tension and keep you comfortable." | "A supportive shape that keeps your neck comfortable all night." |
+| Basic slide-in feature "Ergonomic support, made simple" (`basicMpillow.features[0]`) | "A supportive shape designed to help relieve neck tension and keep you comfortable." | "A supportive shape that keeps your neck comfortable all night." |
 | `configurationsParagraphs[1]` | "These different configurations support ideal sleeping posture for unrestricted airways." | "Each configuration keeps your head, neck and spine in line while you sleep." |
 | `premiumMpillow.whoItsForIntro` | "…suitable for individuals who have experienced:" | "Our patented M-shaped pillow is fitted to you. It suits people who:" |
 | `premiumMpillow.whoItsForItems` | neck pain; shoulder and cervical spine pain; head and cervical spine surgery; uneven shoulder height (scoliosis); acid reflux; reversed neck; sleep apnea; numb fingers | wake up with a stiff neck or shoulders · find standard pillows too high or too low · have broad or narrow shoulders · switch between back and side sleeping · have a more curved neck (ask about cervical neck support) · have uneven shoulder heights |
-| new `premiumMpillow.whoItsForNote` | — | "Had neck surgery, or have a condition such as sleep apnoea? Ask your doctor first, and bring their advice to your fitting." |
+| `premiumMpillow.whoItsForConclusion` (appended; no new key or component) | "…improve sleep comfort and overnight alignment." | "…improve sleep comfort and overnight alignment. Had neck surgery or have a medical condition? Ask your doctor first, and bring their advice to your fitting." |
 | `cervicalNeckSupport.description` | "Cervical Pillow For Neck Pain" | "Cervical support for a curved neck" |
 | `cervicalNeckSupport.whyDescription` | "…to relieve that neck stiffness or neck pain caused during your sleep." | "Some necks curve more than others. Our cervical neck support fills the space under a curved neck, so it is supported all night." |
 | `benefits[0]` | "Improves Neck Alignment" / "…a more comfortable and pain-free sleep." | "Supports your neck's natural curve" / "The insert fills the space under your neck, so your head and spine stay in line. Your neck muscles take less strain overnight." |
@@ -44,14 +44,24 @@ zh-CN drafts, same keys:
 | `benefits[1].description` | …减轻不适，让你醒来更放松、更不僵硬。 | 在颈部需要的位置提供承托，把压力分散到颈肩，让它们整夜保持放松。 |
 | `benefits[2].description` | …促进更顺畅的呼吸… | 承托稳定、姿势舒适，减少夜间翻身，睡得更安稳。 |
 
-Leave "Duo face cover … breath better when sleeping on the stomach" as a physical description of face room, but fix "breath" to "breathe".
+Found while building, and fixed in the same slice:
+
+| Where | Today | Now |
+|---|---|---|
+| `mbolster.aboutParagraphs[1]` | "…help stomach sleepers breath better…" / 帮助俯睡时更易呼吸 | "…leave room for your face when you sleep on your stomach, and to help keep your spine in line." / 俯睡时为脸部留出空间，并帮助脊柱保持一条直线 |
+| `app/layout.tsx` meta description and Organization JSON-LD | "fitted in-store for neck pain relief and ergonomic sleep" | "fitted in-store for neck support and ergonomic sleep" |
+| Blog index description | "…improving sleep posture, neck pain relief, and choosing the perfect pillow…" | "…sleeping positions, neck support and choosing the right pillow…" |
+| mp-config zh-CN lede | 模块化设计面向缓解颈椎不适… | 模块化设计支持颈椎对齐、人体工学承托与长期舒适… |
+| Premium `seo_answer` seed (`inventory-sync.ts`, `answer-lede-coverage.check.ts`) | "Built for neck pain relief…" / 专为缓解颈椎不适… | "Built for cervical support…" / 专为颈椎承托… |
+
+**Owner step (live data):** the Premium product's live `seo_answer` is stored in the database, so the seed change does not reach it. Paste the new sentences in Settings → Products → Mpillow Premium → SEO (English: "Built for cervical support, modular serviceability, and long-term comfort that goes well beyond one-size foam."; Chinese: "专为颈椎承托、模块化维护与长期舒适而设计，超越一刀切泡沫枕。").
 
 ## Acceptance criteria
 
-- [ ] `pnpm checks claims` fails on `main` today (paste the failing output in the PR), and passes on the branch.
-- [ ] The check also fails if one banned phrase is put back (a test fixture proves it).
-- [ ] Preview screenshots of the Premium Mpillow and Cervical Neck Support slide-ins, desktop and phone, sent to the owner.
-- [ ] Persona rule 2 and `storefront-copy.md` updated in the same PR (a correction becomes a check).
+- [x] `pnpm checks lib/claims.check.ts` fails on `main` today (34 problems, in the PR), and passes on the branch.
+- [x] The check also fails if one banned phrase is put back: it asserts the list flags 12 known-bad sentences and passes 7 safe ones before it scans the copy.
+- [x] Preview screenshots of the Premium, Basic, Cervical Neck Support, size-matters and Mbolster slide-ins, desktop and phone, sent to the owner.
+- [x] Persona rule 2 and `storefront-copy.md` updated in the same PR (a correction becomes a check).
 
 ## Blocked by
 

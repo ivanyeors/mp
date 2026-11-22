@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     template: "%s | Mpillow",
   },
   description:
-    "Singapore's fully customisable cervical pillows and bolsters — fitted in-store for neck pain relief and ergonomic sleep.",
+    "Singapore's fully customisable cervical pillows and bolsters — fitted in-store for neck support and ergonomic sleep.",
   applicationName: "Mpillow",
   openGraph: {
     type: "website",

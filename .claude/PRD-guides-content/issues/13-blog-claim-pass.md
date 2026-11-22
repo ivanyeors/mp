@@ -14,7 +14,7 @@ Triage: ready after slice 00
 
 ## Acceptance criteria
 
-- [ ] `pnpm checks claims` passes over the blog; paste the before count and after count in the PR.
+- [ ] `pnpm checks lib/claims.check.ts` passes over the blog; paste the before count and after count in the PR.
 - [ ] Owner decision on the CPAP post recorded in the PR.
 
 ## Blocked by

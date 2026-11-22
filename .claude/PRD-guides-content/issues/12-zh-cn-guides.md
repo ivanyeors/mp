@@ -20,7 +20,7 @@ Census 2020: Mandarin is the most-spoken home language for 46% of Chinese reside
 
 ## Acceptance criteria
 
-- [ ] `pnpm checks claims guides` passes for zh-CN files.
+- [ ] `pnpm checks lib/claims.check.ts lib/seo/guides.check.ts` passes for zh-CN files.
 - [ ] Each zh-CN guide is 1,800+ Chinese-equivalent words (or matches its English section count) and keeps hreflang pairs with en-US (`localeAlternates`).
 - [ ] Preview screenshots of the three zh-CN guides, desktop and phone.
 

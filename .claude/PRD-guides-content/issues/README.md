@@ -6,7 +6,7 @@ Breakdown of `../guides-content-prd.md`. Each slice is demoable and has a pass/f
 
 | # | Title | Type | Blocked by | User stories |
 |---|-------|------|------------|--------------|
-| 00 | Claim-safe site copy and a claims check (D2, D2b) | AFK + owner OK on wording | none | 16 |
+| 00 | Claim-safe site copy and a claims check (D2, D2b), **built** | AFK | none | 16 |
 | 01 | Record the decisions: glossary and consolidation map | AFK docs | none | 14, 18 |
 | 02 | Guide template v2: Markdown source, layout, About this guide, JSON-LD, checks | AFK | 00 | 1, 9, 10, 13, 16, 17, 18 |
 | 03 | Rewrite `/guides/neck-pain` (absorbs its blog hub) | AFK + owner claim read | 02 | 1–5, 8, 13 |
