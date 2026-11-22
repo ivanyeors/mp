@@ -34,6 +34,14 @@ const CreateShippingMethodSchema = z.object({
 }).refine(courierPinned, COURIER_PIN_ERROR)
   .refine(collectIsFlat, COLLECT_FLAT_ERROR);
 
+function shopperView(method: ShippingMethod) {
+  const view = { ...method };
+  delete view.markup_percent;
+  delete view.markup_fixed;
+  delete view.rate_rounding;
+  return view;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const rawCountry = searchParams.get("country")?.trim().toUpperCase() ?? "";
@@ -48,9 +56,10 @@ export async function GET(req: Request) {
   try {
     const all = (await readShippingMethods(canIncludeInactive, country)) as ShippingMethod[];
     if (canIncludeInactive) return NextResponse.json({ ok: true, rows: all });
-    if (!collect) return NextResponse.json({ ok: true, rows: all.filter((m) => !isSelfCollect(m)) });
+    const shown = all.map(shopperView);
+    if (!collect) return NextResponse.json({ ok: true, rows: shown.filter((m) => !isSelfCollect(m)) });
     const studios = new Map((await getLocations()).map((l) => [l.id, l]));
-    const rows = all.flatMap((m) => {
+    const rows = shown.flatMap((m) => {
       if (!isSelfCollect(m)) return [m];
       const studio = studios.get(m.collect_location_id!);
       if (!studio?.address?.trim()) return [];
