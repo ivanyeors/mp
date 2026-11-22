@@ -1,6 +1,6 @@
 # Every Admin Panel page has a View key and an Edit key; a tab that is a different job gets its own
 
-Status: Proposed (PRD `permissions-view-edit`, owner chose this direction 2026-11-22; accepted with slice 01 once the PRD's "Decisions for the owner" are answered)
+Status: Accepted (owner, 2026-11-22; PRD `permissions-view-edit`)
 
 Amends ADR 0023 and generalises ADR 0028 (i).
 
@@ -31,7 +31,16 @@ directions were weighed:
   tab follows its page.
 - **Edit always comes with View** through `requires`, so the matrix stays boolean. The subset rule
   ("you cannot grant what you do not hold") and `togglePermission` work unchanged.
-- **Pages with no writes have no Edit key.**
+- **Pages with no writes have no Edit key** (Audit log, Docs, Showroom). Shopify link gets none
+  either; it goes with the cutover.
+- **Sending money back is its own key** (owner, 2026-11-22). An edit-only **Refund money** row sits
+  under Orders (`orders-refund`, requires `orders-edit`) and under Returns (`returns-refund`,
+  requires `returns-edit`). A role can process orders and returns without being able to refund.
+  - Every staff path that reaches `refundPayment` requires a Refund money key: the Order refund, approving a
+    refund request, cancelling a paid order, and the RMA refund. An AST test holds this.
+  - Rejecting a refund request, cancelling an unpaid order, and releasing an authorization hold send no
+    money back, so they stay with Edit.
+  - On day one, every role holding `orders` or `returns` gets the matching refund key.
 - **Cost price follows Costings on every page** (owner, 2026-11-22). Whoever sends cost or
   cost-based margin to a page checks `costings`, whatever the page's own key.
 - **Moving a page's writes to Edit never removes access on the day it ships.** A data migration
@@ -50,6 +59,9 @@ directions were weighed:
   every write goes through the service role.
 
 ## Rejected
+
+- **Refunds inside Edit** (the first proposal). The owner rejected it: whoever processes orders or
+  returns should not by default be able to send money back.
 
 - **`<page>:read` as the second key** (ADR 0023's plan). The page key already means "see" in the
   sidebar, `permissionForHref`, `requireAdminPage` and every read. Adding a read key would mean

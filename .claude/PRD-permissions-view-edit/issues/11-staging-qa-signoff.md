@@ -2,7 +2,7 @@
 
 Type: HITL
 Parent: PRD `permissions-view-edit`
-Triage: blocked by 03–10
+Triage: blocked by 03–10 and 12
 Status: todo
 User stories covered: all
 
@@ -19,6 +19,11 @@ On stage.mpillow.com (staged build, live database), with three logins:
    - Orders can be changed.
    - Products is read-only.
    - Page FAQs and Discounts pickers still list products when Products isn't held.
+4. **Refund money.** A role with Orders and Returns Edit but no Refund money:
+   - can fulfil orders, reject a refund request, and process a return up to "received";
+   - sees no Refund, Approve refund, Cancel-and-refund or Issue refund button;
+   - is refused if it tries a refund route directly.
+   Do not send real refunds on staging (live Stripe); check the 403 only.
 
 For each, record a screenshot and pass or fail per page in this issue. Fix the failures, then sign off.
 

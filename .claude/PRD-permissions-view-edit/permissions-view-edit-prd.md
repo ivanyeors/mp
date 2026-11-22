@@ -1,8 +1,8 @@
 # PRD: View and Edit per page (Admin Panel permissions)
 
-Status: Draft. Waiting on the owner's answers to "Decisions for the owner" below.
+Status: Ready. The owner answered every decision on 2026-11-22 (see "Owner decisions" below).
 Source: Owner, 2026-11-22, while closing the #455 known issues: "our pages have sub-pages / tabs, so design options for us to also allow sub-page/tab view/edit permission". The owner chose option A, View + Edit per page, over B (extra rows only where needed) and C (a None / View / Edit level per page and tab).
-ADR: `docs/adr/0055-view-and-edit-keys-per-page.md` (Proposed)
+ADR: `docs/adr/0055-view-and-edit-keys-per-page.md` (Accepted, owner, 2026-11-22)
 Builds on: PRD `users-permissions-rbac` (done), ADR 0023, ADR 0028 (i)
 
 ## Problem Statement
@@ -16,7 +16,7 @@ A **Role** today holds one box per Admin Panel page. Ticking it lets a **Member*
   - Page FAQs (`components/settings/page-faqs-panel.tsx:113`) and the Discount editor (`app/[lang]/settings/discounts/[id]/discount-editor-client.tsx:333`) load their product picker from `/api/shop/products`, which requires `products` (`app/api/shop/products/route.ts:8`). Without it the picker is an empty list.
   - Cost price is meant to be Costings data, but it leaves the server under other boxes. The Inventory page gets every item's cost from `getInventoryCostingState`, under `inventory` (`app/[lang]/settings/inventory/actions.ts:418-422`). The Products page and product editor show and edit variant cost under `products` (`products-client.tsx:139`, `[id]/product-editor-client.tsx:1241`). Analytics' "Sales & margin" tab shows margin under `analytics`. On live data, the Marketing role holds `products`.
 
-The owner's decisions so far: cost price follows the **Costings** box everywhere (2026-11-22). Pages and tabs get View and Edit.
+The owner's decisions (2026-11-22): pages and tabs get View and Edit. Cost price follows the **Costings** box everywhere. Sending money back to a customer is its own box, **Refund money**, under Orders and under Returns.
 
 ## Solution
 
@@ -24,6 +24,7 @@ From the owner's side:
 
 - The Roles grid gets two ticks per role on every page row: **View** (open the page and read it) and **Edit** (change anything on it). Ticking Edit ticks View. Unticking View unticks Edit.
 - A tab that is a different job gets its own indented row under its page, with its own View and Edit. Every other tab follows its page.
+- Orders and Returns each get an edit-only **Refund money** row. A role can process orders and returns without being able to send money back.
 - Every row has one plain line saying what it unlocks, e.g. "Costings: sell prices and cost prices, wherever they appear".
 - A Member with View but not Edit sees the page as it is, with inputs read-only and the buttons that change things hidden. If they try anyway, the server refuses (403).
 - On day one nobody loses or gains anything. Every role that can open a page today keeps Edit on it until the owner unticks it.
@@ -42,6 +43,7 @@ From the developer's side:
 | **Edit** | Holding a page's `-edit` key: every change on that page. Always comes with View. | Edit without View; per-button keys |
 | **Tab row** | A tab or sub-page with its own View/Edit because it is a different job or shows different data. Every other tab follows its page. | A row for every tab |
 | **Read-only mode** | How a page looks with View and no Edit: the same data, inputs disabled, change buttons hidden. | Hiding data in read-only mode (that is a View question, not Edit) |
+| **Refund money** | The edit-only row under Orders and under Returns that lets a Member send money back to a customer (a Stripe refund), including by cancelling a paid order. Requires that page's Edit. | Treating refunds as part of Edit; releasing an authorization hold (no money was taken, so it is not a refund) |
 
 **Permission** is amended: a page has a View key and, where it has writes, an Edit key. The "no view-only level except on Customers" clause goes.
 
@@ -58,6 +60,8 @@ From the developer's side:
 9. As an Owner, I want cost price to show only for roles with Costings, on every page, so that one box decides who sees cost.
 10. As a non-Owner who manages users, I can only grant View and Edit I hold myself, so that the subset rule still holds.
 11. As a developer, I want a test that fails if a page's write path is guarded by its View key, so that a new button cannot skip Edit.
+12. As an Owner, I want refunding to be its own box under Orders and Returns, so that a role can process orders and returns without being able to send money back.
+13. As a developer, I want a test that fails if any staff path that sends a Stripe refund is guarded by anything weaker than a Refund money key, so that a new refund button cannot skip it.
 
 ## Implementation Decisions
 
@@ -67,6 +71,7 @@ From the developer's side:
 - **Edit** is `<page>-edit`: no href, `requires: [<page>]`, label "<Page>: make changes", like `customers-edit` today. `customers-edit` is already this key, and stays as it is.
 - **Tab rows** are `<page>-<tab>` (View, `requires: [<page>]`) and `<page>-<tab>-edit` (`requires: [<page>-<tab>]`), only for the tabs in the table below. A tab without a row follows its page's View and Edit.
 - **`customer-import`** stays as it is: an edit-only row under Customers that requires `customers-edit`.
+- **Refund money** (owner decision 5): `orders-refund` (requires `orders-edit`) and `returns-refund` (requires `returns-edit`). Both are edit-only rows, labelled "Refund money", and are the only keys that let a staff path send a Stripe refund.
 - **`categories`** becomes the Categories tab row's Edit key in meaning. Today any `products` holder sees the Categories tab, and `categories` guards its writes (`/api/shop/categories` POST, `[id]` PATCH/DELETE, `reorder` PUT, `categories/actions.ts:8`). It keeps its key, so no stored role changes. See decision 4.
 - **Pages with no writes** get no Edit key: their row shows View only. Today that is Audit log, Docs and Showroom; no write routes or actions exist under their folders.
 - **Shopify link** gets no Edit key. Shopify is being replaced (CLAUDE.md), and its page goes with the cutover.
@@ -79,16 +84,16 @@ From the developer's side:
 
 "Row" means the tab gets its own View/Edit. A tab earns a row only if it is a different job, or shows data its page's View should not.
 
-| Page (key) | Tabs / sub-pages | Edit key | Proposed tab rows | Why |
+| Page (key) | Tabs / sub-pages | Edit key | Tab rows | Why |
 |---|---|---|---|---|
-| General (`api-configs`) | API configs, Claude key, AI writing, Review SLA | `api-configs-edit` | none | Review SLA moves to Results (decision 6); the rest is one job, setting up integrations |
+| General (`api-configs`) | API configs, Claude key, AI writing | `api-configs-edit` | none | One job, setting up integrations. Review SLA moves to Results (decision 6). |
 | Appointments | Calendar, settings sheet, readjustments | `appointments-edit` | none | One job |
 | Users & permissions (`users`) | Members, Staff profiles, Roles, Telegram | `users-edit` | **Roles** (`users-roles`, `users-roles-edit`) | Changing a role changes what everyone can do; managing members is a different, lower-risk job |
 | Docs | Docs, meta-testers, points, staff-orders | none | none | Read only |
 | Customers | Customers, Follow-ups, Reviews, Settings; Import | `customers-edit` (exists) | **Import** (`customer-import`, exists) | Already split (ADR 0028, 0029) |
-| Results | Status tabs, result detail | `results-edit` | none | One job |
-| Orders | List, detail | `orders-edit` | none | One job. Refunds stay with Edit (decision 5) |
-| Returns / RMA (`returns`) | List, detail | `returns-edit` | none | One job. Refunds stay with Edit (decision 5) |
+| Results | Status tabs, result detail, Review SLA (moved from General) | `results-edit` | none | One job. Review SLA's key was always `results`. |
+| Orders | List, detail | `orders-edit` | **Refund money** (`orders-refund`, edit-only) | Sending money back is a different job from processing orders (decision 5) |
+| Returns / RMA (`returns`) | List, detail | `returns-edit` | **Refund money** (`returns-refund`, edit-only) | Same (decision 5) |
 | Email campaigns (`campaigns`) | List, editor: Write / Send / Results; Funnel | `campaigns-edit` | **Send** (`campaigns-send`, edit-only) | Sending emails real customers; drafting doesn't |
 | Email templates | List, detail | `email-templates-edit` | none | One job |
 | Inventory | One page with cart and sell drawers | `inventory-edit` | none | Cost on it follows Costings (below) |
@@ -121,6 +126,7 @@ The database side is already in place for the browser read of `item_prices` (`ad
 
 One data migration, applied **before** any guard moves:
 - Every custom role that holds a page key gets that page's `-edit` key and its tab rows (View and Edit).
+- Every custom role that holds `orders` gets `orders-refund`, and every one that holds `returns` gets `returns-refund`. Today those keys let a role refund (`app/api/shop/orders/[id]/refund/route.ts:90`, `rma/actions.ts:105`), so nobody loses refunding on day one.
 - `customers-edit` and `customer-import` are already stored and are left alone.
 - `grants_all` roles are skipped.
 - Old code ignores the new keys on read (`permissionsForRoleRow` filters with `isPermission`), so the migration is safe to apply while the current build is serving.
@@ -131,6 +137,30 @@ Live roles (read 2026-11-22): admin and owner (`grants_all`), fulfilment, manage
 ### Roles grid
 
 - Columns are still roles. Each role column splits into **View | Edit** for every row with an Edit key; a View-only row shows one tick.
+
+  ```
+  Page                         Manager       Marketing
+                               View  Edit    View  Edit
+  CRM
+  Orders                        [x]   [x]     [ ]   [ ]
+    Refund money                      [ ]           [ ]
+  Returns / RMA                 [x]   [x]     [ ]   [ ]
+    Refund money                      [x]           [ ]
+  INVENTORY
+  Costings                      [x]   [ ]     [ ]   [ ]
+  STORE
+  Products                      [x]   [x]     [x]   [x]
+    Categories                  [x]   [x]     [x]   [ ]
+  Shipping                      [x]   [ ]     [ ]   [ ]
+    Couriers                    [x]   [ ]     [ ]   [ ]
+  INSIGHTS
+  Audit log                     [x]           [ ]
+  GENERAL
+  Users & permissions           [x]   [ ]     [ ]   [ ]
+    Roles                       [ ]   [ ]     [ ]   [ ]
+  ```
+
+  (Illustration only. On day one every role keeps Edit and Refund money on what it holds today.)
 - Tab rows are indented under their page.
 - Under each label is one muted line, "what this unlocks", from a new catalog field `unlocks`. A test requires it on every Admin Panel key.
 - `togglePermission` (`lib/auth/permission-matrix.ts`) already does most of the work. Ticking Edit adds View through `requires`. Unticking View removes its tab keys (`tabsOf`), and since Edit keys are href-less keys that require the page, they come off too. The toast says "Also turned off Orders: make changes — it needs Orders." No new rule is needed. A slice test proves it for an Edit key and a tab row.
@@ -148,6 +178,22 @@ Live roles (read 2026-11-22): admin and owner (`grants_all`), fulfilment, manage
 - Writes move to `<page>-edit` (or the tab's `-edit`), one page group per slice. A shared write used by two pages takes `assertAnyAdmin` / `requireAnyAdmin` with both Edit keys, as today's shared Inventory actions do.
 - `page-write-guard.test.ts` generalises `customers-write-guard.test.ts`: a table of page → folders. For every exported write method or `"use server"` export in them, the guard must name a key whose `requires` closure includes that page's Edit key. Each slice adds its pages to the table, so the test grows with the rollout.
 - `page-keys-by-route.test.ts` accepts a page's Edit and tab keys inside its folders.
+
+### Refund paths (owner decision 5; money path)
+
+Every staff refund goes through `refundPayment` (`lib/stripe/refunds.ts:12`), from four places (verified 2026-11-22):
+
+| Path | Today | Moves to |
+|---|---|---|
+| `POST /api/shop/orders/[id]/refund` (the Order's refund dialog) | `orders` (`route.ts:90`) | `orders-refund` |
+| `POST /api/shop/orders/[id]/refund-request`, `action: "approve"` (approving a customer's refund request) | `orders` (`route.ts:27`) | `orders-refund`; `reject` sends no money and takes `orders-edit` |
+| `POST /api/shop/orders/[id]/cancel`, on a paid order (refunds while cancelling) | `orders` (`route.ts:16`) | `orders-refund` when it refunds; `orders-edit` when there is nothing to refund |
+| `issueRmaRefund` (`app/[lang]/settings/rma/actions.ts:104`) | `returns` (`:105`) | `returns-refund` |
+
+- Not staff paths, so unchanged: the customer's own `/api/account/orders/[orderNumber]/refund-request` and `cancel`, and the Stripe webhook.
+- Releasing an authorization hold (Result cancel or decline) takes no money back, so it stays with Edit.
+- The Order and RMA pages hide Refund, Approve refund and Cancel and refund without the refund key. Cancel without refund stays with Edit.
+- `refund-guard.test.ts` is an AST test. Every module under `app/` that imports `refundPayment` must guard each exported route or action that reaches it with a key whose `requires` closure includes `orders-refund` or `returns-refund`. Customer `app/api/account/**` routes and the Stripe webhook are named exceptions, each with its reason. A new staff refund path that uses only `orders-edit` fails.
 
 ### Database (RLS)
 
@@ -173,6 +219,7 @@ Live roles (read 2026-11-22): admin and owner (`grants_all`), fulfilment, manage
 | Toggle | Yes | Ticking Edit ticks View; unticking View unticks Edit and tab rows, with the note |
 | Migration | Yes (SQL against a local copy, as `scripts/check-rbac-migrations.sh` does) | For every live role, the permissions after the migration are a superset of before, with exactly the expected `-edit` keys added; running it twice changes nothing |
 | Write guards | Yes | `page-write-guard.test.ts` fails if a write path in a listed folder names only the View key (shown failing on the old code in each slice) |
+| Refund guards | Yes | `refund-guard.test.ts` fails if a staff path reaching `refundPayment` is guarded below a Refund money key; route tests: Orders Edit without Refund money gets 403 on refund, approve and paid cancel, and is served on reject and unpaid cancel |
 | Route gates | Yes | For one write per page: a role with View only gets 403, a role with Edit is served |
 | Read-only mode | Yes, per page group | Renders with `canEdit={false}`: no Save/Delete in the DOM, inputs disabled |
 | Cost follows Costings | Yes | Each cost-returning server path returns `null` cost for a role without `costings` |
@@ -187,20 +234,20 @@ Live roles (read 2026-11-22): admin and owner (`grants_all`), fulfilment, manage
 - Telegram actions.
 - Partner Hub and Customer access.
 
-## Decisions for the owner
+## Owner decisions (2026-11-22)
 
-1. **Tab rows.** Proposed: Users › Roles, Shipping › Couriers, Campaigns › Send (edit-only), Customers › Import (exists), Products › Categories. Add or drop any? Candidates not proposed: Products › In the shop (listing toggles), Users › Telegram, Customers › Reviews, Partners › Agreement.
-2. **Edit always comes with View.** Proposed yes, through `requires`: a role can't edit a page it can't open.
-3. **View-only pages.** Proposed: Audit log, Docs and Showroom show View only (no Edit tick) because nothing on them changes data.
-4. **Categories.** Proposed: Categories becomes a tab row whose View follows Products and whose Edit is today's `categories` key, so no stored role changes. The alternative is a separate View key for the Categories tab.
-5. **Refunds.** Proposed: refunding stays part of Edit on Orders and Returns. The alternative is an edit-only row "Refund money" under each, so a role can process returns without refunding.
-6. **Review SLA.** Proposed: move the Review SLA section from General to the Results page, where its key already is. The alternative is to keep it on General and show it only to holders of `results`.
-7. **Analytics margin.** Proposed: margin and cost on Analytics › Sales & margin follow Costings, like every other cost, with no extra row. The alternative is a "Sales & margin" tab row.
-8. **Shopify link.** Proposed: no Edit key, since it goes with the cutover.
-9. **Day-one migration.** Proposed: every role that holds a page today gets its Edit key, so nothing changes until you untick. The alternative is to start custom roles on View only, which would lock Manager, Marketing and Fulfilment out of changes until re-ticked.
+1. **Tab rows:** exactly Users › Roles, Shipping › Couriers, Campaigns › Send (edit-only), Customers › Import (exists) and Products › Categories, plus the Refund money rows from decision 5. Considered, not now: Products › In the shop (listing toggles), Users › Telegram, Customers › Reviews, Partners › Agreement.
+2. **Edit always comes with View**, through `requires`: a role can't edit a page it can't open.
+3. **Audit log, Docs and Showroom are View only**, with no Edit tick, because nothing on them changes data.
+4. **Categories** is a tab row whose View follows Products and whose Edit is today's `categories` key, so no stored role changes.
+5. **Refunds get their own row.** An edit-only **Refund money** row under Orders (`orders-refund`) and under Returns (`returns-refund`), each requiring that page's Edit. A role can process orders and returns without being able to send money back. Every staff path that sends a Stripe refund moves to it, and an AST test holds it (slice 12). On day one, every role holding `orders` or `returns` gets the matching refund key, so nobody loses access. This changes the original proposal, which kept refunds inside Edit.
+6. **Review SLA** moves from General to the Results page, where its key (`results`) already is.
+7. **Analytics margin and cost** follow Costings, with no extra row.
+8. **Shopify link** gets no Edit key; it goes with the cutover.
+9. **Day-one migration:** every role holding a page today gets its Edit key (and the refund keys in decision 5), so nothing changes until the owner unticks.
 
 ## Further Notes
 
 - Slices live in `.claude/PRD-permissions-view-edit/issues/`.
 - Every slice that changes guards states its failing-then-passing check, per CLAUDE.md "Done means checked".
-- Slices touching money paths (`.claude/rules/money.md`: Costings, Discounts, Orders refunds, Returns, Partner commissions, product variant prices) get the `reviewer` subagent's second check, and wait for the owner.
+- Slices touching money paths (`.claude/rules/money.md`: Costings, Discounts, refunds, Returns, Partner commissions, product variant prices) get the `reviewer` subagent's second check, and wait for the owner.
