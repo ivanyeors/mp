@@ -5,6 +5,7 @@ const h = vi.hoisted(() => ({
   db: {} as FakeDb,
   event: null as unknown,
   telegram: vi.fn(),
+  upsertError: null as { message: string } | null,
   emails: vi.fn(),
   deduct: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock("@/lib/supabase/server", async () => {
         from: (table: string) =>
           Object.assign(fake.from(table), {
             upsert: async (row: Record<string, unknown>) => {
+              if (h.upsertError) return { data: null, error: h.upsertError };
               (h.db[table] ??= []).push(row);
               return { data: null, error: null };
             },
@@ -70,6 +72,7 @@ beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = "whsec";
   vi.clearAllMocks();
   h.telegram.mockResolvedValue("sent");
+  h.upsertError = null;
   h.db = { orders: [], stripe_webhook_failures: [] };
 });
 
@@ -99,9 +102,24 @@ describe("Stripe webhook — a paid Checkout with no Order or Result to attach i
     expect(h.telegram).not.toHaveBeenCalled();
   });
 
-  it("still records it when the Telegram alert fails", async () => {
-    h.telegram.mockRejectedValue(new Error("telegram down"));
+  it.each(["failed", "skipped"])("is still recorded when the Telegram alert is %s", async (result) => {
+    h.telegram.mockResolvedValue(result);
     expect((await deliver("checkout.session.completed", linkSession())).status).toBe(200);
     expect(h.db.stripe_webhook_failures).toHaveLength(1);
   });
+
+  it("answers 200 when the row can't be written but Staff were told", async () => {
+    h.upsertError = { message: "connection reset" };
+    expect((await deliver("checkout.session.completed", linkSession())).status).toBe(200);
+    expect(h.telegram).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["failed", "skipped"])(
+    "answers 500 so Stripe retries when the row can't be written and Telegram %s",
+    async (result) => {
+      h.upsertError = { message: "connection reset" };
+      h.telegram.mockResolvedValue(result);
+      expect((await deliver("checkout.session.completed", linkSession())).status).toBe(500);
+    },
+  );
 });

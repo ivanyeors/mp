@@ -115,5 +115,5 @@ held one, so no customer had paid through one.
 - A paid `checkout.session.completed` with no `order_id` and no `result_id`, from a link made in the
   Stripe Dashboard or anywhere else, is no longer dropped: the webhook writes it to
   `stripe_webhook_failures` and sends it to the Staff Telegram group, to refund or make the Order
-  by hand.
+  by hand. If neither lands it answers 500, so Stripe sends it again.
 - To sell one product outside the shop, Staff make a **Staff order** and send its **Payment link**.

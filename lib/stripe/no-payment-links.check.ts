@@ -7,7 +7,7 @@ const DIRS = ["app", "components", "hooks", "lib", "scripts"];
 const SOURCE = /\.(ts|tsx|js|jsx|mjs)$/;
 const SKIP = /(^|\/)(__tests__|node_modules)(\/|$)|\.(test|check)\.[a-z]+$/;
 
-const STRIPE_PAYMENT_LINKS = /\.paymentLinks\b|\bstripe_payment_link/;
+const STRIPE_PAYMENT_LINKS = /\bpaymentLinks\b|(?<!order_)payment_links\b|\bstripe_payment_link/;
 
 function walk(dir: string, out: string[]) {
   for (const entry of readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {

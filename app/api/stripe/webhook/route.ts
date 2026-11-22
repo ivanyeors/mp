@@ -86,9 +86,9 @@ async function recordWebhookFailure(
   admin: SupabaseClient,
   event: Stripe.Event,
   error: string
-) {
+): Promise<boolean> {
   try {
-    await admin.from("stripe_webhook_failures").upsert(
+    const { error: writeError } = await admin.from("stripe_webhook_failures").upsert(
       {
         event_id: event.id,
         event_type: event.type,
@@ -97,9 +97,12 @@ async function recordWebhookFailure(
       },
       { onConflict: "event_id" }
     );
+    if (!writeError) return true;
+    console.error("[stripe/webhook] Failed to write dead-letter row:", writeError.message);
   } catch (err) {
     console.error("[stripe/webhook] Failed to write dead-letter row:", err);
   }
+  return false;
 }
 
 const CONFIRMABLE_STATUSES = new Set(["pending", "payment_failed"]);
@@ -214,8 +217,9 @@ export async function POST(req: Request) {
             `with no Order or Result to attach it to. No Order was made, no stock was deducted and no receipt was sent. ` +
             `Refund it in Stripe or make the Order by hand.`;
           console.error(`[stripe/webhook] ${detail}`);
-          await recordWebhookFailure(admin, event, detail);
-          await sendTelegram(detail).catch(() => null);
+          const recorded = await recordWebhookFailure(admin, event, detail);
+          const told = (await sendTelegram(detail).catch(() => "failed")) === "sent";
+          if (!recorded && !told) throw new Error(`${detail} It could not be recorded or sent to Staff.`);
           break;
         }
 
