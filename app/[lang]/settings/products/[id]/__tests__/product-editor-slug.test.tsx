@@ -30,7 +30,6 @@ const product = {
   tags: [],
   featured: false,
   is_auto_generated: false,
-  stripe_payment_link: null,
   content: { "en-US": { title: "Cloud Pillow", description: "", body: "", seo_title: "", seo_description: "" } },
   product_variants: [],
   product_images: [],
