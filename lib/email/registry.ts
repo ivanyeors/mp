@@ -32,7 +32,13 @@ import {
 } from "./results";
 import { money } from "./format";
 import { getSiteOrigin } from "@/lib/site-url";
-import { READJUSTMENT_RESCHEDULE_EMAIL_COPY, renderReadjustmentRescheduleEmail } from "./readjustment";
+import {
+  READJUSTMENT_CANCELLED_EMAIL_COPY,
+  READJUSTMENT_RESCHEDULE_EMAIL_COPY,
+  renderReadjustmentCancelledEmail,
+  renderReadjustmentRescheduleEmail,
+  type CancelledFee,
+} from "./readjustment";
 import { PAYMENT_REQUEST_EMAIL_COPY, renderPaymentRequestEmail } from "./payment-request";
 import { RMA_EMAIL_COPY, RMA_EMAIL_TEMPLATES, renderRmaEmail } from "./rma";
 import { ORDER_EMAIL_COPY, ORDER_EMAIL_TEMPLATES, renderOrderEmail } from "./templates";
@@ -61,6 +67,7 @@ import {
   sampleClaimBonus,
   sampleCampaignBlocks,
   sampleComposedCampaign,
+  sampleReadjustmentCancelled,
   sampleReadjustmentReschedule,
   sampleRestock,
   sampleReviewRequest,
@@ -412,6 +419,42 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     audience: "customer",
     copy: READJUSTMENT_RESCHEDULE_EMAIL_COPY,
     render: (f, copy) => renderReadjustmentRescheduleEmail(sampleReadjustmentReschedule(f), copy),
+  },
+  {
+    id: "readjustment.cancelled_refunded",
+    label: "Paid re-adjustment cancelled — refunded",
+    group: "results",
+    audience: "customer",
+    copy: READJUSTMENT_CANCELLED_EMAIL_COPY,
+    render: (f, copy) =>
+      renderReadjustmentCancelledEmail(sampleReadjustmentCancelled(f, "refunded" satisfies CancelledFee), copy),
+  },
+  {
+    id: "readjustment.cancelled_visit_day",
+    label: "Paid re-adjustment cancelled — on the visit day",
+    group: "results",
+    audience: "customer",
+    copy: READJUSTMENT_CANCELLED_EMAIL_COPY,
+    render: (f, copy) =>
+      renderReadjustmentCancelledEmail(sampleReadjustmentCancelled(f, "visit_day" satisfies CancelledFee), copy),
+  },
+  {
+    id: "readjustment.cancelled_paynow",
+    label: "Paid re-adjustment cancelled — paid by PayNow",
+    group: "results",
+    audience: "customer",
+    copy: READJUSTMENT_CANCELLED_EMAIL_COPY,
+    render: (f, copy) =>
+      renderReadjustmentCancelledEmail(sampleReadjustmentCancelled(f, "paynow" satisfies CancelledFee), copy),
+  },
+  {
+    id: "readjustment.cancelled_refund_failed",
+    label: "Paid re-adjustment cancelled — refund failed",
+    group: "results",
+    audience: "customer",
+    copy: READJUSTMENT_CANCELLED_EMAIL_COPY,
+    render: (f, copy) =>
+      renderReadjustmentCancelledEmail(sampleReadjustmentCancelled(f, "refund_failed" satisfies CancelledFee), copy),
   },
 
   {

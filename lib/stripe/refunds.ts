@@ -37,3 +37,9 @@ export async function intentRefundableBalances(
     }),
   );
 }
+
+export async function intentPaymentMethodType(paymentIntentId: string): Promise<string | null> {
+  const intent = await getStripe().paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] });
+  const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+  return charge?.payment_method_details?.type ?? null;
+}
