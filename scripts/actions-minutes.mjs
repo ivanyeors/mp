@@ -33,10 +33,11 @@
 import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-// 90% of GitHub Free's allowance: the rest is left for pull request guards,
+// 90% of GitHub Pro's allowance (about 3,000 Linux minutes), the plan the
+// owner's account is on: the rest is left for pull request guards,
 // auto-merge, Claude review and the paused CI runs themselves, which still
-// cost a minute each. On GitHub Pro set CI_PAUSE_AT_MINUTES to about 2700.
-export const DEFAULT_PAUSE_AT = 1800;
+// cost a minute each. On GitHub Free set CI_PAUSE_AT_MINUTES to about 1800.
+export const DEFAULT_PAUSE_AT = 2700;
 
 // Minutes of Actions compute in a usage report from
 // GET /users/{username}/settings/billing/usage. Storage (gigabyte-hours) and
