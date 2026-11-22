@@ -31,8 +31,11 @@ const { markReadjustmentCancelledByEvent } = await import("@/lib/readjustment/li
 const admin = {
   from: (table: string) => {
     let op = "select";
+    let columns: string[] | null = null;
+    const only = (row: Row) =>
+      columns ? Object.fromEntries(columns.filter((c) => c in row).map((c) => [c, row[c]])) : row;
     const b = {
-      select: () => b,
+      select: (cols?: string) => ((columns = cols ? cols.split(",").map((c) => c.trim()) : null), b),
       update: () => ((op = "update"), b),
       eq: () => b,
       maybeSingle: async () =>
@@ -43,7 +46,7 @@ const admin = {
         Promise.resolve(
           op === "update" && table === "readjustment_bookings" && h.updateError
             ? { data: null, error: h.updateError }
-            : { data: op === "update" && table === "readjustment_bookings" ? h.moved : null, error: null },
+            : { data: op === "update" && table === "readjustment_bookings" ? h.moved.map(only) : null, error: null },
         ).then(resolve),
     };
     return b;
@@ -225,12 +228,25 @@ describe("refundCancelledReadjustment", () => {
     expect(sentText()).toContain("Our team will refund it manually");
   });
 
-  it("does not refund when it can't tell how the fee was paid", async () => {
-    h.method.mockRejectedValue(new Error("stripe timeout"));
-    const out = await refundCancelledReadjustment(admin, booking(), "booked", "customer", early);
-    expect(out.kind).toBe("failed");
+  it("does not refund when it can't tell how the fee was paid, and tells Staff it may be PayNow", async () => {
+    for (const lookup of [() => h.method.mockRejectedValue(new Error("stripe timeout")), () => h.method.mockResolvedValue(null)]) {
+      lookup();
+      h.send.mockClear();
+      h.telegram.mockClear();
+      const out = await refundCancelledReadjustment(admin, booking(), "booked", "customer", early);
+      expect(out.kind).toBe("failed");
+      expect(String(h.telegram.mock.calls[0][0])).toContain("for PayNow, refund by hand or add points");
+      expect(sentText()).toMatch(/couldn't refund your SGD\s32\.70 automatically/);
+    }
     expect(h.refund).not.toHaveBeenCalled();
-    expect(sentText()).toMatch(/couldn't refund your SGD\s32\.70 automatically/);
+  });
+
+  it("does not tell the customer they were refunded when Stripe says the refund failed", async () => {
+    h.refund.mockResolvedValue({ id: "re_1", amount: 3270, status: "failed" });
+    const out = await refundCancelledReadjustment(admin, booking(), "booked", "customer", early);
+    expect(out).toEqual({ kind: "failed", error: "refund re_1 failed", fee: FEE });
+    expect(h.timeline).not.toHaveBeenCalledWith("ord-1", "refund_initiated", expect.anything(), expect.anything());
+    expect(sentText()).toContain("Our team will refund it manually");
   });
 
   it("emails nobody when the fee Order can't be read, since it may already be refunded", async () => {
@@ -259,6 +275,14 @@ describe("markReadjustmentCancelledByEvent", () => {
     h.moved = [booking()];
     await markReadjustmentCancelledByEvent("ev-1", "customer", { now: early }, admin);
     expect(h.refund).toHaveBeenCalledTimes(1);
+  });
+
+  it("emails the customer whose booking it cancelled, with the visit's studio", async () => {
+    h.moved = [booking()];
+    await markReadjustmentCancelledByEvent("ev-1", "customer", { now: early }, admin);
+    const mail = h.send.mock.calls[0][0] as { to: string; text: string };
+    expect(mail.to).toBe("ada@example.com");
+    expect(mail.text).toContain("Mpillow Studio");
   });
 
   it("refunds nothing when another cancel already moved the booking", async () => {

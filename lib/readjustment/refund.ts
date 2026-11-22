@@ -177,29 +177,32 @@ async function settleFee(
       return { kind: "visit_day", fee };
     }
 
-    const stripeFailed = async (e: unknown): Promise<RefundOutcome> => {
-      const message = e instanceof Error ? e.message : String(e);
+    const notRefunded = async (message: string, todo: string): Promise<RefundOutcome> => {
       await sendTelegram(
         [
           "⚠️ Automatic refund failed for a cancelled re-adjustment",
           who,
           `${orderRef} · ${sgd(amount, currency)}`,
           `Stripe: ${message}`,
-          "Refund it from the Order today. They've been told our team will refund it.",
+          `${todo} They've been told our team will refund it.`,
         ].join("\n"),
       );
-      await note(order.id, "refund_failed", `Automatic refund failed: ${message}. Refund from the Order.`, {
+      await note(order.id, "refund_failed", `Automatic refund failed: ${message}. ${todo}`, {
         readjustment_booking_id: booking.id,
       });
       return { kind: "failed", error: message, fee };
     };
+    const REFUND_BY_HAND = "Refund it from the Order today.";
+    const CHECK_METHOD =
+      "Check how it was paid: refund a card from the Order; for PayNow, refund by hand or add points.";
 
     let method: string | null;
     try {
       method = await intentPaymentMethodType(order.payment_reference);
     } catch (e) {
-      return stripeFailed(e);
+      return notRefunded(`couldn't tell how the fee was paid: ${e instanceof Error ? e.message : String(e)}`, CHECK_METHOD);
     }
+    if (!method) return notRefunded("couldn't tell how the fee was paid", CHECK_METHOD);
 
     if (method === "paynow") {
       await sendTelegram(
@@ -231,6 +234,9 @@ async function settleFee(
           refund_reason: by === "customer" ? "readjustment_cancelled_by_customer" : "readjustment_cancelled_by_staff",
         },
       });
+      if (refund.status === "failed" || refund.status === "canceled") {
+        return notRefunded(`refund ${refund.id} ${refund.status}`, REFUND_BY_HAND);
+      }
       const refunded = refund.amount / 100;
       await note(
         order.id,
@@ -247,7 +253,7 @@ async function settleFee(
       );
       return { kind: "refunded", refundId: refund.id, fee: { ...fee, amount: refunded } };
     } catch (e) {
-      return stripeFailed(e);
+      return notRefunded(e instanceof Error ? e.message : String(e), REFUND_BY_HAND);
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
