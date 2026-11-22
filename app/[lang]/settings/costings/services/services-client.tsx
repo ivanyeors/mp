@@ -67,6 +67,8 @@ function toCents(value: string): number | null {
   return Math.round(Number.parseFloat(trimmed) * 100);
 }
 
+const optionalCents = (value: string): number | null => (value.trim() === "" ? null : toCents(value));
+
 function toCount(value: string, max: number): number | null {
   const trimmed = value.trim();
   if (!/^\d+$/.test(trimmed)) return null;
@@ -116,7 +118,7 @@ export default function ServiceFeesClient({
   const valid = Object.keys(errors).length === 0;
 
   async function save() {
-    if (!draft || !valid || saving) return;
+    if (!draft || !saved || !valid || saving) return;
     setSaving(true);
     try {
       const res = await fetch(withLocale("/settings/costings/save", locale), {
@@ -127,11 +129,13 @@ export default function ServiceFeesClient({
           services: SERVICE_KEYS.map((key) => ({
             key,
             msrpCents: toCents(draft.services[key].msrp),
-            costCents: draft.services[key].cost.trim() === "" ? null : toCents(draft.services[key].cost),
+            costCents: optionalCents(draft.services[key].cost),
+            base: { msrpCents: toCents(saved.services[key].msrp), costCents: optionalCents(saved.services[key].cost) },
           })),
           readjustmentPolicy: {
             freeVisits: toCount(draft.freeVisits, READJUSTMENT_POLICY_LIMITS.freeVisits),
             freeWindowDays: toCount(draft.freeWindowDays, READJUSTMENT_POLICY_LIMITS.freeWindowDays),
+            base: { freeVisits: Number(saved.freeVisits), freeWindowDays: Number(saved.freeWindowDays) },
           },
         }),
       });
