@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 
-import { deleteEvent } from "@/lib/appointments/calendar";
+import { deleteEvent, getEventTiming } from "@/lib/appointments/calendar";
 import { cancelAppointment } from "@/lib/appointments/cancel";
 import { getReminderByEventId } from "@/lib/appointments/reminders-db";
 import {
@@ -12,6 +12,7 @@ import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { STAFF_ACTIONS, type StaffAction } from "@/lib/readjustment/lifecycle";
+import { refundCancelledReadjustment } from "@/lib/readjustment/refund";
 import { getSiteSettings } from "@/lib/site-settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -77,8 +78,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
 
+  let liveStart: string | null = null;
   if (action === "cancel" && before.calendar_event_id) {
     const eventId = before.calendar_event_id as string;
+    liveStart = (await getEventTiming(eventId).catch(() => null))?.startsAt ?? null;
     try {
       await deleteEvent(eventId);
     } catch (e) {
@@ -93,7 +96,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const settings = parseAppointmentSettings(
           await getSiteSettings([...APPOINTMENT_SETTING_KEYS]),
         );
-        await cancelAppointment(row, settings, { cause: "removed" });
+        await cancelAppointment(row, settings, { cause: "removed", startsAt: liveStart });
       }
     } catch (e) {
       console.error("[readjustments] cancel notice", e instanceof Error ? e.message : e);
@@ -116,6 +119,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (current?.status !== rule.to) {
       return NextResponse.json({ error: "This booking just changed — refresh" }, { status: 409 });
     }
+  }
+
+  if (action === "cancel" && moved?.length) {
+    await refundCancelledReadjustment(
+      admin,
+      {
+        id,
+        complimentary: before.complimentary as boolean,
+        fee_order_id: (before.fee_order_id as string | null) ?? null,
+        start_at: liveStart ?? (before.start_at as string),
+        guest_name: before.guest_name as string,
+        product_label: before.product_label as string,
+        email: (before.email as string | null) ?? null,
+        location_name: (before.location_name as string | null) ?? null,
+      },
+      before.status as string,
+      "staff",
+    );
   }
 
   if (action === "attended" && before.fee_order_id && before.fee_order_status === "confirmed") {

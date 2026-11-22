@@ -5,6 +5,8 @@ export type ServiceKey = (typeof SERVICE_KEYS)[number];
 
 export type ServicePrice = { msrp: number; costPrice: number | null; currency: string };
 export type ServicePrices = Record<ServiceKey, ServicePrice>;
+export type ServiceFee = Omit<ServicePrice, "costPrice">;
+export type ServiceFees = Record<ServiceKey, ServiceFee>;
 
 export const SERVICE_LABELS: Record<ServiceKey, string> = {
   measurement_premium: "Measurement service (Premium)",
@@ -22,7 +24,7 @@ export function isServiceKey(value: unknown): value is ServiceKey {
   return typeof value === "string" && (SERVICE_KEYS as readonly string[]).includes(value);
 }
 
-type Row = { key: string; msrp: string | number | null; cost_price: string | number | null; currency: string | null };
+type Row = { key: string; msrp: string | number | null; cost_price?: string | number | null; currency: string | null };
 
 export function parseServicePrices(rows: Row[]): ServicePrices {
   const byKey = new Map(rows.map((r) => [r.key, r]));
@@ -47,6 +49,15 @@ export async function loadServicePrices(admin: SupabaseClient): Promise<ServiceP
   const { data, error } = await admin.from("service_prices").select("key, msrp, cost_price, currency");
   if (error) throw new Error(error.message);
   return parseServicePrices((data ?? []) as Row[]);
+}
+
+export async function loadServiceFees(admin: SupabaseClient): Promise<ServiceFees> {
+  const { data, error } = await admin.from("service_prices").select("key, msrp, currency");
+  if (error) throw new Error(error.message);
+  const prices = parseServicePrices((data ?? []) as Row[]);
+  const fees = {} as ServiceFees;
+  for (const key of SERVICE_KEYS) fees[key] = { msrp: prices[key].msrp, currency: prices[key].currency };
+  return fees;
 }
 
 export const READJUSTMENT_POLICY_KEYS = [

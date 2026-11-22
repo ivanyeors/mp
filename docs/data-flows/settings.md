@@ -35,9 +35,13 @@ Add from Inventory answer every other role with no cost, write no cost
 column for it (so a stored cost is kept), and refuse its request that sets
 one. MSRP is not gated.
 
-Cost captured at sale (`order_items.unit_cost` / `total_cost`, a Result
-build's `cogs` and service `costPrice` in `customization_snapshot`) and margin
-(`order_margins`) follow the same permission. Without `costings`, the order
+Cost captured at sale (`order_items.unit_cost` / `total_cost`) and margin
+(`order_margins`) follow the same permission. A Result order line's
+`customization_snapshot` no longer carries the build's `cogs` or a service
+`costPrice` (customers can read it; the trigger in
+`20261122130000_customers_never_see_costs` strips both on every write), and
+the order detail still drops those keys for a role without `costings`, for
+rows written before that migration is applied. Without `costings`, the order
 detail, Orders list and Orders dashboard (page and `/api/shop/orders*`) send
 no cost, COGS or margin and skip the `order_margins` read, and the Orders
 pages drop the Unit cost column, Realized margin card, Margin column and Gross

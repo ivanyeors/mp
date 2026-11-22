@@ -133,7 +133,8 @@ export const RMA_EMAIL_COPY = {
     subject: "Your refund for order {order_number} has been issued",
     heading: "Your refund has been issued",
     status: "Refunded",
-    intro: "Hi {customer_name}, your refund for order {order_number} has been issued.",
+    intro:
+      "Hi {customer_name}, your refund for order {order_number} has been issued. Refunds usually reach your account within 5–10 business days, depending on your bank.",
   }),
 } satisfies Record<RmaEmailTemplateName, EmailCopySpec>;
 

@@ -60,3 +60,4 @@ one is amended to point at it.
 | [0052](0052-partner-application-carries-the-listing.md) | A Partner application carries the public listing, approval publishes it, and a pending applicant can withdraw |
 | [0053](0053-shop-checkout-pays-on-our-page.md) | Shop checkout pays on our page, with Apple Pay and Google Pay beside the card form and beside the checkout button, from the same Checkout Session |
 | [0054](0054-email-funnel-reads-what-is-set-up.md) | The Email funnel is a reading of what is set up, on the Lifecycle stages, and sends nothing: a step is an automatic email or a campaign kept sending |
+| [0055](0055-view-and-edit-keys-per-page.md) | Every Admin Panel page has a View key and an Edit key, and a tab that is a different job gets its own; refunding is a separate key |

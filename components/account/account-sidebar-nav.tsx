@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  CalendarDays,
   ClipboardList,
   Loader2,
   MapPin,
@@ -49,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/account", label: "Profile", tooltip: "Profile", Icon: UserRound },
   { href: "/results", label: "Results", tooltip: "My results", Icon: ClipboardList },
   { href: "/account/orders", label: "Orders", tooltip: "Order history", Icon: ShoppingCart },
+  { href: "/account/bookings", label: "Bookings", tooltip: "Upcoming bookings", Icon: CalendarDays },
   { href: "/account/addresses", label: "Addresses", tooltip: "Saved addresses", Icon: MapPin },
 ];
 
