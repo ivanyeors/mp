@@ -1,7 +1,14 @@
 name: ci
 
-# One lean gate per pull request: lint, typecheck, and the test suite, in a
-# single job that installs dependencies once.
+# One gate per pull request: lint, typecheck, the checks and the test suite, as
+# jobs that run side by side. `verify` is the required check: it passes only
+# when every part it needs passed.
+#
+# Until November 2026 all of it ran in one job, one step after another: 13 to
+# 19 minutes. Over half the Test step was .claude/hooks/verify.test.ts, which
+# runs the real ESLint a few hundred times to test the editing hook and held
+# up the rest of the suite while it did. It now runs in its own job, and only
+# when something it tests changed (see Scope).
 #
 # The production build and type-safety are gated by Vercel, not here: Vercel
 # builds a preview for every pull request and builds production on deploy, so a
@@ -34,11 +41,12 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
-  verify:
+  scope:
     runs-on: ubuntu-latest
-    # A green run took 13 to 14 minutes in November 2026, and 15 cut off runs
-    # whose runner was a little slower, mid-test, with nothing failing.
-    timeout-minutes: 25
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+      hooks: ${{ steps.scope.outputs.hooks }}
 
     steps:
       # Full history for gitleaks, but without old file contents: those are
@@ -52,18 +60,24 @@ jobs:
 
       # A pull request that changes only Markdown nothing tests (PRDs, ADRs,
       # notes) skips install, lint, typecheck, tests and checks: about ten
-      # minutes saved, and the job still reports, so a required check passes.
+      # minutes saved, and verify still reports, so the required check passes.
       # A Markdown file counts as code when any test or check names it, since
       # some read CONTEXT.md, ADRs and docs/marketing-page/ directly.
+      #
+      # The hook tests run only when a file they exercise changed: the hooks,
+      # the ESLint config and rules they run for real, the checks runner the
+      # stop hook calls, or the installed packages.
       - name: Scope
         id: scope
         run: |
           # Anything unexpected (no diff, a failed git command) runs everything.
           if ! files="$(git diff --name-only HEAD^1 HEAD)" || [ -z "$files" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "hooks=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           code=false
+          hooks=false
           while IFS= read -r f; do
             case "$f" in
               *.md)
@@ -74,8 +88,15 @@ jobs:
                 ;;
               *) code=true ;;
             esac
+            case "$f" in
+              .claude/hooks/*|eslint.config.*|eslint-rules/*|scripts/checks.mjs|package.json|pnpm-lock.yaml|.npmrc)
+                echo "$f is exercised by the hook tests"
+                hooks=true
+                ;;
+            esac
           done <<< "$files"
           echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "hooks=$hooks" >> "$GITHUB_OUTPUT"
           [ "$code" = true ] || echo "::notice title=Docs only::Only Markdown that no test reads changed; skipping install, lint, typecheck, tests and checks."
 
       # Fails the PR when any of its commits adds a credential.
@@ -88,25 +109,31 @@ jobs:
           # job does not get.
           GITLEAKS_ENABLE_COMMENTS: "false"
 
+  static:
+    name: lint, types and checks
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       # corepack pins pnpm from package.json's `packageManager` field, so the
       # version here can never drift from the one the lockfile was written with.
       # It must be enabled before setup-node, which resolves `pnpm` for its cache.
       - name: Enable corepack
-        if: steps.scope.outputs.code == 'true'
         run: corepack enable
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.scope.outputs.code == 'true'
         with:
           node-version: 22
           cache: pnpm
 
       - name: Install dependencies
-        if: steps.scope.outputs.code == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        if: steps.scope.outputs.code == 'true'
         run: pnpm lint
 
       # `pnpm typecheck` runs `next typegen` first: next-env.d.ts and
@@ -117,18 +144,110 @@ jobs:
       # ~2 GB heap on this runner, which ends in "JavaScript heap out of
       # memory".
       - name: Typecheck
-        if: steps.scope.outputs.code == 'true'
         run: pnpm typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-
-      - name: Test
-        if: steps.scope.outputs.code == 'true'
-        run: pnpm test
 
       # The `*.check.ts` invariant scripts. Before this step nothing ran them,
       # and eleven had drifted from the code unnoticed. The few that need a
       # live database are skipped here (see LIVE in scripts/checks.mjs).
       - name: Checks
-        if: steps.scope.outputs.code == 'true'
         run: pnpm checks
+
+  # The suite in two halves on two runners. Each half pays its own install
+  # (about half a minute), and halves the time spent loading test files,
+  # which is most of the suite's time.
+  test:
+    name: tests (${{ matrix.shard }}/2)
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --silent=passed-only keeps console output from failing tests only: a
+      # passing run printed about 360 blocks of expected error logging, which
+      # buried the one that mattered.
+      - name: Test
+        run: >-
+          pnpm exec vitest run
+          --shard=${{ matrix.shard }}/2
+          --exclude .claude/hooks/verify.test.ts
+          --silent=passed-only
+
+  hooks:
+    name: hook tests
+    needs: scope
+    if: needs.scope.outputs.hooks == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Hook tests
+        run: pnpm exec vitest run .claude/hooks/verify.test.ts --silent=passed-only
+
+  # The required check (REQUIRED_CHECKS in scripts/pr-risk.mjs, and branch
+  # protection). It runs even when a part failed or the run was cancelled, so
+  # that it fails then: a skipped required check counts as passed. Each part
+  # must have succeeded, except one Scope said was not needed.
+  verify:
+    needs: [scope, static, test, hooks]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Every part passed
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          CODE: ${{ needs.scope.outputs.code }}
+          HOOKS: ${{ needs.scope.outputs.hooks }}
+          STATIC: ${{ needs.static.result }}
+          TEST: ${{ needs.test.result }}
+          HOOK_TESTS: ${{ needs.hooks.result }}
+        run: |
+          failed=0
+          need() {
+            if [ "$2" = success ]; then echo "$1: success"
+            else echo "::error title=$1 did not pass::$1 ended ${2:-without a result}."; failed=1; fi
+          }
+          need "scope and secret scan" "$SCOPE"
+          if [ "$CODE" = true ]; then
+            need "lint, types and checks" "$STATIC"
+            need "tests" "$TEST"
+          else
+            echo "Docs only: lint, types, checks and tests were not needed."
+          fi
+          if [ "$HOOKS" = true ]; then need "hook tests" "$HOOK_TESTS"
+          else echo "hook tests: not needed, nothing they exercise changed."; fi
+          exit "$failed"
