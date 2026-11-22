@@ -199,9 +199,11 @@ export function AppDock() {
   React.useEffect(() => {
     if (adminDock) return;
     let cancelled = false;
+    let latest = 0;
     const supabase = createSupabaseBrowserClient();
 
     const refresh = async () => {
+      const seq = ++latest;
       const [{ data }, adminJson, partnerJson] = await Promise.all([
         supabase.auth.getUser(),
         fetch("/api/admin/context")
@@ -211,7 +213,7 @@ export function AppDock() {
           .then((r) => r.json() as Promise<{ isPartner?: boolean }>)
           .catch(() => null),
       ]);
-      if (cancelled) return;
+      if (cancelled || seq !== latest) return;
       setRole(
         resolveDockSessionRole(
           Boolean(data.user),
@@ -221,7 +223,6 @@ export function AppDock() {
       );
     };
 
-    void refresh();
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       void refresh();
     });

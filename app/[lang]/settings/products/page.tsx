@@ -32,15 +32,13 @@ export default async function SettingsProductsPage({
     ]);
 
     const initialData: ProductsInitialData | undefined = products.ok
-        ? {
-              products: { ...products, rows: products.rows as ProductRow[] },
-              categories: { ok: true, rows: categoryTree as Category[] },
-          }
+        ? { products: { ...products, rows: products.rows as ProductRow[] } }
         : undefined;
 
     return (
         <ProductsClient
             initialData={initialData}
+            categories={categoryTree as Category[]}
             initialTab={tab === "categories" || tab === "shop" ? tab : "products"}
             stripeMode={stripeMode()}
         />

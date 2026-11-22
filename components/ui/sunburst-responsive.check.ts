@@ -15,8 +15,11 @@ const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 const sunburst = read("components/ui/sunburst-menu.tsx");
 
 // Measures its container...
-assert.match(sunburst, /ResizeObserver/, "must observe container size");
-assert.match(sunburst, /clientWidth/, "must read container width");
+assert.match(
+  sunburst,
+  /const \[measureRef, containerW\] = useElementWidth<HTMLDivElement>\(\);/,
+  "must observe the container's width",
+);
 // ...and clamps the diameter to it (shrink-only) rather than a fixed size.
 assert.match(
   sunburst,

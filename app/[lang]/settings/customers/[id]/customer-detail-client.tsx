@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -49,7 +49,8 @@ import { MarketingConsentCard } from "./marketing-consent-card";
 import { PointsCard } from "./points-card";
 import { CustomerEntryCard } from "./customer-entry-card";
 import type { CustomerEntryResult } from "@/lib/crm/customer-entry";
-import { CustomerReviewsCard } from "./customer-reviews-card";
+import { CustomerReviewsCard, reviewsOnRecord } from "./customer-reviews-card";
+import type { CustomerReviewsData } from "@/lib/crm/reviews";
 import { CustomerFittingsCard, type CustomerFittingsResult } from "./customer-fittings-card";
 import { CustomerPillowCard } from "./customer-pillow-card";
 import { CreateOrderDialog } from "./create-order-dialog";
@@ -101,7 +102,12 @@ export type CustomerDetailInitialData = {
     fittings?: CustomerFittingsResult;
     pillow?: CustomerPillowResult;
     entry?: CustomerEntryResult;
+    addresses?: CustomerAddress[];
+    reviews?: CustomerReviewsData | null;
 };
+
+const defaultFirstThenNewest = (rows: CustomerAddress[]) =>
+    [...rows].sort((a, b) => Number(b.is_default) - Number(a.is_default) || Date.parse(b.created_at) - Date.parse(a.created_at));
 
 const emptyAddress: AddressFormState = {
     label: "",
@@ -123,7 +129,7 @@ export function CustomerDetailClient({
     viewer,
     initialTab = "journey",
 }: {
-    initialData?: CustomerDetailInitialData;
+    initialData: CustomerDetailInitialData;
     canEdit: boolean;
     canImport?: boolean;
     canCreateOrder?: boolean;
@@ -137,24 +143,19 @@ export function CustomerDetailClient({
     const customerId = params.id;
 
     const initialRow: Customer | null =
-        initialData?.customer && "ok" in initialData.customer && initialData.customer.ok
-            ? (initialData.customer.row as Customer)
-            : null;
+        "ok" in initialData.customer && initialData.customer.ok ? (initialData.customer.row as Customer) : null;
     const [customer, setCustomer] = useState<Customer | null>(initialRow);
-    const lifecycle = initialData?.lifecycle ?? null;
-    const [loading, setLoading] = useState(!initialData);
-
-    const hydratedFromServer = useRef(Boolean(initialData));
+    const lifecycle = initialData.lifecycle ?? null;
 
     const [tab, setTab] = useState<CustomerTab>(initialTab);
     const [composerMode, setComposerMode] = useState<ComposerMode>("note");
     const [composerFocus, setComposerFocus] = useState(0);
     const [journeyReload, setJourneyReload] = useState(0);
-    const [reviewCount, setReviewCount] = useState<number | null>(null);
+    const [reviewCount, setReviewCount] = useState<number | null>(initialData.reviews ? reviewsOnRecord(initialData.reviews) : null);
     const [editing, setEditing] = useState(false);
 
-    const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
-    const [addressesLoading, setAddressesLoading] = useState(true);
+    const [addresses, setAddresses] = useState<CustomerAddress[]>(() => defaultFirstThenNewest(initialData.addresses ?? []));
+    const [addressesLoading, setAddressesLoading] = useState(false);
 
     const [firstName, setFirstName] = useState(initialRow?.first_name ?? "");
     const [lastName, setLastName] = useState(initialRow?.last_name ?? "");
@@ -174,29 +175,7 @@ export function CustomerDetailClient({
     const [addressForm, setAddressForm] = useState<AddressFormState>(emptyAddress);
     const [savingAddress, setSavingAddress] = useState(false);
 
-    const fetchCustomer = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/shop/customers/${customerId}`);
-            const json = await res.json();
-            if (!res.ok || !json?.ok || !json.row) {
-                setCustomer(null);
-                return;
-            }
-            const row = json.row as Customer;
-            setCustomer(row);
-            setFirstName(row.first_name ?? "");
-            setLastName(row.last_name ?? "");
-            setPhone(row.phone ?? "");
-            setTags(row.tags ?? []);
-        } catch {
-            setCustomer(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [customerId]);
-
-    const fetchAddresses = useCallback(async () => {
+    const fetchAddresses = async () => {
         setAddressesLoading(true);
         try {
             const res = await fetch(`/api/shop/customers/${customerId}/addresses`);
@@ -207,16 +186,7 @@ export function CustomerDetailClient({
         } finally {
             setAddressesLoading(false);
         }
-    }, [customerId]);
-
-    useEffect(() => {
-        if (hydratedFromServer.current) {
-            hydratedFromServer.current = false;
-        } else {
-            fetchCustomer();
-        }
-        fetchAddresses();
-    }, [fetchCustomer, fetchAddresses]);
+    };
 
     const saveChanges = async () => {
         if (!customer) return;
@@ -287,14 +257,6 @@ export function CustomerDetailClient({
             setSavingAddress(false);
         }
     };
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-        );
-    }
 
     if (!customer) {
         return (
@@ -760,7 +722,12 @@ export function CustomerDetailClient({
                         </TabsContent>
 
                         <TabsContent value="reviews" forceMount className="data-[state=inactive]:hidden">
-                            <CustomerReviewsCard customerId={customer.id} canEdit={canEdit} onCount={setReviewCount} />
+                            <CustomerReviewsCard
+                                customerId={customer.id}
+                                canEdit={canEdit}
+                                initialData={initialData.reviews ?? null}
+                                onCount={setReviewCount}
+                            />
                         </TabsContent>
                     </Tabs>
                 </div>

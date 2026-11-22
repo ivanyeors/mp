@@ -120,12 +120,16 @@ export function SelectFromDriveDialog({
     setKindFilter(imageOnly ? "image" : "all");
   }, [imageOnly]);
 
+  const browseSeq = useRef(0);
+
   const loadDrives = useCallback(async () => {
+    const seq = ++browseSeq.current;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/media/drive/browse");
       const data = await res.json();
+      if (seq !== browseSeq.current) return;
       if (!res.ok || !data.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to list Shared Drives"));
       }
@@ -133,14 +137,19 @@ export function SelectFromDriveDialog({
       setItems([]);
       setNextPageToken(null);
     } catch (e) {
+      if (seq !== browseSeq.current) return;
       setError(e instanceof Error ? e.message : "Failed to list Shared Drives");
       setDrives([]);
     } finally {
-      setLoading(false);
+      if (seq === browseSeq.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []);
 
   const loadFolder = useCallback(async (driveId: string, folderId: string, pageToken?: string) => {
+    const seq = ++browseSeq.current;
     const appending = Boolean(pageToken);
     if (appending) setLoadingMore(true);
     else {
@@ -152,6 +161,7 @@ export function SelectFromDriveDialog({
       if (pageToken) qs.set("pageToken", pageToken);
       const res = await fetch(`/api/media/drive/browse?${qs}`);
       const data = await res.json();
+      if (seq !== browseSeq.current) return;
       if (!res.ok || !data.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to list folder"));
       }
@@ -160,6 +170,7 @@ export function SelectFromDriveDialog({
       setNextPageToken(data.nextPageToken ?? null);
       if (!appending) setDrives([]);
     } catch (e) {
+      if (seq !== browseSeq.current) return;
       if (!appending) {
         setError(e instanceof Error ? e.message : "Failed to list folder");
         setItems([]);
@@ -168,8 +179,10 @@ export function SelectFromDriveDialog({
         toast.error(e instanceof Error ? e.message : "Failed to load more");
       }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (seq === browseSeq.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, []);
 

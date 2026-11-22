@@ -244,12 +244,13 @@ export function SettingsSidebarNav({
   const [resultsStuck, setResultsStuck] = useState(0);
   const [followUpCounts, setFollowUpCounts] = useState<FollowUpCounts | null>(null);
 
-  const initialSignedIn = initialAuth.signedIn;
-  const initialPermissionKey = initialAuth.permissions.join(",");
-  useEffect(() => {
+  const initialAuthKey = `${initialAuth.signedIn}|${initialAuth.permissions.join(",")}`;
+  const [seenAuthKey, setSeenAuthKey] = useState(initialAuthKey);
+  if (initialAuthKey !== seenAuthKey) {
+    setSeenAuthKey(initialAuthKey);
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
-  }, [initialSignedIn, initialPermissionKey]);
+  }
 
   useEffect(() => {
     if (!isMobile) return;
@@ -321,17 +322,15 @@ export function SettingsSidebarNav({
     permissionsPath === basePathname &&
     !!currentKey &&
     !permissions.includes(currentKey);
+  const leaveTo =
+    status === "unauth" && !isLoginRoute
+      ? to(`/account/login?next=${encodeURIComponent(to(basePathname))}`)
+      : lostCurrentPage && currentKey
+        ? to(`/settings?denied=${currentKey}`)
+        : null;
   useEffect(() => {
-    if (lostCurrentPage && currentKey) router.replace(to(`/settings?denied=${currentKey}`));
-  }, [lostCurrentPage, currentKey]);
-
-  useEffect(() => {
-    if (status === "unauth" && !isLoginRoute) {
-      router.replace(
-        to(`/account/login?next=${encodeURIComponent(to(basePathname))}`),
-      );
-    }
-  }, [status, isLoginRoute]);
+    if (leaveTo) router.replace(leaveTo);
+  }, [leaveTo]);
 
   if (isLoginRoute) {
     return <>{children}</>;

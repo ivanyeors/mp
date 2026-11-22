@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
-import { requireAdminPage } from "@/lib/auth/admin";
+import { requireAdminPage, type AdminContext } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { withLocale } from "@/lib/i18n/routing";
 import { listAdminCustomers } from "@/lib/ecommerce/admin/customers";
@@ -13,12 +13,15 @@ import { readAftercareCard } from "@/lib/aftercare/card-server";
 import type { AftercareCardData } from "@/lib/aftercare/settings";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteOrigin } from "@/lib/site-url";
-import { parseFollowUpScope } from "@/lib/crm/followup-rules";
+import { parseFollowUpScope, sgtToday, type FollowUpScope } from "@/lib/crm/followup-rules";
+import { listAssignableProfiles, listFollowUps } from "@/lib/crm/followups";
+import { actingProfile } from "@/lib/staff/working-as";
 import { parseReviewTabScope } from "@/lib/crm/reviews";
 import { listSegments } from "@/lib/crm/segments";
 import { listCampaignFilterOptions } from "@/lib/email-campaigns/store";
 import { CustomersClient, type CustomersInitialData } from "./customers-client";
 import { CustomersPageTabs } from "./customers-page-tabs";
+import type { FollowUpsFirstRead } from "./followups-tab";
 import type { TelegramUpdatesCardData } from "./telegram-updates-card";
 import { parseCustomersView } from "./views";
 
@@ -43,7 +46,8 @@ export default async function SettingsCustomersPage({
     const { filters, ignored } = parseCustomerFilters(searchParamsFromRecord(query));
     const first = { ...filters, page: 1, limit: LIMIT };
 
-    const [customers, lifecycle, returning, segments, campaigns, telegramUpdates, aftercare] = await Promise.all([
+    const followUpScope = parseFollowUpScope(scope);
+    const [customers, lifecycle, returning, segments, campaigns, telegramUpdates, aftercare, followUps] = await Promise.all([
         listAdminCustomers(customerFilterParams(first, { paging: true })),
         getLifecycleSummary(),
         getReturningCustomers(),
@@ -51,6 +55,7 @@ export default async function SettingsCustomersPage({
         listCampaignFilterOptions(supabaseAdmin(), filters.campaign ? [filters.campaign.id] : []).catch(() => []),
         view === "settings" ? readTelegramUpdatesCard() : Promise.resolve(undefined),
         view === "settings" ? readAftercareCardData() : Promise.resolve(undefined),
+        view === "followups" ? readFollowUpsList(ctx, followUpScope) : Promise.resolve(undefined),
     ]);
 
     const initialData: CustomersInitialData | undefined = customers.ok
@@ -65,7 +70,8 @@ export default async function SettingsCustomersPage({
             canEditOnlineResult={canEdit && hasPermission(ctx, "results")}
             telegramUpdates={telegramUpdates}
             aftercare={aftercare}
-            followUpScope={parseFollowUpScope(scope)}
+            followUpScope={followUpScope}
+            followUps={followUps}
             reviewScope={parseReviewTabScope(scope)}
             importHref={
                 hasPermission(ctx, "customer-import")
@@ -102,6 +108,20 @@ async function readTelegramUpdatesCard(): Promise<TelegramUpdatesCardData | unde
         return { settings, heldReminderTelegram: parseSlaSettings(stored).remindTelegram };
     } catch {
         return undefined;
+    }
+}
+
+async function readFollowUpsList(ctx: AdminContext, scope: FollowUpScope): Promise<FollowUpsFirstRead> {
+    try {
+        const today = sgtToday();
+        const me = await actingProfile(ctx.memberId);
+        const [list, assignees] = await Promise.all([
+            listFollowUps({ scope, profileId: me?.id ?? null, today }),
+            hasPermission(ctx, "customers-edit") ? listAssignableProfiles() : Promise.resolve([]),
+        ]);
+        return { scope, ...list, today, me, assignees };
+    } catch (e) {
+        return { error: e instanceof Error ? e.message : "Could not load follow-ups." };
     }
 }
 

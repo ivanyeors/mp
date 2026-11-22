@@ -1070,15 +1070,23 @@ function JourneyGraph({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
   const [panning, setPanning] = useState(false);
-  const [overrides, setOverrides] = useState<PosMap>({});
+  const posKey = layoutStorageKey(divePath);
+  // ponytail: reads localStorage during the first render, safe only while AnalyticsClient
+  // loads this card with ssr: false. Server-render it and this read moves to useSyncExternalStore.
+  const [overrides, setOverrides] = useState<PosMap>(() => loadPositions(posKey));
+  const [overridesKey, setOverridesKey] = useState(posKey);
   const [fittedKey, setFittedKey] = useState("");
+  if (overridesKey !== posKey) {
+    setOverridesKey(posKey);
+    setOverrides(loadPositions(posKey));
+    setFittedKey("");
+  }
   const [hoverEdgeKey, setHoverEdgeKey] = useState<string | null>(null);
   const [draggingNode, setDraggingNode] = useState(false);
   const [pressedPath, setPressedPath] = useState<string | null>(null);
   const coarse = useMediaQuery("(pointer: coarse)");
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
-  const posKey = layoutStorageKey(divePath);
   const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
 
   const {
@@ -1112,11 +1120,6 @@ function JourneyGraph({
     listeners: AbortController;
   } | null>(null);
   const onTapRef = useRef<(tap: TouchTap) => void>(() => {});
-
-  useEffect(() => {
-    setOverrides(loadPositions(posKey));
-    setFittedKey("");
-  }, [posKey]);
 
   useEffect(() => {
     const el = paneRef.current;
@@ -1167,13 +1170,13 @@ function JourneyGraph({
     return out;
   }, [edges]);
 
-  useEffect(() => {
-    if (laid.length === 0 || viewport.w < 40) return;
-    const key = `${laid.map((n) => n.path).join("|")}:${Math.round(viewport.w)}x${Math.round(viewport.h)}`;
-    if (key === fittedKey) return;
-    setCamera(openCamera(laid, viewport.w, viewport.h));
-    setFittedKey(key);
-  }, [laid, viewport, fittedKey]);
+  if (laid.length > 0 && viewport.w >= 40) {
+    const fitKey = `${laid.map((n) => n.path).join("|")}:${Math.round(viewport.w)}x${Math.round(viewport.h)}`;
+    if (fitKey !== fittedKey) {
+      setFittedKey(fitKey);
+      setCamera(openCamera(laid, viewport.w, viewport.h));
+    }
+  }
 
   const clientToWorld = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;

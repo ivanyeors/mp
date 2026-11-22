@@ -100,14 +100,8 @@ export type ProductsListResponse = {
     limit: number;
 };
 
-export type CategoriesListResponse = {
-    ok: true;
-    rows: Category[];
-};
-
 export type ProductsInitialData = {
     products: ProductsListResponse;
-    categories: CategoriesListResponse;
 };
 
 const LIMIT = 20;
@@ -184,10 +178,12 @@ function statusBadgeVariant(status: string): StatusVariant {
 
 export function ProductsClient({
     initialData,
+    categories,
     initialTab = "products",
     stripeMode,
 }: {
     initialData?: ProductsInitialData;
+    categories: Category[];
     initialTab?: string;
     stripeMode: StripeMode;
 }) {
@@ -214,9 +210,6 @@ export function ProductsClient({
     const [products, setProducts] = useState<ProductRow[]>(initialData?.products.rows ?? []);
     const [total, setTotal] = useState(initialData?.products.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
-    const [categories, setCategories] = useState<Category[]>(
-        initialData?.categories.rows ?? [],
-    );
 
     const hydratedFromServer = useRef(Boolean(initialData));
 
@@ -256,14 +249,6 @@ export function ProductsClient({
         setPage(1);
         setSelected(new Set());
     };
-
-    useEffect(() => {
-        if (initialData) return;
-        fetch("/api/shop/categories")
-            .then((r) => r.json())
-            .then((json) => setCategories(json.rows ?? []))
-            .catch(() => {});
-    }, [initialData]);
 
     const latestRequest = useRef(0);
     const fetchProducts = useCallback(async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { AnimatePresence } from "motion/react";
 import { useCart } from "@/lib/shop/cart-context";
@@ -49,22 +49,10 @@ export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
   const checkoutHref = withLocale("/shop/checkout", locale);
   const currency = items[0]?.currency ?? "SGD";
 
-  const standardVariantIds = items
-    .filter((i) => !i.customizationId)
-    .map((i) => i.variantId);
-  const { stock } = useCartStock(standardVariantIds);
+  const { stock } = useCartStock(items, updateQuantity);
 
   const maxFor = (item: (typeof items)[number]): number | undefined =>
     item.customizationId ? undefined : stock[item.variantId];
-
-  useEffect(() => {
-    for (const item of items) {
-      const max = maxFor(item);
-      if (max != null && max > 0 && item.quantity > max) {
-        updateQuantity(item.variantId, max, item.customizationId);
-      }
-    }
-  }, [stock]);
 
   const hasShortage = items.some((item) => {
     const max = maxFor(item);

@@ -58,6 +58,7 @@ import {
 import {
   PreviewContactFields,
   previewContactFieldChecks,
+  type DiscoverySourceChoice,
 } from "@/components/configurator/preview-contact-fields";
 import {
   checkoutCodeDiscount,
@@ -269,8 +270,10 @@ export function MbolsterConfigClient({
   partner = null,
   servicePrices = null,
   measuredByStaff = false,
+  discoverySourceOptions,
 }: {
   info: MbolsterConfigInfo;
+  discoverySourceOptions: DiscoverySourceChoice[];
   servicePrices?: ServicePrices | null;
   measuredByStaff?: boolean;
   staffAssist?: boolean;
@@ -403,10 +406,12 @@ export function MbolsterConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
-  React.useEffect(() => {
+  const [assistLength, setAssistLength] = React.useState(suggestedLength);
+  if (assistLength !== suggestedLength) {
+    setAssistLength(suggestedLength);
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
-  }, [suggestedLength]);
+  }
 
   const previewRecord = parseRecommendationRecord(
     shopRecommendation?.recommendation_record ?? null,
@@ -755,13 +760,16 @@ export function MbolsterConfigClient({
     }
   }, [state.step, heightFields, sleepFields, holdFields, pairedFields, paired]);
 
-  React.useEffect(() => {
+  const [errorsStep, setErrorsStep] = React.useState(state.step);
+  if (errorsStep !== state.step) {
+    setErrorsStep(state.step);
     setFieldErrors({});
-  }, [state.step]);
-
-  React.useEffect(() => {
+  }
+  const [errorsPrunedFor, setErrorsPrunedFor] = React.useState(activeFields);
+  if (errorsPrunedFor !== activeFields) {
+    setErrorsPrunedFor(activeFields);
     setFieldErrors((prev) => pruneFieldErrors(prev, activeFields));
-  }, [activeFields]);
+  }
 
   const tryAdvance = (fields: FieldCheck[], onOk: () => void | Promise<void>) => {
     const errors = buildFieldErrorMap(fields);
@@ -955,12 +963,15 @@ export function MbolsterConfigClient({
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
+        if (cancelled) return;
         setShippingMethods(methods);
         setSelectedShippingId((prev) =>
           methods.some((m) => m.id === prev) ? prev : (methods[0]?.id ?? ""),
         );
       })
-      .catch(() => setShippingMethods([]));
+      .catch(() => {
+        if (!cancelled) setShippingMethods([]);
+      });
     return stale;
   }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant, paired]);
 
@@ -1571,7 +1582,7 @@ export function MbolsterConfigClient({
               ) : (
               <>
               <PreviewContactFields
-                  locale={locale}
+                  discoverySourceOptions={discoverySourceOptions}
                   fieldErrors={fieldErrors}
                   values={{
                     email: holdEmail,

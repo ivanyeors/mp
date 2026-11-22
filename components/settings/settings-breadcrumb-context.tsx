@@ -41,15 +41,15 @@ export function useSettingsBreadcrumbDetailLabel(): string | null {
 }
 
 export function useSettingsBreadcrumbDetail(label: string | null | undefined) {
-  const ctx = useContext(SettingsBreadcrumbContext);
+  const setDetailLabel = useContext(SettingsBreadcrumbContext)?.setDetailLabel;
 
   useEffect(() => {
-    if (!ctx) return;
+    if (!setDetailLabel) return;
     if (!label) {
-      ctx.setDetailLabel(null);
+      setDetailLabel(null);
       return;
     }
-    ctx.setDetailLabel(label);
-    return () => ctx.setDetailLabel(null);
-  }, [ctx, label]);
+    setDetailLabel(label);
+    return () => setDetailLabel(null);
+  }, [setDetailLabel, label]);
 }
