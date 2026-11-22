@@ -4,6 +4,7 @@ export const SITE_PAGES = [
   "/",
   "/account",
   "/account/addresses",
+  "/account/bookings",
   "/account/login",
   "/account/orders",
   "/account/orders/[orderNumber]",
