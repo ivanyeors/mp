@@ -137,6 +137,7 @@ import {
   isSelfCollectMethod,
   useHoldShippingQuote,
   type HoldShippingMethod,
+  type HoldShippingMethods,
 } from "@/components/shop/hold-shipping-fields";
 import { countryName, usesPostalCode } from "@/lib/shipping/countries";
 import type { PackageType } from "@/lib/shipping/types";
@@ -719,10 +720,8 @@ export function MpConfigClient({
     assisted || staffAssist ? KEEP_EMAIL : setHoldEmail,
     assisted || staffAssist ? KEEP_ADDRESS : setHoldAddress,
   );
-  const [shippingMethods, setShippingMethods] = useState<HoldShippingMethod[]>([]);
+  const [shippingMethods, setShippingMethods] = useState<HoldShippingMethods>({ country: "", rows: [] });
   const [selectedShippingId, setSelectedShippingId] = useState("");
-  const selectedShipping = shippingMethods.find((m) => m.id === selectedShippingId);
-  const selfCollect = isSelfCollectMethod(selectedShipping);
   const [pairedPhase, setPairedPhase] = useState<PairedPhase>("customize");
   const [pairedChoice, setPairedChoice] = useState<PairedChoice | null>(null);
   const [pairedRestored, setPairedRestored] = useState(false);
@@ -776,13 +775,18 @@ export function MpConfigClient({
     reopened: Boolean(staffEdit || resumeFinish),
   });
   const pairedFlow = pairedStepper || (pairedRestored && !shopRecommendation);
-  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
+  const {
+    options: shippingOptions,
+    selected: selectedShippingOption,
+    loading: shippingLoading,
+  } = useHoldShippingQuote({
     methods: shippingMethods,
     address: holdAddress,
     parcelTypes: pairedFlow && pairedChoice?.bolster ? SHIPS_AS_PAIR : SHIPS_AS_MPILLOW,
     selectedId: selectedShippingId,
     onSelect: setSelectedShippingId,
   });
+  const selfCollect = isSelfCollectMethod(selectedShippingOption?.method);
   const shippingStatus = selectedShippingOption?.status;
   const previewPanelRef = useRef<HTMLDivElement | null>(null);
   const shownPairedPhaseRef = useRef(pairedPhase);
@@ -1940,14 +1944,14 @@ export function MpConfigClient({
     const country = holdAddress.country || "SG";
     fetch(`${HOLD_SHIPPING_METHODS_PATH}&country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
-      .then(async (d: { rows?: typeof shippingMethods }) => {
+      .then(async (d: { rows?: HoldShippingMethod[] }) => {
         let methods = d.rows ?? [];
         if (methods.length === 0 && country === "SG") {
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
         if (cancelled) return;
-        setShippingMethods(methods);
+        setShippingMethods({ country, rows: methods });
         setSelectedShippingId((prev) => {
           if (methods.some((m) => m.id === prev)) return prev;
           const stored = staffEdit?.shippingMethodSlug
@@ -1957,7 +1961,7 @@ export function MpConfigClient({
         });
       })
       .catch(() => {
-        if (!cancelled) setShippingMethods([]);
+        if (!cancelled) setShippingMethods({ country, rows: [] });
       });
     return () => {
       cancelled = true;
@@ -2411,7 +2415,6 @@ export function MpConfigClient({
     holdNotes,
     holdAddress,
     selectedShippingId,
-    selectedShipping,
     selectedAddons,
     responseId,
     measurementData,
@@ -3390,6 +3393,7 @@ export function MpConfigClient({
                 {askingDetails && (
                 <HoldShippingFields
                   options={shippingOptions}
+                  loading={shippingLoading}
                   goodsSubtotal={quoteBlocked ? null : basePrice + addonTotal}
                   selectedId={selectedShippingId}
                   onSelect={setSelectedShippingId}
