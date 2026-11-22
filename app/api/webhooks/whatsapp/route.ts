@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSiteSettings } from "@/lib/site-settings";
-import { moveReadjustmentByEvent } from "@/lib/readjustment/lifecycle";
+import { moveReadjustmentByEvent, visitDayFeeByEvent } from "@/lib/readjustment/lifecycle";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
 import { isSlotFree, liveSlotHolds } from "@/lib/appointments/book-slot";
-import { freeBusy, patchEventTimes } from "@/lib/appointments/calendar";
+import { freeBusy, getEventTiming, patchEventTimes } from "@/lib/appointments/calendar";
 import { cancelAppointment } from "@/lib/appointments/cancel";
 import {
   addSgtDays,
@@ -32,6 +32,7 @@ import {
   parseFailedDeliveries,
   parseInboundActions,
   sendSlotList,
+  type InboundWaAction,
   sendText,
   verifyWebhookChallenge,
   verifyWhatsAppSignature,
@@ -168,24 +169,23 @@ async function handleAction(
     return "reject_slots: no list open";
   }
 
-  if (action.kind === "cancel" && action.bare) {
-    let ask: boolean;
-    try {
-      ask = askBeforeCancel({
-        bare: true,
-        lastAftercareSentAt: await latestAftercareSentAt(from),
-        reminderLastOutboundAt: row.last_outbound_at,
-      });
-    } catch (e) {
-      console.error("[whatsapp/webhook] aftercare lookup", e instanceof Error ? e.message : e);
-      ask = true;
-    }
-    if (ask) {
-      await sendText(from, guestText.cancelQuestion(row.starts_at));
-      return "cancel: asked first (aftercare since the reminder)";
-    }
+  return cancelByGuest(row, settings, action);
+}
+
+async function askedAboutAftercare(row: ReminderRow): Promise<boolean> {
+  let ask: boolean;
+  try {
+    ask = askBeforeCancel({
+      bare: true,
+      lastAftercareSentAt: await latestAftercareSentAt(row.phone),
+      reminderLastOutboundAt: row.last_outbound_at,
+    });
+  } catch (e) {
+    console.error("[whatsapp/webhook] aftercare lookup", e instanceof Error ? e.message : e);
+    ask = true;
   }
-  return cancelByGuest(row, settings);
+  if (ask) await sendText(row.phone, guestText.cancelQuestion(row.starts_at));
+  return ask;
 }
 
 async function confirm(row: ReminderRow): Promise<string> {
@@ -286,9 +286,26 @@ async function pickSlot(
   return "rescheduled";
 }
 
-async function cancelByGuest(row: ReminderRow, settings: AppointmentSettings): Promise<string> {
+async function cancelByGuest(
+  row: ReminderRow,
+  settings: AppointmentSettings,
+  action: Extract<InboundWaAction, { kind: "cancel" | "reject_slots" }>,
+): Promise<string> {
   try {
-    const outcome = await cancelAppointment(row, settings, { cause: "guest", within24h: true });
+    const now = new Date();
+    const timing = await getEventTiming(row.calendar_event_id).catch(() => null);
+    const startsAt = timing?.startsAt ?? row.starts_at;
+    if (!(action.kind === "cancel" && action.anyway)) {
+      const fee = await visitDayFeeByEvent(row.calendar_event_id, startsAt, now);
+      if (fee) {
+        await sendText(row.phone, guestText.visitDayCancelQuestion(startsAt, fee));
+        return "cancel: asked first (visit-day fee is refunded by hand only)";
+      }
+    }
+    if (action.kind === "cancel" && action.bare && (await askedAboutAftercare(row))) {
+      return "cancel: asked first (aftercare since the reminder)";
+    }
+    const outcome = await cancelAppointment(row, settings, { cause: "guest", within24h: true, now, startsAt });
     return outcome.kind === "cancelled" ? "cancelled" : `cancel: ${outcome.kind}`;
   } catch (e) {
     await sendText(row.phone, guestText.cancelFailed()).catch(() => {});

@@ -57,11 +57,11 @@ aspirational.
 
 ## Acceptance criteria
 
-- [ ] `refund.updated` with `succeeded` writes exactly one ledger row and rolls up.
-- [ ] Re-delivery of the same event writes nothing further (idempotent on refund id).
-- [ ] A **card** refund emitting both `charge.refunded` and `refund.updated` records
+- [x] `refund.updated` with `succeeded` writes exactly one ledger row and rolls up.
+- [x] Re-delivery of the same event writes nothing further (idempotent on refund id).
+- [x] A **card** refund emitting both `charge.refunded` and `refund.updated` records
       **one** row — verified by a test, since this is the regression the slice risks.
-- [ ] `refund.updated` with `failed` is a no-op; `refund.failed` still posts the
+- [x] `refund.updated` with `failed` is a no-op; `refund.failed` still posts the
       reversal exactly once.
 - [ ] A `pending` refund appears on the order timeline.
 - [ ] An unmatched refund dead-letters rather than vanishing.
@@ -73,3 +73,22 @@ aspirational.
 Ship this **before** PayNow carries any volume. It is the only slice here that
 fixes something already broken, and it is not PayNow-specific — it is async refunds
 generally, of which PayNow is simply the first.
+
+## Built (2026-11-22)
+
+`refund.updated` with `succeeded` runs the same code as `charge.refunded`
+(`settleSucceededRefunds` in `app/api/stripe/webhook/route.ts`): ledger row,
+rollup, RMA settle, points clawback, full-refund side effects and the refund
+email, all once per refund id. Test: `app/api/stripe/webhook/__tests__/async-refund.test.ts`.
+
+Deliberately not built:
+
+- **A timeline event for a pending refund.** Every refund this site issues
+  already writes `refund_initiated` on the Order when it is created.
+- **Dead-lettering an unmatched refund.** It does what `charge.refunded` does:
+  records nothing. Since ADR 0038 the Order is found by its ledger charge rows
+  too, so a Result's Balance payment is matched.
+
+Still open: subscribing `we_1UEpVxCMlMx7bA76xFJYdCCj` to `refund.updated`
+(checked 2026-11-22: 10 events, `refund.updated` not among them). Until then
+Stripe never sends it and a PayNow refund still doesn't reach the Order.

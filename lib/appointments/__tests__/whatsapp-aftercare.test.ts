@@ -24,12 +24,16 @@ describe("the stop intent", () => {
 describe("cancel words", () => {
   it.each(["cancel", "Cancel please", "please cancel"])("%j is a bare cancel", (body) => {
     expect(parseInboundActions(text(body))).toEqual([
-      { kind: "cancel", fromE164: "+6591234567", messageId: "wamid.1", bare: true },
+      { kind: "cancel", fromE164: "+6591234567", messageId: "wamid.1", bare: true, anyway: false },
     ]);
   });
 
   it.each(["cancel appointment", "Cancel booking"])("%j says what it cancels", (body) => {
-    expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel", bare: false }]);
+    expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel", bare: false, anyway: false }]);
+  });
+
+  it.each(["cancel anyway", "Cancel Anyway "])("%j confirms a cancel after the visit-day warning", (body) => {
+    expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel", bare: false, anyway: true }]);
   });
 });
 

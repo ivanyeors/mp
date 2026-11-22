@@ -12,6 +12,11 @@ export const guestText = {
     "Thanks, we'll switch off aftercare messages for you. You can also turn them off yourself in your Mpillow account.",
   cancelQuestion: (startsAt: string) =>
     `Do you want to cancel your appointment on ${whenLabel(startsAt)}? Reply "cancel appointment" to cancel it. To stop aftercare messages, reply "stop".`,
+  visitDayCancelQuestion: (startsAt: string, fee: { amount: number; currency: string }) =>
+    [
+      `Your appointment is today at ${formatTimeSgt(startsAt)}. Cancellations on the day of the visit are refunded manually only, so if you cancel now, your ${fee.currency} ${fee.amount.toFixed(2)} fee won't be refunded automatically. Our team will review it and let you know.`,
+      `Reply "cancel anyway" to cancel. To keep your appointment, you don't need to do anything.`,
+    ].join("\n\n"),
   slotHint: () =>
     `To move your appointment, tap "View times" above and pick one, or reply "none of these" to cancel it. For anything else, please ${TALK_TO_TEAM}.`,
   noUpcoming: () =>

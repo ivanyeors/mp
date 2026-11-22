@@ -200,7 +200,7 @@ describe("refundCancelledReadjustment", () => {
     expect(sentText()).toContain("subject to manual refunds only");
   });
 
-  it("never refunds a PayNow payment through Stripe: Staff refund it by hand or add points, and the customer is told", async () => {
+  it("never refunds a PayNow payment through Stripe: Staff refund it from the Order or add points, and the customer is told", async () => {
     h.method.mockResolvedValue("paynow");
     for (const by of ["customer", "staff"] as const) {
       h.send.mockClear();
@@ -210,6 +210,7 @@ describe("refundCancelledReadjustment", () => {
       const alert = String(h.telegram.mock.calls[0][0]);
       expect(alert).toContain("PayNow");
       expect(alert).toContain("3,270 points");
+      expect(alert).toContain("Refund it from the Order");
       const text = sentText();
       expect(text).toContain("You paid by PayNow");
       expect(text).toContain("points of the same value");
@@ -235,7 +236,7 @@ describe("refundCancelledReadjustment", () => {
       h.telegram.mockClear();
       const out = await refundCancelledReadjustment(admin, booking(), "booked", "customer", early);
       expect(out.kind).toBe("failed");
-      expect(String(h.telegram.mock.calls[0][0])).toContain("for PayNow, refund by hand or add points");
+      expect(String(h.telegram.mock.calls[0][0])).toContain("for PayNow you can add points instead");
       expect(sentText()).toMatch(/couldn't refund your SGD\s32\.70 automatically/);
     }
     expect(h.refund).not.toHaveBeenCalled();

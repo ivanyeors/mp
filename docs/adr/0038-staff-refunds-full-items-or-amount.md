@@ -63,6 +63,7 @@ refund (PRD-money-flow-traceability).
 - No new table. Which lines a refund was for lives on the timeline event, the
   audit log and the Stripe Refund, not per line, so the dialog does not know a
   line was refunded before; the ceiling is the Order's refundable balance.
-- A refund that settles later (PayNow) still waits on `refund.updated`, which
-  is not handled yet (PRD-paynow-checkout slice 02). Stripe still refuses a
-  refund beyond what the charge has left, so nothing is refunded twice.
+- A refund that settles later (PayNow) is recorded when `refund.updated`
+  says it succeeded, through the same code as `charge.refunded`
+  (PRD-paynow-checkout slice 02, 2026-11-22). Stripe still refuses a refund
+  beyond what the charge has left, so nothing is refunded twice.

@@ -13,7 +13,7 @@ thin, demoable path through all layers.
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
 | [01](https://github.com/ivanyeors/mp/issues/142) | Glossary and ADR 0018: what PayNow is, and the one flow it cannot serve | AFK | **not started** | none | underpins all |
-| [02](https://github.com/ivanyeors/mp/issues/143) | Handle `refund.updated`, so an async refund reaches the money ledger | AFK | **not started** | none | 11, 12 |
+| [02](https://github.com/ivanyeors/mp/issues/143) | Handle `refund.updated`, so an async refund reaches the money ledger | AFK | **built 2026-11-22**; Dashboard subscription outstanding | none | 11, 12 |
 | [03](https://github.com/ivanyeors/mp/issues/144) | Keep PayNow eligible: an SGD guard and a check protecting the two good paths | AFK | **not started** | 01 | 1–3 |
 | [04](https://github.com/ivanyeors/mp/issues/145) | Pay in full at submit, so a Singapore shopper can use PayNow on a customisation | AFK | **not started** | 02, 03 | 4–7 |
 | [05](https://github.com/ivanyeors/mp/issues/146) | A QR that expires in an hour, and a session that does not strand anything | AFK | **not started** | 04 | 8, 9 |

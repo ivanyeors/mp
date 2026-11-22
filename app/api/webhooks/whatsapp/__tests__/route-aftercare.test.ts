@@ -12,12 +12,21 @@ const m = vi.hoisted(() => ({
   recordDeliveryFailure: vi.fn(),
   latestAftercareSentAt: vi.fn(),
   recordAftercareDeliveryFailure: vi.fn(),
+  visitDayFeeByEvent: vi.fn(),
+  getEventTiming: vi.fn(),
 }));
 
 vi.mock("@/lib/site-settings", () => ({ getSiteSettings: () => Promise.resolve({}) }));
-vi.mock("@/lib/readjustment/lifecycle", () => ({ moveReadjustmentByEvent: vi.fn() }));
+vi.mock("@/lib/readjustment/lifecycle", () => ({
+  moveReadjustmentByEvent: vi.fn(),
+  visitDayFeeByEvent: m.visitDayFeeByEvent,
+}));
 vi.mock("@/lib/appointments/book-slot", () => ({ isSlotFree: vi.fn(), liveSlotHolds: vi.fn() }));
-vi.mock("@/lib/appointments/calendar", () => ({ freeBusy: vi.fn(), patchEventTimes: vi.fn() }));
+vi.mock("@/lib/appointments/calendar", () => ({
+  freeBusy: vi.fn(),
+  patchEventTimes: vi.fn(),
+  getEventTiming: m.getEventTiming,
+}));
 vi.mock("@/lib/appointments/cancel", () => ({ cancelAppointment: m.cancelAppointment }));
 vi.mock("@/lib/appointments/reminders-db", () => ({
   claimAutoReply: m.claimAutoReply,
@@ -75,6 +84,8 @@ beforeEach(() => {
   m.latestAftercareSentAt.mockResolvedValue(null);
   m.recordDeliveryFailure.mockResolvedValue(0);
   m.recordAftercareDeliveryFailure.mockResolvedValue(0);
+  m.visitDayFeeByEvent.mockResolvedValue(null);
+  m.getEventTiming.mockResolvedValue({ startsAt: reminder.starts_at, updatedAt: null });
 });
 
 describe("a STOP reply", () => {
@@ -113,7 +124,12 @@ describe("a bare cancel", () => {
   it("cancels, as today, with no aftercare send since the last reminder", async () => {
     m.latestAftercareSentAt.mockResolvedValue("2026-11-01T01:00:00Z");
     await POST(inbound("Cancel please"));
-    expect(m.cancelAppointment).toHaveBeenCalledWith(reminder, expect.anything(), { cause: "guest", within24h: true });
+    expect(m.cancelAppointment).toHaveBeenCalledWith(reminder, expect.anything(), {
+      cause: "guest",
+      within24h: true,
+      now: expect.any(Date),
+      startsAt: reminder.starts_at,
+    });
     expect(outcomes()).toEqual(["cancelled"]);
   });
 
@@ -136,6 +152,81 @@ describe("a cancel that names the appointment", () => {
     await POST(inbound(word));
     expect(m.cancelAppointment).toHaveBeenCalledTimes(1);
     expect(m.latestAftercareSentAt).not.toHaveBeenCalled();
+  });
+});
+
+describe("a cancel on the visit day of a paid re-adjustment", () => {
+  const FEE = { amount: 32.7, currency: "SGD", orderNumber: "1077" };
+  const LIVE_START = "2026-11-10T08:00:00Z";
+
+  beforeEach(() => {
+    m.getEventTiming.mockResolvedValue({ startsAt: LIVE_START, updatedAt: null });
+    m.visitDayFeeByEvent.mockResolvedValue(FEE);
+  });
+
+  it.each(["cancel", "cancel appointment", "cancel booking"])(
+    "%j warns that the fee is refunded by hand only, and cancels nothing",
+    async (word) => {
+      await POST(inbound(word));
+      expect(m.cancelAppointment).not.toHaveBeenCalled();
+      expect(m.sendText.mock.calls).toEqual([[PHONE, guestText.visitDayCancelQuestion(LIVE_START, FEE)]]);
+      expect(outcomes()).toEqual(["cancel: asked first (visit-day fee is refunded by hand only)"]);
+    },
+  );
+
+  it("judges the visit-day fee by the event's live time", async () => {
+    await POST(inbound("cancel"));
+    expect(m.visitDayFeeByEvent).toHaveBeenCalledWith(reminder.calendar_event_id, LIVE_START, expect.any(Date));
+  });
+
+  it("warns once, not twice, right after an aftercare message", async () => {
+    m.latestAftercareSentAt.mockResolvedValue("2026-11-03T01:00:00Z");
+    await POST(inbound("cancel"));
+    expect(m.sendText).toHaveBeenCalledTimes(1);
+    expect(m.sendText).toHaveBeenCalledWith(PHONE, guestText.visitDayCancelQuestion(LIVE_START, FEE));
+  });
+
+  it('"none of these" to the new times warns too, since it cancels', async () => {
+    m.getOpenReminderByPhone.mockResolvedValue({ ...reminder, status: "offering_slots" });
+    await POST(inbound("none of these"));
+    expect(m.cancelAppointment).not.toHaveBeenCalled();
+    expect(m.sendText).toHaveBeenCalledWith(PHONE, guestText.visitDayCancelQuestion(LIVE_START, FEE));
+  });
+
+  it('"cancel anyway" cancels, at the same live time and clock the warning used', async () => {
+    await POST(inbound("cancel anyway"));
+    expect(m.visitDayFeeByEvent).not.toHaveBeenCalled();
+    expect(m.cancelAppointment).toHaveBeenCalledWith(reminder, expect.anything(), {
+      cause: "guest",
+      within24h: true,
+      now: expect.any(Date),
+      startsAt: LIVE_START,
+    });
+    expect(outcomes()).toEqual(["cancelled"]);
+  });
+
+  it("cancels at once when no fee would be kept (free visit, day before, already refunded)", async () => {
+    m.visitDayFeeByEvent.mockResolvedValue(null);
+    await POST(inbound("cancel appointment"));
+    expect(m.cancelAppointment).toHaveBeenCalledTimes(1);
+    expect(m.sendText).not.toHaveBeenCalled();
+  });
+
+  it("cancels nothing and says so when the fee can't be checked", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    m.visitDayFeeByEvent.mockRejectedValue(new Error("db down"));
+    await POST(inbound("cancel appointment"));
+    err.mockRestore();
+    expect(m.cancelAppointment).not.toHaveBeenCalled();
+    expect(m.sendText).toHaveBeenCalledWith(PHONE, guestText.cancelFailed());
+  });
+
+  it("names the time, the amount and the reply that cancels", () => {
+    const text = guestText.visitDayCancelQuestion(LIVE_START, FEE);
+    expect(text).toContain("today at 16:00");
+    expect(text).toContain("SGD 32.70");
+    expect(text).toContain("refunded manually only");
+    expect(text).toContain('Reply "cancel anyway"');
   });
 });
 

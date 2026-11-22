@@ -261,7 +261,7 @@ export type InboundWaAction =
   | { kind: "reschedule"; fromE164: string; messageId: string }
   | { kind: "slot"; fromE164: string; messageId: string; slotId: string }
   | { kind: "reject_slots"; fromE164: string; messageId: string }
-  | { kind: "cancel"; fromE164: string; messageId: string; bare: boolean }
+  | { kind: "cancel"; fromE164: string; messageId: string; bare: boolean; anyway: boolean }
   | { kind: "stop"; fromE164: string; messageId: string }
   | { kind: "unknown"; fromE164: string; messageId: string };
 
@@ -276,7 +276,8 @@ const UNACTIONABLE_TYPES = new Set([
 ]);
 
 const BARE_CANCEL_WORDS = new Set(["cancel", "cancel please", "please cancel"]);
-const CANCEL_WORDS = new Set([...BARE_CANCEL_WORDS, "cancel appointment", "cancel booking"]);
+const CANCEL_ANYWAY = "cancel anyway";
+const CANCEL_WORDS = new Set([...BARE_CANCEL_WORDS, "cancel appointment", "cancel booking", CANCEL_ANYWAY]);
 
 const STOP_WORDS = new Set(["stop", "unsubscribe", "stop messages", "stop sending"]);
 
@@ -363,7 +364,7 @@ export function parseInboundActions(
           } else if (body.includes("none of these") || body === "reject") {
             out.push({ kind: "reject_slots", fromE164, messageId });
           } else if (CANCEL_WORDS.has(body)) {
-            out.push({ kind: "cancel", fromE164, messageId, bare: BARE_CANCEL_WORDS.has(body) });
+            out.push({ kind: "cancel", fromE164, messageId, bare: BARE_CANCEL_WORDS.has(body), anyway: body === CANCEL_ANYWAY });
           } else if (STOP_WORDS.has(body)) {
             out.push({ kind: "stop", fromE164, messageId });
           } else {
