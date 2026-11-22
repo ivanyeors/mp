@@ -1,6 +1,8 @@
 # A Staff order is priced on the server and paid through our own payment link, which opens a fresh Stripe Checkout each time
 
 Status: Accepted (PRD `staff-orders-payment-links`, 2026-11-07).
+Amended 2026-11-22: the rejection of Stripe Payment Links now covers products too. See
+**Product payment links retired** below.
 
 **Staff** at the counter or on the phone with a customer had no way to sell them anything that
 was not a customised build. An ear pad, a spare case, a re-adjustment or a measurement visit
@@ -93,3 +95,25 @@ of the Stripe webhook, unchanged.**
   by the webhook, like a shop Order.
 - The Customer page shows **Create order** to Staff holding `orders`; the Order page shows the
   Payment link card for a Staff order.
+
+## Product payment links retired (2026-11-22)
+
+The product editor had a *Generate link* button that made a `buy.stripe.com` link selling a
+product's first active **Variant**. A sale through it took the money and made nothing: its Checkout
+Session carried `supabase_product_id` but no `order_id`, so the webhook stopped, and the link
+collected no delivery address, charged no shipping or tax and checked no stock. Building an Order
+from such a session would have needed all of that rebuilt inside Stripe, which is what this ADR
+rejected for Staff orders and ADR 0053 moved off for the shop.
+
+Read before retiring it: the live Stripe account had never had a payment link and no product row
+held one, so no customer had paid through one.
+
+- The button, `POST /api/stripe/payment-link`, `createPaymentLink` and the link retirement in
+  Stripe sync are gone, and the four `products.stripe_payment_link*` columns are dropped
+  (`20261122120000_retire_product_payment_links.sql`). `lib/stripe/no-payment-links.check.ts`
+  fails if product code uses Stripe's Payment Links API or those columns again.
+- A paid `checkout.session.completed` with no `order_id` and no `result_id`, from a link made in the
+  Stripe Dashboard or anywhere else, is no longer dropped: the webhook writes it to
+  `stripe_webhook_failures` and sends it to the Staff Telegram group, to refund or make the Order
+  by hand.
+- To sell one product outside the shop, Staff make a **Staff order** and send its **Payment link**.

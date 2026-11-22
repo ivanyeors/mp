@@ -84,7 +84,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       error: stripe.error,
       pricesInPlace: stripe.pricesInPlace,
       notices: stripe.notices,
-      paymentLinkCleared: stripe.paymentLinkCleared,
     },
   });
 }

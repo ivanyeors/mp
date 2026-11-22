@@ -101,6 +101,11 @@ goods, and every other call sees it set and stops.
    `checkout.session.async_payment_succeeded`.
    - Result-hold sessions (a `result_id` with no `order_id`) branch away
      before any Order work.
+   - A paid session with neither (a `buy.stripe.com` link made in the
+     Stripe Dashboard, say) takes nothing: it is written to
+     `stripe_webhook_failures` and sent to the Staff Telegram group, to
+     refund or make the Order by hand. Product payment links are retired
+     (ADR 0048).
    - An `unpaid` session (a delayed method still settling) and a total
      mismatch both stop here and flag the Order. Nothing is deducted.
    - Otherwise it sets `status 'confirmed'` and `paid_at`, and **then**

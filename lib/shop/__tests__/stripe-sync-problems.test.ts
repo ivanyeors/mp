@@ -10,7 +10,7 @@ vi.mock("@/lib/stripe/sync", () => ({ syncProductToStripeSafe: vi.fn() }));
 const { repriceFromCostings, stripeSyncProblems } = await import("@/lib/shop/price-sync");
 
 describe("stripeSyncProblems: the one place a Stripe sync result becomes problems", () => {
-  const outcome = { pricesInPlace: false, notices: [], paymentLinkCleared: false };
+  const outcome = { pricesInPlace: false, notices: [] };
 
   it("a sync that worked has none", () => {
     expect(stripeSyncProblems({ ...outcome, synced: true, pricesInPlace: true })).toEqual([]);
@@ -19,7 +19,7 @@ describe("stripeSyncProblems: the one place a Stripe sync result becomes problem
   it("a sync that worked passes its notices on as notices, with no next step", () => {
     const notice = "Retired payment link plink_1: it sold a price no variant has any more.";
     expect(
-      stripeSyncProblems({ ...outcome, synced: true, pricesInPlace: true, notices: [notice], paymentLinkCleared: true }),
+      stripeSyncProblems({ ...outcome, synced: true, pricesInPlace: true, notices: [notice] }),
     ).toEqual([{ message: notice, notice: true }]);
   });
 
@@ -40,7 +40,6 @@ describe("stripeSyncProblems: the one place a Stripe sync result becomes problem
       error,
       pricesInPlace: true,
       notices: ["Retired payment link plink_1."],
-      paymentLinkCleared: true,
     });
     expect(problems).toEqual([{ message: "Retired payment link plink_1.", notice: true }, { message: error }]);
     expect(problems.some((p) => p.next)).toBe(false);

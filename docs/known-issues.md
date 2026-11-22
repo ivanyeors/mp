@@ -47,29 +47,6 @@ and scope by membership via `templateIdsForKey` from
 
 ---
 
-## A sale through a product's Stripe payment link makes no Order
-
-**Where:** `app/api/stripe/webhook/route.ts` (`if (!orderId) break;` in
-`checkout.session.completed`); the link is made by `createPaymentLink` in
-`lib/stripe/sync.ts`
-**Status:** open, pre-existing, found 2026-11-21 in the money review of the payment-link
-fix; confirmed by reading, not reproduced against Stripe. A product call
-
-The product editor makes a `buy.stripe.com` link per product. Its sessions carry
-`supabase_product_id` in metadata but no `order_id`, so the webhook stops at the line
-above. Stripe takes the money, and no Order is made, no stock is deducted and no
-receipt is sent. ADR 0048 rejected Stripe Payment Links for Staff orders for the same
-kind of reason (the link lives where our stock check cannot reach it).
-
-Separately, two *Generate link* clicks at once each make a link and the last write
-wins; the other stays active in Stripe with no row pointing at it, so no later sync
-checks it (`createPaymentLink` saves without checking what the row holds now).
-
-**If you fix it:** either retire product payment links (the product editor, the two
-`stripe_payment_link*` column pairs and `createPaymentLink`), or have the webhook build
-an Order from such a session the way checkout does, and save a new link only over the
-one it replaced. Until then, do not share a product's link.
-
 ## A refunded return frees its lines to be returned and refunded again
 
 **Where:** `lib/rma/create.ts` → `openReturnedQtyByOrder`
@@ -150,11 +127,10 @@ site needs Resync prices.
 - A BOM edit or a revived item changes what Costings resolves to for a Variant without
   repricing it; the next Sync from Inventory or Resync prices does.
 - Deactivating a Variant, deleting one, or moving a product out of `active` runs no
-  Stripe sync, so its Prices and payment link stay active in Stripe (and see the first
-  entry for what a link sale does).
+  Stripe sync, so its Prices stay active in Stripe.
 
-**If you fix it:** reprice after those Inventory writes, and sync (retiring the link)
-when a Variant or product leaves sale.
+**If you fix it:** reprice after those Inventory writes, and sync when a Variant or
+product leaves sale.
 
 ## Smaller errors still lost on the Costings paths
 

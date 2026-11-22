@@ -95,7 +95,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       error: stripe.error,
       pricesInPlace: stripe.pricesInPlace,
       notices: stripe.notices,
-      paymentLinkCleared: stripe.paymentLinkCleared,
     },
   });
 }
