@@ -4,6 +4,18 @@ import {
 } from "@/lib/ecommerce/products";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
+export type CostVisibility = { canSeeCost: boolean };
+
+export function withoutCostPrice<T extends object>(variant: T): Omit<T, "cost_price"> {
+  return Object.fromEntries(Object.entries(variant).filter(([key]) => key !== "cost_price")) as Omit<T, "cost_price">;
+}
+
+function withoutVariantCost<T>(product: T): T {
+  const variants = (product as { product_variants?: object[] | null }).product_variants;
+  if (!Array.isArray(variants)) return product;
+  return { ...product, product_variants: variants.map(withoutCostPrice) };
+}
+
 export interface AdminProductsListPayload {
   ok: true;
   rows: unknown[];
@@ -18,6 +30,7 @@ export type AdminProductsListResult =
 
 export async function listAdminProducts(
   searchParams: URLSearchParams,
+  { canSeeCost }: CostVisibility,
 ): Promise<AdminProductsListResult> {
   const status = searchParams.get("status");
   const category_id = searchParams.get("category_id");
@@ -66,7 +79,7 @@ export async function listAdminProducts(
 
   const rows = await attachStockAvailable(data ?? []);
 
-  return { ok: true, rows, total: count ?? 0, page, limit };
+  return { ok: true, rows: canSeeCost ? rows : rows.map(withoutVariantCost), total: count ?? 0, page, limit };
 }
 
 export interface AdminProductPayload {
@@ -76,7 +89,7 @@ export interface AdminProductPayload {
 
 export type AdminProductResult = AdminProductPayload | { ok: false; error: string };
 
-export async function getAdminProduct(id: string): Promise<AdminProductResult> {
+export async function getAdminProduct(id: string, { canSeeCost }: CostVisibility): Promise<AdminProductResult> {
   const admin = supabaseAdmin();
 
   const { data, error } = await admin
@@ -86,5 +99,5 @@ export async function getAdminProduct(id: string): Promise<AdminProductResult> {
     .single();
 
   if (error) return { ok: false, error: "Product not found" };
-  return { ok: true, row: data };
+  return { ok: true, row: canSeeCost ? data : withoutVariantCost(data) };
 }

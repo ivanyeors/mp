@@ -70,15 +70,23 @@ export function toCents(value: string | number | null | undefined): number | nul
 export type CostingPrices = { costCents: number | null; msrpCents: number | null };
 export type CostingField = "cost" | "msrp";
 
-export function costingGaps(category: string, prices: CostingPrices): CostingField[] {
+export function costingGaps(category: string, prices: CostingPrices, canSeeCost = true): CostingField[] {
   const gaps: CostingField[] = [];
-  if (prices.costCents == null) gaps.push("cost");
+  if (canSeeCost && prices.costCents == null) gaps.push("cost");
   if (isShopListableCategory(category) && prices.msrpCents == null) gaps.push("msrp");
   return gaps;
 }
 
-export function needsCosting(category: string, prices: CostingPrices): boolean {
-  return costingGaps(category, prices).length > 0;
+export function needsCosting(category: string, prices: CostingPrices, canSeeCost = true): boolean {
+  return costingGaps(category, prices, canSeeCost).length > 0;
+}
+
+export function withoutCost<T extends CostingPrices>(prices: T): T {
+  return { ...prices, costCents: null };
+}
+
+export function familiesWithoutCost(families: InventoryFamily[]): InventoryFamily[] {
+  return families.map((f) => ({ ...f, sizes: f.sizes.map(withoutCost) }));
 }
 
 export function describeCostingGaps(gaps: CostingField[]): string {
@@ -123,8 +131,8 @@ export function sizesToPush<T extends Pick<FamilySize, "productId">>(sizes: T[])
   return sizes.filter((s) => s.productId == null);
 }
 
-export function unsyncedSizes<T extends CostingPrices>(category: string, sizes: T[]): T[] {
-  return sizes.filter((s) => needsCosting(category, s));
+export function unsyncedSizes<T extends CostingPrices>(category: string, sizes: T[], canSeeCost = true): T[] {
+  return sizes.filter((s) => needsCosting(category, s, canSeeCost));
 }
 
 export function mainProductId(sizes: Pick<FamilySize, "productId">[]): string | null {
@@ -143,7 +151,7 @@ export function mainProductId(sizes: Pick<FamilySize, "productId">[]): string | 
   return best;
 }
 
-export type ConfirmedPrice = { itemId: number; costCents: number; msrpCents: number };
+export type ConfirmedPrice = { itemId: number; costCents: number | null; msrpCents: number };
 
 export type PriceCheckFailure = {
   reason: "nothing_to_push" | "not_synced" | "no_msrp" | "changed";
@@ -158,6 +166,7 @@ export function checkPushPrices(
   category: string,
   toPush: FamilySize[],
   confirmed: ConfirmedPrice[],
+  canSeeCost = true,
 ): PriceCheckFailure | null {
   if (toPush.length === 0) {
     return { reason: "nothing_to_push", message: "Every size is already in Products." };
@@ -177,7 +186,7 @@ export function checkPushPrices(
   const byItem = new Map(confirmed.map((c) => [c.itemId, c]));
   const changed = toPush.some((size) => {
     const seen = byItem.get(size.itemId);
-    return !seen || seen.costCents !== size.costCents || seen.msrpCents !== size.msrpCents;
+    return !seen || (canSeeCost && seen.costCents !== size.costCents) || seen.msrpCents !== size.msrpCents;
   });
   if (changed) {
     return {

@@ -35,16 +35,20 @@ export function PushToProductsDialog({
   open,
   onOpenChange,
   onPushed,
+  canSeeCost,
 }: {
   family: InventoryFamily | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPushed?: () => void;
+  canSeeCost: boolean;
 }) {
   return (
     <Dialog open={open && family !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        {family ? <PushForm family={family} onOpenChange={onOpenChange} onPushed={onPushed} /> : null}
+        {family ? (
+          <PushForm family={family} onOpenChange={onOpenChange} onPushed={onPushed} canSeeCost={canSeeCost} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -54,10 +58,12 @@ function PushForm({
   family,
   onOpenChange,
   onPushed,
+  canSeeCost,
 }: {
   family: InventoryFamily;
   onOpenChange: (open: boolean) => void;
   onPushed?: () => void;
+  canSeeCost: boolean;
 }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -69,10 +75,11 @@ function PushForm({
   const [error, setError] = useState<string | null>(null);
 
   const pushingSizes = sizesToPush(family.sizes);
-  const unsynced = unsyncedSizes(family.category, pushingSizes);
-  const belowCost = pushingSizes.filter(
-    (s) => s.costCents != null && s.msrpCents != null && s.msrpCents <= s.costCents,
-  );
+  const unsynced = unsyncedSizes(family.category, pushingSizes, canSeeCost);
+  const belowCost = canSeeCost
+    ? pushingSizes.filter((s) => s.costCents != null && s.msrpCents != null && s.msrpCents <= s.costCents)
+    : [];
+  const needs = canSeeCost ? "a cost and MSRP" : "an MSRP";
   const ready = pushingSizes.length > 0 && unsynced.length === 0;
   const adding = family.push === "partial";
   const inShop = family.productStatus === "active";
@@ -138,9 +145,9 @@ function PushForm({
           <thead className="bg-muted/50 text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Size</th>
-              <th className="px-3 py-2 text-right font-medium">Cost</th>
+              {canSeeCost ? <th className="px-3 py-2 text-right font-medium">Cost</th> : null}
               <th className="px-3 py-2 text-right font-medium">MSRP</th>
-              <th className="px-3 py-2 text-right font-medium">Margin</th>
+              {canSeeCost ? <th className="px-3 py-2 text-right font-medium">Margin</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -150,15 +157,19 @@ function PushForm({
               return (
                 <tr key={s.itemId}>
                   <td className="px-3 py-2">{s.size ?? "One size"}</td>
-                  <td className={cn("px-3 py-2 text-right tabular-nums", s.costCents == null && "text-amber-600 dark:text-amber-400")}>
-                    {money(s.costCents)}
-                  </td>
+                  {canSeeCost ? (
+                    <td className={cn("px-3 py-2 text-right tabular-nums", s.costCents == null && "text-amber-600 dark:text-amber-400")}>
+                      {money(s.costCents)}
+                    </td>
+                  ) : null}
                   <td className={cn("px-3 py-2 text-right tabular-nums", s.msrpCents == null && "text-amber-600 dark:text-amber-400")}>
                     {money(s.msrpCents)}
                   </td>
-                  <td className={cn("px-3 py-2 text-right tabular-nums", loss ? "font-medium text-destructive" : "text-muted-foreground")}>
-                    {margin == null ? "—" : `${margin}%`}
-                  </td>
+                  {canSeeCost ? (
+                    <td className={cn("px-3 py-2 text-right tabular-nums", loss ? "font-medium text-destructive" : "text-muted-foreground")}>
+                      {margin == null ? "—" : `${margin}%`}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
@@ -172,11 +183,13 @@ function PushForm({
           <div className="space-y-2">
             <p>
               {unsynced.length === pushingSizes.length && !many
-                ? "Add a cost and MSRP in Costings before this goes to Products."
-                : `${unsynced.length} of ${pushingSizes.length} sizes need a cost and MSRP in Costings before this goes to Products.`}
+                ? `Add ${needs} in Costings before this goes to Products.`
+                : `${unsynced.length} of ${pushingSizes.length} sizes need ${needs} in Costings before this goes to Products.`}
             </p>
             <Button asChild size="sm" variant="outline">
-              <Link href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}>Add cost in Costings</Link>
+              <Link href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}>
+                {canSeeCost ? "Add cost in Costings" : "Add MSRP in Costings"}
+              </Link>
             </Button>
           </div>
         </div>

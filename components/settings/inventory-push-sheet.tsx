@@ -44,11 +44,14 @@ function detail(family: InventoryFamily): string {
   return `${sizes}, ${price}`;
 }
 
-async function fetchUnpushedFamilies(): Promise<InventoryFamily[]> {
+async function fetchUnpushedFamilies(): Promise<{ families: InventoryFamily[]; canSeeCost: boolean }> {
   const res = await fetch("/api/shop/products/from-inventory");
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? "Couldn't load inventory.");
-  return ((json.rows ?? []) as InventoryFamily[]).filter((f) => f.push !== "pushed");
+  return {
+    families: ((json.rows ?? []) as InventoryFamily[]).filter((f) => f.push !== "pushed"),
+    canSeeCost: json.can_see_cost === true,
+  };
 }
 
 export function InventoryPushSheet({
@@ -82,12 +85,16 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
   const to = (href: string) => withLocale(href, locale);
 
   const [families, setFamilies] = useState<InventoryFamily[] | null>(null);
+  const [canSeeCost, setCanSeeCost] = useState(false);
   const [pushing, setPushing] = useState<InventoryFamily | null>(null);
 
   const load = useCallback(
     () =>
       fetchUnpushedFamilies()
-        .then(setFamilies)
+        .then((loaded) => {
+          setFamilies(loaded.families);
+          setCanSeeCost(loaded.canSeeCost);
+        })
         .catch((err: unknown) => {
           toast.error(err instanceof Error ? err.message : "Couldn't load inventory.");
           setFamilies([]);
@@ -106,7 +113,8 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
     list.push(family);
     byCategory.set(family.category, list);
   }
-  const ready = rows.filter((f) => unsyncedSizes(f.category, sizesToPush(f.sizes)).length === 0).length;
+  const ready = rows.filter((f) => unsyncedSizes(f.category, sizesToPush(f.sizes), canSeeCost).length === 0).length;
+  const needs = canSeeCost ? "a cost and MSRP" : "an MSRP";
 
   return (
     <>
@@ -131,7 +139,7 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                 </div>
                 <ul className="divide-y">
                   {group.map((family) => {
-                    const unsynced = unsyncedSizes(family.category, sizesToPush(family.sizes));
+                    const unsynced = unsyncedSizes(family.category, sizesToPush(family.sizes), canSeeCost);
                     return (
                       <li key={family.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
                         <div className="min-w-0">
@@ -140,8 +148,8 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                           {unsynced.length > 0 ? (
                             <div className="text-xs text-amber-700 dark:text-amber-300">
                               {unsynced.length === 1 && sizesToPush(family.sizes).length === 1
-                                ? "Needs a cost and MSRP in Costings"
-                                : `${unsynced.length} size${unsynced.length === 1 ? " needs" : "s need"} a cost and MSRP in Costings`}
+                                ? `Needs ${needs} in Costings`
+                                : `${unsynced.length} size${unsynced.length === 1 ? " needs" : "s need"} ${needs} in Costings`}
                             </div>
                           ) : null}
                         </div>
@@ -149,10 +157,10 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                           <Button asChild size="sm" variant="outline" className="shrink-0">
                             <Link
                               href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}
-                              aria-label={`Add cost for ${family.title} in Costings`}
+                              aria-label={`Add ${canSeeCost ? "cost" : "MSRP"} for ${family.title} in Costings`}
                             >
                               <CircleDollarSign className="mr-1.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
-                              Add cost
+                              {canSeeCost ? "Add cost" : "Add MSRP"}
                             </Link>
                           </Button>
                         ) : (
@@ -186,6 +194,7 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
           void load();
           onPushed?.();
         }}
+        canSeeCost={canSeeCost}
       />
     </>
   );

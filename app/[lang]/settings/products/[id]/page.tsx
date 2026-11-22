@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { readAiWritingAvailability } from "@/lib/ai/page-availability";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
@@ -20,11 +21,12 @@ export default async function ProductEditorPage({
     const { lang, id } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-    await requireAdminPage("products", locale);
+    const ctx = await requireAdminPage("products", locale);
+    const canSeeCost = hasPermission(ctx, "costings");
 
     const isNew = id === "new";
     const [product, categoryTree, ai] = await Promise.all([
-        isNew ? null : getAdminProduct(id),
+        isNew ? null : getAdminProduct(id, { canSeeCost }),
         getCategoryTree(),
         readAiWritingAvailability(),
     ]);
@@ -42,6 +44,7 @@ export default async function ProductEditorPage({
             categories={categoryTree}
             ai={ai}
             stripeMode={stripeMode()}
+            canSeeCost={canSeeCost}
         />
     );
 }

@@ -28,6 +28,13 @@ permission first, with `assertAdmin(<permission>)` or the route's own check,
 then write with the service-role client. Permissions are code; roles are data
 (ADR 0023).
 
+Cost price (`item_prices.cost_price`, and `product_variants.cost_price`, which
+Costings projects from it) is shown and written only for a role holding
+`costings` (owner, 2026-11-22). Inventory, Products, the product editor and
+Add from Inventory answer every other role with no cost, write no cost
+column for it (so a stored cost is kept), and refuse its request that sets
+one. MSRP is not gated.
+
 ## Pages that touch inventory, prices, products and orders
 
 | Page | Calls | Writes |

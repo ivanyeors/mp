@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listAdminProducts } from "@/lib/ecommerce/admin/products";
-import { requireAdmin } from "@/lib/auth/admin";
+import { adminCanSeeCost, requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
 
-  const result = await listAdminProducts(searchParams);
+  const result = await listAdminProducts(searchParams, { canSeeCost: await adminCanSeeCost() });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 500 });
 
   return NextResponse.json(result);
