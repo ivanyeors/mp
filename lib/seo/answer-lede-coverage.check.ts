@@ -25,9 +25,9 @@ const PDP_LEDES: Record<string, { "en-US": string; "zh-CN": string }> = {
   },
   "mpillow-premium": {
     "en-US":
-      "Mpillow Premium is Singapore's full custom-fit cervical pillow, measured and adjusted in-store for your neck curve, sleep style, and body build. Choose size, cover, and support options, then book a fitting for precise cervical alignment. Built for neck pain relief, modular serviceability, and long-term comfort that goes well beyond one-size foam.",
+      "Mpillow Premium is Singapore's full custom-fit cervical pillow, measured and adjusted in-store for your neck curve, sleep style, and body build. Choose size, cover, and support options, then book a fitting for precise cervical alignment. Built for cervical support, modular serviceability, and long-term comfort that goes well beyond one-size foam.",
     "zh-CN":
-      "Mpillow Premium 是新加坡全贴合定制颈椎枕，按颈曲、睡姿与体型在店内测量并微调。可选尺寸、面料与支撑配件，再预约试配以获得更精准对齐。专为缓解颈椎不适、模块化维护与长期舒适而设计，超越一刀切泡沫枕。",
+      "Mpillow Premium 是新加坡全贴合定制颈椎枕，按颈曲、睡姿与体型在店内测量并微调。可选尺寸、面料与支撑配件，再预约试配以获得更精准对齐。专为颈椎承托、模块化维护与长期舒适而设计，超越一刀切泡沫枕。",
   },
   mbolster: {
     "en-US":

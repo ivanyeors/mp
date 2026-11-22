@@ -53,7 +53,7 @@ export const enUS: Messages = {
         premium: {
           title: "Premium",
           description:
-            "Choose Premium for chronic neck pain. Get a consultative fitting at our Singapore store, or measure online from overseas. FibreCool and cervical neck support are optional.",
+            "Choose Premium for a full fit to your neck, head and shoulders. Get a consultative fitting at our Singapore store, or measure online from overseas. FibreCool and cervical neck support are optional.",
           badge: "Custom fit",
         },
       },
@@ -197,7 +197,7 @@ export const enUS: Messages = {
       configurationsTitle: "Unique configurations for every body",
       configurationsParagraphs: [
         "We spent 2 years developing the product, and 4 years to create 50+ unique configurations for users with round or flat heads, curved or straight spines, long or short necks, and thick or flat backs.",
-        "These different configurations support ideal sleeping posture for unrestricted airways.",
+        "Each configuration keeps your head, neck and spine in line while you sleep.",
       ],
     },
     basicMpillow: {
@@ -223,7 +223,7 @@ export const enUS: Messages = {
       firmnessBasicLabel: "Basic Mpillow",
       firmnessPremiumLabel: "Premium Mpillow",
       features: [
-        { title: "Ergonomic support, made simple", description: "A supportive shape designed to help relieve neck tension and keep you comfortable." },
+        { title: "Ergonomic support, made simple", description: "A supportive shape that keeps your neck comfortable all night." },
         { title: "Patented M design supports back and side sleepers", description: "Designed to support both back sleepers and side sleepers in one pillow." },
         { title: "Modular components for easy replacement and maintenance", description: "Modular parts make maintenance and replacement simpler over time." },
         { title: "Fully washable and easy to clean", description: "Easy care so you can keep your setup fresh and comfortable." },
@@ -268,19 +268,17 @@ export const enUS: Messages = {
       overseasTitle: "For overseas customers",
       overseasDescription: "Submit your measurements online. Our step-by-step flow will guide you with each measurement — in the comfort of your own home.",
       whoItsForTitle: "Who it's for",
-      whoItsForIntro: "Our patented M-shaped neck/shoulder pillows are suitable for individuals who have experienced:",
+      whoItsForIntro: "Our patented M-shaped pillow is fitted to you. It suits people who:",
       whoItsForItems: [
-        "neck pain",
-        "shoulder and cervical spine pain",
-        "head and cervical spine surgery",
-        "uneven shoulder height (scoliosis)",
-        "acid reflux",
-        "reversed neck",
-        "sleep apnea",
-        "numb fingers",
+        "wake up with a stiff neck or shoulders",
+        "find standard pillows too high or too low",
+        "have broad or narrow shoulders",
+        "switch between back and side sleeping",
+        "have a more curved neck (ask about cervical neck support)",
+        "have uneven shoulder heights",
       ],
       whoItsForConclusion:
-        "Choosing a measured cervical pillow can improve sleep comfort and overnight alignment.",
+        "Choosing a measured cervical pillow can improve sleep comfort and overnight alignment. Had neck surgery or have a medical condition? Ask your doctor first, and bring their advice to your fitting.",
       pricingTitle: "Price range & charges",
       pricingTable: { sizeHeader: "Size", priceHeader: "Price range (SGD)" },
       pricingNotes: [
@@ -288,9 +286,9 @@ export const enUS: Messages = {
         "Re-adjustment: one free visit within {freeWindowDays} days of purchase for Premium Mpillow, then {readjustmentFee} per visit",
         "Doorstep surcharge: $250 (includes transportation and one hour customisation)",
       ],
-      featuresTitle: "Features of our Premium neck & shoulder pain pillow",
+      featuresTitle: "Features of our Premium neck and shoulder pillow",
       featuresIntro:
-        "Our pillow for cervical neck pain is designed to help maintain proper spinal alignment. Tailored support can help you wake up feeling more refreshed.",
+        "Our cervical pillow is designed to help maintain proper spinal alignment. Tailored support can help you wake up feeling more refreshed.",
       features: [
         { title: "Customised to your specific shoulder, neck and head measurements", description: "A fitted pillow starts with accurate measurements so the support lands in the right places." },
         { title: "3 separate compartments maintain shape and allow for easy height adjustment", description: "Separate compartments help maintain structure and make fine-tuning the height easier." },
@@ -338,7 +336,7 @@ export const enUS: Messages = {
     },
     cervicalNeckSupport: {
       title: "Cervical Neck Support",
-      description: "Cervical Pillow For Neck Pain",
+      description: "Cervical support for a curved neck",
       heroEyebrow: "Cervical Support Pillow For Customisable Premium Mpillow",
       heroTitle: "Cervical Neck Support",
       heroDescription:
@@ -350,29 +348,29 @@ export const enUS: Messages = {
       ],
       whyTitle: "Why We Design Cervical Support Pillow",
       whyDescription:
-        "Our research and design would help people with a more curved neck profile to have a better support to relieve that neck stiffness or neck pain caused during your sleep.",
+        "Some necks curve more than others. Our cervical neck support fills the space under a curved neck, so it is supported all night.",
       benefitsTitle: "Benefits Of A Cervical Support Pillow",
       benefits: [
         {
-          title: "Improves Neck Alignment",
+          title: "Supports Your Neck's Natural Curve",
           description:
-            "A cervical pillow for neck pain is specifically designed to support the natural curve of your neck, helping to align the spine correctly. This reduces strain on your neck muscles and joints, leading to a more comfortable and pain-free sleep.",
+            "The insert fills the space under your neck, so your head and spine stay in line. Your neck muscles take less strain overnight.",
         },
         {
-          title: "Reduces Neck and Shoulder Pain",
+          title: "Comfort for Neck and Shoulders",
           description:
-            "By providing targeted support to the cervical area, a cervical support pillow helps relieve tension and pressure on the neck and shoulders. This can significantly reduce pain and discomfort, allowing you to wake up feeling refreshed and free from stiffness.",
+            "Support where your neck needs it spreads the load across your neck and shoulders, so they can stay relaxed through the night.",
         },
         {
-          title: "Enhances Sleep Quality",
+          title: "More Comfortable Sleep",
           description:
-            "A cervical pillow for neck pain encourages a more ergonomic sleeping position, which promotes better breathing and reduces tossing and turning at night. This leads to a deeper, more restful sleep, helping you feel more energized throughout the day.",
+            "A supported, comfortable position means less tossing and turning, so you can sleep more soundly.",
         },
       ],
       differenceTitle: "The Mpillow Difference: Cervical Support Pillow",
       differenceParagraphs: [
         "An additional support for your curved neck.",
-        "The cervical pillow for neck pain helps to prevent fillings from getting flatter, as its shape keeps the integrity of the support.",
+        "The cervical neck support helps stop the fillings getting flatter, as its shape keeps the support in form.",
       ],
       additionalBenefitsTitle: "Additional Benefits of A Mpillow Cervical Support Pillow",
       additionalBenefits: [
@@ -412,7 +410,7 @@ export const enUS: Messages = {
       aboutTitle: "About Mbolster",
       aboutParagraphs: [
         "Using the same modular structure as the Mpillow, Mbolster is a customisable side-sleep bolster sized by height for the whole household — children through adults. Firmness is adjustable and the bolster is 100% washable. Add a Tencel Mbolster case when you want a premium feel.",
-        "Duo face cover combines 2 Mbolsters to help stomach sleepers breath better when sleeping on the stomach and to help align the spine.",
+        "Duo face cover combines 2 Mbolsters to leave room for your face when you sleep on your stomach, and to help keep your spine in line.",
         "The inner case is made of white polyester fiber.",
       ],
       sizeGuideTitle: "Choose your size (by height)",

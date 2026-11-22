@@ -22,7 +22,7 @@ export function buildOrganizationJsonLd(lang = "en-US"): Record<string, unknown>
     url: origin,
     logo: `${origin}/mpillow_logo_2026.png`,
     description:
-      "Singapore-based maker of fully customisable cervical pillows and bolsters, fitted in-store for neck pain relief and ergonomic sleep.",
+      "Singapore-based maker of fully customisable cervical pillows and bolsters, fitted in-store for neck support and ergonomic sleep.",
     address: {
       "@type": "PostalAddress",
       addressCountry: "SG",

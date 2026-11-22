@@ -50,7 +50,7 @@ export const zhCN: Messages = {
         },
         premium: {
           title: "Premium",
-          description: "长期颈痛，选 Premium。可在新加坡门店进行一对一试配，海外顾客可在线测量。FibreCool 与颈椎支撑垫可按需加选。",
+          description: "需要按颈、头、肩全面贴合，选 Premium。可在新加坡门店进行一对一试配，海外顾客可在线测量。FibreCool 与颈椎支撑垫可按需加选。",
           badge: "专属贴合",
         },
       },
@@ -186,7 +186,7 @@ export const zhCN: Messages = {
       configurationsTitle: "为每一种体型打造独特配置",
       configurationsParagraphs: [
         "我们用 2 年研发产品，再用 4 年为不同头型、脊柱、颈长与背部厚度等，打造 50+ 种独特配置。",
-        "这些配置帮助你在睡眠时保持理想姿势，让呼吸更顺畅。",
+        "每一种配置都让头、颈与脊柱在睡眠中保持一条直线。",
       ],
     },
     basicMpillow: {
@@ -211,7 +211,7 @@ export const zhCN: Messages = {
       firmnessBasicLabel: "Basic Mpillow",
       firmnessPremiumLabel: "Premium Mpillow",
       features: [
-        { title: "简单有效的工学支撑", description: "稳定承托结构，帮助缓解颈部紧绷并提升舒适感。" },
+        { title: "简单有效的工学支撑", description: "稳定承托结构，整夜让颈部保持舒适。" },
         { title: "专利 M 型结构，兼顾仰睡与侧睡", description: "一颗枕头同时适配仰睡与侧睡需求。" },
         { title: "模块化组件，方便更换与维护", description: "组件可拆换，长期维护更省心。" },
         { title: "可水洗，易清洁", description: "需要时可清洗与刷新，让睡眠环境更卫生舒适。" },
@@ -256,18 +256,16 @@ export const zhCN: Messages = {
       overseasTitle: "海外顾客",
       overseasDescription: "在线提交测量数据。我们的流程会逐步引导你在家完成测量。",
       whoItsForTitle: "适合人群",
-      whoItsForIntro: "我们的专利 M 型颈肩枕适合有以下困扰的人群：",
+      whoItsForIntro: "我们的专利 M 型枕头按你的身形定制，适合：",
       whoItsForItems: [
-        "颈部疼痛",
-        "肩颈与颈椎疼痛",
-        "头部与颈椎手术后",
-        "肩高不对称（脊柱侧弯）",
-        "胃酸逆流",
-        "反弓颈（颈椎曲度异常）",
-        "睡眠呼吸暂停",
-        "手指麻木",
+        "早上醒来颈肩僵硬的人",
+        "觉得普通枕头太高或太低的人",
+        "肩膀较宽或较窄的人",
+        "仰睡与侧睡交替的人",
+        "颈部曲线较明显的人（可询问颈椎支撑垫）",
+        "两边肩膀高度不同的人",
       ],
-      whoItsForConclusion: "选择合适的颈枕可以显著提升睡眠质量，并帮助缓解不适。",
+      whoItsForConclusion: "量身定制的颈枕，让睡眠更舒适，整夜保持对齐。做过颈部手术或有其他健康状况？请先咨询医生，并在量身时告诉我们医生的建议。",
       pricingTitle: "价格区间与收费",
       pricingTable: { sizeHeader: "尺寸", priceHeader: "价格区间（SGD）" },
       pricingNotes: [
@@ -323,7 +321,7 @@ export const zhCN: Messages = {
     },
     cervicalNeckSupport: {
       title: "颈椎支撑垫",
-      description: "颈椎枕（缓解颈部疼痛）",
+      description: "为颈部曲线提供承托的颈椎支撑垫",
       heroEyebrow: "可定制 Premium Mpillow 的颈椎支撑枕",
       heroTitle: "颈椎支撑垫",
       heroDescription: "",
@@ -333,23 +331,23 @@ export const zhCN: Messages = {
         "它可放进 Premium Mpillow 里使用，无需另买一个科技颈专用枕头。",
       ],
       whyTitle: "为什么设计颈椎支撑枕",
-      whyDescription: "我们的研究与设计，能为颈部曲线更明显的人提供更好的承托，帮助缓解睡眠中造成的颈部僵硬或颈部疼痛。",
+      whyDescription: "每个人的颈部曲线不同。颈椎支撑垫填补弯曲颈部下方的空间，让颈部整夜得到承托。",
       benefitsTitle: "颈椎支撑枕的好处",
       benefits: [
         {
-          title: "改善颈部对齐",
+          title: "承托颈部自然曲线",
           description:
-            "颈椎枕能支撑颈部自然曲线，帮助脊柱保持正确对齐，减少颈部肌肉与关节的压力，让睡眠更舒适。",
+            "支撑垫填补颈部下方的空间，让头部与脊柱保持一条直线，整夜减轻颈部肌肉的负担。",
         },
         {
-          title: "缓解颈部与肩部疼痛",
+          title: "颈肩更舒适",
           description:
-            "针对颈椎区域提供承托，帮助释放颈肩紧绷与压力，减轻不适，让你醒来更放松、更不僵硬。",
+            "在颈部需要的位置提供承托，把压力分散到颈肩，让它们整夜保持放松。",
         },
         {
-          title: "提升睡眠质量",
+          title: "睡得更舒适",
           description:
-            "帮助形成更符合人体工学的睡姿，促进更顺畅的呼吸，并减少夜间翻身与辗转，带来更深更好的睡眠。",
+            "承托稳定、姿势舒适，减少夜间翻身，睡得更安稳。",
         },
       ],
       differenceTitle: "Mpillow 的不同之处：颈椎支撑枕",
@@ -384,7 +382,7 @@ export const zhCN: Messages = {
       aboutTitle: "关于 Mbolster",
       aboutParagraphs: [
         "Mbolster 采用与 Mpillow 相同的模块化结构，可调节软硬度，尤其适合侧睡。它也更卫生：组件可水洗，并提供多种尺寸适配不同身高。你还可加购 Tencel 材质枕套，带来更细腻的触感。",
-        "Duo face cover 可将两个 Mbolster 组合，帮助俯睡时更易呼吸并辅助脊柱对齐。",
+        "Duo face cover 可将两个 Mbolster 组合，俯睡时为脸部留出空间，并帮助脊柱保持一条直线。",
         "内衬材质为白色聚酯纤维。",
       ],
       sizeGuideTitle: "按身高选择尺寸",
@@ -411,7 +409,7 @@ export const zhCN: Messages = {
         "模块化填充让你可以轻松调节 Mbolster 的软硬度（尤其适合侧睡）。填充物也可拆下机洗，让抱枕更卫生。",
       discoverTitle: "了解 Mbolster",
       discoverParagraphs: [
-        "Mbolster 与 Mpillow 搭配可进一步提升睡眠质量。Mpillow 帮助改善颈肩不适，而 Mbolster 则帮助侧睡者整晚维持更好的腰背姿势，减少肌肉拉扯与下背不适。",
+        "Mpillow 承托颈部，Mbolster 支撑侧睡，让颈部、脊柱与髋部一起得到承托。每个 Mbolster 都可按家人身高选择尺寸。",
         "传统抱枕过大或过硬时会非常不舒适，像抱着一块硬木。时间久了可能变软，内衬也可能因尘螨堆积而发黄。由于传统抱枕体积大，清洁往往更困难。",
         "M Bolster 打破传统：创新设计让你拥有更卫生、软硬平衡且更耐用的抱枕，带来每日舒适。",
       ],

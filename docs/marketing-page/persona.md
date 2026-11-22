@@ -30,6 +30,6 @@ Under all three personas: habitual pillow buyers who never find the right fit; c
 ## Copy rules
 
 1. Empathize with failed one-size purchases; lead with customisation and cervical alignment.
-2. Stay claim-safe: neck pain relief, alignment, posture, sleep quality — no prescribe / treat / cure / rehab.
+2. Stay claim-safe. Neck pain is the reader's problem, never the product's promise: say support, alignment, comfort, fit, less strain and sleep quality. Never relieve, treat, cure, heal, correct or rehab; never pain-free, orthopaedic pillow, clinically proven or doctor-recommended; never a medical condition as who a product is for (point people with one to their doctor). HSA classifies a product presented for pain relief as a medical device (GL-06). `lib/claims.ts` holds the banned list and `lib/claims.check.ts` enforces it on site copy.
 3. Every public string should be SEO/SEM/AEO-friendly: answer-first ledes, natural Singapore high-intent keywords, extractable facts.
 4. Consumer ambassadors ≠ Local Ambassadors (clinical partners on `/our-partners`).

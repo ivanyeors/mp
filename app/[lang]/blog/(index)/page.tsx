@@ -9,7 +9,7 @@ import { buildPageMetadata, localeUrl, resolveMetaDescription } from "@/lib/seo"
 import { JsonLdScript } from "@/components/seo/json-ld-script";
 
 const BLOG_DESCRIPTION =
-    "Read our latest articles on improving sleep posture, neck pain relief, and choosing the perfect pillow in Singapore.";
+    "Read our latest articles on sleeping positions, neck support and choosing the right pillow in Singapore.";
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const [{ lang }, query] = await Promise.all([params, searchParams]);

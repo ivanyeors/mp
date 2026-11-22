@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img"><title>Back sleeper, pillow too high: chin pushed toward the chest</title><style>
+.mat{fill:#e6e9ee}.body{fill:#d5dbe3}.neck{stroke:#d5dbe3;stroke-width:24;stroke-linecap:round;fill:none}
+.pillow{fill:#cfe3f1;stroke:#2f6db5;stroke-width:2}.ok{stroke:#2f6db5}.off{stroke:#d9661f}
+.okf{fill:#2f6db5}.offf{fill:#d9661f}.ref{stroke:#7d8796;stroke-width:1.5;stroke-dasharray:5 5;fill:none}
+.sp{stroke-width:3;fill:none;stroke-linecap:round}.face{fill:none;stroke:#7d8796;stroke-width:2}
+.fill{fill:#2f6db5;opacity:.55}.line{fill:none;stroke:#2f6db5;stroke-width:2}.acc{fill:none;stroke:#d9661f;stroke-width:2.5;stroke-linecap:round}
+@media (prefers-color-scheme:dark){.mat{fill:#262c35}.body{fill:#3b4451}.neck{stroke:#3b4451}
+.pillow{fill:#1c3350;stroke:#78a6f2}.ok{stroke:#78a6f2}.off{stroke:#f0a35c}.okf{fill:#78a6f2}.offf{fill:#f0a35c}
+.ref{stroke:#8792a2}.face{stroke:#8792a2}.fill{fill:#78a6f2}.line{stroke:#78a6f2}.acc{stroke:#f0a35c}}
+</style><rect x="0" y="170" width="320" height="30" class="mat"/><path d="M24 170 L24 145 Q24 137 34 137 L104 137 Q126 131 146 137 L152 141 L152 170 Z" class="pillow"/><path d="M330 112 L184 112 Q150 112 150 142 L150 170 L330 170 Z" class="body"/><line x1="154" y1="150" x2="92" y2="112" class="neck"/><circle cx="92" cy="112" r="30" class="body"/><line x1="92" y1="78" x2="92" y2="34" class="ref"/><line x1="106.1" y1="85.5" x2="124.9" y2="50.2" class="sp off"/><polygon points="124.9,50.2 125.0,58.2 118.2,54.6" class="offf"/><path d="M154 160 L318 160" class="sp off"/><circle cx="168" cy="160" r="3.5" class="offf"/><circle cx="186" cy="160" r="3.5" class="offf"/><circle cx="204" cy="160" r="3.5" class="offf"/><circle cx="222" cy="160" r="3.5" class="offf"/><circle cx="240" cy="160" r="3.5" class="offf"/><circle cx="258" cy="160" r="3.5" class="offf"/><circle cx="276" cy="160" r="3.5" class="offf"/><circle cx="294" cy="160" r="3.5" class="offf"/><circle cx="312" cy="160" r="3.5" class="offf"/><path d="M154 160 Q150 150 92.0 112" class="sp off"/><circle cx="92" cy="112" r="4" class="offf"/></svg>

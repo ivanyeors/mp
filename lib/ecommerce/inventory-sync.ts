@@ -78,7 +78,7 @@ export async function syncPillowProducts(): Promise<ProjectionResult> {
               seo_description: `Build your perfect ${kind} pillow with our customization system`,
               seo_answer:
                 kind === "premium"
-                  ? "Mpillow Premium is Singapore's full custom-fit cervical pillow, measured and adjusted in-store for your neck curve, sleep style, and body build. Choose size, cover, and support options, then book a fitting for precise cervical alignment. Built for neck pain relief, modular serviceability, and long-term comfort that goes well beyond one-size foam."
+                  ? "Mpillow Premium is Singapore's full custom-fit cervical pillow, measured and adjusted in-store for your neck curve, sleep style, and body build. Choose size, cover, and support options, then book a fitting for precise cervical alignment. Built for cervical support, modular serviceability, and long-term comfort that goes well beyond one-size foam."
                   : "Mpillow Basic is Singapore's entry customisable cervical pillow for everyday neck support and better sleep posture. Configure core size and fit options online, then refine in-store if you want a guided fitting with our team. It is designed for ergonomic alignment and washable modular upkeep — a practical custom pillow when you are ready to leave one-size foam behind.",
             },
             "zh-CN": {
@@ -89,7 +89,7 @@ export async function syncPillowProducts(): Promise<ProjectionResult> {
               seo_description: `使用我们的定制系统打造您的完美枕头`,
               seo_answer:
                 kind === "premium"
-                  ? "Mpillow Premium 是新加坡全贴合定制颈椎枕，按颈曲、睡姿与体型在店内测量并微调。可选尺寸、面料与支撑配件，再预约试配以获得更精准对齐。专为缓解颈椎不适、模块化维护与长期舒适而设计，超越一刀切泡沫枕。"
+                  ? "Mpillow Premium 是新加坡全贴合定制颈椎枕，按颈曲、睡姿与体型在店内测量并微调。可选尺寸、面料与支撑配件，再预约试配以获得更精准对齐。专为颈椎承托、模块化维护与长期舒适而设计，超越一刀切泡沫枕。"
                   : "Mpillow Basic 是新加坡入门级可定制颈椎枕，适合日常颈托需求与更好睡姿。可先在线配置核心尺寸与贴合选项，需要时再到店由顾问微调。面向人体工学对齐与可水洗模块化维护——当你准备告别一刀切泡沫枕时的实用定制选择。",
             },
           },
