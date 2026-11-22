@@ -68,7 +68,7 @@ assert.deepEqual(
   unexpectedServiceReaders,
   [],
   `New reader(s) of service_prices: ${unexpectedServiceReaders.join(", ")}.\n` +
-    "Read service fees through loadServicePrices() in lib/pricing/service-prices.ts.",
+    "Read service fees through lib/pricing/service-prices.ts: loadServiceFees() for anything a customer sees (it never selects cost_price), loadServicePrices() only for staff and server-side pricing.",
 );
 const vanishedServiceReaders = Object.keys(SERVICE_TABLE_READERS).filter(
   (f) => !serviceReaders.includes(f),

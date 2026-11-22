@@ -55,6 +55,11 @@ const cases = [
     roles: ["authenticated"],
   },
   { table: "orders", hidden: ["internal_notes"], roles: ["authenticated"] },
+  {
+    table: "shipping_methods",
+    hidden: ["markup_percent", "markup_fixed", "rate_rounding"],
+    roles: ["anon", "authenticated"],
+  },
 ];
 
 describe.each(cases)("$table column grants", ({ table, hidden, roles }) => {
@@ -92,5 +97,102 @@ describe("customer_notes is server-only", () => {
     expect(policies.length).toBeGreaterThan(0);
     for (const [, body] of policies) expect(body).toMatch(/\bto service_role\b/);
     expect(sql).not.toMatch(/grant [a-z, ]+ on (?:table )?(?:public\.)?customer_notes to/);
+  });
+});
+
+const COST_COLUMN = /cost|cogs|margin|markup/;
+
+function costColumnsInSchema(): string[] {
+  const found = new Set<string>();
+  for (const [, table, body] of sql.matchAll(/create table (?:if not exists )?(?:public\.)?([a-z_0-9]+)\s*\(([\s\S]*?)\n\);/g)) {
+    for (const line of body.split("\n")) {
+      const col = line.trim().match(/^([a-z_0-9]+)\s/)?.[1];
+      if (col && COST_COLUMN.test(col)) found.add(`${table}.${col}`);
+    }
+  }
+  for (const [, table, body] of sql.matchAll(/alter table (?:if exists )?(?:public\.)?([a-z_0-9]+)\s([^;]*);/g)) {
+    for (const [, col] of body.matchAll(/\badd column (?:if not exists )?([a-z_0-9]+)/g)) {
+      if (COST_COLUMN.test(col)) found.add(`${table}.${col}`);
+    }
+  }
+  return [...found].sort();
+}
+
+const COST_COLUMNS_CLOSED_BY: Record<string, "column grants" | "no grants" | "staff-only rows"> = {
+  "item_prices.cost_price": "staff-only rows",
+  "order_items.total_cost": "column grants",
+  "order_items.unit_cost": "column grants",
+  "order_shipments.carrier_cost": "no grants",
+  "order_shipments.quoted_carrier_cost": "no grants",
+  "product_variants.cost_price": "column grants",
+  "service_prices.cost_price": "staff-only rows",
+  "shipping_methods.markup_fixed": "column grants",
+  "shipping_methods.markup_percent": "column grants",
+  "shopify_order_lines.total_cost": "staff-only rows",
+  "shopify_order_lines.unit_cost": "staff-only rows",
+};
+const closedBy = (how: string) =>
+  Object.entries(COST_COLUMNS_CLOSED_BY)
+    .filter(([, h]) => h === how)
+    .map(([c]) => c.split("."));
+
+const loops = [...sql.matchAll(/foreach [a-z]+ in array array\[([^\]]*)\] loop([\s\S]*?)end loop;/g)].map(
+  ([, list, body]) => ({ tables: list.split(",").map((t) => t.trim().replace(/'/g, "")), body }),
+);
+
+describe("customers never see a cost column (owner, 2026-11-22)", () => {
+  it("every cost column in the schema is listed with how customers are kept out", () => {
+    expect(costColumnsInSchema()).toEqual(Object.keys(COST_COLUMNS_CLOSED_BY).sort());
+  });
+
+  it.each(closedBy("column grants"))("%s.%s: table SELECT revoked, column never granted", (table, col) => {
+    expect(sql).toContain(`revoke select on public.${table} from anon, authenticated;`);
+    for (const role of ["anon", "authenticated"]) expect(grantedTo(table, role).has(col), role).toBe(false);
+  });
+
+  it.each([...closedBy("no grants"), ["shipping_rate_quotes", "rates"]])(
+    "%s.%s: nothing granted to anon or authenticated",
+    (table) => {
+      expect(sql).toContain(`revoke all on public.${table} from anon, authenticated;`);
+      expect(sql).not.toMatch(new RegExp(`grant [^;]* on (?:table )?(?:public\\.)?${table} to [^;]*(anon|authenticated)`));
+      expect(sql).not.toMatch(new RegExp(`create policy "[^"]+" on (?:public\\.)?${table}\\s[^;]*to (anon|authenticated|public)`));
+    },
+  );
+
+  it.each(closedBy("staff-only rows"))("%s.%s: row security on, no row for a customer", (table) => {
+    const direct = new RegExp(`alter table (?:public\\.)?${table} enable row level security;`).test(sql);
+    const looped = loops.some((l) => l.tables.includes(table) && l.body.includes("enable row level security"));
+    expect(direct || looped).toBe(true);
+    const policies = [...sql.matchAll(new RegExp(`create policy "[^"]+" on (?:public\\.)?${table}\\s([^;]*);`, "g"))];
+    for (const [, body] of policies) expect(body).toMatch(/to service_role|is_admin_user\(\)/);
+    const openedToAnon = loops.some((l) => l.tables.includes(table) && /to anon using \(true\)/.test(l.body));
+    const closedAgain = loops.some(
+      (l) => l.tables.includes(table) && /drop policy if exists %I on public\.%I', 'tmp_anon_read '/.test(l.body),
+    );
+    expect(openedToAnon && !closedAgain).toBe(false);
+  });
+
+  it("order_margins (COGS per order) is revoked from anon and authenticated", () => {
+    const anonLoop = loops.some(
+      (l) => l.tables.includes("order_margins") && l.body.includes("revoke all on public.%I from anon"),
+    );
+    expect(anonLoop).toBe(true);
+    expect(sql).toContain("revoke all on public.order_margins from authenticated");
+    expect(sql).not.toMatch(/grant [^;]* on (?:table )?(?:public\.)?order_margins to/);
+  });
+});
+
+describe("a Result order line's snapshot never stores a cost, whichever build writes it", () => {
+  it("a trigger strips cogs and each service line's costPrice on every write of the column", () => {
+    expect(sql).toMatch(
+      /create or replace trigger order_items_strip_snapshot_costs\s+before insert or update of customization_snapshot on public\.order_items\s+for each row execute function public\.order_items_strip_snapshot_costs\(\);/,
+    );
+    expect(sql).toMatch(/new\.customization_snapshot := public\.snapshot_without_costs\(new\.customization_snapshot\)/);
+    const bodies = [...sql.matchAll(/function public\.snapshot_without_costs\(snapshot jsonb\)[\s\S]*?\$\$([\s\S]*?)\$\$/g)];
+    const latest = bodies.at(-1)?.[1] ?? "";
+    expect(latest).toContain("snapshot - 'cogs'");
+    expect(latest).toContain("l.line - 'costPrice'");
+    expect(sql).not.toMatch(/drop trigger [^;]*order_items_strip_snapshot_costs/);
+    expect(sql).not.toMatch(/disable trigger order_items_strip_snapshot_costs/);
   });
 });

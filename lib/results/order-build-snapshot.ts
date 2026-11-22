@@ -5,6 +5,8 @@ import type { BolsterPlacementRow, PillowPlacementRow } from "@/lib/spatial-fill
 
 export type NamedBuildLine = BuildLine & { name: string };
 
+export type SnapshotServiceLine = Pick<ServiceLine, "key" | "label" | "msrp">;
+
 export type ResultOrderBuildSnapshot = {
   result_id: string;
   product_type: "pillow" | "bolster";
@@ -17,9 +19,8 @@ export type ResultOrderBuildSnapshot = {
   preference_lines: NamedBuildLine[];
   addon_lines: NamedBuildLine[];
   build_lines: NamedBuildLine[];
-  cogs: number;
   pricing: PriceResultOutput;
-  service_lines?: ServiceLine[];
+  service_lines?: SnapshotServiceLine[];
 };
 
 const ROLE_LABELS: Record<BuildLineRole, string> = {
@@ -56,12 +57,14 @@ export function buildResultOrderSnapshot(input: {
   fillingPlacements?: Array<PillowPlacementRow | BolsterPlacementRow>;
   buildLines: BuildLine[];
   nameByItem: Map<number, string>;
-  cogs: number;
   pricing: PriceResultOutput;
   serviceLines?: ServiceLine[];
 }): ResultOrderBuildSnapshot {
   const named = (line: BuildLine): NamedBuildLine => ({
-    ...line,
+    item_id: line.item_id,
+    quantity: line.quantity,
+    role: line.role,
+    ...(line.category === undefined ? {} : { category: line.category }),
     name: input.nameByItem.get(line.item_id) ?? `Item #${line.item_id}`,
   });
   const build_lines = input.buildLines.map(named);
@@ -77,9 +80,10 @@ export function buildResultOrderSnapshot(input: {
     preference_lines: build_lines.filter((l) => l.role === "preference"),
     addon_lines: build_lines.filter((l) => l.role === "addon"),
     build_lines,
-    cogs: input.cogs,
     pricing: input.pricing,
-    ...(input.serviceLines?.length ? { service_lines: input.serviceLines } : {}),
+    ...(input.serviceLines?.length
+      ? { service_lines: input.serviceLines.map((l) => ({ key: l.key, label: l.label, msrp: l.msrp })) }
+      : {}),
   };
 }
 
