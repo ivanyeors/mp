@@ -92,7 +92,7 @@ beforeEach(() => {
   h.readErrors = {};
   h.variantUpdateError = null;
   h.variantUpdates = [];
-  h.stripe.mockResolvedValue({ synced: true, pricesInPlace: true, notices: [], paymentLinkCleared: false, result: {} });
+  h.stripe.mockResolvedValue({ synced: true, pricesInPlace: true, notices: [], result: {} });
   h.tables = {
     products: [
       {
@@ -123,7 +123,7 @@ describe.each([
   ["Resync prices", resync],
 ])("%s: a price that does not reach Stripe", (_name, run) => {
   it("still answers ok, names the product, gives Stripe's own message and points at Sync to Stripe", async () => {
-    h.stripe.mockResolvedValue({ synced: false, error: "Rate limit exceeded (req_123)", pricesInPlace: false, notices: [], paymentLinkCleared: false });
+    h.stripe.mockResolvedValue({ synced: false, error: "Rate limit exceeded (req_123)", pricesInPlace: false, notices: [] });
     const { status, body } = await run();
 
     expect(status).toBe(200);
@@ -207,7 +207,7 @@ describe.each([
 
   it("names a product with no title by its slug", async () => {
     h.tables.products[0]!.content = {};
-    h.stripe.mockResolvedValue({ synced: false, error: "boom", pricesInPlace: false, notices: [], paymentLinkCleared: false });
+    h.stripe.mockResolvedValue({ synced: false, error: "boom", pricesInPlace: false, notices: [] });
     const { body } = await run();
 
     expect(body.stripe_warnings).toEqual([
@@ -217,7 +217,7 @@ describe.each([
 
   it("carries a notice from a sync that worked, with no next step", async () => {
     const notice = "Retired payment link plink_1: it sold a price no variant has any more.";
-    h.stripe.mockResolvedValue({ synced: true, pricesInPlace: true, notices: [notice], paymentLinkCleared: true, result: {} });
+    h.stripe.mockResolvedValue({ synced: true, pricesInPlace: true, notices: [notice], result: {} });
     const { body } = await run();
 
     expect(body.ok).toBe(true);
@@ -226,7 +226,7 @@ describe.each([
 
   it("prices in place but Stripe needs attention: no old-price claim and no Sync to Stripe advice", async () => {
     const error = "The new prices are in place, but Stripe needs attention: old price price_1 is still active and needs archiving in Stripe (boom)";
-    h.stripe.mockResolvedValue({ synced: false, error, pricesInPlace: true, notices: [], paymentLinkCleared: false });
+    h.stripe.mockResolvedValue({ synced: false, error, pricesInPlace: true, notices: [] });
     const { body } = await run();
 
     expect(body.stripe_warnings).toEqual([{ product: "Ear Pad", message: error }]);

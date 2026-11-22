@@ -20,14 +20,13 @@ export async function POST(req: Request) {
   }
 
   const outcome = await syncProductToStripeSafe(parsed.data.product_id);
-  const { pricesInPlace, notices, paymentLinkCleared } = outcome;
+  const { pricesInPlace, notices } = outcome;
   if (!outcome.result) {
     return NextResponse.json(
       {
         error: outcome.error ?? "Failed to sync product to Stripe",
         pricesInPlace,
         notices,
-        paymentLinkCleared,
       },
       { status: 500 },
     );
@@ -40,6 +39,5 @@ export async function POST(req: Request) {
     variants: outcome.result.variants,
     pricesInPlace,
     notices,
-    paymentLinkCleared,
   });
 }

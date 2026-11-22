@@ -8,7 +8,6 @@ vi.mock("@/lib/stripe/sync", () => ({
     synced: true,
     pricesInPlace: true,
     notices: [],
-    paymentLinkCleared: false,
   })),
 }));
 vi.mock("@/lib/supabase/server", () => ({
