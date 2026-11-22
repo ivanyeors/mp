@@ -8,7 +8,14 @@ type Item = { id: number; category: string; name: string; msrp: string };
 type Load = { answer: (items: Item[]) => Promise<void>; fail: (message: string) => Promise<void> };
 
 const db = vi.hoisted(() => ({ loads: [] as Load[] }));
+const dock = vi.hoisted(() => ({ actions: [] as Array<{ id: string; disabled?: boolean; onClick: () => void }> }));
 
+vi.mock("@/components/ui/page-dock-actions", () => ({
+  useMobileDockActions: (actions: typeof dock.actions) => {
+    dock.actions = actions;
+    return false;
+  },
+}));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en-US/settings/costings",
   useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }),
@@ -92,20 +99,26 @@ let frames: FrameRequestCallback[] = [];
 let holdFrames = false;
 let holdSave = false;
 let releaseSave: (() => void) | null = null;
+let saveAnswer: { ok: boolean; status: number; body: unknown } | null = null;
 const offsetTop = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetTop")!;
 
 let root: Root | null = null;
 beforeEach(() => {
   db.loads = [];
+  dock.actions = [];
   holdSave = false;
   releaseSave = null;
+  saveAnswer = null;
   vi.mocked(toast.error).mockClear();
   frames = [];
   holdFrames = false;
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => {
-      const answer = { ok: true, json: async () => ({ ok: true, templates: [] }) };
+      const answer =
+        saveAnswer && url.includes("/costings/save")
+          ? { ok: saveAnswer.ok, status: saveAnswer.status, json: async () => saveAnswer!.body }
+          : { ok: true, status: 200, json: async () => ({ ok: true, templates: [] }) };
       if (holdSave && url.includes("/costings/save")) return new Promise((resolve) => (releaseSave = () => resolve(answer)));
       return Promise.resolve(answer);
     }),
@@ -169,6 +182,15 @@ async function editPartMsrp(value: string) {
   await settle(300);
 }
 const button = (label: RegExp) => [...document.querySelectorAll<HTMLElement>("button")].find((b) => label.test(b.textContent ?? ""));
+const refreshButton = () => button(/^Refresh$/) as HTMLButtonElement;
+const dockRefresh = () => dock.actions.find((action) => action.id === "refresh")!;
+const cell = (label: string) => document.querySelector(`td[aria-label="${label}"]`)?.textContent;
+const notice = () => [...document.querySelectorAll('[role="status"]')].map((el) => el.textContent).join(" ");
+const saveBodies = () =>
+  vi
+    .mocked(fetch)
+    .mock.calls.filter(([url]) => String(url).includes("/costings/save"))
+    .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
 
 describe("Costings load", () => {
   it("shows the newest load's prices when an older load answers last", async () => {
@@ -302,5 +324,118 @@ describe("Costings part filters", () => {
     await click(document.querySelector<HTMLElement>(`[data-filter-option="other"]`)!);
     expect(visibleTags()).toEqual(["Covers", "Fillings", "Packaging"]);
     expect(button(/Show 2 more/)).toBeTruthy();
+  });
+});
+
+describe("Costings drafts", () => {
+  const twoParts = (part1: string, part2: string) => [item(1, "cover", part1), item(2, "cover", part2)];
+
+  it("does not apply a load that answers while Save is in flight, and Refresh is disabled until Save answers", async () => {
+    await db.loads[0].answer(twoParts("20.00", "20.00"));
+    await editPartMsrp("30.00");
+
+    holdSave = true;
+    await click(saveButton());
+    expect(refreshButton().disabled).toBe(true);
+    expect(dockRefresh().disabled).toBe(true);
+    await act(async () => dockRefresh().onClick());
+    expect(db.loads).toHaveLength(1);
+
+    await reload();
+    expect(db.loads).toHaveLength(2);
+    await db.loads[1].answer(twoParts("20.00", "25.00"));
+    await settle();
+    expect(cell("Part 1 Covers MSRP")).toBe("$30.00");
+    expect(cell("Part 2 Covers MSRP")).toBe("$20.00");
+    expect(notice()).toContain("You have unsaved changes.");
+
+    await act(async () => releaseSave!());
+    await settle();
+    expect(db.loads).toHaveLength(3);
+    await db.loads[2].answer(twoParts("30.00", "25.00"));
+    await settle();
+    expect(refreshButton().disabled).toBe(false);
+    expect(dockRefresh().disabled).toBe(false);
+    expect(cell("Part 1 Covers MSRP")).toBe("$30.00");
+    expect(cell("Part 2 Covers MSRP")).toBe("$25.00");
+    expect(notice()).not.toContain("unsaved");
+  });
+
+  it.each(["Refresh", "inventory:changed"])(
+    "keeps a typed MSRP through %s, refreshes the rows nobody typed in, and says there are unsaved changes",
+    async (how) => {
+      await db.loads[0].answer(twoParts("20.00", "20.00"));
+      expect(notice()).not.toContain("unsaved");
+      await editPartMsrp("30.00");
+      expect(notice()).toContain("You have unsaved changes.");
+
+      if (how === "Refresh") await click(refreshButton());
+      else await reload();
+      expect(db.loads).toHaveLength(2);
+      await db.loads[1].answer(twoParts("20.00", "25.00"));
+      await settle();
+
+      expect(cell("Part 1 Covers MSRP")).toBe("$30.00");
+      expect(cell("Part 2 Covers MSRP")).toBe("$25.00");
+      expect(notice()).toContain("You have unsaved changes.");
+      expect(notice()).not.toContain("Saved since you started editing");
+      expect(saveButton().disabled).toBe(false);
+    },
+  );
+
+  it("shows the saved price that changed under a typed one when a reload brings it in", async () => {
+    await db.loads[0].answer(twoParts("20.00", "20.00"));
+    await editPartMsrp("30.00");
+    await reload();
+    await db.loads[1].answer(twoParts("25.00", "20.00"));
+    await settle();
+
+    expect(cell("Part 1 Covers MSRP")).toBe("$30.00");
+    expect(notice()).toContain("Saved since you started editing: Part 1 Covers MSRP $25.00. Save to replace it with yours.");
+  });
+
+  it("on a conflict, names the row, keeps the draft, and saves against the reloaded price after a reload", async () => {
+    await db.loads[0].answer(twoParts("20.00", "20.00"));
+    await editPartMsrp("30.00");
+
+    const conflict = "Someone changed this price since you opened it — reload to see it: Part 1 Covers.";
+    saveAnswer = { ok: false, status: 409, body: { error: conflict, conflicts: [{ key: "item:1", name: "Part 1 Covers" }] } };
+    await click(saveButton());
+    await settle();
+
+    expect(saveBodies()[0].rows).toEqual([
+      {
+        itemId: 1,
+        costPriceCents: 500,
+        msrpCents: 3000,
+        compareAtCents: null,
+        base: { costPriceCents: 500, msrpCents: 2000, compareAtCents: null },
+      },
+    ]);
+    expect(notice()).toContain(conflict);
+    expect(toast.error).toHaveBeenCalledWith(conflict);
+    expect(db.loads).toHaveLength(1);
+    expect(cell("Part 1 Covers MSRP")).toBe("$30.00");
+    expect(saveButton().disabled).toBe(false);
+
+    saveAnswer = null;
+    await click(refreshButton());
+    await db.loads[1].answer(twoParts("25.00", "20.00"));
+    await settle();
+    expect(cell("Part 1 Covers MSRP")).toBe("$30.00");
+    expect(notice()).not.toContain("Someone changed");
+    expect(notice()).toContain("Part 1 Covers MSRP $25.00");
+
+    await click(saveButton());
+    await settle();
+    expect(saveBodies()[1].rows).toEqual([
+      {
+        itemId: 1,
+        costPriceCents: 500,
+        msrpCents: 3000,
+        compareAtCents: null,
+        base: { costPriceCents: 500, msrpCents: 2500, compareAtCents: null },
+      },
+    ]);
   });
 });

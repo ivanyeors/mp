@@ -109,6 +109,16 @@ flowchart TD
   the arithmetic.
 - **Services**: upserts `service_prices` and writes the re-adjustment policy to
   `site_settings`. This skips the Variant/Stripe sync.
+- **A stale edit writes nothing**: every Item row, Composed sellable row,
+  Service and the re-adjustment policy the save sends carries its `base`, the
+  stored values the page loaded when editing began. Before any write or sync
+  the route compares each base with what is stored (Items: cost, MSRP and
+  compare-at; Composed sellables: MSRP and compare-at, found the way the page
+  finds them; Services: MSRP and cost) and, if any differ, answers 409 naming
+  the rows. The page keeps what was typed through every reload (Refresh, the
+  `inventory:changed` event), refreshes the rest, and a reload rebases the
+  edit, so Save works again. Check-then-write: a save landing between the
+  route's read and its writes still wins (`ponytail:` in the route).
 - **Variant mirror**: every `products.is_auto_generated` product resolves each
   Variant's price through `price_key`, `pillow_product_id`, bolster `option1`
   or `item_id`. It writes `price`, `compare_at_price` and BOM `cost_price`,

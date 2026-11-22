@@ -189,10 +189,7 @@
   },
   "app/[lang]/settings/costings/page.tsx": {
     "mp/no-effect": {
-      "count": 8
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 7
     }
   },
   "app/[lang]/settings/costings/save/route.ts": {

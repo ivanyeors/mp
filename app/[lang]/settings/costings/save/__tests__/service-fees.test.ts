@@ -60,6 +60,13 @@ vi.mock("@/lib/supabase/server", () => ({
 
 const { POST } = await import("@/app/[lang]/settings/costings/save/route");
 
+const BASE = {
+  measurement_premium: { msrpCents: 5000, costCents: null },
+  measurement_basic: { msrpCents: 3000, costCents: null },
+  readjustment: { msrpCents: 3000, costCents: null },
+};
+const POLICY_BASE = { freeVisits: 1, freeWindowDays: 60 };
+
 const post = (body: unknown) =>
   POST(
     new Request("https://x.test/en-US/settings/costings/save", {
@@ -87,7 +94,7 @@ describe("Costings → Service fees save", () => {
   it("writes a changed fee and returns the saved prices", async () => {
     const res = await post({
       rows: [],
-      services: [{ key: "measurement_premium", msrpCents: 5500, costCents: null }],
+      services: [{ key: "measurement_premium", msrpCents: 5500, costCents: null, base: BASE.measurement_premium }],
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -102,19 +109,22 @@ describe("Costings → Service fees save", () => {
   });
 
   it("accepts a $0 re-adjustment fee — every visit free, nothing sent to Stripe", async () => {
-    const res = await post({ rows: [], services: [{ key: "readjustment", msrpCents: 0, costCents: null }] });
+    const res = await post({
+      rows: [],
+      services: [{ key: "readjustment", msrpCents: 0, costCents: null, base: BASE.readjustment }],
+    });
     expect(res.status).toBe(200);
   });
 
   it("writes the complimentary rule to site_settings and expires the cache", async () => {
-    const res = await post({ rows: [], readjustmentPolicy: { freeVisits: 2, freeWindowDays: 90 } });
+    const res = await post({ rows: [], readjustmentPolicy: { freeVisits: 2, freeWindowDays: 90, base: POLICY_BASE } });
     expect(res.status).toBe(200);
     expect((await res.json()).readjustmentPolicy).toEqual({ freeVisits: 2, freeWindowDays: 90 });
     expect(h.invalidate).toHaveBeenCalledWith("site-settings");
   });
 
   it("records one audit entry with before and after", async () => {
-    await post({ rows: [], services: [{ key: "readjustment", msrpCents: 3500, costCents: 500 }] });
+    await post({ rows: [], services: [{ key: "readjustment", msrpCents: 3500, costCents: 500, base: BASE.readjustment }] });
     expect(h.audit).toHaveBeenCalledTimes(1);
     const entry = h.audit.mock.calls[0][0];
     expect(entry.action).toBe("costings.service_fees_update");
@@ -125,24 +135,56 @@ describe("Costings → Service fees save", () => {
   it("never syncs storefront variants or Shopify for a services-only save", async () => {
     await post({
       rows: [],
-      services: [{ key: "measurement_basic", msrpCents: 3200, costCents: null }],
-      readjustmentPolicy: { freeVisits: 1, freeWindowDays: 60 },
+      services: [{ key: "measurement_basic", msrpCents: 3200, costCents: null, base: BASE.measurement_basic }],
+      readjustmentPolicy: { freeVisits: 1, freeWindowDays: 60, base: POLICY_BASE },
     });
     expect(h.sync).not.toHaveBeenCalled();
     expect(h.reResolve).not.toHaveBeenCalled();
   });
 
   it.each([
-    [{ services: [{ key: "measurement_basic", msrpCents: -1, costCents: null }] }, "services.0.msrpCents"],
-    [{ services: [{ key: "doorstep", msrpCents: 25000, costCents: null }] }, "services.0.key"],
-    [{ services: [{ key: "readjustment", msrpCents: null, costCents: null }] }, "services.0.msrpCents"],
-    [{ services: [{ key: "readjustment", msrpCents: 30, costCents: null }] }, "services.0.msrpCents"],
-    [{ readjustmentPolicy: { freeVisits: 11, freeWindowDays: 60 } }, "readjustmentPolicy.freeVisits"],
-    [{ readjustmentPolicy: { freeVisits: 1, freeWindowDays: 366 } }, "readjustmentPolicy.freeWindowDays"],
+    [{ services: [{ key: "measurement_basic", msrpCents: -1, costCents: null, base: BASE.measurement_basic }] }, "services.0.msrpCents"],
+    [{ services: [{ key: "doorstep", msrpCents: 25000, costCents: null, base: BASE.readjustment }] }, "services.0.key"],
+    [{ services: [{ key: "readjustment", msrpCents: null, costCents: null, base: BASE.readjustment }] }, "services.0.msrpCents"],
+    [{ services: [{ key: "readjustment", msrpCents: 30, costCents: null, base: BASE.readjustment }] }, "services.0.msrpCents"],
+    [{ services: [{ key: "readjustment", msrpCents: 3500, costCents: null }] }, "services.0.base"],
+    [{ readjustmentPolicy: { freeVisits: 11, freeWindowDays: 60, base: POLICY_BASE } }, "readjustmentPolicy.freeVisits"],
+    [{ readjustmentPolicy: { freeVisits: 1, freeWindowDays: 366, base: POLICY_BASE } }, "readjustmentPolicy.freeWindowDays"],
+    [{ readjustmentPolicy: { freeVisits: 2, freeWindowDays: 60 } }, "readjustmentPolicy.base"],
   ])("refuses %j with a 400 naming the field", async (extra, field) => {
     const res = await post({ rows: [], ...extra });
     expect(res.status).toBe(400);
     expect((await res.json()).error).toContain(field);
+    expect(h.upserts).toEqual([]);
+  });
+
+  it("refuses with a 409 naming the fee, and writes nothing, when the fee changed since the page opened", async () => {
+    h.servicePrices[2] = { ...h.servicePrices[2], msrp: "35.00" };
+    const res = await post({
+      rows: [],
+      services: [
+        { key: "measurement_premium", msrpCents: 5500, costCents: null, base: BASE.measurement_premium },
+        { key: "readjustment", msrpCents: 4000, costCents: null, base: BASE.readjustment },
+      ],
+      readjustmentPolicy: { freeVisits: 1, freeWindowDays: 60, base: POLICY_BASE },
+    });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toBe(
+      "Someone changed this price since you opened it — reload to see it: Re-adjustment service.",
+    );
+    expect(body.conflicts).toEqual([{ key: "readjustment", name: "Re-adjustment service" }]);
+    expect(h.upserts).toEqual([]);
+    expect(h.audit).not.toHaveBeenCalled();
+  });
+
+  it("refuses with a 409 when the complimentary rule changed since the page opened", async () => {
+    h.siteSettings[0] = { key: "readjustment_free_visits", value: "2" };
+    const res = await post({ rows: [], readjustmentPolicy: { freeVisits: 3, freeWindowDays: 60, base: POLICY_BASE } });
+    expect(res.status).toBe(409);
+    expect((await res.json()).conflicts).toEqual([
+      { key: "readjustmentPolicy", name: "Complimentary re-adjustment" },
+    ]);
     expect(h.upserts).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+import { useOncePerKey } from "@/hooks/use-once-per-key";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import {
@@ -68,12 +69,30 @@ import {
 import { isEarPadItem, isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { parseCostingsItems } from "@/lib/ecommerce/inventory-families";
 import { costingsSavedToasts } from "@/lib/shop/stripe-warnings";
+import {
+  BASE_FIELD,
+  isFieldDirty,
+  keepDrafts,
+  parseToCents,
+  type DraftField,
+  type PriceBases,
+  type PriceDraftRow,
+  type PriceDrafts,
+  type SavedChangeUnderDraft,
+} from "@/lib/costings/price-drafts";
+import {
+  BOLSTER_VARIANT_TITLES,
+  PREMIUM_VARIANT_TITLES,
+  productPriceLabel,
+  storedProductPrice,
+  type BolsterVariant,
+  type PremiumVariant,
+} from "@/lib/costings/product-price-rows";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
 type PillowSize = "XS" | "S" | "M" | "L" | "XL";
 type PillowKind = "basic" | "premium";
-type PremiumVariant = "linen" | "fibrecool";
 
 type ItemRow = {
   id: number;
@@ -85,11 +104,9 @@ type ItemRow = {
   pricing?: PriceRecord | PriceRecord[] | null;
 };
 
-type DraftRow = { costPrice: string; msrp: string; compareAt: string };
-type DraftState = Record<string, DraftRow>;
-type BaselineState = Record<string, { cost: number | null; msrp: number | null; compareAt: number | null }>;
-
-type BolsterVariant = "short" | "medium" | "long";
+type DraftRow = PriceDraftRow;
+type DraftState = PriceDrafts;
+type BaselineState = PriceBases;
 
 type ProductComponent = { itemId: number; quantity: number };
 
@@ -163,15 +180,18 @@ type ProductSaveRow = {
   variant?: BolsterVariant | PremiumVariant;
   msrpCents: number | null;
   compareAtCents?: number | null;
+  base: { msrpCents: number | null; compareAtCents: number | null };
+};
+
+type ItemSaveRow = {
+  itemId: number;
+  costPriceCents: number | null;
+  msrpCents: number | null;
+  compareAtCents: number | null;
+  base: { costPriceCents: number | null; msrpCents: number | null; compareAtCents: number | null };
 };
 
 const BOLSTER_VARIANTS: BolsterVariant[] = ["short", "medium", "long"];
-
-const BOLSTER_VARIANT_TITLES: Record<BolsterVariant, string> = {
-  short: "Short (0.8m)",
-  medium: "Medium (1m)",
-  long: "Long (1.2m)",
-};
 
 const BASIC_PILLOW_SIZES: PillowSize[] = ["XS", "S", "M", "L", "XL"];
 
@@ -252,10 +272,6 @@ const premiumPillowKey = (productId: number, variant: PremiumVariant) => `produc
 const bolsterKey = (variant: BolsterVariant) => `product:bolster:${variant}`;
 
 const PREMIUM_VARIANTS: PremiumVariant[] = ["linen", "fibrecool"];
-const PREMIUM_VARIANT_TITLES: Record<PremiumVariant, string> = {
-  linen: "Linen",
-  fibrecool: "Fibrecool",
-};
 
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
 
@@ -331,15 +347,6 @@ const sanitizeCurrencyInput = (raw: string): string => {
   return normalizedInt;
 };
 
-const parseToCents = (value: string): number | null => {
-  if (!value || value === ".") return null;
-  const normalized = value.endsWith(".") ? value.slice(0, -1) : value;
-  if (normalized === "") return null;
-  const num = Number.parseFloat(normalized);
-  if (Number.isNaN(num)) return null;
-  return Math.round(num * 100);
-};
-
 const formatCentsRange = (range: { min: number; max: number } | null): string => {
   if (!range) return "Not set";
   if (range.min === range.max) return formatCentsLabel(range.min);
@@ -374,10 +381,10 @@ const PART_COLUMNS: SheetColumn[] = [
   { key: "compareAt", label: "Compare-at", placeholder: "(optional)", prefix: "$" },
 ];
 
-const BASELINE_FIELD: Record<keyof DraftRow, "cost" | "msrp" | "compareAt"> = {
-  costPrice: "cost",
-  msrp: "msrp",
-  compareAt: "compareAt",
+const DRAFT_FIELD_LABELS: Record<DraftField, string> = {
+  costPrice: "cost price",
+  msrp: "MSRP",
+  compareAt: "compare-at",
 };
 
 const subscribeToNothing = () => () => {};
@@ -424,6 +431,10 @@ export default function CostingsPage() {
   const draftRef = useRef<DraftState>({});
   const baselineRef = useRef<BaselineState>({});
   const [hasPendingEdit, setHasPendingEdit] = useState(false);
+  const savedChangesRef = useRef<SavedChangeUnderDraft[]>([]);
+  const [savedChanges, setSavedChanges] = useState<SavedChangeUnderDraft[]>([]);
+  const [saveConflict, setSaveConflict] = useState<string | null>(null);
+  const saveInFlight = useRef(false);
 
   const applyDraft = useCallback((updater: (prev: DraftState) => DraftState) => {
     const next = updater(draftRef.current);
@@ -518,7 +529,7 @@ export default function CostingsPage() {
         supabaseClient.from("inventory_balances").select("item_id,on_hand"),
         templatesRequest,
       ]);
-      if (id < ignoreLoadsBelow.current) return;
+      if (id < ignoreLoadsBelow.current || saveInFlight.current) return;
 
       if (itemsError) throw new Error(itemsError.message);
       if (pillowError) throw new Error(pillowError.message);
@@ -606,19 +617,6 @@ export default function CostingsPage() {
         bolsterByVariant[variant].push({ itemId, quantity });
       });
 
-      const priceByProductId = new Map<number, RawProductPrice>();
-      const priceByVariant = new Map<BolsterVariant, RawProductPrice>();
-      const priceByKey = new Map<string, RawProductPrice>();
-      productPrices.forEach((row) => {
-        priceByKey.set(row.key, row);
-        if (row.kind === "pillow" && row.product_id !== null) {
-          priceByProductId.set(row.product_id, row);
-        } else if (row.kind === "bolster" && row.variant && (row.variant === "short" || row.variant === "medium" || row.variant === "long")) {
-          const variant = row.variant as BolsterVariant;
-          priceByVariant.set(variant, row);
-        }
-      });
-
       const costForComponents = (components: ProductComponent[]): number | null => {
         if (components.length === 0) return 0;
         let total = 0;
@@ -656,19 +654,20 @@ export default function CostingsPage() {
           const costCents = costForComponents(components);
           const pillowKind: PillowKind = String(product.kind) === "premium" ? "premium" : "basic";
 
-          const priceRows: Array<{ key: string; variant?: PremiumVariant; label: string }> =
+          const priceRows: Array<{ key: string; variant?: PremiumVariant }> =
             pillowKind === "premium"
-              ? PREMIUM_VARIANTS.map((variant) => ({
-                  key: premiumPillowKey(product.id, variant),
-                  variant,
-                  label: `Premium Mpillow ${product.size}, ${PREMIUM_VARIANT_TITLES[variant]}`,
-                }))
-              : [{ key: pillowKey(product.id), label: `Basic Mpillow ${product.size}` }];
+              ? PREMIUM_VARIANTS.map((variant) => ({ key: premiumPillowKey(product.id, variant), variant }))
+              : [{ key: pillowKey(product.id) }];
 
-          priceRows.forEach(({ key, variant, label }) => {
-            const price =
-              priceByKey.get(key) ??
-              (pillowKind === "premium" ? undefined : priceByProductId.get(product.id));
+          priceRows.forEach(({ key, variant }) => {
+            const premiumVariant = variant ?? null;
+            const label = productPriceLabel({ kind: "pillow", size: product.size, premiumVariant });
+            const price = storedProductPrice(productPrices, {
+              kind: "pillow",
+              key,
+              productId: product.id,
+              premiumVariant,
+            });
             const msrpCents = toCents(price?.msrp ?? null);
             const compareAtCents = toCents(price?.compare_at_price ?? null);
             productDraft[key] = {
@@ -698,7 +697,7 @@ export default function CostingsPage() {
         const key = bolsterKey(variant);
         const components = bolsterByVariant[variant];
         const costCents = costForComponents(components);
-        const price = priceByVariant.get(variant);
+        const price = storedProductPrice(productPrices, { kind: "bolster", variant });
         const msrpCents = toCents(price?.msrp ?? null);
         const compareAtCents = toCents(price?.compare_at_price ?? null);
         productDraft[key] = {
@@ -710,7 +709,7 @@ export default function CostingsPage() {
         productRows.push({
           key,
           kind: "bolster",
-          label: `Mbolster ${BOLSTER_VARIANT_TITLES[variant]}`,
+          label: productPriceLabel({ kind: "bolster", variant }),
           variant,
           costCents,
           msrpCents,
@@ -723,16 +722,23 @@ export default function CostingsPage() {
       setProducts(productRows);
       setFillingTemplates(templatesResult.templates);
       setFillingTemplatesError(templatesResult.error);
-      const loadedDraft = { ...nextDraft, ...productDraft };
+      const freshBaseline = { ...nextBaseline, ...productBaseline };
+      const kept = keepDrafts(
+        { drafts: draftRef.current, bases: baselineRef.current, savedChanges: savedChangesRef.current },
+        { drafts: { ...nextDraft, ...productDraft }, bases: freshBaseline },
+      );
       commitDraftDebounced.cancel();
-      draftRef.current = loadedDraft;
-      setDraft(loadedDraft);
-      setCommittedDraft(loadedDraft);
+      draftRef.current = kept.drafts;
+      setDraft(kept.drafts);
+      setCommittedDraft(kept.drafts);
       setHasPendingEdit(false);
-      applyBaseline({ ...nextBaseline, ...productBaseline });
+      applyBaseline(freshBaseline);
+      savedChangesRef.current = kept.savedChanges;
+      setSavedChanges(kept.savedChanges);
+      setSaveConflict(null);
       ignoreLoadsBelow.current = id;
     } catch (err) {
-      if (id < ignoreLoadsBelow.current) return;
+      if (id < ignoreLoadsBelow.current || saveInFlight.current) return;
       const message = err instanceof Error ? err.message : "Couldn't load costings.";
       toast.error(message);
     } finally {
@@ -743,9 +749,7 @@ export default function CostingsPage() {
     }
   }, [applyBaseline, commitDraftDebounced, settingsPath]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useOncePerKey(locale, () => void load());
 
   const scheduleReload = useDebouncedCallback(() => {
     load();
@@ -1280,11 +1284,7 @@ export default function CostingsPage() {
   );
 
   const isPartCellDirty = useCallback(
-    (rowKey: string, colKey: string) => {
-      const field = colKey as keyof DraftRow;
-      const cents = parseToCents((draft[rowKey] ?? EMPTY_DRAFT_ROW)[field]);
-      return cents !== (baseline[rowKey]?.[BASELINE_FIELD[field]] ?? null);
-    },
+    (rowKey: string, colKey: string) => isFieldDirty(draft[rowKey], baseline[rowKey], colKey as DraftField),
     [draft, baseline],
   );
 
@@ -1327,31 +1327,33 @@ export default function CostingsPage() {
   const save = async () => {
     flushDraft();
     const liveDraft = draftRef.current;
-    const rows = items
-      .map((item) => {
-        const key = itemKey(item.id);
-        const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
-        const baselineRow = baseline[key] ?? { cost: null, msrp: null, compareAt: null };
-        const costCents = parseToCents(current.costPrice);
-        const msrpCents = parseToCents(current.msrp);
-        const compareAtCents = parseToCents(current.compareAt);
-        if (costCents === baselineRow.cost && msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
-          return null;
-        }
-        return {
+    const liveBaseline = baselineRef.current;
+    const rows = items.flatMap((item): ItemSaveRow[] => {
+      const key = itemKey(item.id);
+      const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+      const baselineRow = liveBaseline[key] ?? { cost: null, msrp: null, compareAt: null };
+      const costCents = parseToCents(current.costPrice);
+      const msrpCents = parseToCents(current.msrp);
+      const compareAtCents = parseToCents(current.compareAt);
+      if (costCents === baselineRow.cost && msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
+        return [];
+      }
+      return [
+        {
           itemId: item.id,
           costPriceCents: costCents,
           msrpCents: msrpCents,
           compareAtCents,
-        };
-      })
-      .filter((row): row is { itemId: number; costPriceCents: number | null; msrpCents: number | null; compareAtCents: number | null } => row !== null);
+          base: { costPriceCents: baselineRow.cost, msrpCents: baselineRow.msrp, compareAtCents: baselineRow.compareAt },
+        },
+      ];
+    });
 
     const productPayload = products
       .flatMap((product) => {
         const key = product.key;
         const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
-        const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
+        const baselineRow = liveBaseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
         const msrpCents = parseToCents(current.msrp);
         const compareAtCents = parseToCents(current.compareAt);
         if (msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
@@ -1362,6 +1364,7 @@ export default function CostingsPage() {
           kind: product.kind,
           msrpCents,
           compareAtCents,
+          base: { msrpCents: baselineRow.msrp, compareAtCents: baselineRow.compareAt },
         };
         if (product.kind === "pillow") {
           if (product.productId === undefined) {
@@ -1385,6 +1388,8 @@ export default function CostingsPage() {
     }
 
     setSaving(true);
+    setSaveConflict(null);
+    saveInFlight.current = true;
     try {
       const response = await fetch(settingsPath("/settings/costings/save"), {
         method: "POST",
@@ -1394,6 +1399,7 @@ export default function CostingsPage() {
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         const message = payload?.error ?? "Couldn't save costings.";
+        if (response.status === 409) setSaveConflict(message);
         throw new Error(message);
       }
       if (payload?.products && Array.isArray(payload.products)) {
@@ -1421,18 +1427,51 @@ export default function CostingsPage() {
       }
       for (const t of costingsSavedToasts(payload)) toast[t.type](t.title, t.options);
       ignoreLoadsBelow.current = latestLoad.current + 1;
+      saveInFlight.current = false;
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save costings.";
       toast.error(message);
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
 
+  const refresh = () => {
+    if (saveInFlight.current) return;
+    void load();
+  };
+
   useMobileDockActions([
-    { id: "refresh", title: "Refresh", icon: RotateCw, onClick: () => void load() },
+    { id: "refresh", title: "Refresh", icon: RotateCw, onClick: refresh, disabled: saving },
   ]);
+
+  const savedChangeNotes = savedChanges.flatMap(({ key, field }) => {
+    if (!isFieldDirty(draft[key], baseline[key], field)) return [];
+    const itemId = key.startsWith("item:") ? Number(key.slice("item:".length)) : null;
+    const item = itemId === null ? undefined : itemMap.get(itemId);
+    const name = item ? getInventoryItemDisplayLabel(item) : products.find((product) => product.key === key)?.label;
+    if (!name) return [];
+    return [`${name} ${DRAFT_FIELD_LABELS[field]} ${formatCentsLabel(baseline[key]?.[BASE_FIELD[field]] ?? null)}`];
+  });
+
+  const draftNotice = (
+    <div role="status">
+      {isDirty || saveConflict ? (
+        <div className="mt-3 space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          {isDirty ? <p className="font-medium">You have unsaved changes.</p> : null}
+          {saveConflict ? <p>{saveConflict}</p> : null}
+          {savedChangeNotes.length > 0 ? (
+            <p>
+              Saved since you started editing: {savedChangeNotes.join("; ")}. Save to replace{" "}
+              {savedChangeNotes.length === 1 ? "it" : "them"} with yours.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading costings…</div>;
@@ -1443,7 +1482,7 @@ export default function CostingsPage() {
       <div className="space-y-4">
         <div className="text-2xl font-semibold">Costings</div>
         <p className="text-sm text-muted-foreground">No active parts yet. Add items in Inventory first.</p>
-        <Button variant="secondary" onClick={load} disabled={saving}>
+        <Button variant="secondary" onClick={refresh} disabled={saving}>
           Refresh
         </Button>
       </div>
@@ -1452,30 +1491,33 @@ export default function CostingsPage() {
 
   return (
     <div className={isDirty ? `space-y-6 ${mobileStickyActionBarSpacerClassName}` : "space-y-6"}>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-1.5">
-          <h1>Costings</h1>
-          <InfoTip label="About Costings">
-            Set cost and MSRP for every item and product.
-          </InfoTip>
+      <div>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-1.5">
+            <h1>Costings</h1>
+            <InfoTip label="About Costings">
+              Set cost and MSRP for every item and product.
+            </InfoTip>
+          </div>
+          <PageActions>
+            <Button
+              variant="secondary"
+              className={cn(pageActionClassName, pageActionDockedClassName)}
+              onClick={refresh}
+              disabled={saving}
+            >
+              Refresh
+            </Button>
+            <Button
+              className="hidden md:inline-flex"
+              onClick={save}
+              disabled={saving || !isDirty}
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </PageActions>
         </div>
-        <PageActions>
-          <Button
-            variant="secondary"
-            className={cn(pageActionClassName, pageActionDockedClassName)}
-            onClick={load}
-            disabled={saving}
-          >
-            Refresh
-          </Button>
-          <Button
-            className="hidden md:inline-flex"
-            onClick={save}
-            disabled={saving || !isDirty}
-          >
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </PageActions>
+        {draftNotice}
       </div>
 
       {onHandKpis && (
