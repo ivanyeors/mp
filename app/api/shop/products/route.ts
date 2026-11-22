@@ -15,16 +15,3 @@ export async function GET(req: Request) {
 
   return NextResponse.json(result);
 }
-
-export async function POST() {
-  const denied = await requireAdmin("products");
-  if (denied) return denied;
-
-  return NextResponse.json(
-    {
-      ok: false,
-      error: "Free-form product creation is disabled. Use Add from inventory (or Sync from Inventory for pillows/bolsters).",
-    },
-    { status: 400 },
-  );
-}
