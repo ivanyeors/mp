@@ -326,7 +326,7 @@ export const enUS: Messages = {
       commitmentTitle: "Our commitment",
       commitmentReadjustmentTitle: "Complimentary {freeWindowDays}-day re-adjustment",
       commitmentReadjustmentDescription:
-        "We offer a one-time complimentary visit within the initial {freeWindowDays} days post-purchase. Beyond this period or for additional adjustments, a re-adjustment fee of {readjustmentFee} applies. Stuffing is provided for free during re-adjustments (excluding other accessories/components). Sign in and pick your pillow when you book — your order is your proof of purchase.",
+        "We offer a one-time complimentary visit within the initial {freeWindowDays} days post-purchase. Beyond this period or for additional adjustments, a re-adjustment fee of {readjustmentFee} applies. Stuffing is provided for free during re-adjustments (excluding other accessories/components). Sign in and pick your pillow when you book — your order is your proof of purchase. Cancel a paid visit before the day of your appointment and we'll refund the fee in full the same day; it usually reaches your account within 5–10 business days. Cancellations on the day of the visit are subject to manual refunds only. Fees paid by PayNow are refunded by our team only, either manually or as points added to your Mpillow account.",
       commitmentWarrantyTitle: "10-year warranty inclusion",
       commitmentWarrantyDescription:
         "All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment fees apply).",
@@ -514,6 +514,8 @@ export const enUS: Messages = {
         priceLabel: "Re-adjustment",
         complimentary: "Complimentary",
         payAndBook: "Pay {fee} and book",
+        refundTerms:
+          "Cancel before the visit day for a full refund, which usually reaches you within 5–10 business days. Visit-day cancellations are refunded manually only. PayNow payments are refunded by our team only, manually or as points in your account.",
         redirecting: "Opening payment…",
         emailLocked: "We'll send the calendar invite to your account email.",
         errorRequote: "Your price changed — please check it and try again.",

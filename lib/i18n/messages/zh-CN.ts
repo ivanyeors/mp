@@ -311,7 +311,7 @@ export const zhCN: Messages = {
       commitmentTitle: "我们的承诺",
       commitmentReadjustmentTitle: "{freeWindowDays} 天内免费复调一次",
       commitmentReadjustmentDescription:
-        "购买后 {freeWindowDays} 天内提供一次免费到店调整。超过 {freeWindowDays} 天或需要额外调整，将收取 {readjustmentFee} 复调费用。复调时填充物免费提供（不含其他配件/组件）。预约时请登录并选择您的枕头——您的订单即为购买凭证。",
+        "购买后 {freeWindowDays} 天内提供一次免费到店调整。超过 {freeWindowDays} 天或需要额外调整，将收取 {readjustmentFee} 复调费用。复调时填充物免费提供（不含其他配件/组件）。预约时请登录并选择您的枕头——您的订单即为购买凭证。如在预约日之前取消已付费的复调预约，我们会在当天全额退还费用，款项通常在 5–10 个工作日内到账。预约当天取消的，仅可由我们人工处理退款。以 PayNow 支付的费用仅由我们的团队处理：人工退款，或以等值积分存入您的 Mpillow 账户。",
       commitmentWarrantyTitle: "10 年保固说明",
       commitmentWarrantyDescription:
         "所有产品填充物均享有 10 年保固。若需保固服务，请预约并将枕头带到服务点进行复调与填充更换（复调费用另计）。",
@@ -477,6 +477,8 @@ export const zhCN: Messages = {
         priceLabel: "复调",
         complimentary: "免费",
         payAndBook: "支付 {fee} 并预约",
+        refundTerms:
+          "在预约日之前取消可全额退款，款项通常在 5–10 个工作日内到账。预约当天取消仅可人工退款。PayNow 付款仅由我们的团队处理：人工退款，或以积分存入您的账户。",
         redirecting: "正在打开付款页面…",
         emailLocked: "日历邀请将发送至您的账户邮箱。",
         errorRequote: "价格已更新——请确认后重试。",

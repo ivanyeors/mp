@@ -46,6 +46,7 @@ const PAGES: [string[], Permission[]][] = [
     ["configure"],
   ],
   [[`${S}/products`], ["products"]],
+  [[`${S}/costings`], ["costings"]],
   [[`${S}/page-builder`, "app/api/landing-sections"], ["page-builder"]],
   [["app/api/site-settings"], ["media"]],
   [[`${S}/integrations/shopify`, "app/api/shopify", "lib/shopify/route-auth.ts"], ["shopify-link"]],

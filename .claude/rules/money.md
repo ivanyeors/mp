@@ -30,6 +30,7 @@ paths:
   - "lib/email/payment-request.ts"
   - "app/api/readjustments/checkout/**"
   - "lib/readjustment/checkout.ts"
+  - "lib/readjustment/refund.ts"
   - "app/api/results/hold/**"
   - "app/api/results/*/accept/**"
   - "app/api/results/*/cancel/**"

@@ -23,6 +23,7 @@ type Booking = {
   fee_amount: number | string;
   fee_order_id: string | null;
   fee_order_number: string | null;
+  fee_order_status: string | null;
   purchase_order_id: string | null;
 };
 
@@ -152,7 +153,11 @@ export function ReadjustmentPanel({ bookingId, onChanged }: { bookingId: string;
         <p className="text-xs text-muted-foreground">The free visit stays used. Cancel instead to give it back.</p>
       ) : null}
       {booking.status === "cancelled" && !booking.complimentary && booking.fee_order_id ? (
-        <p className="text-xs text-muted-foreground">Refund from the Order if appropriate.</p>
+        <p className="text-xs text-muted-foreground">
+          {booking.fee_order_status === "refunded"
+            ? "Fee refunded."
+            : "Refund from the Order if it wasn't refunded automatically."}
+        </p>
       ) : null}
       {open ? (
         <div className="flex flex-wrap gap-2">

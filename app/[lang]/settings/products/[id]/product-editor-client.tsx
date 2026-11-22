@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
     Save, Plus, Trash2, Star, ChevronDown, ChevronLeft, ChevronRight, Package,
 } from "lucide-react";
@@ -142,10 +142,7 @@ export function ProductEditorClient({
     stripeMode: StripeMode;
     canSeeCost?: boolean;
 }) {
-    const router = useRouter();
-    const params = useParams();
-    const id = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? "new";
-    const isNew = id === "new";
+    const { id } = useParams<{ id: string }>();
 
     const initialProduct = initialData?.product.row ?? null;
 
@@ -173,9 +170,7 @@ export function ProductEditorClient({
     const [contentLocale, setContentLocale] = useState<Locale>(PRODUCT_SOURCE_LOCALE);
     const productAi = useProductAi(id);
 
-    useSettingsBreadcrumbDetail(
-        isNew ? "New product" : (content["en-US"]?.title?.trim() || null),
-    );
+    useSettingsBreadcrumbDetail(content["en-US"]?.title?.trim() || null);
 
     const [images, setImages] = useState<ProductImage[]>(() =>
         (initialProduct?.product_images ?? initialProduct?.images ?? []).sort(
@@ -194,21 +189,13 @@ export function ProductEditorClient({
     const [variantSaving, setVariantSaving] = useState(false);
     const [variantsOpen, setVariantsOpen] = useState(true);
 
-    const [loading, setLoading] = useState(!isNew && !initialData);
+    const [loading, setLoading] = useState(!initialData);
     const [saving, setSaving] = useState(false);
     const [syncingStripe, setSyncingStripe] = useState(false);
 
     const hydratedFromServer = useRef(Boolean(initialData));
 
-    useEffect(() => {
-        if (isNew) {
-            toast.message("Products come from inventory. Use Sync from Inventory on the Products page.");
-            router.replace("../products");
-        }
-    }, [isNew, router]);
-
     const fetchProduct = useCallback(async () => {
-        if (isNew) return;
         setLoading(true);
         try {
             const res = await fetch(`/api/shop/products/${id}`);
@@ -239,7 +226,7 @@ export function ProductEditorClient({
         } finally {
             setLoading(false);
         }
-    }, [id, isNew, stripeMode]);
+    }, [id, stripeMode]);
 
     useEffect(() => {
         if (hydratedFromServer.current) {
@@ -307,20 +294,11 @@ export function ProductEditorClient({
                 tags,
             };
 
-            let res: Response;
-            if (isNew) {
-                res = await fetch("/api/shop/products", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-            } else {
-                res = await fetch(`/api/shop/products/${id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-            }
+            const res = await fetch(`/api/shop/products/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
 
             const data = await res.json();
             if (!data.ok) {
@@ -328,11 +306,8 @@ export function ProductEditorClient({
                 return;
             }
 
-            toast.success(isNew ? "Product created" : "Product saved");
+            toast.success("Product saved");
             showStripeOutcome(data.stripe);
-            if (isNew && data.row?.id) {
-                router.push(`../products/${data.row.id}`);
-            }
         } catch {
             toast.error("Couldn't save.");
         } finally {
@@ -341,10 +316,6 @@ export function ProductEditorClient({
     };
 
     const addImage = async (selection: { assetId: string; url: string; alt?: string | null }) => {
-        if (isNew) {
-            toast.error("Save the product before adding images.");
-            return;
-        }
         try {
             const res = await fetch(`/api/shop/products/${id}/images`, {
                 method: "POST",
@@ -432,10 +403,6 @@ export function ProductEditorClient({
     };
 
     const handleVariantSave = async () => {
-        if (isNew) {
-            toast.error("Save the product before adding variants.");
-            return;
-        }
         const price = parseFloat(variantForm.price);
         if (isNaN(price) || price < 0) { toast.error("Enter a valid price."); return; }
 
@@ -542,7 +509,6 @@ export function ProductEditorClient({
     };
 
     const handleSyncToStripe = async () => {
-        if (isNew) { toast.error("Save the product first."); return; }
         setSyncingStripe(true);
         try {
             const res = await fetch("/api/stripe/sync", {
@@ -696,11 +662,9 @@ export function ProductEditorClient({
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold">
-                        {isNew ? "New product" : (content["en-US"]?.title || "Edit product")}
+                        {content["en-US"]?.title || "Edit product"}
                     </h1>
-                    {!isNew && (
-                        <p className="text-sm text-muted-foreground mt-0.5">/{slug}</p>
-                    )}
+                    <p className="text-sm text-muted-foreground mt-0.5">/{slug}</p>
                 </div>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="max-md:hidden">
                     <Save className="mr-2 h-4 w-4" />
@@ -713,7 +677,7 @@ export function ProductEditorClient({
                     This product is built from inventory, which sets its type, slug and variants. Price, cost and compare-at come from Costings.
                 </div>
             )}
-            {!isAutoGenerated && !isNew && !variants.some((v) => v.item_id != null || v.pillow_product_id != null || v.price_key != null) && (
+            {!isAutoGenerated && !variants.some((v) => v.item_id != null || v.pillow_product_id != null || v.price_key != null) && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     <Badge variant="outline" className="mr-2 border-amber-400 text-amber-800">Legacy</Badge>
                     This product isn&apos;t linked to inventory, so its price is edited by hand. Link it to an inventory item or retire it.
@@ -738,7 +702,7 @@ export function ProductEditorClient({
                                             ))}
                                         </TabsList>
                                     </div>
-                                    {ai.on && !isNew ? (
+                                    {ai.on ? (
                                         <WriteWithClaude
                                             key={contentLocale}
                                             ai={ai}
@@ -1061,7 +1025,7 @@ export function ProductEditorClient({
                                 size="sm"
                                 className="w-full"
                                 onClick={handleSyncToStripe}
-                                disabled={syncingStripe || isNew}
+                                disabled={syncingStripe}
                             >
                                 {syncingStripe ? "Syncing…" : "Sync to Stripe"}
                             </Button>
@@ -1158,7 +1122,7 @@ export function ProductEditorClient({
                         slugLocked={isAutoGenerated}
                         content={content}
                         update={updateContent}
-                        ai={isNew ? AI_OFF : ai}
+                        ai={ai}
                         offer={productAi.seo}
                         onRun={productAi.run}
                         onClear={() => productAi.clear("seo")}
