@@ -4,17 +4,21 @@ name: claude review
 # It only reads and comments; it never commits, so the commit-author rule in
 # CLAUDE.md (Vercel builds only `ivanyeors` commits) is not affected.
 #
-# Needs the ANTHROPIC_API_KEY repository secret. Until that exists, every step
-# skips and the job passes. Billed per review, so it runs when a pull request
-# is opened, reopened or marked ready, not on every push. Add the
-# `claude-review` label to review again after more commits.
+# Needs the CLAUDE_CODE_OAUTH_TOKEN repository secret, made with
+# `claude setup-token`. Reviews run on the owner's Claude subscription, not an
+# API key: the plan's monthly API credit does not pay for Claude Code, and the
+# Console's paid balance is kept at $0 (owner, 2026-11-22). Until the secret
+# exists, every step skips and the job passes. Each review counts against the
+# plan's usage limits, so it runs when a pull request is opened, reopened or
+# marked ready, not on every push. Add the `claude-review` label to review
+# again after more commits.
 #
 # With AUTO_MERGE_CODE on (auto-merge.yml), it also reviews every push, and
 # every change of base branch: a pull request merges itself only on a
 # "Verdict: clean at <sha> against <default branch>" comment for the exact
 # head that merges. A stacked pull request's review saw only its own delta,
 # so a retarget to main needs a new review. With the switch off, a push or a
-# retarget runs nothing here, as before. Without the key nothing posts a
+# retarget runs nothing here, as before. Without the token nothing posts a
 # verdict, so nothing merges itself.
 
 on:
@@ -56,22 +60,22 @@ jobs:
       issues: read
       id-token: write
     env:
-      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
 
     steps:
       - name: Say why it skipped
-        if: env.HAS_KEY != 'true'
-        run: echo "::notice title=Claude review skipped::Add the ANTHROPIC_API_KEY repository secret to turn it on."
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::notice title=Claude review skipped::Add the CLAUDE_CODE_OAUTH_TOKEN repository secret (from claude setup-token) to turn it on."
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: env.HAS_KEY == 'true'
+        if: env.HAS_TOKEN == 'true'
         with:
           fetch-depth: 1
 
       - uses: anthropics/claude-code-action@v1
-        if: env.HAS_KEY == 'true'
+        if: env.HAS_TOKEN == 'true'
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}

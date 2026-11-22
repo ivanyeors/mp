@@ -139,6 +139,7 @@ import {
   isSelfCollectMethod,
   useHoldShippingQuote,
   type HoldShippingMethod,
+  type HoldShippingMethods,
 } from "@/components/shop/hold-shipping-fields";
 import { usesPostalCode } from "@/lib/shipping/countries";
 import type { PackageType } from "@/lib/shipping/types";
@@ -335,16 +336,20 @@ export function MbolsterConfigClient({
     selectedAddressId,
     handleSelectAddress,
   } = useSavedShippingPrefill(setHoldEmail, setHoldAddress);
-  const [shippingMethods, setShippingMethods] = React.useState<HoldShippingMethod[]>([]);
+  const [shippingMethods, setShippingMethods] = React.useState<HoldShippingMethods>({ country: "", rows: [] });
   const [selectedShippingId, setSelectedShippingId] = React.useState("");
-  const selfCollect = isSelfCollectMethod(shippingMethods.find((m) => m.id === selectedShippingId));
-  const { options: shippingOptions, selected: selectedShippingOption } = useHoldShippingQuote({
+  const {
+    options: shippingOptions,
+    selected: selectedShippingOption,
+    loading: shippingLoading,
+  } = useHoldShippingQuote({
     methods: shippingMethods,
     address: holdAddress,
     parcelTypes: SHIPS_AS_MBOLSTER,
     selectedId: selectedShippingId,
     onSelect: setSelectedShippingId,
   });
+  const selfCollect = isSelfCollectMethod(selectedShippingOption?.method);
   const shippingStatus = selectedShippingOption?.status;
   const [holdSubmitting, setHoldSubmitting] = React.useState(false);
   const [routeBusy, setRouteBusy] = React.useState(false);
@@ -957,20 +962,20 @@ export function MbolsterConfigClient({
     const country = holdAddress.country || "SG";
     fetch(`${HOLD_SHIPPING_METHODS_PATH}&country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
-      .then(async (d: { rows?: typeof shippingMethods }) => {
+      .then(async (d: { rows?: HoldShippingMethod[] }) => {
         let methods = d.rows ?? [];
         if (methods.length === 0 && country === "SG") {
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
         if (cancelled) return;
-        setShippingMethods(methods);
+        setShippingMethods({ country, rows: methods });
         setSelectedShippingId((prev) =>
           methods.some((m) => m.id === prev) ? prev : (methods[0]?.id ?? ""),
         );
       })
       .catch(() => {
-        if (!cancelled) setShippingMethods([]);
+        if (!cancelled) setShippingMethods({ country, rows: [] });
       });
     return stale;
   }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant, paired]);
@@ -1613,6 +1618,7 @@ export function MbolsterConfigClient({
 
               <HoldShippingFields
                 options={shippingOptions}
+                loading={shippingLoading}
                 goodsSubtotal={goodsSubtotal}
                 selectedId={selectedShippingId}
                 onSelect={setSelectedShippingId}

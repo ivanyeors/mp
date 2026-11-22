@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;
 type Pending = { table: string; filters: Row; answer: (rows: Row[]) => Promise<void>; fail: () => Promise<void> };
-type Request = { url: string; method: string; body: unknown; answered: boolean; answer: (json: unknown) => Promise<void> };
+type Request = { url: string; method: string; body: unknown; answered: boolean; answer: (json: unknown, ok?: boolean) => Promise<void> };
 
 const db = vi.hoisted(() => ({ tables: {} as Record<string, Row[]>, pending: [] as Pending[], fails: [] as string[] }));
 const route = vi.hoisted(() => ({ card: "bolster-short" }));
@@ -117,9 +117,9 @@ beforeEach(() => {
       const method = init?.method ?? "GET";
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       return new Promise((resolve) => {
-        const reply = (json: unknown) => resolve({ ok: true, json: async () => json });
-        const answer = async (json: unknown) => {
-          await act(async () => reply(json));
+        const reply = (json: unknown, ok = true) => resolve({ ok, json: async () => json });
+        const answer = async (json: unknown, ok = true) => {
+          await act(async () => reply(json, ok));
           await settle();
         };
         const now = auto(url, method);
@@ -139,11 +139,11 @@ afterEach(async () => {
 });
 
 const waiting = (match: (r: Request) => boolean) => requests.filter((r) => match(r));
-async function answerRequest(match: (r: Request) => boolean, json: unknown) {
+async function answerRequest(match: (r: Request) => boolean, json: unknown, ok = true) {
   const r = requests.find((req) => !req.answered && match(req));
   expect(r, "no such request").toBeDefined();
   r!.answered = true;
-  await r!.answer(json);
+  await r!.answer(json, ok);
 }
 const templatePicker = () =>
   [...document.querySelectorAll("select")].find((s) => s.closest("div")?.textContent?.startsWith("Template")) ?? null;
@@ -498,5 +498,173 @@ describe("Configure card: last filling draft", () => {
 
     expect(requests.filter((r) => r.url.endsWith("/templates/42") && r.method === "GET")).toHaveLength(1);
     expect([...document.querySelectorAll("input")].map((i) => i.value)).toContain("Soft mix (edited)");
+  });
+});
+
+const saveButtons = (text: "Save" | "Save changes") =>
+  [...document.querySelectorAll<HTMLButtonElement>("button")].filter(
+    (b) => b.textContent?.trim() === text && !b.parentElement?.querySelector('input[placeholder="Template name"]'),
+  );
+async function clickAll(buttons: HTMLButtonElement[]) {
+  for (const b of buttons) await act(async () => b.click());
+  await settle();
+}
+const templatePut = (lines: unknown) => `PUT ${JSON.stringify({ lines })}`;
+const failTemplate = (id: number) =>
+  answerRequest((r) => r.url.endsWith(`/templates/${id}`), { error: "Template not found" }, false);
+
+describe("Configure card: saving while a template pick loads", () => {
+  it("keeps bolster Save disabled until the picked template's parts land", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7]);
+    await choose(templatePicker()!, "7");
+
+    await clickAll(saveButtons("Save"));
+    expect([...posted("/templates/7"), ...posted("/configure/save")]).toEqual([]);
+    expect(saveButtons("Save").map((b) => b.disabled)).toEqual([true, true, true]);
+
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 2, quantity: 2 }] });
+    expect(saveButtons("Save").map((b) => b.disabled)).toEqual([false, false, false]);
+    await act(async () => bolsterSave().click());
+    await settle();
+    expect(posted("/templates/7")).toEqual([templatePut([{ item_id: 2, quantity: 2 }])]);
+    expect(posted("/configure/save")).toEqual([savedBolster([{ item_id: 2, quantity: 2 }])]);
+  });
+
+  it("keeps pillow Save changes disabled until the picked template's parts land", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+
+    await clickAll(saveButtons("Save changes"));
+    expect([...posted("/templates/7"), ...posted("/configure/save")]).toEqual([]);
+    expect(saveButtons("Save changes").map((b) => b.disabled)).toEqual([true, true, true]);
+
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+    expect(posted("/templates/7")).toEqual([templatePut([{ item_id: 1, quantity: 5 }])]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 1, quantity: 5 }])]);
+  });
+});
+
+describe("Configure card: a template pick that fails to load", () => {
+  it("relinks the bolster template that was loaded before, so Save never writes to the failed one", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7, 8]);
+    await choose(templatePicker()!, "7");
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 2, quantity: 2 }] });
+    await choose(templatePicker()!, "8");
+    await failTemplate(8);
+
+    expect(templatePicker()!.value).toBe("7");
+    await act(async () => bolsterSave().click());
+    await settle();
+    expect(posted("/templates/8")).toEqual([]);
+    expect(posted("/templates/7")).toEqual([templatePut([{ item_id: 2, quantity: 2 }])]);
+  });
+
+  it("unlinks a pillow template whose parts fail to load", async () => {
+    db.tables.bom_lines = [{ product_id: 10, item_id: 2, quantity: 1 }];
+    await mount("basic-M");
+    await until(() => templatePicker());
+    await answerWarehouse("pillow", [7]);
+    await choose(templatePicker()!, "7");
+    await failTemplate(7);
+
+    expect(templatePicker()!.value).toBe("");
+    await act(async () => buttonNamed("Save changes").click());
+    await settle();
+    expect(posted("/templates/7")).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBasicM([{ item_id: 2, quantity: 1 }])]);
+  });
+
+  it("does not relink an earlier pick whose parts never landed", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    await answerWarehouse("bolster", [7, 8]);
+    await choose(templatePicker()!, "7");
+    await choose(templatePicker()!, "8");
+    await failTemplate(8);
+    await answerRequest((r) => r.url.endsWith("/templates/7"), { lines: [{ item_id: 1, quantity: 5 }] });
+
+    expect(templatePicker()!.value).toBe("");
+    await act(async () => bolsterSave().click());
+    await settle();
+    expect([...posted("/templates/7"), ...posted("/templates/8")]).toEqual([]);
+    expect(posted("/configure/save")).toEqual([savedBolster(STORED_BOLSTER)]);
+  });
+});
+
+const defaultFillingPicker = () =>
+  [...document.querySelectorAll("select")].find((s) => s.closest("div")?.textContent?.startsWith("Default filling template")) ?? null;
+const reloadBolster = async (lines: Row[]) => {
+  act(() => void window.dispatchEvent(new Event("inventory:changed")));
+  await settle(50);
+  await bolsterReads().at(-1)!.answer(lines);
+  await until(() => templatePicker());
+};
+
+describe("Configure card: bolster default filling that fails to load", () => {
+  it("shows the failure and saves nothing when the first load cannot read it", async () => {
+    db.tables.bolster_length_config = [{ variant: "short", default_filling_template_id: 42 }];
+    db.fails = ["bolster_length_config"];
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+
+    await clickAll(saveButtons("Save"));
+    expect(posted("/configure/save")).toEqual([]);
+    expect(saveButtons("Save").map((b) => b.disabled)).toEqual([true, true, true]);
+    expect(document.querySelector('[role="alert"]')?.textContent ?? "").toContain("Couldn't load this bolster's parts.");
+  });
+
+  it("keeps the loaded default filling when a reload cannot read it", async () => {
+    db.tables.bolster_length_config = [{ variant: "short", default_filling_template_id: 42 }];
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+    db.fails = ["bolster_length_config"];
+    await reloadBolster(STORED_BOLSTER);
+
+    await clickAll(saveButtons("Save"));
+    expect(posted("/configure/save")).toEqual([]);
+    expect(defaultFillingPicker()!.value).toBe("42");
+    expect(document.querySelector('[role="alert"]')?.textContent ?? "").toContain("Couldn't load this bolster's parts.");
+
+    db.fails = [];
+    await reloadBolster(STORED_BOLSTER);
+    await act(async () => bolsterSave().click());
+    await settle();
+    expect(posted("/configure/save")).toEqual([
+      `POST ${JSON.stringify({ kind: "bolster", variant: "short", lines: STORED_BOLSTER, defaultFillingTemplateId: 42 })}`,
+    ]);
+  });
+});
+
+describe("Configure card: bolster parts after a reload", () => {
+  it("re-reads the bolster parts when inventory changes", async () => {
+    await mount("bolster-short");
+    await settle(50);
+    await bolsterReads()[0].answer(STORED_BOLSTER);
+    await until(() => templatePicker());
+
+    await reloadBolster([{ item_id: 2, quantity: 4 }]);
+    expect(bolsterReads()).toHaveLength(2);
+    await act(async () => bolsterSave().click());
+    await settle();
+    expect(posted("/configure/save")).toEqual([savedBolster([{ item_id: 2, quantity: 4 }])]);
   });
 });

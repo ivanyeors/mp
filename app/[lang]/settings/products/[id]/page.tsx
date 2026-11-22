@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { readAiWritingAvailability } from "@/lib/ai/page-availability";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
@@ -20,17 +22,18 @@ export default async function ProductEditorPage({
     const { lang, id } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
+    if (id === "new") redirect(withLocale("/settings/products", locale));
+
     await requireAdminPage("products", locale);
 
-    const isNew = id === "new";
     const [product, categoryTree, ai] = await Promise.all([
-        isNew ? null : getAdminProduct(id),
+        getAdminProduct(id),
         getCategoryTree(),
         readAiWritingAvailability(),
     ]);
 
     const initialData: ProductEditorInitialData | undefined =
-        product?.ok
+        product.ok
             ? {
                   product: { ok: true, row: product.row as LoadedProduct },
               }
