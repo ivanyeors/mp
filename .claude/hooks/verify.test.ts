@@ -272,6 +272,11 @@ function linkedNodeModules(root: string) {
   for (const name of ["eslint", "vitest"]) chmodSync(path.join(nm, ".bin", name), 0o755);
 }
 
+// The fixture is the same files every time, so ESLint makes the same baseline
+// every time: the first test makes it, the rest start from a copy. One ESLint
+// start instead of 29, which was about a quarter of this file's run time.
+let madeBaseline: string | undefined;
+
 /** Builds the fixture and returns the baseline ESLint made for it. */
 function realLintRepo(): Record<string, Record<string, { count: number }>> {
   linkedNodeModules(repo);
@@ -288,8 +293,13 @@ function realLintRepo(): Record<string, Record<string, { count: number }>> {
   // The fixture's baseline is made the way the real one was: by ESLint, from
   // what the rules report today, so it follows any change to how they count.
   // Only here, in a throwaway repository; guard.mjs blocks it everywhere else.
-  const made = spawnSync(path.join(repo, "node_modules/.bin/eslint"), ["--suppress-all", "lib", "app"], { cwd: repo, encoding: "utf8" });
-  expect(made.status, made.stdout + made.stderr).toBe(0);
+  if (madeBaseline === undefined) {
+    const made = spawnSync(path.join(repo, "node_modules/.bin/eslint"), ["--suppress-all", "lib", "app"], { cwd: repo, encoding: "utf8" });
+    expect(made.status, made.stdout + made.stderr).toBe(0);
+    madeBaseline = readFileSync(baselineFile(), "utf8");
+  } else {
+    writeFileSync(baselineFile(), madeBaseline);
+  }
   gitIn("add", ".");
   gitIn("commit", "-q", "-m", "real lint");
   const baseline = readBaseline();
