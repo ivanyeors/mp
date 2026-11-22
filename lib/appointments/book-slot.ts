@@ -9,6 +9,7 @@ import { missedReminder } from "@/lib/appointments/state";
 import { resolveAppointmentType } from "@/lib/appointments/type";
 import { sendTemplateMessage } from "@/lib/appointments/whatsapp";
 import type { ApptType } from "@/lib/appointments/appt-type";
+import { getSiteOrigin } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export type SlotInterval = { startMs: number; endMs: number };
@@ -30,17 +31,31 @@ export async function liveSlotHolds(fromIso: string, toIso: string, excludeBooki
   }));
 }
 
+export function withoutInterval(busy: readonly SlotInterval[], gap: SlotInterval): SlotInterval[] {
+  const out: SlotInterval[] = [];
+  for (const b of busy) {
+    if (b.endMs <= gap.startMs || b.startMs >= gap.endMs) {
+      out.push(b);
+      continue;
+    }
+    if (b.startMs < gap.startMs) out.push({ startMs: b.startMs, endMs: gap.startMs });
+    if (b.endMs > gap.endMs) out.push({ startMs: gap.endMs, endMs: b.endMs });
+  }
+  return out;
+}
+
 export async function isSlotFree(
   startIso: string,
   endIso: string,
-  opts?: { excludeBookingId?: string },
+  opts?: { excludeBookingId?: string; ignore?: SlotInterval },
 ): Promise<boolean> {
   const startMs = Date.parse(startIso);
   const endMs = Date.parse(endIso);
-  const [busy, holds] = await Promise.all([
+  const [calendarBusy, holds] = await Promise.all([
     freeBusy(startIso, endIso),
     liveSlotHolds(startIso, endIso, opts?.excludeBookingId),
   ]);
+  const busy = opts?.ignore ? withoutInterval(calendarBusy, opts.ignore) : calendarBusy;
   return ![...busy, ...holds].some((b) => startMs < b.endMs && endMs > b.startMs);
 }
 
@@ -76,7 +91,7 @@ export async function bookCalendarSlot(input: BookSlotInput): Promise<BookSlotRe
     guestName: input.guestName,
     phone: input.phone,
     email: input.email,
-    notes: input.notes,
+    notes: [...(input.notes ?? []), "", `Change your booking: ${getSiteOrigin()}/account/bookings`],
     readjustmentBookingId: input.readjustmentBookingId,
   });
   await input.onEventCreated?.(eventId);

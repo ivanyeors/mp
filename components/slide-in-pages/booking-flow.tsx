@@ -546,6 +546,10 @@ export function BookingFlow({
         </div>
       ) : null}
 
+      {readjustment && quote && !isFreeVisit(quote) ? (
+        <p className="text-xs text-muted-foreground">{rt.refundTerms}</p>
+      ) : null}
+
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {readjustment && !purchaseReady ? (
         <p className="text-sm text-muted-foreground">{rt.pickFirst}</p>
