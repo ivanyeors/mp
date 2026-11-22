@@ -14,7 +14,10 @@ vi.mock("@/lib/auth/admin", () => ({
   getAdminContext: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn(async () => {}) }));
-vi.mock("@/lib/appointments/calendar", () => ({ deleteEvent: h.deleteEvent }));
+vi.mock("@/lib/appointments/calendar", () => ({
+  deleteEvent: h.deleteEvent,
+  getEventTiming: vi.fn(async () => ({ startsAt: "2026-11-25T02:00:00.000Z", updatedAt: null })),
+}));
 vi.mock("@/lib/appointments/cancel", () => ({ cancelAppointment: h.cancelAppointment }));
 vi.mock("@/lib/appointments/reminders-db", () => ({
   getReminderByEventId: vi.fn(async () => ({ calendar_event_id: "ev-1" })),

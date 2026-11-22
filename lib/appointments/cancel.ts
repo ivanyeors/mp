@@ -1,5 +1,5 @@
 import { markReadjustmentCancelledByEvent } from "@/lib/readjustment/lifecycle";
-import { deleteEvent, type EventState } from "./calendar";
+import { deleteEvent, getEventTiming, type EventState, type EventTiming } from "./calendar";
 import { isPhoneAllowed } from "./phone";
 import {
   getReminderByEventId,
@@ -20,6 +20,11 @@ export type CancelOutcome =
   | { kind: "not_live" }
   | { kind: "past" };
 
+function declinedAt(timing: EventTiming | null, now: Date): Date {
+  const updated = timing?.updatedAt ? Date.parse(timing.updatedAt) : NaN;
+  return Number.isFinite(updated) && updated < now.getTime() ? new Date(updated) : now;
+}
+
 export async function cancelAppointment(
   row: ReminderRow,
   settings: AppointmentSettings,
@@ -27,21 +32,24 @@ export async function cancelAppointment(
     cause: CancelCause;
     within24h?: boolean;
     now?: Date;
+    startsAt?: string | null;
   },
 ): Promise<CancelOutcome> {
   const now = opts.now ?? new Date();
-  if (!(Date.parse(row.starts_at) > now.getTime())) return { kind: "past" };
+  const timing =
+    opts.startsAt != null ? null : await getEventTiming(row.calendar_event_id).catch(() => null);
+  const startsAt = opts.startsAt ?? timing?.startsAt ?? row.starts_at;
+  if (!(Date.parse(startsAt) > now.getTime())) return { kind: "past" };
 
   const t = transitionReminder(row.status, { type: "cancel" });
   if (!t.ok || t.noop) return { kind: "not_live" };
 
-  if (opts.cause !== "removed") await deleteEvent(row.calendar_event_id);
-  await markReadjustmentCancelledByEvent(
-    row.calendar_event_id,
-    opts.cause === "removed" ? "staff" : "customer",
-    undefined,
+  await markReadjustmentCancelledByEvent(row.calendar_event_id, opts.cause === "removed" ? "staff" : "customer", {
     now,
-  );
+    startsAt,
+    cancelledAt: opts.cause === "declined" ? declinedAt(timing, now) : now,
+  });
+  if (opts.cause !== "removed") await deleteEvent(row.calendar_event_id);
 
   const claimed = await updateReminder(
     row.calendar_event_id,

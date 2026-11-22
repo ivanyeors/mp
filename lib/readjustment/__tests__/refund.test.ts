@@ -5,6 +5,7 @@ type Row = Record<string, unknown>;
 const h = vi.hoisted(() => ({
   order: null as Row | null,
   moved: [] as Row[],
+  updateError: null as { message: string } | null,
   refund: vi.fn(),
   telegram: vi.fn<(text: string) => Promise<string>>(async () => "sent"),
   timeline: vi.fn(async () => {}),
@@ -27,10 +28,11 @@ const admin = {
       eq: () => b,
       maybeSingle: async () => ({ data: table === "orders" ? h.order : null, error: null }),
       then: (resolve: (v: unknown) => unknown) =>
-        Promise.resolve({
-          data: op === "update" && table === "readjustment_bookings" ? h.moved : null,
-          error: null,
-        }).then(resolve),
+        Promise.resolve(
+          op === "update" && table === "readjustment_bookings" && h.updateError
+            ? { data: null, error: h.updateError }
+            : { data: op === "update" && table === "readjustment_bookings" ? h.moved : null, error: null },
+        ).then(resolve),
     };
     return b;
   },
@@ -63,6 +65,7 @@ const paidOrder = (extra: Row = {}): Row => ({
 beforeEach(() => {
   h.order = paidOrder();
   h.moved = [];
+  h.updateError = null;
   h.refund.mockReset();
   h.refund.mockResolvedValue({ id: "re_1", amount: 3270, status: "succeeded" });
   h.telegram.mockClear();
@@ -170,13 +173,45 @@ describe("markReadjustmentCancelledByEvent", () => {
 
   it("refunds the booking it moved to cancelled", async () => {
     h.moved = [booking()];
-    await markReadjustmentCancelledByEvent("ev-1", "customer", admin, early);
+    await markReadjustmentCancelledByEvent("ev-1", "customer", { now: early }, admin);
     expect(h.refund).toHaveBeenCalledTimes(1);
   });
 
   it("refunds nothing when another cancel already moved the booking", async () => {
     h.moved = [];
-    await markReadjustmentCancelledByEvent("ev-1", "customer", admin, early);
+    await markReadjustmentCancelledByEvent("ev-1", "customer", { now: early }, admin);
+    expect(h.refund).not.toHaveBeenCalled();
+  });
+
+  it("judges against the visit's live time, not the booked one, when Staff moved it in the calendar", async () => {
+    h.moved = [booking({ start_at: "2026-11-21T02:00:00.000Z" })];
+    const dayBeforeMovedVisit = new Date("2026-11-24T03:00:00Z");
+    await markReadjustmentCancelledByEvent(
+      "ev-1",
+      "customer",
+      { now: dayBeforeMovedVisit, startsAt: VISIT },
+      admin,
+    );
+    expect(h.refund).toHaveBeenCalledTimes(1);
+  });
+
+  it("judges a decline by when the customer declined, not when we noticed", async () => {
+    h.moved = [booking()];
+    await markReadjustmentCancelledByEvent(
+      "ev-1",
+      "customer",
+      { now: new Date("2026-11-25T00:30:00Z"), cancelledAt: new Date("2026-11-24T14:00:00Z") },
+      admin,
+    );
+    expect(h.refund).toHaveBeenCalledTimes(1);
+    expect(h.telegram).not.toHaveBeenCalled();
+  });
+
+  it("throws when the booking can't be cancelled, so the cancel is retried rather than lost", async () => {
+    h.updateError = { message: "connection reset" };
+    await expect(markReadjustmentCancelledByEvent("ev-1", "customer", { now: early }, admin)).rejects.toThrow(
+      "connection reset",
+    );
     expect(h.refund).not.toHaveBeenCalled();
   });
 });

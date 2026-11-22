@@ -98,16 +98,16 @@ export async function refundCancelledReadjustment(
     if (decision === "staff_decides") {
       await sendTelegram(
         [
-          "Paid re-adjustment cancelled by the customer on the day of the visit",
+          "Paid re-adjustment cancelled by the customer on the visit day",
           who,
           `${orderRef} · ${sgd(amount, currency)} paid`,
-          "Not refunded automatically. Refund from the Order if appropriate.",
+          "Not refunded automatically. If they told you before the visit day, refund from the Order.",
         ].join("\n"),
       );
       await note(
         order.id,
         "readjustment_cancelled",
-        "Re-adjustment cancelled by the customer on the day of the visit. Not refunded automatically.",
+        "Re-adjustment cancelled by the customer on the visit day. Not refunded automatically.",
         { readjustment_booking_id: booking.id },
       );
       return { kind: "staff_alerted" };
