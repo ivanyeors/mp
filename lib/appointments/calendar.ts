@@ -55,6 +55,7 @@ export type CalendarRangeEvent = {
 type GCalEvent = {
   id?: string;
   status?: string;
+  updated?: string;
   summary?: string;
   location?: string;
   description?: string;
@@ -466,6 +467,20 @@ export async function getEventState(eventId: string): Promise<EventState> {
     throw new Error(formatGoogleCalendarError(res.status, await res.text()));
   }
   return eventStateOf((await res.json()) as GCalEvent);
+}
+
+export type EventTiming = { startsAt: string | null; updatedAt: string | null };
+
+export async function getEventTiming(eventId: string): Promise<EventTiming | null> {
+  const id = encodeURIComponent(calendarId());
+  const eid = encodeURIComponent(eventId);
+  const res = await calFetch(`/calendars/${id}/events/${eid}`);
+  if (res.status === 404 || res.status === 410) return null;
+  if (!res.ok) {
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
+  }
+  const ev = (await res.json()) as GCalEvent;
+  return { startsAt: ev.start?.dateTime ?? null, updatedAt: ev.updated ?? null };
 }
 
 export async function listChangedEventStates(

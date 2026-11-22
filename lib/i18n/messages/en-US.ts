@@ -326,7 +326,7 @@ export const enUS: Messages = {
       commitmentTitle: "Our commitment",
       commitmentReadjustmentTitle: "Complimentary {freeWindowDays}-day re-adjustment",
       commitmentReadjustmentDescription:
-        "We offer a one-time complimentary visit within the initial {freeWindowDays} days post-purchase. Beyond this period or for additional adjustments, a re-adjustment fee of {readjustmentFee} applies. Stuffing is provided for free during re-adjustments (excluding other accessories/components). Sign in and pick your pillow when you book — your order is your proof of purchase.",
+        "We offer a one-time complimentary visit within the initial {freeWindowDays} days post-purchase. Beyond this period or for additional adjustments, a re-adjustment fee of {readjustmentFee} applies. Stuffing is provided for free during re-adjustments (excluding other accessories/components). Sign in and pick your pillow when you book — your order is your proof of purchase. Cancel a paid visit before the day of your appointment and we'll issue a full refund of the fee the same day.",
       commitmentWarrantyTitle: "10-year warranty inclusion",
       commitmentWarrantyDescription:
         "All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment fees apply).",

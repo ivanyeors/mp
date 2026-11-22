@@ -311,7 +311,7 @@ export const zhCN: Messages = {
       commitmentTitle: "我们的承诺",
       commitmentReadjustmentTitle: "{freeWindowDays} 天内免费复调一次",
       commitmentReadjustmentDescription:
-        "购买后 {freeWindowDays} 天内提供一次免费到店调整。超过 {freeWindowDays} 天或需要额外调整，将收取 {readjustmentFee} 复调费用。复调时填充物免费提供（不含其他配件/组件）。预约时请登录并选择您的枕头——您的订单即为购买凭证。",
+        "购买后 {freeWindowDays} 天内提供一次免费到店调整。超过 {freeWindowDays} 天或需要额外调整，将收取 {readjustmentFee} 复调费用。复调时填充物免费提供（不含其他配件/组件）。预约时请登录并选择您的枕头——您的订单即为购买凭证。如在预约日之前取消已付费的复调预约，我们会在当天全额退还费用。",
       commitmentWarrantyTitle: "10 年保固说明",
       commitmentWarrantyDescription:
         "所有产品填充物均享有 10 年保固。若需保固服务，请预约并将枕头带到服务点进行复调与填充更换（复调费用另计）。",
