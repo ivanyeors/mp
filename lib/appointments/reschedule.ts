@@ -114,7 +114,7 @@ export async function rescheduleOwnBooking(
     }
   }
 
-  await rearmReminder(event, { startIso, venue: location.address }, settings, now);
+  if (!sameTime) await rearmReminder(event, { startIso, venue: location.address }, settings, now);
 
   return { ok: true, startsAt: startIso, endsAt: endIso, locationName: location.name };
 }

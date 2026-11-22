@@ -230,6 +230,7 @@ describe("rescheduleOwnBooking", () => {
     const sameTime = { ...REQ, startIso: VISIT_START, endIso: VISIT_END };
     expect(await rescheduleOwnBooking(sameTime, ME, DAY_BEFORE, admin)).toMatchObject({ ok: true, locationName: "Mpillow Studio" });
     expect(h.move).toHaveBeenCalledWith("ev-1", VISIT_START, VISIT_END, { id: "loc-2", address: "1 Studio Rd" }, expect.any(Object));
+    expect(h.updateReminder).not.toHaveBeenCalled();
   });
 
   it("tells Staff when the booking left 'booked' before the move was saved", async () => {
