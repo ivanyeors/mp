@@ -157,6 +157,38 @@ describe("Costings save: the base each row was edited from", () => {
     nothingWritten();
   });
 
+  it("writes and syncs again when what is stored already equals what is being saved, whatever the base", async () => {
+    h.tables.item_prices[0]!.msrp = "31.00";
+    h.tables.product_prices[0]!.msrp = "450.00";
+    const { status, body } = await post({ rows: [earRow({ msrpCents: 3100 })], products: [linenM] });
+
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(h.writes).toEqual([
+      {
+        table: "item_prices",
+        op: "upsert",
+        rows: [{ item_id: 7, cost_price: "5.00", msrp: "31.00", compare_at_price: null }],
+      },
+      {
+        table: "product_prices",
+        op: "upsert",
+        rows: [expect.objectContaining({ key: "product:pillow:8:linen", msrp: "450.00" })],
+      },
+    ]);
+    expect(h.sync).toHaveBeenCalledTimes(1);
+  });
+
+  it("still refuses the stale rows when another row only matches what is being saved", async () => {
+    h.tables.item_prices[0]!.msrp = "31.00";
+    h.tables.product_prices[1]!.msrp = "95.00";
+    const { status, body } = await post({ rows: [earRow({ msrpCents: 3100 })], products: [bolsterShort] });
+
+    expect(status).toBe(409);
+    expect(body.conflicts).toEqual([{ key: "product:bolster:short", name: "Mbolster Short (0.8m)" }]);
+    nothingWritten();
+  });
+
   it("refuses a delete (every field cleared) the same way", async () => {
     h.tables.item_prices[0]!.msrp = "30.00";
     const { status } = await post({
@@ -173,6 +205,7 @@ describe("Costings save: the base each row was edited from", () => {
         {
           itemId: 7,
           ...ear,
+          msrpCents: 3100,
           base: { costPriceCents: null, msrpCents: null, compareAtCents: null },
         },
       ],

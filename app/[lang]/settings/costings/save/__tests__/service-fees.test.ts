@@ -178,6 +178,18 @@ describe("Costings → Service fees save", () => {
     expect(h.audit).not.toHaveBeenCalled();
   });
 
+  it("saves when the stored fee and rule already equal what is being saved, whatever the base", async () => {
+    h.servicePrices[2] = { ...h.servicePrices[2], msrp: "40.00" };
+    h.siteSettings[0] = { key: "readjustment_free_visits", value: "3" };
+    const res = await post({
+      rows: [],
+      services: [{ key: "readjustment", msrpCents: 4000, costCents: null, base: BASE.readjustment }],
+      readjustmentPolicy: { freeVisits: 3, freeWindowDays: 60, base: POLICY_BASE },
+    });
+    expect(res.status).toBe(200);
+    expect(h.upserts.map((u) => u.table)).toEqual(["service_prices", "site_settings"]);
+  });
+
   it("refuses with a 409 when the complimentary rule changed since the page opened", async () => {
     h.siteSettings[0] = { key: "readjustment_free_visits", value: "2" };
     const res = await post({ rows: [], readjustmentPolicy: { freeVisits: 3, freeWindowDays: 60, base: POLICY_BASE } });

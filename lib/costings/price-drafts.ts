@@ -4,7 +4,7 @@ export type PriceBaseRow = { cost: number | null; msrp: number | null; compareAt
 export type PriceBases = Record<string, PriceBaseRow>;
 export type DraftField = keyof PriceDraftRow;
 
-export type SavedChangeUnderDraft = { key: string; field: DraftField };
+export type SavedChangeUnderDraft = { key: string; field: DraftField; savedCents: number | null };
 
 export const DRAFT_FIELDS: readonly DraftField[] = ["costPrice", "msrp", "compareAt"];
 
@@ -13,6 +13,8 @@ export const BASE_FIELD: Record<DraftField, keyof PriceBaseRow> = {
   msrp: "msrp",
   compareAt: "compareAt",
 };
+
+const NO_BASE: PriceBaseRow = { cost: null, msrp: null, compareAt: null };
 
 export const parseToCents = (value: string): number | null => {
   if (!value || value === ".") return null;
@@ -29,29 +31,37 @@ export const isFieldDirty = (
   field: DraftField,
 ): boolean => parseToCents(draft?.[field] ?? "") !== (base?.[BASE_FIELD[field]] ?? null);
 
-const changeId = ({ key, field }: SavedChangeUnderDraft) => JSON.stringify([key, field]);
+const changeId = ({ key, field }: { key: string; field: DraftField }) => JSON.stringify([key, field]);
 
 export function keepDrafts(
   mine: { drafts: PriceDrafts; bases: PriceBases; savedChanges: readonly SavedChangeUnderDraft[] },
   fresh: { drafts: PriceDrafts; bases: PriceBases },
-): { drafts: PriceDrafts; savedChanges: SavedChangeUnderDraft[] } {
+  { rebase }: { rebase: boolean },
+): { drafts: PriceDrafts; bases: PriceBases; savedChanges: SavedChangeUnderDraft[] } {
   const changedBefore = new Set(mine.savedChanges.map(changeId));
   const drafts: PriceDrafts = {};
+  const bases: PriceBases = {};
   const savedChanges: SavedChangeUnderDraft[] = [];
   for (const [key, freshRow] of Object.entries(fresh.drafts)) {
+    const freshBase = fresh.bases[key] ?? NO_BASE;
     const myDraft = mine.drafts[key];
     const myBase = mine.bases[key];
     const row = { ...freshRow };
+    const base = { ...freshBase };
     if (myDraft && myBase) {
       for (const field of DRAFT_FIELDS) {
         if (!isFieldDirty(myDraft, myBase, field)) continue;
         row[field] = myDraft[field];
-        if (!isFieldDirty(row, fresh.bases[key], field)) continue;
-        const savedMoved = (fresh.bases[key]?.[BASE_FIELD[field]] ?? null) !== myBase[BASE_FIELD[field]];
-        if (savedMoved || changedBefore.has(changeId({ key, field }))) savedChanges.push({ key, field });
+        const baseField = BASE_FIELD[field];
+        if (parseToCents(myDraft[field]) === freshBase[baseField]) continue;
+        if (!rebase) base[baseField] = myBase[baseField];
+        if (freshBase[baseField] !== myBase[baseField] || changedBefore.has(changeId({ key, field }))) {
+          savedChanges.push({ key, field, savedCents: freshBase[baseField] });
+        }
       }
     }
     drafts[key] = row;
+    bases[key] = base;
   }
-  return { drafts, savedChanges };
+  return { drafts, bases, savedChanges };
 }

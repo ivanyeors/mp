@@ -142,6 +142,15 @@ function conflictMessage(names: readonly string[]): string {
     : `Someone changed these prices since you opened them — reload to see them: ${names.join(", ")}.`;
 }
 
+const sameValues = (left: ReadonlyArray<number | null>, right: ReadonlyArray<number | null>) =>
+  left.every((value, i) => value === right[i]);
+
+const movedUnderEdit = (
+  stored: ReadonlyArray<number | null>,
+  base: ReadonlyArray<number | null>,
+  saving: ReadonlyArray<number | null>,
+) => !sameValues(stored, base) && !sameValues(stored, saving);
+
 const productRef = (row: ProductPayload) =>
   row.kind === "pillow"
     ? {
@@ -188,10 +197,10 @@ async function findPriceConflicts(
   const staleItemIds = payload.rows
     .filter((row) => {
       const stored = storedItems.get(row.itemId);
-      return (
-        toCents(stored?.cost_price ?? null) !== row.base.costPriceCents ||
-        toCents(stored?.msrp ?? null) !== row.base.msrpCents ||
-        toCents(stored?.compare_at_price ?? null) !== row.base.compareAtCents
+      return movedUnderEdit(
+        [toCents(stored?.cost_price ?? null), toCents(stored?.msrp ?? null), toCents(stored?.compare_at_price ?? null)],
+        [row.base.costPriceCents, row.base.msrpCents, row.base.compareAtCents],
+        [row.costPriceCents, row.msrpCents, row.compareAtCents ?? null],
       );
     })
     .map((row) => row.itemId);
@@ -199,23 +208,30 @@ async function findPriceConflicts(
   const storedProducts = (productRead.data ?? []) as StoredProductPrice[];
   const staleProducts = products.filter((row) => {
     const stored = storedProductPrice(storedProducts, productRef(row));
-    return (
-      toCents(stored?.msrp ?? null) !== row.base.msrpCents ||
-      toCents(stored?.compare_at_price ?? null) !== row.base.compareAtCents
+    return movedUnderEdit(
+      [toCents(stored?.msrp ?? null), toCents(stored?.compare_at_price ?? null)],
+      [row.base.msrpCents, row.base.compareAtCents],
+      [row.msrpCents, row.compareAtCents ?? null],
     );
   });
 
   const staleServices = storedServices
-    ? services.filter(
-        (row) =>
-          toCents(storedServices[row.key].msrp) !== row.base.msrpCents ||
-          toCents(storedServices[row.key].costPrice) !== row.base.costCents,
+    ? services.filter((row) =>
+        movedUnderEdit(
+          [toCents(storedServices[row.key].msrp), toCents(storedServices[row.key].costPrice)],
+          [row.base.msrpCents, row.base.costCents],
+          [row.msrpCents, row.costCents],
+        ),
       )
     : [];
 
   const stalePolicy =
     policy && storedPolicy
-      ? storedPolicy.freeVisits !== policy.base.freeVisits || storedPolicy.freeWindowDays !== policy.base.freeWindowDays
+      ? movedUnderEdit(
+          [storedPolicy.freeVisits, storedPolicy.freeWindowDays],
+          [policy.base.freeVisits, policy.base.freeWindowDays],
+          [policy.freeVisits, policy.freeWindowDays],
+        )
       : false;
 
   if (staleItemIds.length === 0 && staleProducts.length === 0 && staleServices.length === 0 && !stalePolicy) {

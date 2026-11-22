@@ -183,6 +183,8 @@ type ProductSaveRow = {
   base: { msrpCents: number | null; compareAtCents: number | null };
 };
 
+type LoadOptions = { rebase?: boolean; savedBases?: BaselineState };
+
 type ItemSaveRow = {
   itemId: number;
   costPriceCents: number | null;
@@ -461,7 +463,7 @@ export default function CostingsPage() {
 
   const latestLoad = useRef(0);
   const ignoreLoadsBelow = useRef(0);
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ rebase = false, savedBases = {} }: LoadOptions = {}) => {
     const id = ++latestLoad.current;
     setLoading(true);
     try {
@@ -722,17 +724,21 @@ export default function CostingsPage() {
       setProducts(productRows);
       setFillingTemplates(templatesResult.templates);
       setFillingTemplatesError(templatesResult.error);
-      const freshBaseline = { ...nextBaseline, ...productBaseline };
       const kept = keepDrafts(
-        { drafts: draftRef.current, bases: baselineRef.current, savedChanges: savedChangesRef.current },
-        { drafts: { ...nextDraft, ...productDraft }, bases: freshBaseline },
+        {
+          drafts: draftRef.current,
+          bases: { ...baselineRef.current, ...savedBases },
+          savedChanges: savedChangesRef.current,
+        },
+        { drafts: { ...nextDraft, ...productDraft }, bases: { ...nextBaseline, ...productBaseline } },
+        { rebase },
       );
       commitDraftDebounced.cancel();
       draftRef.current = kept.drafts;
       setDraft(kept.drafts);
       setCommittedDraft(kept.drafts);
       setHasPendingEdit(false);
-      applyBaseline(freshBaseline);
+      applyBaseline(kept.bases);
       savedChangesRef.current = kept.savedChanges;
       setSavedChanges(kept.savedChanges);
       setSaveConflict(null);
@@ -1426,9 +1432,19 @@ export default function CostingsPage() {
         }
       }
       for (const t of costingsSavedToasts(payload)) toast[t.type](t.title, t.options);
+      const savedBases: BaselineState = Object.fromEntries([
+        ...rows.map((row) => [
+          itemKey(row.itemId),
+          { cost: row.costPriceCents, msrp: row.msrpCents, compareAt: row.compareAtCents },
+        ]),
+        ...productPayload.map((row) => [
+          row.key,
+          { cost: liveBaseline[row.key]?.cost ?? null, msrp: row.msrpCents, compareAt: row.compareAtCents ?? null },
+        ]),
+      ]);
       ignoreLoadsBelow.current = latestLoad.current + 1;
       saveInFlight.current = false;
-      await load();
+      await load({ savedBases });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save costings.";
       toast.error(message);
@@ -1440,21 +1456,24 @@ export default function CostingsPage() {
 
   const refresh = () => {
     if (saveInFlight.current) return;
-    void load();
+    void load({ rebase: true });
   };
 
   useMobileDockActions([
     { id: "refresh", title: "Refresh", icon: RotateCw, onClick: refresh, disabled: saving },
   ]);
 
-  const savedChangeNotes = savedChanges.flatMap(({ key, field }) => {
+  const savedChangeNotes = savedChanges.flatMap(({ key, field, savedCents }) => {
     if (!isFieldDirty(draft[key], baseline[key], field)) return [];
     const itemId = key.startsWith("item:") ? Number(key.slice("item:".length)) : null;
     const item = itemId === null ? undefined : itemMap.get(itemId);
     const name = item ? getInventoryItemDisplayLabel(item) : products.find((product) => product.key === key)?.label;
     if (!name) return [];
-    return [`${name} ${DRAFT_FIELD_LABELS[field]} ${formatCentsLabel(baseline[key]?.[BASE_FIELD[field]] ?? null)}`];
+    const refreshed = (baseline[key]?.[BASE_FIELD[field]] ?? null) === savedCents;
+    return [{ text: `${name} ${DRAFT_FIELD_LABELS[field]} ${formatCentsLabel(savedCents)}`, refreshed }];
   });
+  const refreshedNotes = savedChangeNotes.filter((note) => note.refreshed).map((note) => note.text);
+  const notRefreshedNotes = savedChangeNotes.filter((note) => !note.refreshed).map((note) => note.text);
 
   const draftNotice = (
     <div role="status">
@@ -1462,10 +1481,16 @@ export default function CostingsPage() {
         <div className="mt-3 space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           {isDirty ? <p className="font-medium">You have unsaved changes.</p> : null}
           {saveConflict ? <p>{saveConflict}</p> : null}
-          {savedChangeNotes.length > 0 ? (
+          {notRefreshedNotes.length > 0 ? (
             <p>
-              Saved since you started editing: {savedChangeNotes.join("; ")}. Save to replace{" "}
-              {savedChangeNotes.length === 1 ? "it" : "them"} with yours.
+              Saved since you started editing: {notRefreshedNotes.join("; ")}. Refresh, then save to replace{" "}
+              {notRefreshedNotes.length === 1 ? "it" : "them"} with yours.
+            </p>
+          ) : null}
+          {refreshedNotes.length > 0 ? (
+            <p>
+              Saved since you started editing: {refreshedNotes.join("; ")}. Save to replace{" "}
+              {refreshedNotes.length === 1 ? "it" : "them"} with yours.
             </p>
           ) : null}
         </div>

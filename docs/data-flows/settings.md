@@ -115,10 +115,15 @@ flowchart TD
   the route compares each base with what is stored (Items: cost, MSRP and
   compare-at; Composed sellables: MSRP and compare-at, found the way the page
   finds them; Services: MSRP and cost) and, if any differ, answers 409 naming
-  the rows. The page keeps what was typed through every reload (Refresh, the
-  `inventory:changed` event), refreshes the rest, and a reload rebases the
-  edit, so Save works again. Check-then-write: a save landing between the
-  route's read and its writes still wins (`ponytail:` in the route).
+  the rows. A row whose stored values already equal what is being saved is not
+  a conflict: it is written and synced again, so a retry after a lost answer or
+  a failed reload works. The page keeps what was typed through every reload and
+  refreshes the rest. Only the user's Refresh moves a typed field's base to the
+  new stored value; an automatic reload (`inventory:changed`) keeps the old
+  base and says the stored price changed, so Save stays refused until Refresh.
+  After a save, the base of each saved row is what was saved. Check-then-write:
+  a save landing between the route's read and its writes still wins
+  (`ponytail:` in the route).
 - **Variant mirror**: every `products.is_auto_generated` product resolves each
   Variant's price through `price_key`, `pillow_product_id`, bolster `option1`
   or `item_id`. It writes `price`, `compare_at_price` and BOM `cost_price`,
