@@ -96,7 +96,7 @@ describe("run", () => {
   it("puts a warning on a paused run that says what did not run and how to merge", async () => {
     const result = await run({ ...base, fetchImpl: answer(200, report([linux(2800)])) });
     const warning = result.lines.find((l: string) => l.startsWith("::warning title=CI paused"));
-    expect(warning).toMatch(/2800 of this month's Actions minutes \(CI pauses at 2700\)/);
+    expect(warning).toMatch(/2800 of this month's Actions minutes are used \(CI pauses at 2700\)/);
     expect(warning).toMatch(/did not run/);
     expect(warning).toMatch(/auto-merge will not merge/);
   });
