@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img"><title>Side sleeper, pillow about right: head level with the spine</title><style>
+.mat{fill:#e6e9ee}.body{fill:#d5dbe3}.neck{stroke:#d5dbe3;stroke-width:24;stroke-linecap:round;fill:none}
+.pillow{fill:#cfe3f1;stroke:#2f6db5;stroke-width:2}.ok{stroke:#2f6db5}.off{stroke:#d9661f}
+.okf{fill:#2f6db5}.offf{fill:#d9661f}.ref{stroke:#7d8796;stroke-width:1.5;stroke-dasharray:5 5;fill:none}
+.sp{stroke-width:3;fill:none;stroke-linecap:round}.face{fill:none;stroke:#7d8796;stroke-width:2}
+.fill{fill:#2f6db5;opacity:.55}.line{fill:none;stroke:#2f6db5;stroke-width:2}.acc{fill:none;stroke:#d9661f;stroke-width:2.5;stroke-linecap:round}
+@media (prefers-color-scheme:dark){.mat{fill:#262c35}.body{fill:#3b4451}.neck{stroke:#3b4451}
+.pillow{fill:#1c3350;stroke:#78a6f2}.ok{stroke:#78a6f2}.off{stroke:#f0a35c}.okf{fill:#78a6f2}.offf{fill:#f0a35c}
+.ref{stroke:#8792a2}.face{stroke:#8792a2}.fill{fill:#78a6f2}.line{stroke:#78a6f2}.acc{stroke:#f0a35c}}
+</style><rect x="0" y="170" width="320" height="30" class="mat"/><rect x="26" y="134" width="128" height="36" rx="12" class="pillow"/><path d="M330 50 L192 50 Q150 50 150 92 L150 128 Q150 170 192 170 L330 170 Z" class="body"/><line x1="160" y1="110" x2="92" y2="110" class="neck"/><circle cx="92" cy="110" r="28" class="body"/><line x1="20" y1="110" x2="160" y2="110" class="ref"/><line x1="160" y1="110" x2="318" y2="110" class="sp ok"/><circle cx="172" cy="110" r="3.5" class="okf"/><circle cx="190" cy="110" r="3.5" class="okf"/><circle cx="208" cy="110" r="3.5" class="okf"/><circle cx="226" cy="110" r="3.5" class="okf"/><circle cx="244" cy="110" r="3.5" class="okf"/><circle cx="262" cy="110" r="3.5" class="okf"/><circle cx="280" cy="110" r="3.5" class="okf"/><circle cx="298" cy="110" r="3.5" class="okf"/><circle cx="316" cy="110" r="3.5" class="okf"/><line x1="160" y1="110" x2="92" y2="110" class="sp ok"/><circle cx="92" cy="110" r="4" class="okf"/><line x1="300" y1="170" x2="300" y2="110" class="line"/><line x1="294" y1="170" x2="306" y2="170" class="line"/><line x1="294" y1="110" x2="306" y2="110" class="line"/></svg>

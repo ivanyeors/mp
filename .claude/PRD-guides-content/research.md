@@ -173,3 +173,62 @@ YouTube (titles from oEmbed):
 6. **One OG image per guide** (1200×630).
 
 Licensing: commissioned work with a written licence; [Servier Medical Art](https://smart.servier.com/terms-of-use) (CC BY 4.0) only for anatomy if needed, with credit.
+
+## 11. Decision research (22 Nov 2026)
+
+Done before the owner answered D1–D6. Primary texts were read where they could be reached; the HSA and AHPC PDFs were extracted with `pdftotext` and quoted verbatim.
+
+### D1: blog hubs vs guides
+
+- **Inherited URLs.** In `lib/__fixtures__/shopify-redirect-map.json`, 39 mpillow.com URLs redirect to the three blog hubs (neck pain 18, custom 12, cervical 9) and 5 to the guides. `MERGED_BLOG_SLUGS` sends 27 more old custom.mpillow.com slugs to the hubs (12, 11, 4). 14 live posts link to a hub.
+- **Google.** "Redirects and Google Search": 301 and 308 both mean "a page has permanently moved", and for permanent redirects "the indexing pipeline uses the redirect as a signal" that the target should be canonical. The page says nothing on chains or a hop limit, so repoint every row straight at the final URL rather than relying on Google to follow chains. [Google](https://developers.google.com/search/docs/crawling-indexing/301-redirects), [canonical methods](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls)
+- **Practice.** Consolidation means moving the best sections into the surviving page, then redirecting. [Search Engine Land](https://searchengineland.com/content-consolidation-seo-386518)
+
+### D2: HSA and claim wording
+
+From HSA **GL-06-R2 Medical Devices Product Classification Guide (Oct 2023)**:
+
+- Definition (First Schedule, Health Products Act): "Diagnosis, prevention, monitoring, treatment or alleviat[ion] of disease"; "Diagnosis, monitoring, treatment or alleviation of, or compensation for, an injury"; "Investigation, replacement, modification or support of the anatomy or of a physiological process, mainly for medical purposes".
+- Test: "The intended purpose of the product taking into account the way the product is designed and/or presented", and "the primary mode of action … is typically achieved by physical means (including mechanical action, replacement of, or support of the anatomy …)". A pillow acts physically, so presentation decides it.
+- p.16: "Hot or cold packs, Heat pads" are a **Medical Device**: "Generally intended for pain relief." They are **Not Medical Device** when "Labelled with specific intended purpose to exclude these products … An example is heat pads labelled for keeping warmth in cold weather."
+- p.27: "products intended for … maintenance of general state of health (ie. weight management, recreational use, sleep management …) are not considered medical devices." A "Foot patch intended to maintain good health, promote good sleep, to soothe or relax muscle" is **Not Medical Device**. "Bandages or support for sprains or injuries" is a **Medical Device**.
+- HSA's overview page: products for "general well-being without specific medical claims, such as … massagers, are **not** medical devices". Class A devices are exempt from product registration, but every medical device needs a dealer's licence. [HSA overview](https://www.hsa.gov.sg/medical-devices/regulatory-overview)
+- If it were a device, its ads must have claims "substantiated with scientific studies", no "unqualified superlatives", and must "not in any way discourage the public from seeking the advice of a medical professional". [HSA advertisements](https://www.hsa.gov.sg/medical-devices/advertisement-post-market-surveillance-and-safety-monitoring/advertisements-and-promotions/)
+- Route to ask: HSA's self-help tool "Is my product a medical device?" (selfhelp.hsa.gov.sg), then a written enquiry.
+- **Site copy at risk today:** `en-US.ts` lines 226, 272–281, 341, 353, 357–370, and the zh-CN lines with 缓解 / 呼吸 / 手术 / 脊柱侧弯 / 胃酸逆流 / 睡眠呼吸暂停. In the blog, 16 posts have 1–8 risky phrases; the CPAP / sleep apnoea post has 8, and Google's own Health-category example is "Medical devices for sleep apnea like CPAP machines".
+
+### D3: a named physiotherapist
+
+AHPC **Code of Professional Conduct** (extracted from the PDF):
+
+- 5.2: advertising a registrant does or supports must be "truthful, factual and accurate" and must not have "unsubstantiated or embellished claims in relation to a product or service".
+- 5.3: "You must not support or engage in any advertisements that are misleading, false, unfair or exaggerated."
+- **5.7.2**: "You may be invited to participate in activities not limited to events, conferences, talks, publications or educational websites sponsored by companies marketing healthcare, pharmaceutical or medical products. You must ensure that your participation does not occur in such a way as to appear to endorse such products, or persuade patients or members of the public to use the products. All potential conflicts of interest should be declared to the audience."
+- 11.5: no "marketing and sales of products or services which are not in keeping with the practices of the profession … when acting in your professional capacity".
+- Partners earn Commission on referred sales (`CONTEXT.md`, Partner portal), which is a conflict to declare under 5.7.2.
+
+So the credit has to be an accuracy check on the health facts, away from buttons and product photos, with the commission declared. [AHPC regulations and code](https://www.ahpc.gov.sg/for-professionals/regulations-guidelines-and-circulars/)
+
+### D4: media
+
+- Google Search shows video results only for pages where the video is the main content. Since 2023, "Video mode" shows "only … pages where video is the main content", and the indexing report flags "Video isn't on a watch page". A guide with an embedded clip is a text page, so the clip earns no video result there; YouTube is its watch page. [Google blog](https://developers.google.com/search/blog/2023/12/video-is-the-main-content), [Video SEO](https://developers.google.com/search/docs/appearance/video), [indexing report](https://support.google.com/webmasters/answer/9495631)
+- Google's AI-features guidance rewards first-hand, non-commodity content (§4), which favours real staff and real fittings over stock polish.
+
+### D5: Google Ads
+
+- Personalised advertising: Health is a sensitive interest category, including "Physical or mental health conditions" and "Products, services, or procedures to treat or manage chronic health conditions". When promoting in one, "Your data segments" (formerly remarketing) and Customer Match are "Not supported". Custom segments "pointing to sensitive landing pages will only serve with Display campaigns to non-sensitive audiences or contextually". [Policy](https://support.google.com/adspolicy/answer/143465), [Health](https://support.google.com/adspolicy/answer/16701855)
+- Misrepresentation, unreliable claims: no "inaccurate claims or claims that entice the user with an improbable result". [Policy](https://support.google.com/adspolicy/answer/6020955)
+- AI Max final URL expansion sends users "to the landing page from your domain that is predicted to perform best". URL exclusions take exact URLs, page-feed labels or "URL contains" rules. These match whole tokens: "guide" does not match "guides". [AI Max](https://support.google.com/google-ads/answer/15910187), [URL exclusions](https://support.google.com/google-ads/answer/18788711)
+- Healthcare and medicines policy has no section on non-medical consumer products such as pillows. [Policy](https://support.google.com/adspolicy/answer/176031)
+
+### D6: who reads Chinese
+
+Census 2020, Chinese residents, language most often spoken at home (data.gov.sg dataset `d_68860ef451f948e62754a830b6ae5024`, computed here):
+
+| Age | English | Mandarin | Dialects | Mandarin only |
+|---|---|---|---|---|
+| 25–34 | 54% | 43% | — | — |
+| 35–54 | 46% | 46% | 8% | 9% |
+| 55–74 | 32% | 46% | 21% | 12% |
+
+Nationally, English is the most-spoken home language for 48.3% of residents (2020, up from 32.3% in 2010). [SingStat](https://www.singstat.gov.sg/-/media/files/publications/cop2020/sr1/executive-summary.pdf)

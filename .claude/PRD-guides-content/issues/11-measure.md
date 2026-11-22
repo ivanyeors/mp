@@ -2,7 +2,7 @@
 
 Type: OPS
 Parent: PRD `guides-content`
-Triage: needs-triage
+Triage: ready
 
 ## What to build
 

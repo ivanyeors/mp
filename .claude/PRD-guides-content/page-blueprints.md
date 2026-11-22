@@ -14,7 +14,7 @@ The outline each guide is written to. H2s are questions people type (Singapore a
 | Description (≤155) | How to choose a pillow for neck pain: the right height for your sleep position and shoulders, which fillings hold up, and when to see a doctor. |
 | H1 | What's the best pillow for neck pain? How to choose one in Singapore |
 | Answer lede (58 words) | The best pillow for neck pain keeps your head level with your spine in the position you actually sleep in. Height matters most: side sleepers need more, set by shoulder width, and back sleepers need less. Choose a filling that holds its height. If pain lasts beyond a few weeks or spreads to your arm, see a doctor. |
-| Hero figure | **New** alignment diagram, side sleeper: too high / about right / too low. Interim: `3way-side-sleep.jpg`. |
+| Hero figure | Alignment set, side sleeper: `alignment-side-{high,right,low}.svg` (drafts in `media/`, captions in `media-plan.md` §1). Interim: `3way-side-sleep.jpg`. |
 | Absorbs | Blog hub `what-is-the-best-pillow-for-neck-pain-in-singapore` (D1); the intents of the old "evidence-based guide" and "systematic review" pages |
 | Words | 2,000–2,600 |
 
@@ -45,7 +45,7 @@ The outline each guide is written to. H2s are questions people type (Singapore a
    3. You try it (in studio) or review the build (online).
    4. Re-adjust later.
 
-   Facts: patented M shape supports back and side sleeping in one pillow; modular, washable components; 10-year warranty on filling height. Images: `shoulderlength_800x.webp`, `sizecomparison.webp`. Video: Dr Steven Hulme's review (`nvFI6woJD9g`), with a one-line summary in text. Check his registration and how to title him (SCAP; D3).
+   Facts: patented M shape supports back and side sleeping in one pillow; modular, washable components; 10-year warranty on filling height. Images: `shoulderlength_800x.webp`, `sizecomparison.webp`. Video: **Video 2**, studio fitting; interim `V2H03lq9IYU`. Not Dr Steven Hulme's review (`nvFI6woJD9g`): a clinician praising the product on an editorial page reads as "doctor-recommended" (D2) and an endorsement (D3). Leave it to product pages, if the owner confirms SCAP allows it there.
 8. **What customers say**: topic reviews.
 9. **When should you see a doctor about neck pain?** Callout with HealthHub and SGH red flags [5, 11]. Note that most neck pain improves within 6 weeks [5]. No CTA.
 10. **Frequently asked questions** (6):
@@ -121,7 +121,7 @@ Optional: Hey 2021 prevalence ("about 1 in 4 adults in Singapore") in section 1.
    - removable, washable and replaceable;
    - it keeps the fillings from flattening at the neck.
 
-   Images: `cns-insert.png`, `cns-contact-point.png`, `mpillow-cervical-neck.webp`. Video: **new** 20–40 s cervical insert clip. Interim: the customisation video (`V2H03lq9IYU`). Then the decision-point CTA.
+   Images: `cns-insert.png`, `cns-contact-point.png`, `mpillow-cervical-neck.webp`. Video: **Video 3**, cervical neck support (`media-plan.md` §2). Interim: the customisation video (`V2H03lq9IYU`). Then the decision-point CTA.
 8. **What customers say**: topic reviews (the cervical filter).
 9. **When should you see a doctor?** The shared red-flags callout.
 10. **Frequently asked questions** (6):
@@ -173,8 +173,8 @@ Optional: Hey 2021 prevalence ("about 1 in 4 adults in Singapore") in section 1.
    5. Delivery or collection.
    6. Re-adjust after you have slept on it.
 
-   Images: the four measurement photos as a 2×2 grid (shoulder length, neck depth, head depth, neck length). Video: Premium customisation process (`V2H03lq9IYU`), later the **new** studio fitting clip.
-4. **Should you measure at home or get fitted at our Singapore studio?** Table, two columns, rows: who measures; how long it takes (**Wanted**: typical fitting length); try before you take it home; measurement fee (only when our team measures; link `/shop` or FAQ, no figures); available overseas (online only). In-store is Singapore only.
+   Images: the four measurement photos as a 2×2 grid (shoulder length, neck depth, head depth, neck length). Video: Premium customisation process (`V2H03lq9IYU`), later **Video 2**, studio fitting (`media-plan.md` §2).
+4. **Should you measure at home or get fitted at our Singapore studio?** Table, two columns, rows: who measures; how long it takes (**Wanted**: typical fitting length); try before you take it home; measurement fee (only when our team measures; link `/shop` or FAQ, no figures); available overseas (online only). In-store is Singapore only. Video: **Video 1**, how to measure your shoulder length (`media-plan.md` §2), replacing the third-party clip.
 5. **Basic or Premium: which custom pillow is for you?** Table, rows: who it is for (from `pickYourMpillow`: occasional neck tension vs ongoing neck discomfort; reword its "chronic neck pain" per D2); measurements (1 vs 4); firmness; cervical support option; fitting; warranty; price (link `/shop`). Then the decision-point CTA.
 6. **Is a custom pillow worth it?** It is when standard pillows keep failing you; it is not when your current pillow already works. Cost over time: modular and washable parts, and a 10-year warranty on filling height, versus replacing pillows (link the replacement spoke). No prices.
 7. **Do you need to go to Japan for a fitted pillow?** Pillow fitting is well known in Japan. In Singapore you can be measured locally and come back for re-adjustments. Keep it factual; no competitor names in body copy.
@@ -204,5 +204,5 @@ Optional: Hey 2021 prevalence ("about 1 in 4 adults in Singapore") in section 1.
 ## Shared blocks (write once, reuse)
 
 - **See a doctor callout**: HealthHub urgent and early signs plus SGH's list, adapted. Persistent pain, numbness, tingling, weakness, or pain after an injury means a doctor or physiotherapist.
-- **About this guide**: "Written by the Mpillow fitting team. We design, make and fit these pillows in Singapore, so this guide also explains our own product. Health facts link to their sources. Last checked <date>."
+- **About this guide** (D3): "Written by the Mpillow fitting team. We design, make and fit these pillows in Singapore, so this guide also explains our own product. Health facts link to their sources." Once the physio has checked it, add: "Health information checked by <Name>, physiotherapist (AHPC-registered), <Clinic>. <Clinic> is an Mpillow partner clinic and earns a commission on referrals. They checked the health facts in this guide; they do not endorse any product. Last checked <date>." Never in the byline, never next to a button.
 - **Decision-point CTA**: one sentence and two buttons ("Find your size online", "Book a fitting in Singapore").
