@@ -152,9 +152,14 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      # Vitest's default is one worker fewer than the CPUs, so on this two-CPU
+      # runner it ran one test file at a time. Two workers, same tests:
+      # measured November 2026 on two CPUs, 559 s with one, 322 s with two,
+      # 301 s with three and 291 s with four; past two the gain is small and
+      # the timing-sensitive hook tests share less CPU.
       - name: Test
         if: steps.scope.outputs.code == 'true'
-        run: pnpm test
+        run: pnpm test --maxWorkers=2
 
       # The `*.check.ts` invariant scripts. Before this step nothing ran them,
       # and eleven had drifted from the code unnoticed. The few that need a
