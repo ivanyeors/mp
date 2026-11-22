@@ -5,7 +5,9 @@ import {
   HoldShippingTotalRow,
   holdShippingAmount,
   holdShippingCheck,
+  useHoldShippingQuote,
   type HoldShippingMethod,
+  type HoldShippingMethods,
   type HoldShippingOption,
 } from "../hold-shipping-fields";
 import type { HoldShippingAddress } from "../saved-address-select";
@@ -56,7 +58,57 @@ function render(options: HoldShippingOption[], over: Partial<HoldShippingAddress
   );
 }
 
+function ShippingFor({ methods, country }: { methods: HoldShippingMethods; country: string }) {
+  const { options, selected, loading } = useHoldShippingQuote({
+    methods,
+    address: { ...address, country },
+    parcelTypes: [],
+    selectedId: "sg-courier",
+    onSelect: () => {},
+  });
+  return (
+    <>
+      <output>{selected ? `selected:${selected.method.id}` : "selected:none"}</output>
+      <HoldShippingFields
+        options={options}
+        loading={loading}
+        goodsSubtotal={448}
+        selectedId="sg-courier"
+        onSelect={() => {}}
+        address={{ ...address, country }}
+        setAddress={() => {}}
+        errors={{}}
+        savedAddresses={{ signedIn: false, addresses: [], value: "new", onValueChange: () => {} }}
+        recipientPlaceholder="Name"
+      />
+    </>
+  );
+}
+
 describe("Customisation shipping (ADR 0032)", () => {
+  it("lists and selects no method loaded for another country, and says the new country's are loading", () => {
+    const sg: HoldShippingMethods = {
+      country: "SG",
+      rows: [method({ id: "sg-courier", rate_source: "flat", content: { "en-US": { name: "Singapore courier" } } })],
+    };
+    const stale = renderToStaticMarkup(<ShippingFor methods={sg} country="MY" />);
+    expect(stale).not.toContain("Singapore courier");
+    expect(stale).toContain("selected:none");
+    expect(stale).toContain("Loading shipping methods…");
+    expect(stale).not.toContain("No shipping methods available");
+
+    const current = renderToStaticMarkup(<ShippingFor methods={sg} country="SG" />);
+    expect(current).toContain("Singapore courier");
+    expect(current).toContain("selected:sg-courier");
+    expect(current).not.toContain("Loading shipping methods…");
+  });
+
+  it("says when the country has no method once its list has loaded", () => {
+    const html = renderToStaticMarkup(<ShippingFor methods={{ country: "MY", rows: [] }} country="MY" />);
+    expect(html).toContain("No shipping methods available for this country.");
+    expect(html).not.toContain("Loading shipping methods…");
+  });
+
   it("asks where it ships and prices a live method as one figure with its delivery window", () => {
     const html = render([priced()]);
     expect(html).toContain("Ship to");
