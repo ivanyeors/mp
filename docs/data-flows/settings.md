@@ -118,10 +118,13 @@ flowchart TD
   the rows. A row whose stored values already equal what is being saved is not
   a conflict: it is written and synced again, so a retry after a lost answer or
   a failed reload works. The page keeps what was typed through every reload and
-  refreshes the rest. Only the user's Refresh moves a typed field's base to the
-  new stored value; an automatic reload (`inventory:changed`) keeps the old
-  base and says the stored price changed, so Save stays refused until Refresh.
-  After a save, the base of each saved row is what was saved. Check-then-write:
+  refreshes the rest. It holds two values per field: the latest stored price
+  (what an untouched field shows, and what decides whether a field is an edit)
+  and the base, the price editing started from. Only the user's Refresh moves a
+  typed field's base; an automatic reload (`inventory:changed`) keeps it and
+  says the stored price changed, so Save stays refused until Refresh. When a
+  save answers, the base of each saved row becomes what was saved, before the
+  page reloads. Check-then-write:
   a save landing between the route's read and its writes still wins
   (`ponytail:` in the route).
 - **Variant mirror**: every `products.is_auto_generated` product resolves each

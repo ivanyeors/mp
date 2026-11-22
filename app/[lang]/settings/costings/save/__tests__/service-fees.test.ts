@@ -171,7 +171,7 @@ describe("Costings → Service fees save", () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error).toBe(
-      "Someone changed this price since you opened it — reload to see it: Re-adjustment service.",
+      "Someone changed this price since you opened it — Refresh to see it: Re-adjustment service.",
     );
     expect(body.conflicts).toEqual([{ key: "readjustment", name: "Re-adjustment service" }]);
     expect(h.upserts).toEqual([]);

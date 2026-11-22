@@ -138,8 +138,8 @@ const READJUSTMENT_POLICY_NAME = "Complimentary re-adjustment";
 
 function conflictMessage(names: readonly string[]): string {
   return names.length === 1
-    ? `Someone changed this price since you opened it — reload to see it: ${names[0]}.`
-    : `Someone changed these prices since you opened them — reload to see them: ${names.join(", ")}.`;
+    ? `Someone changed this price since you opened it — Refresh to see it: ${names[0]}.`
+    : `Someone changed these prices since you opened them — Refresh to see them: ${names.join(", ")}.`;
 }
 
 const sameValues = (left: ReadonlyArray<number | null>, right: ReadonlyArray<number | null>) =>

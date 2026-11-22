@@ -476,7 +476,7 @@ describe("Costings drafts", () => {
 
     await click(saveButton());
     await settle();
-    expect(saveBodies()[1].rows[0].base.msrpCents).toBe(2000);
+    expect(saveBodies()[1].rows[0].base.msrpCents).toBe(3000);
     expect(notice()).not.toContain("Someone changed");
     expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining("Someone changed"));
     expect(server.syncs).toBe(2);
@@ -512,6 +512,63 @@ describe("Costings drafts", () => {
     expect(notice()).not.toContain("Someone changed");
   });
 
+  it("saves a price typed after a save whose own reload failed, against the price that save wrote", async () => {
+    server.route = true;
+    server.itemPrices.set(1, storedPart("20.00"));
+    await db.loads[0].answer([item(1, "cover", "20.00")]);
+    await editPartMsrp("30.00");
+    await click(saveButton());
+    await settle();
+    await db.loads[1].fail("network down");
+    await settle();
+
+    await editPartMsrp("35.00");
+    await click(saveButton());
+    await settle();
+    expect(saveBodies()[1].rows[0]).toMatchObject({ msrpCents: 3500, base: { msrpCents: 3000 } });
+    expect(server.itemPrices.get(1)!.msrp).toBe("35.00");
+    expect(notice()).not.toContain("Someone changed");
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining("Someone changed"));
+  });
+
+  it("treats a price typed back to where editing started as an edit while another price is stored, until a Refresh", async () => {
+    server.route = true;
+    server.itemPrices.set(1, storedPart("40.00"));
+    await db.loads[0].answer([item(1, "cover", "40.00")]);
+    await editPartMsrp("50.00");
+    server.itemPrices.set(1, storedPart("45.00"));
+    await reload();
+    await db.loads[1].answer([item(1, "cover", "45.00")]);
+    await settle();
+
+    await editPartMsrp("40.00");
+    expect(cell("Part 1 Covers MSRP")).toBe("$40.00");
+    expect(notice()).toContain("You have unsaved changes.");
+    expect(notice()).toContain(
+      "Saved since you started editing: Part 1 Covers MSRP $45.00. Refresh, then save to replace it with yours.",
+    );
+    expect(saveButton().disabled).toBe(false);
+
+    await click(saveButton());
+    await settle();
+    expect(saveBodies()[0].rows[0]).toMatchObject({ msrpCents: 4000, base: { msrpCents: 4000 } });
+    expect(notice()).toContain("Someone changed this price since you opened it — Refresh to see it");
+    expect(server.itemPrices.get(1)!.msrp).toBe("45.00");
+
+    await click(refreshButton());
+    await db.loads[2].answer([item(1, "cover", "45.00")]);
+    await settle();
+    expect(cell("Part 1 Covers MSRP")).toBe("$40.00");
+    await click(saveButton());
+    await settle();
+    expect(saveBodies()[1].rows[0]).toMatchObject({ msrpCents: 4000, base: { msrpCents: 4500 } });
+    expect(server.itemPrices.get(1)!.msrp).toBe("40.00");
+    await db.loads[3].answer([item(1, "cover", "40.00")]);
+    await settle();
+    expect(cell("Part 1 Covers MSRP")).toBe("$40.00");
+    expect(notice()).not.toContain("unsaved");
+  });
+
   it("keeps the base a typed price started from through an automatic reload, so Save is refused until a Refresh", async () => {
     server.route = true;
     server.itemPrices.set(1, storedPart("40.00"));
@@ -530,7 +587,7 @@ describe("Costings drafts", () => {
     await click(saveButton());
     await settle();
     expect(saveBodies()[0].rows[0]).toMatchObject({ msrpCents: 5000, base: { msrpCents: 4000 } });
-    expect(notice()).toContain("Someone changed this price since you opened it — reload to see it");
+    expect(notice()).toContain("Someone changed this price since you opened it — Refresh to see it");
     expect(server.itemPrices.get(1)!.msrp).toBe("45.00");
     expect(server.syncs).toBe(0);
     expect(cell("Part 1 Covers MSRP")).toBe("$50.00");
@@ -597,7 +654,7 @@ describe("Costings drafts", () => {
     await db.loads[0].answer(twoParts("20.00", "20.00"));
     await editPartMsrp("30.00");
 
-    const conflict = "Someone changed this price since you opened it — reload to see it: Part 1 Covers.";
+    const conflict = "Someone changed this price since you opened it — Refresh to see it: Part 1 Covers.";
     saveAnswer = { ok: false, status: 409, body: { error: conflict, conflicts: [{ key: "item:1", name: "Part 1 Covers" }] } };
     await click(saveButton());
     await settle();

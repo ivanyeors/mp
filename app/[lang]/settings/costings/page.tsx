@@ -183,7 +183,7 @@ type ProductSaveRow = {
   base: { msrpCents: number | null; compareAtCents: number | null };
 };
 
-type LoadOptions = { rebase?: boolean; savedBases?: BaselineState };
+type LoadOptions = { rebase?: boolean };
 
 type ItemSaveRow = {
   itemId: number;
@@ -435,6 +435,8 @@ export default function CostingsPage() {
   const [hasPendingEdit, setHasPendingEdit] = useState(false);
   const savedChangesRef = useRef<SavedChangeUnderDraft[]>([]);
   const [savedChanges, setSavedChanges] = useState<SavedChangeUnderDraft[]>([]);
+  const conflictBasesRef = useRef<BaselineState>({});
+  const [conflictBases, setConflictBases] = useState<BaselineState>({});
   const [saveConflict, setSaveConflict] = useState<string | null>(null);
   const saveInFlight = useRef(false);
 
@@ -447,6 +449,11 @@ export default function CostingsPage() {
   const applyBaseline = useCallback((next: BaselineState) => {
     baselineRef.current = next;
     setBaseline(next);
+  }, []);
+
+  const applyConflictBases = useCallback((next: BaselineState) => {
+    conflictBasesRef.current = next;
+    setConflictBases(next);
   }, []);
 
   const commitDraft = useCallback(() => {
@@ -463,7 +470,7 @@ export default function CostingsPage() {
 
   const latestLoad = useRef(0);
   const ignoreLoadsBelow = useRef(0);
-  const load = useCallback(async ({ rebase = false, savedBases = {} }: LoadOptions = {}) => {
+  const load = useCallback(async ({ rebase = false }: LoadOptions = {}) => {
     const id = ++latestLoad.current;
     setLoading(true);
     try {
@@ -727,10 +734,11 @@ export default function CostingsPage() {
       const kept = keepDrafts(
         {
           drafts: draftRef.current,
-          bases: { ...baselineRef.current, ...savedBases },
+          stored: baselineRef.current,
+          conflictBases: conflictBasesRef.current,
           savedChanges: savedChangesRef.current,
         },
-        { drafts: { ...nextDraft, ...productDraft }, bases: { ...nextBaseline, ...productBaseline } },
+        { drafts: { ...nextDraft, ...productDraft }, stored: { ...nextBaseline, ...productBaseline } },
         { rebase },
       );
       commitDraftDebounced.cancel();
@@ -738,7 +746,8 @@ export default function CostingsPage() {
       setDraft(kept.drafts);
       setCommittedDraft(kept.drafts);
       setHasPendingEdit(false);
-      applyBaseline(kept.bases);
+      applyBaseline(kept.stored);
+      applyConflictBases(kept.conflictBases);
       savedChangesRef.current = kept.savedChanges;
       setSavedChanges(kept.savedChanges);
       setSaveConflict(null);
@@ -753,7 +762,7 @@ export default function CostingsPage() {
         setLoading(false);
       }
     }
-  }, [applyBaseline, commitDraftDebounced, settingsPath]);
+  }, [applyBaseline, applyConflictBases, commitDraftDebounced, settingsPath]);
 
   useOncePerKey(locale, () => void load());
 
@@ -1334,6 +1343,7 @@ export default function CostingsPage() {
     flushDraft();
     const liveDraft = draftRef.current;
     const liveBaseline = baselineRef.current;
+    const liveConflictBases = conflictBasesRef.current;
     const rows = items.flatMap((item): ItemSaveRow[] => {
       const key = itemKey(item.id);
       const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
@@ -1344,13 +1354,14 @@ export default function CostingsPage() {
       if (costCents === baselineRow.cost && msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
         return [];
       }
+      const base = liveConflictBases[key] ?? baselineRow;
       return [
         {
           itemId: item.id,
           costPriceCents: costCents,
           msrpCents: msrpCents,
           compareAtCents,
-          base: { costPriceCents: baselineRow.cost, msrpCents: baselineRow.msrp, compareAtCents: baselineRow.compareAt },
+          base: { costPriceCents: base.cost, msrpCents: base.msrp, compareAtCents: base.compareAt },
         },
       ];
     });
@@ -1365,12 +1376,13 @@ export default function CostingsPage() {
         if (msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
           return [];
         }
+        const base = liveConflictBases[key] ?? baselineRow;
         const payload: ProductSaveRow = {
           key,
           kind: product.kind,
           msrpCents,
           compareAtCents,
-          base: { msrpCents: baselineRow.msrp, compareAtCents: baselineRow.compareAt },
+          base: { msrpCents: base.msrp, compareAtCents: base.compareAt },
         };
         if (product.kind === "pillow") {
           if (product.productId === undefined) {
@@ -1442,9 +1454,10 @@ export default function CostingsPage() {
           { cost: liveBaseline[row.key]?.cost ?? null, msrp: row.msrpCents, compareAt: row.compareAtCents ?? null },
         ]),
       ]);
+      applyConflictBases({ ...conflictBasesRef.current, ...savedBases });
       ignoreLoadsBelow.current = latestLoad.current + 1;
       saveInFlight.current = false;
-      await load({ savedBases });
+      await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save costings.";
       toast.error(message);
@@ -1463,14 +1476,15 @@ export default function CostingsPage() {
     { id: "refresh", title: "Refresh", icon: RotateCw, onClick: refresh, disabled: saving },
   ]);
 
-  const savedChangeNotes = savedChanges.flatMap(({ key, field, savedCents }) => {
+  const savedChangeNotes = savedChanges.flatMap(({ key, field }) => {
     if (!isFieldDirty(draft[key], baseline[key], field)) return [];
     const itemId = key.startsWith("item:") ? Number(key.slice("item:".length)) : null;
     const item = itemId === null ? undefined : itemMap.get(itemId);
     const name = item ? getInventoryItemDisplayLabel(item) : products.find((product) => product.key === key)?.label;
     if (!name) return [];
-    const refreshed = (baseline[key]?.[BASE_FIELD[field]] ?? null) === savedCents;
-    return [{ text: `${name} ${DRAFT_FIELD_LABELS[field]} ${formatCentsLabel(savedCents)}`, refreshed }];
+    const storedCents = baseline[key]?.[BASE_FIELD[field]] ?? null;
+    const refreshed = (conflictBases[key]?.[BASE_FIELD[field]] ?? storedCents) === storedCents;
+    return [{ text: `${name} ${DRAFT_FIELD_LABELS[field]} ${formatCentsLabel(storedCents)}`, refreshed }];
   });
   const refreshedNotes = savedChangeNotes.filter((note) => note.refreshed).map((note) => note.text);
   const notRefreshedNotes = savedChangeNotes.filter((note) => !note.refreshed).map((note) => note.text);

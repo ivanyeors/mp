@@ -152,7 +152,7 @@ describe("Costings save: the base each row was edited from", () => {
     const { status, body } = await post({ rows: [earRow({ msrpCents: 3100 })] });
 
     expect(status).toBe(409);
-    expect(body.error).toBe("Someone changed this price since you opened it — reload to see it: Ear pad Accessories (S).");
+    expect(body.error).toBe("Someone changed this price since you opened it — Refresh to see it: Ear pad Accessories (S).");
     expect(body.conflicts).toEqual([{ key: "item:7", name: "Ear pad Accessories (S)" }]);
     nothingWritten();
   });
@@ -237,7 +237,7 @@ describe("Costings save: the base each row was edited from", () => {
 
     expect(status).toBe(409);
     expect(body.error).toBe(
-      "Someone changed these prices since you opened them — reload to see them: " +
+      "Someone changed these prices since you opened them — Refresh to see them: " +
         "Ear pad Accessories (S), Premium Mpillow M, Linen, Mbolster Short (0.8m).",
     );
     nothingWritten();
