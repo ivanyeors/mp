@@ -117,7 +117,17 @@ export default function analytics({ scenario, now }) {
 
   // Storefront products and Variants the sold lines point at.
   const products = [
-    { id: "prod-pillow-basic", title: "Mpillow Basic", product_type: "pillow", status: "active" },
+    {
+      id: "prod-pillow-basic",
+      title: "Mpillow Basic",
+      product_type: "pillow",
+      status: "active",
+      // A payment link in each Stripe mode; the preview runs keyless (test mode), so the editor shows the sandbox one.
+      stripe_payment_link: "https://buy.stripe.com/SAMPLE_live_link",
+      stripe_payment_link_id: "plink_SAMPLE_live",
+      stripe_payment_link_test: "https://buy.stripe.com/test_SAMPLE_sandbox_link",
+      stripe_payment_link_id_test: "plink_SAMPLE_sandbox",
+    },
     { id: "prod-pillow-premium", title: "Mpillow Premium", product_type: "pillow", status: "active" },
     { id: "prod-bolster", title: "Mbolster", product_type: "bolster", status: "active" },
     { id: "prod-accessory", title: "Accessories", product_type: "accessory", status: "active" },
