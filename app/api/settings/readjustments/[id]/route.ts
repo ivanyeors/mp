@@ -131,6 +131,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         start_at: liveStart ?? (before.start_at as string),
         guest_name: before.guest_name as string,
         product_label: before.product_label as string,
+        email: (before.email as string | null) ?? null,
+        location_name: (before.location_name as string | null) ?? null,
       },
       before.status as string,
       "staff",
