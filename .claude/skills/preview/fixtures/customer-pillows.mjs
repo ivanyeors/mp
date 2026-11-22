@@ -119,6 +119,11 @@ function pillowOrder({ id, number, customerId, email, days, ago, snapshot }) {
   };
 }
 
+const sgtAt = (now, days, hour) => {
+  const day = new Date(now.getTime() + 8 * 3_600_000 + days * 86_400_000).toISOString().slice(0, 10);
+  return new Date(`${day}T${String(hour).padStart(2, "0")}:00:00+08:00`).toISOString();
+};
+
 export default function customerPillows({ scenario, now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
   // Jamie's pillow as built: Type-12's centre, a firmer middle on each side.
@@ -176,6 +181,67 @@ export default function customerPillows({ scenario, now }) {
     // `preview shoot --as ben.ong@example.com /mp-config`.
     users: [{ id: "00000000-0000-4000-8000-000000000005", email: "ben.ong@example.com", user_metadata: { full_name: "Ben Ong" } }],
     tables: {
+      // The owner's own upcoming paid re-adjustment, for Account > Bookings.
+      readjustment_bookings: [
+        {
+          id: "00000000-0000-4000-8000-0000000aab01",
+          customer_id: JAMIE,
+          purchase_source: "unlisted",
+          order_item_id: null,
+          unlisted_where: "in_store",
+          unlisted_reference: null,
+          product_label: "Pillow not listed",
+          product_type: "pillow",
+          tier: null,
+          purchase_paid_at: null,
+          order_number: null,
+          complimentary: false,
+          complimentary_seq: null,
+          fee_amount: 30,
+          fee_order_id: null,
+          location_id: "00000000-0000-4000-8000-0000000a0006",
+          location_name: "Mpillow Studio",
+          start_at: sgtAt(now, 5, 14),
+          end_at: sgtAt(now, 5, 15),
+          guest_name: "Jamie Lim",
+          phone: "+6591230042",
+          email: "owner@preview.local",
+          calendar_event_id: "ev-preview-owner-readjust",
+          status: "booked",
+          hold_expires_at: null,
+          created_at: ago(3),
+          updated_at: ago(3),
+        },
+        {
+          id: "00000000-0000-4000-8000-0000000aab02",
+          customer_id: JAMIE,
+          purchase_source: "unlisted",
+          order_item_id: null,
+          unlisted_where: "gift",
+          unlisted_reference: null,
+          product_label: "Pillow not listed",
+          product_type: "pillow",
+          tier: null,
+          purchase_paid_at: null,
+          order_number: null,
+          complimentary: false,
+          complimentary_seq: null,
+          fee_amount: 30,
+          fee_order_id: null,
+          location_id: "00000000-0000-4000-8000-0000000a0006",
+          location_name: "Mpillow Studio",
+          start_at: new Date(now.getTime() + 30 * 60_000).toISOString(),
+          end_at: new Date(now.getTime() + 90 * 60_000).toISOString(),
+          guest_name: "Jamie Lim",
+          phone: "+6591230042",
+          email: "owner@preview.local",
+          calendar_event_id: "ev-preview-owner-readjust-today",
+          status: "booked",
+          hold_expires_at: null,
+          created_at: ago(3),
+          updated_at: ago(3),
+        },
+      ],
       bom_templates: [template(TYPE_12, "Type-12", "L"), template(TYPE_8A, "Type-8a", "S")],
       bom_template_keys: [
         { template_id: TYPE_12, key: "L", created_at: ago(60) },
