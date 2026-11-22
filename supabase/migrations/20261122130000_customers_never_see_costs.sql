@@ -7,10 +7,11 @@
 --    20260915170000). A Result order line's snapshot carried the build's cost
 --    (`cogs`) and a `costPrice` key on each service line. The code no longer
 --    writes either (lib/results/order-build-snapshot.ts); order_items.unit_cost
---    and total_cost keep the cost for staff. This strips both keys from rows
---    written before. Safe to run again: re-apply after the build that stops
---    writing them is promoted, so a Result accepted on the previous build is
---    cleaned too.
+--    and total_cost keep the cost for staff. A merge to main is only staged:
+--    mpillow.com keeps running the previous build, which still writes both
+--    keys, until the owner promotes. So a trigger strips them on every write
+--    of the column, whichever build wrote it, and the update below cleans
+--    rows written before.
 -- 2. shipping_methods is readable with the public anon key ("Public read
 --    active shipping_methods", 0028), markup included. A live method's price
 --    is Easyship's charge plus that markup, rounded, so the markup gives away
@@ -24,33 +25,53 @@
 -- authenticated; lib/ecommerce/__tests__/cost-column-grants.test.ts fails
 -- until a new column is either granted or hidden.
 --
--- Idempotent. Apply in either order with the code that ships with it.
+-- Idempotent. Apply before or after the code ships, and before or after the
+-- build is promoted: the trigger covers the gap either way.
 
-update public.order_items
-set customization_snapshot = customization_snapshot - 'cogs'
-where customization_snapshot ? 'cogs';
-
-update public.order_items
-set customization_snapshot = jsonb_set(
-  customization_snapshot,
-  '{service_lines}',
-  (
-    select coalesce(
-      jsonb_agg(
-        case when jsonb_typeof(l.line) = 'object' then l.line - 'costPrice' else l.line end
-        order by l.n
-      ),
-      '[]'::jsonb
+create or replace function public.snapshot_without_costs(snapshot jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select case
+    when snapshot is null or jsonb_typeof(snapshot) <> 'object' then snapshot
+    when jsonb_typeof(snapshot -> 'service_lines') is distinct from 'array' then snapshot - 'cogs'
+    else jsonb_set(
+      snapshot - 'cogs',
+      '{service_lines}',
+      (
+        select coalesce(
+          jsonb_agg(
+            case when jsonb_typeof(l.line) = 'object' then l.line - 'costPrice' else l.line end
+            order by l.n
+          ),
+          '[]'::jsonb
+        )
+        from jsonb_array_elements(snapshot -> 'service_lines') with ordinality as l(line, n)
+      )
     )
-    from jsonb_array_elements(customization_snapshot -> 'service_lines') with ordinality as l(line, n)
-  )
-)
-where jsonb_typeof(customization_snapshot -> 'service_lines') = 'array'
-  and exists (
-    select 1
-    from jsonb_array_elements(customization_snapshot -> 'service_lines') as s(line)
-    where jsonb_typeof(s.line) = 'object' and s.line ? 'costPrice'
-  );
+  end;
+$$;
+
+create or replace function public.order_items_strip_snapshot_costs()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.customization_snapshot := public.snapshot_without_costs(new.customization_snapshot);
+  return new;
+end;
+$$;
+
+create or replace trigger order_items_strip_snapshot_costs
+  before insert or update of customization_snapshot on public.order_items
+  for each row execute function public.order_items_strip_snapshot_costs();
+
+update public.order_items
+set customization_snapshot = public.snapshot_without_costs(customization_snapshot)
+where customization_snapshot is distinct from public.snapshot_without_costs(customization_snapshot);
 
 revoke select on public.shipping_methods from anon, authenticated;
 grant select (

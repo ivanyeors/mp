@@ -181,3 +181,18 @@ describe("customers never see a cost column (owner, 2026-11-22)", () => {
     expect(sql).not.toMatch(/grant [^;]* on (?:table )?(?:public\.)?order_margins to/);
   });
 });
+
+describe("a Result order line's snapshot never stores a cost, whichever build writes it", () => {
+  it("a trigger strips cogs and each service line's costPrice on every write of the column", () => {
+    expect(sql).toMatch(
+      /create or replace trigger order_items_strip_snapshot_costs\s+before insert or update of customization_snapshot on public\.order_items\s+for each row execute function public\.order_items_strip_snapshot_costs\(\);/,
+    );
+    expect(sql).toMatch(/new\.customization_snapshot := public\.snapshot_without_costs\(new\.customization_snapshot\)/);
+    const bodies = [...sql.matchAll(/function public\.snapshot_without_costs\(snapshot jsonb\)[\s\S]*?\$\$([\s\S]*?)\$\$/g)];
+    const latest = bodies.at(-1)?.[1] ?? "";
+    expect(latest).toContain("snapshot - 'cogs'");
+    expect(latest).toContain("l.line - 'costPrice'");
+    expect(sql).not.toMatch(/drop trigger [^;]*order_items_strip_snapshot_costs/);
+    expect(sql).not.toMatch(/disable trigger order_items_strip_snapshot_costs/);
+  });
+});

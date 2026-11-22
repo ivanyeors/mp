@@ -91,6 +91,7 @@ async function main() {
   await mustNotRead("order_items.unit_cost", "order_items", "unit_cost", "unit_cost");
   await mustNotRead("order_items.total_cost", "order_items", "total_cost", "total_cost");
   await mustNotRead("order_items snapshot cogs", "order_items", "cogs:customization_snapshot->cogs", "cogs");
+  await mustNotRead("order_items snapshot service costPrice", "order_items", "svc_cost:customization_snapshot->service_lines->0->costPrice", "svc_cost");
   await mustNotRead("product_variants.cost_price", "product_variants", "cost_price", "cost_price");
   await mustNotRead("item_prices.cost_price", "item_prices", "cost_price", "cost_price");
   await mustNotRead("service_prices.cost_price", "service_prices", "cost_price", "cost_price");
