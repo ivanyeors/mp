@@ -19,6 +19,7 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils";
+import { savedToasts } from "@/lib/shop/stripe-warnings";
 import {
   costingsHrefFor,
   marginPct,
@@ -100,17 +101,19 @@ function PushForm({
       }
       onOpenChange(false);
       onPushed?.();
-      if (json.created) {
-        toast.success(`${family.title} is in Products as a draft`, {
-          description: "Switch it on under Products, In the shop, when it's ready to sell.",
-          action: { label: "In the shop", onClick: () => router.push(to("/settings/products?tab=shop")) },
-        });
-      } else {
-        toast.success(
-          `${json.added} new size${json.added === 1 ? "" : "s"} added to ${family.title}`,
-          inShop ? { description: "It's in the shop, so they're on sale now." } : undefined,
-        );
-      }
+      const toasts = json.created
+        ? savedToasts(`${family.title} is in Products as a draft`, {
+            stripeWarnings: json.stripe_warnings,
+            successOptions: {
+              description: "Switch it on under Products, In the shop, when it's ready to sell.",
+              action: { label: "In the shop", onClick: () => router.push(to("/settings/products?tab=shop")) },
+            },
+          })
+        : savedToasts(`${json.added} new size${json.added === 1 ? "" : "s"} added to ${family.title}`, {
+            stripeWarnings: json.stripe_warnings,
+            successOptions: inShop ? { description: "It's in the shop, so they're on sale now." } : undefined,
+          });
+      for (const t of toasts) toast[t.type](t.title, t.options);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't push to Products.");
     } finally {

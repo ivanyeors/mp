@@ -101,6 +101,46 @@ describe("id resolution", () => {
     expect(m.stripePriceIdOf({ stripe_price_id: null, stripe_price_id_test: "price_sandbox" })).toBeNull();
   });
 
+  it("payment link: each mode reads only its own columns, migration applied or not", async () => {
+    const m = await withKeys("sk_test_abc");
+    const both = {
+      stripe_payment_link: "https://buy.stripe.com/live",
+      stripe_payment_link_id: "plink_live",
+      stripe_payment_link_test: "https://buy.stripe.com/test_x",
+      stripe_payment_link_id_test: "plink_sandbox",
+    };
+    expect(m.stripePaymentLinkIdOf(both)).toBe("plink_sandbox");
+    expect(m.stripePaymentLinkUrlOf(both)).toBe("https://buy.stripe.com/test_x");
+    expect(m.stripePaymentLinkIdOf(both, "live")).toBe("plink_live");
+    expect(m.stripePaymentLinkUrlOf(both, "live")).toBe("https://buy.stripe.com/live");
+
+    const liveOnly = { stripe_payment_link: "https://buy.stripe.com/live", stripe_payment_link_id: "plink_live" };
+    expect(m.stripePaymentLinkIdOf(liveOnly)).toBeNull();
+    expect(m.stripePaymentLinkUrlOf(liveOnly)).toBeNull();
+    expect(m.stripePaymentLinkIdOf({ ...liveOnly, stripe_payment_link_id_test: null })).toBeNull();
+    expect(m.hasPaymentLinkColumns(liveOnly)).toBe(false);
+    expect(m.hasPaymentLinkColumns({ ...liveOnly, stripe_payment_link_id_test: null })).toBe(true);
+    expect(m.hasPaymentLinkColumns(liveOnly, "live")).toBe(true);
+
+    const sandboxOnly = { stripe_payment_link_test: "https://buy.stripe.com/test_x", stripe_payment_link_id_test: "plink_sandbox" };
+    expect(m.stripePaymentLinkIdOf(sandboxOnly, "live")).toBeNull();
+    expect(m.stripePaymentLinkUrlOf(null)).toBeNull();
+  });
+
+  it("payment link columns follow the key", async () => {
+    const test = await withKeys("sk_test_abc");
+    expect(test.stripePaymentLinkColumns()).toEqual({
+      url: "stripe_payment_link_test",
+      id: "stripe_payment_link_id_test",
+    });
+    const live = await withKeys("sk_live_abc");
+    expect(live.stripePaymentLinkColumns()).toEqual({
+      url: "stripe_payment_link",
+      id: "stripe_payment_link_id",
+    });
+    expect(live.stripePaymentLinkIdOf({ stripe_payment_link_id: "plink_live" })).toBe("plink_live");
+  });
+
   it("tolerates a missing row", async () => {
     const m = await withKeys("sk_test_abc");
     expect(m.stripePriceIdOf(null)).toBeNull();

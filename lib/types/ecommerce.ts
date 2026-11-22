@@ -52,6 +52,8 @@ export interface Product {
   stripe_product_id_test?: string | null;
   stripe_payment_link: string | null;
   stripe_payment_link_id: string | null;
+  stripe_payment_link_test?: string | null;
+  stripe_payment_link_id_test?: string | null;
   is_auto_generated: boolean;
   published_at: string | null;
   created_at: string;

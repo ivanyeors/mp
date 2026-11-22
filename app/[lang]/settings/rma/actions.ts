@@ -8,7 +8,7 @@ import { refundPayment } from "@/lib/stripe/refunds";
 import { refundableAmount } from "@/lib/ecommerce/admin-refund";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { applyRmaTransition } from "@/lib/rma/transition";
-import { rmaRefundAmount } from "@/lib/rma/refund";
+import { rmaRefundAmount, type RmaRefundLine, type RmaRefundOrder } from "@/lib/rma/refund";
 import { getSiteSettings } from "@/lib/site-settings";
 
 export async function saveAdminNote(rmaId: string, note: string) {
@@ -108,7 +108,7 @@ export async function issueRmaRefund(rmaId: string) {
   const { data, error } = await admin
     .from("rma_requests")
     .select(
-      "id, status, resolution, orders(id, payment_reference, total, amount_refunded, amount_captured, currency), rma_request_items(quantity, order_items(unit_price))",
+      "id, status, resolution, orders(id, payment_reference, subtotal, shipping_amount, discount_amount, points_discount, self_purchase_units, total, amount_refunded, amount_captured, currency, coupons!coupon_id(applies_to), order_items(id, quantity, total_price, unit_price, kind, customization_snapshot)), rma_request_items(order_item_id, quantity)",
     )
     .eq("id", rmaId)
     .maybeSingle();
@@ -118,14 +118,17 @@ export async function issueRmaRefund(rmaId: string) {
   const rma = data as unknown as {
     status: string;
     resolution: string;
-    orders: {
-      id: string;
-      payment_reference: string | null;
-      total: number;
-      amount_refunded: number | null;
-      currency: string;
-    } | null;
-    rma_request_items: Array<{ quantity: number; order_items: { unit_price: number | null } | null }>;
+    orders:
+      | (RmaRefundOrder & {
+          id: string;
+          payment_reference: string | null;
+          amount_refunded: number | null;
+          amount_captured: number | null;
+          currency: string;
+          order_items: RmaRefundLine[];
+        })
+      | null;
+    rma_request_items: Array<{ order_item_id: string; quantity: number }>;
   };
 
   if (rma.resolution !== "refund") throw new Error("This return is not a refund.");
@@ -134,14 +137,9 @@ export async function issueRmaRefund(rmaId: string) {
   if (!order?.payment_reference) throw new Error("Order has no payment to refund.");
 
   const remaining = refundableAmount(order);
-  const requested = rmaRefundAmount(
-    rma.rma_request_items.map((i) => ({
-      unit_price: Number(i.order_items?.unit_price ?? 0),
-      quantity: i.quantity,
-    })),
-  );
+  const requested = rmaRefundAmount(order, order.order_items ?? [], rma.rma_request_items);
   const amount = Math.min(requested, remaining);
-  if (amount <= 0) throw new Error("Nothing left to refund on this order.");
+  if (!(amount > 0)) throw new Error("Nothing left to refund on this order.");
 
   const amountCents = Math.round(amount * 100);
   const isFull = amountCents >= Math.round(remaining * 100);

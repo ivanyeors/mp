@@ -20,7 +20,10 @@ one-time **Claim bonus** for Migrated customers.
 - **Results take no discount.** Every pricer of a custom pillow hard-codes `discountAmount: 0`,
   Accept writes `discount_amount: 0`, and `planCapture` refuses an amount of zero or less.
 - **Refunds already pay cash only,** each capped at `amount_captured − amount_refunded`, and an
-  RMA refunds a returned line at its `unit_price` up to the cash left.
+  RMA refunds each returned line's share of the goods price after coupons and before points on a
+  plain shop Order, and its list price on any other (partner self-purchase, Result, scoped or
+  missing coupon, a code with service lines), in cash, up to the cash still unrefunded on the Order
+  (`lib/rma/refund.ts`).
 - **Partner commission waits 30 days after delivery** (`lib/rma/eligibility.ts`,
   `lib/commissions`), so most refunds land before it is released.
 - **The daily job has room for runners but not for a third cron** (`vercel.json`); Aftercare

@@ -10,6 +10,7 @@ import {
   type RmaStatus,
 } from "@/lib/rma/transitions";
 import { rmaRefundAmount } from "@/lib/rma/refund";
+import { lineRefundAmount, selectionRefundAmount } from "@/lib/ecommerce/admin-refund";
 import { planRmaCreate, type PlanOrderItem } from "@/lib/rma/create";
 
 const STATUSES: RmaStatus[] = [
@@ -60,6 +61,85 @@ const requestFor = (items: PlanOrderItem[]) =>
       quantity: fc.integer({ min: 0, max: 6 }),
     }),
     { minLength: 0, maxLength: items.length + 1 },
+  );
+
+type GenLine = { id: string; quantity: number; total_price: number; unit_price: number; kind: string; customization_snapshot: unknown };
+
+const unitCentsOf = (lines: GenLine[], id: string) => Math.round(lines.find((l) => l.id === id)!.unit_price * 100);
+
+const listCentsOf = (lines: GenLine[], returned: Array<{ order_item_id: string; quantity: number }>) =>
+  returned.reduce((t, r) => t + unitCentsOf(lines, r.order_item_id) * r.quantity, 0);
+
+const goodsCashCents = (order: { total: number; shipping_amount: number }) => Math.round(order.total * 100) - Math.round(order.shipping_amount * 100);
+
+type Fallback = "product scope" | "category scope" | "coupon row gone" | "service line";
+
+const returnOnOrder = ({ coupon, points, fallback = false }: { coupon: boolean; points: boolean; fallback?: boolean }) =>
+  fc
+    .record({
+      lines: fc.array(
+        fc.record({ unitCents: fc.integer({ min: 1, max: 50_000 }), quantity: fc.integer({ min: 1, max: 5 }) }),
+        { minLength: 1, maxLength: 6 },
+      ),
+      offBasisPoints: fallback ? fc.integer({ min: 100, max: 9_000 }) : coupon ? fc.integer({ min: 0, max: 10_000 }) : fc.constant(0),
+      pointsShare: points ? fc.double({ min: 0, max: 1, noNaN: true }) : fc.constant(0),
+      shippingCents: fc.integer({ min: 0, max: 2_000 }),
+      why: fc.constantFrom<Fallback>("product scope", "category scope", "coupon row gone", "service line"),
+    })
+    .chain(({ lines: raw, offBasisPoints, pointsShare, shippingCents, why }) => {
+      const goodsLines: GenLine[] = raw.map((l, i) => ({
+        id: `l${i}`,
+        quantity: l.quantity,
+        total_price: (l.unitCents * l.quantity) / 100,
+        unit_price: l.unitCents / 100,
+        kind: "goods",
+        customization_snapshot: null,
+      }));
+      const lines = fallback && why === "service line"
+        ? [...goodsLines, { id: "svc", quantity: 1, total_price: 50, unit_price: 50, kind: "service", customization_snapshot: null }]
+        : goodsLines;
+      const subtotalCents = lines.reduce((t, l) => t + Math.round(l.total_price * 100), 0);
+      const couponOffCents = Math.max(fallback ? 1 : 0, Math.floor((subtotalCents * offBasisPoints) / 10_000));
+      const afterCouponCents = subtotalCents - couponOffCents;
+      const pointsCents = Math.floor((afterCouponCents * pointsShare) / 100) * 100;
+      const coupons = !fallback
+        ? { applies_to: null }
+        : why === "product scope"
+          ? { applies_to: { product_ids: ["prod-x"] } }
+          : why === "category scope"
+            ? { applies_to: { category_ids: ["cat-x"] } }
+            : why === "coupon row gone"
+              ? null
+              : { applies_to: null };
+      const order = {
+        subtotal: subtotalCents / 100,
+        shipping_amount: shippingCents / 100,
+        discount_amount: (couponOffCents + pointsCents) / 100,
+        points_discount: pointsCents / 100,
+        self_purchase_units: 0,
+        total: (afterCouponCents - pointsCents + shippingCents) / 100,
+        coupons,
+      };
+      const returned = fc
+        .subarray(goodsLines, { minLength: 0 })
+        .chain((picked) =>
+          picked.length === 0
+            ? fc.constant([] as Array<{ order_item_id: string; quantity: number }>)
+            : fc.tuple(...picked.map((l) => fc.integer({ min: 1, max: l.quantity }).map((quantity) => ({ order_item_id: l.id, quantity })))),
+        );
+      return returned.map((r) => ({ order, lines, returned: r }));
+    });
+
+const RESULT_BUILD = { result_id: "res-1", product_type: "pillow", build_lines: [] };
+
+const notPlainShopOrder = fc
+  .tuple(fc.boolean(), fc.constantFrom("partner self-purchase", "Result build line"), fc.nat())
+  .chain(([points, why, k]) =>
+    returnOnOrder({ coupon: true, points }).map(({ order, lines, returned }) =>
+      why === "partner self-purchase"
+        ? { order: { ...order, self_purchase_units: 1 + (k % 3) }, lines, returned }
+        : { order, lines: lines.map((l, i) => (i === k % lines.length ? { ...l, customization_snapshot: RESULT_BUILD } : l)), returned },
+    ),
   );
 
 describe("Returns / RMA lifecycle (ADR 0011)", () => {
@@ -188,19 +268,70 @@ describe("Returns / RMA lifecycle (ADR 0011)", () => {
     );
   });
 
-  it("a return's refund is exactly its lines at their unit price, to the cent", () => {
+  it("with no coupon, no tax and no points, a return refunds the list price of the units returned, to the cent", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: false, points: false }), ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
+      }),
+    );
+  });
+
+  it("with an Order-wide coupon or points, a return never refunds more than the list price of the units returned", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: true, points: true }), ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBeLessThanOrEqual(listCentsOf(lines, returned));
+      }),
+    );
+  });
+
+  it("with points and no coupon or tax, a return refunds the list price of the units returned: the points stay spent on what was kept, and only the refundable balance caps it", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: false, points: true }), ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
+      }),
+    );
+  });
+
+  it("a coupon that is scoped, gone, or on an Order with a service line falls back to the list price of the units returned, as before", () => {
     fc.assert(
       fc.property(
-        fc.array(
-          fc.record({ unitCents: fc.integer({ min: 0, max: 50_000 }), quantity: fc.integer({ min: 1, max: 5 }) }),
-          { maxLength: 6 },
-        ),
-        (raw) => {
-          const items = raw.map((i) => ({ unit_price: i.unitCents / 100, quantity: i.quantity }));
-          const listCents = raw.reduce((t, i) => t + i.unitCents * i.quantity, 0);
-          expect(Math.round(rmaRefundAmount(items) * 100)).toBe(listCents);
+        fc.boolean().chain((points) => returnOnOrder({ coupon: true, points, fallback: true })),
+        ({ order, lines, returned }) => {
+          expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
         },
       ),
+    );
+  });
+
+  it("a partner self-purchase Order or one with a Result build line refunds exactly the list price of the units returned, whatever its coupon and points", () => {
+    fc.assert(
+      fc.property(notPlainShopOrder, ({ order, lines, returned }) => {
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(listCentsOf(lines, returned));
+      }),
+    );
+  });
+
+  it("on an Order with no points, returning every line at full quantity refunds exactly total less shipping", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: true, points: false }), ({ order, lines }) => {
+        const everything = lines.map((l) => ({ order_item_id: l.id, quantity: l.quantity }));
+        expect(Math.round(rmaRefundAmount(order, lines, everything) * 100)).toBe(goodsCashCents(order));
+      }),
+    );
+  });
+
+  it("on an Order with an Order-wide coupon and no points, a return refunds what Choose items gives for the same lines, without the shipping", () => {
+    fc.assert(
+      fc.property(returnOnOrder({ coupon: true, points: false }), ({ order, lines, returned }) => {
+        expect(rmaRefundAmount(order, lines, returned)).toBe(
+          selectionRefundAmount(order, lines, { items: returned, shipping: false }),
+        );
+        const perLineCents = returned.reduce((t, r) => {
+          const line = lines.find((l) => l.id === r.order_item_id)!;
+          return t + Math.round(lineRefundAmount(order, lines, line, r.quantity) * 100);
+        }, 0);
+        expect(Math.round(rmaRefundAmount(order, lines, returned) * 100)).toBe(perLineCents);
+      }),
     );
   });
 });

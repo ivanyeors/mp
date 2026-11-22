@@ -56,5 +56,9 @@ export async function POST(req: Request) {
     after: { item_ids: parsed.data.item_ids, prices: parsed.data.prices, added: result.added },
   });
 
-  return NextResponse.json(result);
+  const { stripeWarnings, ...rest } = result;
+  return NextResponse.json({
+    ...rest,
+    stripe_warnings: stripeWarnings.length > 0 ? stripeWarnings : undefined,
+  });
 }

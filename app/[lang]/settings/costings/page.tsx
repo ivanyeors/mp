@@ -67,6 +67,7 @@ import {
 } from "@/lib/costings/build-costs";
 import { isEarPadItem, isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import { parseCostingsItems } from "@/lib/ecommerce/inventory-families";
+import { costingsSavedToasts } from "@/lib/shop/stripe-warnings";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -1418,7 +1419,7 @@ export default function CostingsPage() {
           );
         }
       }
-      toast.success("Costings saved");
+      for (const t of costingsSavedToasts(payload)) toast[t.type](t.title, t.options);
       ignoreLoadsBelow.current = latestLoad.current + 1;
       await load();
     } catch (err) {
