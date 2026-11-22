@@ -289,6 +289,11 @@ describe("decide", () => {
     ["a cancelled check", { checkRuns: runs({ name: "x", status: "completed", conclusion: "cancelled" }) }, /ended cancelled/],
     ["a timed-out check", { checkRuns: runs({ name: "x", status: "completed", conclusion: "timed_out" }) }, /ended timed_out/],
     ["an unknown conclusion", { checkRuns: runs({ name: "x", status: "completed", conclusion: "something_new" }) }, /ended something_new/],
+    [
+      "CI paused for Actions minutes (verify passed without running)",
+      { checkRuns: runs({ name: "CI paused: Actions minutes", status: "completed", conclusion: "action_required" }) },
+      /CI paused: Actions minutes check ended action_required/,
+    ],
     ["verify failed", { checkRuns: runs({ name: "verify", status: "completed", conclusion: "failure" }) }, /verify check must succeed/],
     ["verify skipped", { checkRuns: [{ name: "verify", status: "completed", conclusion: "skipped" }] }, /verify check must succeed, and it ended skipped/],
     ["verify neutral", { checkRuns: [{ name: "verify", status: "completed", conclusion: "neutral" }] }, /verify check must succeed, and it ended neutral/],
