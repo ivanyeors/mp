@@ -123,12 +123,15 @@ export function AppDock() {
 
   // Dock persists across navigation (root layout). Close any learn-more sheet on
   // route change so booking (pill overlay → /appointments) can't leave a drawer
-  // stacked over the destination page — the slice-05 dupe, relocated.
-  React.useEffect(() => {
+  // stacked over the destination page — the slice-05 dupe, relocated. Done during
+  // render, so the new page never paints with the sheet still open.
+  const [sheetPathname, setSheetPathname] = React.useState(pathname);
+  if (sheetPathname !== pathname) {
+    setSheetPathname(pathname);
     setBasicOpen(false);
     setPremiumOpen(false);
     setMbolsterOpen(false);
-  }, [pathname]);
+  }
 
   // Publish the rendered dock height so `--mobile-bottom-clearance` tracks the
   // real chrome instead of a hard-coded estimate. Measure the toolbar panel,
@@ -196,9 +199,11 @@ export function AppDock() {
   React.useEffect(() => {
     if (adminDock) return;
     let cancelled = false;
+    let latest = 0;
     const supabase = createSupabaseBrowserClient();
 
     const refresh = async () => {
+      const seq = ++latest;
       const [{ data }, adminJson, partnerJson] = await Promise.all([
         supabase.auth.getUser(),
         fetch("/api/admin/context")
@@ -208,7 +213,7 @@ export function AppDock() {
           .then((r) => r.json() as Promise<{ isPartner?: boolean }>)
           .catch(() => null),
       ]);
-      if (cancelled) return;
+      if (cancelled || seq !== latest) return;
       setRole(
         resolveDockSessionRole(
           Boolean(data.user),
@@ -218,7 +223,6 @@ export function AppDock() {
       );
     };
 
-    void refresh();
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       void refresh();
     });

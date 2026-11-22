@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { CheckoutCodeField } from "@/components/shop/checkout-code-field";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,8 +19,6 @@ import {
   OTHER_DISCOVERY_SOURCE_ID,
   OTHER_TEXT_MIN_LENGTH,
 } from "@/lib/discovery-source";
-import type { Locale } from "@/lib/i18n/locales";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import {
   isNonEmptyString,
   type FieldCheck,
@@ -39,13 +37,13 @@ export type PreviewContactValues = {
   marketingEmail: boolean;
 };
 
-type Option = { id: string; label: string };
+export type DiscoverySourceChoice = { id: string; label: string };
 
 type Props = {
   values: PreviewContactValues;
   onChange: (patch: Partial<PreviewContactValues>) => void;
   fieldErrors: Record<string, string>;
-  locale: Locale;
+  discoverySourceOptions: DiscoverySourceChoice[];
   codeContext: CheckoutCodeContext | null;
   onCodeStatus: (status: CheckoutCodeStatus) => void;
   formatAmount: (amount: number) => string;
@@ -88,42 +86,17 @@ export function PreviewContactFields({
   values,
   onChange,
   fieldErrors,
-  locale,
+  discoverySourceOptions,
   codeContext,
   onCodeStatus,
   formatAmount,
 }: Props) {
-  const [options, setOptions] = useState<Option[]>([]);
   const showOther = values.discoverySource === OTHER_DISCOVERY_SOURCE_ID;
 
   const codeStatus = useCheckoutCode(values.code, codeContext, values.email);
   useEffect(() => {
     onCodeStatus(codeStatus);
   }, [codeStatus, onCodeStatus]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch(
-          `/api/discovery-source?locale=${encodeURIComponent(locale || DEFAULT_LOCALE)}`,
-        );
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || cancelled) return;
-        setOptions(
-          Array.isArray(data.options)
-            ? data.options.map((o: { id: string; label: string }) => ({
-                id: o.id,
-                label: o.label,
-              }))
-            : [],
-        );
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [locale]);
 
   return (
     <div className="space-y-5" data-preview-contact="">
@@ -194,7 +167,7 @@ export function PreviewContactFields({
               <SelectValue placeholder="Select one" />
             </SelectTrigger>
             <SelectContent>
-              {options.map((o) => (
+              {discoverySourceOptions.map((o) => (
                 <SelectItem key={o.id} value={o.id}>
                   {o.label}
                 </SelectItem>

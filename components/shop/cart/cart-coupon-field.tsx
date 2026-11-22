@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useDisplayPrice } from "@/components/shop/price-display";
 import { Button } from "@/components/ui/button";
@@ -33,11 +33,12 @@ export function CartCouponField({
   messages,
 }: CartCouponFieldProps) {
   const [couponInput, setCouponInput] = useState(couponCode ?? "");
-  const displayPrice = useDisplayPrice();
-
-  useEffect(() => {
+  const [seenCouponCode, setSeenCouponCode] = useState(couponCode);
+  if (seenCouponCode !== couponCode) {
+    setSeenCouponCode(couponCode);
     setCouponInput(couponCode ?? "");
-  }, [couponCode]);
+  }
+  const displayPrice = useDisplayPrice();
 
   async function handleApplyCoupon() {
     const trimmed = couponInput.trim();

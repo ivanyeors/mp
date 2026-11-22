@@ -22,6 +22,7 @@ export async function POST() {
       ok: true,
       data: result,
       message: `Synced: ${parts.join(", ")}`,
+      stripe_warnings: result.stripeWarnings.length > 0 ? result.stripeWarnings : undefined,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to sync products";

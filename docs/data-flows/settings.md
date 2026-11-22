@@ -114,6 +114,14 @@ flowchart TD
   or `item_id`. It writes `price`, `compare_at_price` and BOM `cost_price`,
   then syncs the product to Stripe. The response returns any Variants it could
   not resolve.
+- **Warnings, not silence**: a failed Stripe sync, a Variant price that could
+  not be written, or a failed read (which writes nothing) still answers
+  `ok: true`, with `stripe_warnings: [{ product, message, next }]` naming the
+  product and its next step. The Costings save, Resync prices, Sync from
+  Inventory, the In the shop switch and Add from Inventory all answer this way,
+  and their screens show it as a warning toast that stays until closed
+  (`lib/shop/stripe-warnings.ts`). `price-sync-results.check.ts` fails when
+  code drops a reprice's result.
 - **Campaign emails** read the Variant mirror at render, never a price of
   their own. A products block (or a button to a product) stores Storefront
   product ids only; the preview, the test send and every batch of a wave read

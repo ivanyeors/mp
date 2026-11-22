@@ -85,7 +85,7 @@ assert.doesNotMatch(renderer, /setPieceRow|ChevronUp|ChevronDown/, "chevrons gon
 assert.match(renderer, /toast\.error\(result\.error\)/, "cap/inventory errors surface on-canvas");
 assert.match(renderer, /Cell full \(max \$\{MAX_PIECES_PER_CELL\}\)/, "cap state visible on-canvas, sourced from the constant");
 assert.match(renderer, /e\.key === "Escape"/, "Escape returns to full view");
-assert.match(renderer, /setDived\(null\)/, "back button returns to full view");
+assert.match(renderer, /changeDive\(null\)/, "back button returns to full view");
 assert.match(renderer, /getShapeMorph\(from, shape\)/, "shape swaps use prepared morphs");
 assert.match(renderer, /setGhost\(from\)/, "crossfade ghost wired for degenerate pairs");
 assert.doesNotMatch(renderer, /animate=\{\{ x/, "dive never pans — the x-ray overlays the shell in place");
@@ -103,8 +103,8 @@ assert.equal(renderer.match(/warning=\{layerWarning\(subSection, depth\)\}/g)?.l
 assert.match(renderer, /layerFitMessage\(cell, layer\)/, "a row's tooltip is the pure per-layer message");
 
 assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
-assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
-assert.match(renderer, /setDived\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
+assert.match(renderer, /if \(selected\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
+assert.match(renderer, /changeDive\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
 assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,1400}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
 assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");
 assert.equal(renderer.match(/onSelectPiece=\{\(slot\) => selectPiece\(/g)?.length, 2, "a layer row's label selects its piece in the panel and in the dock — the rows sit on the pouches");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,25 +11,23 @@ import { useScreenBottomPin } from "@/hooks/use-screen-bottom-pin";
 
 const STORAGE_KEY = "mp_analytics_notice_ok";
 
+function readStoredFlag(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    // ponytail: private mode / blocked storage — show until Got it, once per mount
+    return null;
+  }
+}
+
+// ponytail: no `storage` listener: Got it in another tab hides the bar here on the next navigation (a re-render reads the flag again), as before.
+const subscribeNever = () => () => {};
+
 export function AnalyticsNoticeBar() {
   const pathname = usePathname() ?? "/";
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (isAdminJourneyPath(pathname)) {
-      setVisible(false);
-      return;
-    }
-    try {
-      if (localStorage.getItem(STORAGE_KEY) === "1") {
-        setVisible(false);
-        return;
-      }
-    } catch {
-      // ponytail: private mode / blocked storage — show once per mount
-    }
-    setVisible(true);
-  }, [pathname]);
+  const [dismissed, setDismissed] = useState(false);
+  const stored = useSyncExternalStore(subscribeNever, readStoredFlag, () => "1");
+  const visible = !dismissed && stored !== "1" && !isAdminJourneyPath(pathname);
 
   const barRef = useRef<HTMLDivElement>(null);
   const pinRef = useScreenBottomPin();
@@ -57,7 +55,7 @@ export function AnalyticsNoticeBar() {
     try {
       localStorage.setItem(STORAGE_KEY, "1");
     } catch {}
-    setVisible(false);
+    setDismissed(true);
   };
 
   return (

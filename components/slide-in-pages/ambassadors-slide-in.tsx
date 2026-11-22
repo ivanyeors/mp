@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import {
   Sheet,
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { SlideInPageSections, useSlideInHeader } from "@/components/slide-in-pages/slide-in-content";
+import { SheetScrollProgress } from "@/components/slide-in-pages/sheet-scroll-progress";
 
 type Props = {
   className?: string;
@@ -27,42 +27,11 @@ type Props = {
 export function AmbassadorsSlideIn({ className }: Props) {
   const { m } = useI18n();
   const header = useSlideInHeader("ambassadors");
-  const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
 
   const setViewportNode = React.useCallback((node: HTMLDivElement | null) => {
     setViewportEl(node);
   }, []);
-
-  React.useEffect(() => {
-    const viewport = viewportEl;
-    if (!viewport) return;
-
-    let raf = 0;
-    const update = () => {
-      const max = viewport.scrollHeight - viewport.clientHeight;
-      const pct = max > 0 ? (viewport.scrollTop / max) * 100 : 0;
-      setProgress(Math.max(0, Math.min(100, pct)));
-    };
-
-    const onScroll = () => {
-      if (raf) return;
-      raf = window.requestAnimationFrame(() => {
-        raf = 0;
-        update();
-      });
-    };
-
-    update();
-    viewport.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", update);
-
-    return () => {
-      if (raf) window.cancelAnimationFrame(raf);
-      viewport.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", update);
-    };
-  }, [viewportEl]);
 
   return (
     <Sheet>
@@ -92,7 +61,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
             </SheetHeader>
 
             <div className="px-3 pb-2 md:px-6 md:pb-5 space-y-3">
-              <Progress value={progress} className="h-1" />
+              <SheetScrollProgress viewport={viewportEl} className="h-1" />
             </div>
           </div>
 

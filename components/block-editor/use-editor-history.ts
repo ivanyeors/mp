@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useEffectEvent, useReducer, type RefObject } from "react";
 
 export const HISTORY_LIMIT = 100;
 export const BURST_MS = 1000;
@@ -118,10 +118,7 @@ export function useHistoryKeys(
   history: Pick<EditorHistory<unknown>, "undo" | "redo">,
   { enabled = true, within }: { enabled?: boolean; within?: RefObject<HTMLElement | null> } = {},
 ) {
-  const latest = useRef(history);
-  useEffect(() => {
-    latest.current = history;
-  });
+  const run = useEffectEvent((action: "undo" | "redo") => (action === "undo" ? history.undo() : history.redo()));
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
@@ -133,8 +130,7 @@ export function useHistoryKeys(
       if (root && target && target !== document.body && !root.contains(target)) return;
       if (target instanceof Element && target.closest("[data-own-undo]")) return;
       e.preventDefault();
-      if (action === "undo") latest.current.undo();
-      else latest.current.redo();
+      run(action);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

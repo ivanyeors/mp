@@ -91,14 +91,15 @@ export function FunnelClient({
     }, [current, shown]);
 
     const [target, setTarget] = useState<PreviewTarget | null>(null);
-    useEffect(() => {
-        const key = target?.key;
+    const open = (t: PreviewTarget) => {
+        setTarget(t);
+        const key = t.key;
         if (!key || asked.current.has(key)) return;
         asked.current.add(key);
         renderFunnelEmails([key])
             .then((r) => setRenders((prev) => ({ ...prev, [key]: (r.ok ? r.renders[key] : null) ?? null })))
             .catch(() => setRenders((prev) => ({ ...prev, [key]: null })));
-    }, [target]);
+    };
 
     const choose = (s: FunnelStageView) => (e: MouseEvent<HTMLAnchorElement>) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
@@ -113,7 +114,7 @@ export function FunnelClient({
         renders,
         to,
         canOpen,
-        open: setTarget,
+        open,
         canArrange: permissions.includes("campaigns") && permissions.includes("customers-edit"),
         shown,
         toggle,

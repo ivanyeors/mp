@@ -23,7 +23,6 @@ const UpdateVariantSchema = z.object({
   image_url: z.string().nullable().optional(),
   is_active: z.boolean().optional(),
   position: z.number().int().optional(),
-  stripe_price_id: z.string().nullable().optional(),
 }).partial();
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
@@ -67,7 +66,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({
     ok: true,
     row,
-    stripe: stripe && { synced: stripe.synced, error: stripe.error },
+    stripe: stripe && {
+      synced: stripe.synced,
+      error: stripe.error,
+      pricesInPlace: stripe.pricesInPlace,
+      notices: stripe.notices,
+    },
   });
 }
 

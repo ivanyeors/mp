@@ -45,6 +45,7 @@ import { CategoriesManager } from "./categories-manager";
 import { stripePriceIdOf, type StripeMode } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
 import { InventoryPushSheet } from "@/components/settings/inventory-push-sheet";
+import { savedToasts } from "@/lib/shop/stripe-warnings";
 
 type ProductVariant = {
     id: string;
@@ -99,14 +100,8 @@ export type ProductsListResponse = {
     limit: number;
 };
 
-export type CategoriesListResponse = {
-    ok: true;
-    rows: Category[];
-};
-
 export type ProductsInitialData = {
     products: ProductsListResponse;
-    categories: CategoriesListResponse;
 };
 
 const LIMIT = 20;
@@ -183,10 +178,12 @@ function statusBadgeVariant(status: string): StatusVariant {
 
 export function ProductsClient({
     initialData,
+    categories,
     initialTab = "products",
     stripeMode,
 }: {
     initialData?: ProductsInitialData;
+    categories: Category[];
     initialTab?: string;
     stripeMode: StripeMode;
 }) {
@@ -213,9 +210,6 @@ export function ProductsClient({
     const [products, setProducts] = useState<ProductRow[]>(initialData?.products.rows ?? []);
     const [total, setTotal] = useState(initialData?.products.total ?? 0);
     const [loading, setLoading] = useState(!initialData);
-    const [categories, setCategories] = useState<Category[]>(
-        initialData?.categories.rows ?? [],
-    );
 
     const hydratedFromServer = useRef(Boolean(initialData));
 
@@ -242,21 +236,23 @@ export function ProductsClient({
         };
     }, [search]);
 
-    useEffect(() => { setPage(1); }, [statusFilter, categoryFilter]);
-    useEffect(() => {
+    const changeStatus = (value: string) => {
+        setStatusFilter(value);
+        setPage(1);
+    };
+    const changeCategory = (value: string) => {
+        setCategoryFilter(value);
+        setPage(1);
+    };
+    const changeType = (value: string) => {
+        setTypeFilter(value);
         setPage(1);
         setSelected(new Set());
-    }, [typeFilter]);
+    };
 
-    useEffect(() => {
-        if (initialData) return;
-        fetch("/api/shop/categories")
-            .then((r) => r.json())
-            .then((json) => setCategories(json.rows ?? []))
-            .catch(() => {});
-    }, [initialData]);
-
+    const latestRequest = useRef(0);
     const fetchProducts = useCallback(async () => {
+        const request = ++latestRequest.current;
         setLoading(true);
         const params = new URLSearchParams();
         if (debouncedSearch) params.set("search", debouncedSearch);
@@ -271,17 +267,19 @@ export function ProductsClient({
         else if (typeFilter === "accessory") params.set("product_type", "accessory");
         else if (typeFilter === "bundle") params.set("product_type", "bundle");
 
+        let rows: ProductRow[] = [];
+        let count = 0;
         try {
             const res = await fetch(`/api/shop/products?${params.toString()}`);
             const json = await res.json();
-            setProducts(json.rows ?? []);
-            setTotal(json.total ?? 0);
-        } catch {
-            setProducts([]);
-            setTotal(0);
-        } finally {
-            setLoading(false);
-        }
+            rows = json.rows ?? [];
+            count = json.total ?? 0;
+        } catch {}
+        if (request !== latestRequest.current) return;
+        setProducts(rows);
+        setTotal(count);
+        setSelected(new Set());
+        setLoading(false);
     }, [debouncedSearch, statusFilter, categoryFilter, page, typeFilter]);
 
     useEffect(() => {
@@ -291,8 +289,6 @@ export function ProductsClient({
         }
         fetchProducts();
     }, [fetchProducts]);
-
-    useEffect(() => { setSelected(new Set()); }, [products]);
 
     const syncFromInventory = async () => {
         setSyncing(true);
@@ -305,7 +301,9 @@ export function ProductsClient({
                 throw new Error(json.error ?? "Couldn't sync.");
             }
             const json = await res.json();
-            toast.success(json.message ?? "Inventory synced");
+            for (const t of savedToasts(json.message ?? "Inventory synced", { stripeWarnings: json.stripe_warnings })) {
+                toast[t.type](t.title, t.options);
+            }
             fetchProducts();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Couldn't sync inventory.");
@@ -320,10 +318,11 @@ export function ProductsClient({
             const res = await fetch("/api/shop/products/resync-prices", { method: "POST" });
             const json = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(json.error ?? "Couldn't resync.");
-            toast.success(json.message ?? "Prices resynced from Costings");
-            if (json.unresolvable?.length) {
-                toast.warning(`${json.unresolvable.length} variant(s) have no costing source`);
-            }
+            const toasts = savedToasts(json.message ?? "Prices resynced from Costings", {
+                unresolvable: json.unresolvable?.length ?? 0,
+                stripeWarnings: json.stripe_warnings,
+            });
+            for (const t of toasts) toast[t.type](t.title, t.options);
             fetchProducts();
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Couldn't resync prices.");
@@ -665,7 +664,7 @@ export function ProductsClient({
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:contents">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={changeType}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Type" />
                 </SelectTrigger>
@@ -678,7 +677,7 @@ export function ProductsClient({
                 </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={changeStatus}>
                 <SelectTrigger className="w-full max-sm:min-w-0 sm:w-40">
                     <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -690,7 +689,7 @@ export function ProductsClient({
                 </SelectContent>
             </Select>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={changeCategory}>
                 <SelectTrigger className="w-full max-sm:col-span-2 max-sm:min-w-0 sm:w-44">
                     <SelectValue placeholder="Category" />
                 </SelectTrigger>

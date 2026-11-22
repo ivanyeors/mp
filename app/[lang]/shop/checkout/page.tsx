@@ -120,6 +120,8 @@ interface FormData {
   country: string;
 }
 
+const ADDRESS_FIELDS = new Set<keyof FormData>(["recipient", "line1", "line2", "city", "state", "postal_code", "country", "phone"]);
+
 function getShippingContent(
   content: ShippingMethod["content"],
   slug: string,
@@ -212,6 +214,7 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(NEW_ADDRESS);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
+  const shopperTypedAddress = useRef(false);
 
   const [marketingEmail, setMarketingEmail] = useState(true);
 
@@ -232,7 +235,7 @@ export default function CheckoutPage() {
         setSavedAddresses(addresses);
         setForm((prev) => ({ ...prev, email: prev.email || data.email || "" }));
         const preferred = addresses[0];
-        if (preferred) {
+        if (preferred && !shopperTypedAddress.current) {
           setSelectedAddressId(preferred.id);
           applyAddress(preferred);
         }
@@ -245,14 +248,24 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!form.country) return;
+    let live = true;
 
     setShippingLoading(true);
 
     fetch(`/api/shop/shipping?country=${form.country}`)
       .then((res) => res.json())
-      .then((data: { rows?: ShippingMethod[] }) => setShippingMethods(data.rows ?? []))
-      .catch(() => setShippingMethods([]))
-      .finally(() => setShippingLoading(false));
+      .then((data: { rows?: ShippingMethod[] }) => {
+        if (live) setShippingMethods(data.rows ?? []);
+      })
+      .catch(() => {
+        if (live) setShippingMethods([]);
+      })
+      .finally(() => {
+        if (live) setShippingLoading(false);
+      });
+    return () => {
+      live = false;
+    };
   }, [form.country]);
 
   const postalReady = isPostalReady(form.postal_code, form.country);
@@ -644,6 +657,7 @@ export default function CheckoutPage() {
   }
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
+    if (ADDRESS_FIELDS.has(key)) shopperTypedAddress.current = true;
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [key]: undefined }));

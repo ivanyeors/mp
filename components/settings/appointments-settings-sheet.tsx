@@ -191,6 +191,11 @@ export function AppointmentsSettingsSheet({
   onToggleLocation,
 }: Props) {
   const [draft, setDraft] = useState(settings);
+  const [draftOpen, setDraftOpen] = useState(open);
+  if (open !== draftOpen) {
+    setDraftOpen(open);
+    if (open) setDraft(settings);
+  }
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<SheetTab>("locations");
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -210,10 +215,6 @@ export function AppointmentsSettingsSheet({
       setTogglingId(null);
     }
   };
-
-  useEffect(() => {
-    if (open) setDraft(settings);
-  }, [open, settings]);
 
   const [serviceFees, setServiceFees] = useState<{
     readjustment: number;

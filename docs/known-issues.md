@@ -47,71 +47,99 @@ and scope by membership via `templateIdsForKey` from
 
 ---
 
-## Refunding every line of an Order can come out a cent over or a cent under what it paid
+## A refunded return frees its lines to be returned and refunded again
 
-**Where:** `lib/ecommerce/admin-refund.ts` → `lineRefundAmount` and `selectionRefundAmount`
-**Callers:** `app/[lang]/settings/orders/[id]/refund-dialog.tsx` (the *Choose items* figure
-and each line's share)
-**Status:** open, found 2026-11-20 by the property tests, awaiting the owner's decision
+**Where:** `lib/rma/create.ts` → `openReturnedQtyByOrder`
+**Status:** open, pre-existing, found 2026-11-21 in the money review of the RMA refund
+fix; confirmed by reading
 
-ADR 0038 says each line refunds its share of the cash the Order took for goods
-(`total − shipping`, spread by list price), "so … the whole Order adds up to what was
-paid". `lineRefundAmount` rounds each line's share to the cent on its own, so ticking
-every line and the shipping can differ from the Order total by up to half a cent per
-line, in either direction. Both cases below were run through the real functions:
+The quantity already being returned skips returns in a terminal status, `refunded`
+and `completed` included. Once a return of a line is refunded, the same line can be
+returned and refunded again. Only the Order's refundable balance stops it, so a
+customer who kept another line can be refunded for one line twice.
+`rma_request_items` also has no unique constraint on
+(`rma_request_id`, `order_item_id`).
 
-1. **Over by a cent.** Lines S$152.32, S$228.48 and S$76.16 (subtotal S$456.96), no
-   shipping, a S$0.03 discount, so the Order paid S$456.93. The exact shares are
-   152.3100…, 228.4650… and 76.1550…; rounded they are 152.31, 228.47 and 76.16, which
-   is **S$456.94**.
-2. **Under by a cent.** Three S$1.00 lines (subtotal S$3.00), no shipping, a S$0.02
-   discount, so the Order paid S$2.98. Each exact share is 0.99333…, rounded 0.99, so
-   every line is **S$2.97**.
+**If you fix it:** count `refunded` against the line (and decide whether `completed`,
+an exchange or replacement, should count), with a test that a second return of a
+refunded line is refused.
 
-What happens on each path:
+## An RMA refund on a topped-up Result Order goes to the first intent only
 
-- **Over:** the dialog caps the figure at `refundableAmount` and the refund route
-  refuses an amount above it, so no money moves wrongly. Staff see a worked-out figure
-  a cent higher than the refund that is sent.
-- **Under:** nothing caps that direction. The dialog fills in S$2.97, the route accepts
-  it as a partial refund, and the ledger reads `partially_refunded` with S$0.01 left.
-  The full-refund effects in the `charge.refunded` webhook
-  (`app/api/stripe/webhook/route.ts`, `nowFullyRefunded`) do not run: the shipping
-  label is not cancelled, the partner commission is not voided, coupon usage and the
-  customer's lifetime stats are not reversed.
+**Where:** `app/[lang]/settings/rma/actions.ts` → `issueRmaRefund`
+**Status:** open, pre-existing, found 2026-11-21 in the money review of the RMA refund
+fix, by reading
 
-`lib/ecommerce/__tests__/refunds.property.test.ts` ("choosing every line and the
-shipping drifts from what the Order took by at most half a cent per line") pins the
-drift at its current bound, `Math.floor(lines / 2)` cents.
+A Result topped up past its hold is paid on two PaymentIntents (ADR 0016). ADR 0038
+fixed the staff refund for this. The RMA refund still sends the whole amount to
+`orders.payment_reference`, which cannot refund more than the hold took.
 
-**If you fix it:** give out the cents by largest remainder: work every line's exact
-share in cents, floor them, then hand the cents still owed to the lines with the
-largest remainders, so the shares sum exactly to `total − shipping`. A partial
-selection reads its lines' allotted cents. Then set the tolerance in
-`refunds.property.test.ts` to zero.
+**If you fix it:** route it through the same split the staff refund uses
+(`lib/ecommerce/admin-refund.ts`, ADR 0038).
 
-## Stripe sync hides every error when it retires an old Price or payment link
+## A return that is refunded at list price where the paid share is unknown
 
-**Where:** `lib/stripe/sync.ts` → `syncVariantPrice` (the `catch {}` after the old
-Price is archived) and `createPaymentLink` (the `catch {}` after the old link is
-deactivated)
-**Status:** open, found 2026-11-20 by the second check on the comment removal, by
-reading; not reproduced against Stripe. Awaiting the owner's decision
+**Where:** `lib/rma/refund.ts` → `rmaRefundAmount` (the `ponytail:` fallback);
+`lib/ecommerce/admin-refund.ts` → *Choose items*
+**Status:** open, narrowed 2026-11-21. A return on a plain shop Order now refunds each
+line's share of what was paid (`CONTEXT.md`, **Resolution**)
 
-Both blocks were written to step over one expected case ("price not found", "link
-already inactive") but catch everything:
+The Order does not record which lines its money off came from, and keeps no copy of its
+coupon's terms. So:
 
-1. **Old Price left active.** The `try` covers `prices.retrieve`, the nickname update
-   and the archive. If the archive fails on a rate limit or a network error, the code
-   goes on to create the new Price. The old one stays active in Stripe at the old
-   amount, and nothing is logged.
-2. **Old payment link left live.** If deactivating the old link fails for any reason,
-   the new link is created and overwrites `stripe_payment_link_id`. The old link still
-   takes payment at its old price and no row points at it.
+- a return on a partner self-purchase Order, a Result Order, an Order whose code was
+  scoped to products or categories or has since been deleted, or a code on an Order
+  with service lines, refunds the list price, as before: more than was paid for a
+  discounted line;
+- a code whose scope Staff widened after the Order reads as Order-wide, and a return can
+  get less than the line cost. `coupons.updated_at` cannot tell, because every
+  redemption moves it;
+- Staff *Choose items* spreads `total − shipping` by list price on all of these shapes,
+  so on a scoped coupon it can refund an undiscounted line less than it cost.
 
-`syncProductToStripe` in the same file already does this properly: it steps over
-`resource_missing` only and rethrows the rest.
+**If you fix it:** store each line's discount on `order_items` at checkout (and the
+code's terms on the Order); then every refund is the exact paid share and both
+fallbacks go.
 
-**If you fix it:** narrow both blocks the same way (step over `resource_missing` for
-the Price, an already-inactive link for the link; rethrow anything else), with a test
-for each that fails when the catch is widened again.
+## A Costings save on localhost changes the live price without the live Stripe Price
+
+**Where:** `lib/shop/price-sync.ts` → `syncVariantPricesFromCostings`; `lib/stripe/mode.ts`
+**Status:** open, pre-existing, found 2026-11-21 in the money review of the Costings
+fix, by reading
+
+Localhost and Vercel share one database. A Costings save writes the shared
+`product_variants.price` and syncs only the current mode's Price (`stripe_price_id_test`
+on localhost). The live Price keeps the old amount, with no warning, so on the live
+site the customer is charged the old amount, the webhook records `total_mismatch` and
+the paid Order is not confirmed, until someone runs Resync prices on the live site.
+
+**If you fix it:** refuse price-changing saves from the sandbox, or warn that the live
+site needs Resync prices.
+
+## Price changes from Inventory, and taking a Variant off sale, do not reach Stripe
+
+**Where:** `app/[lang]/settings/inventory/configure/save/route.ts`,
+`configure/templates/apply/route.ts`, the item revive path in
+`app/[lang]/settings/inventory/actions.ts`; `app/api/shop/products/[id]/route.ts` and
+`[id]/variants/[variantId]/route.ts`
+**Status:** open, pre-existing, found 2026-11-21 in the money reviews, by reading
+
+- A BOM edit or a revived item changes what Costings resolves to for a Variant without
+  repricing it; the next Sync from Inventory or Resync prices does.
+- Deactivating a Variant, deleting one, or moving a product out of `active` runs no
+  Stripe sync, so its Prices stay active in Stripe.
+
+**If you fix it:** reprice after those Inventory writes, and sync when a Variant or
+product leaves sale.
+
+## Smaller errors still lost on the Costings paths
+
+**Status:** open, pre-existing, found 2026-11-21 in the money review of the Costings
+fix, by reading
+
+- `fetchProductSummaries` in the Costings save answers 500 when its read fails,
+  although the Costings rows were saved.
+- `syncPillowProducts` (`lib/ecommerce/inventory-sync.ts`) ignores a failed
+  `pillow_products` read and a failed `status: draft` update on its restore path.
+- A refund return whose amount works out to 0 (the Order already fully refunded)
+  cannot be refunded and stays at `received`.

@@ -211,10 +211,6 @@ export default function SettingsOrdersPage({
     }, [search]);
 
     useEffect(() => {
-        setPage(1);
-    }, [statusFilter, dateFrom, dateTo]);
-
-    useEffect(() => {
         if (skipStatsFetch.current) {
             skipStatsFetch.current = false;
             return;
@@ -240,7 +236,9 @@ export default function SettingsOrdersPage({
         };
     }, [dateFrom, dateTo, dateRangeError]);
 
+    const latestOrdersRequest = useRef(0);
     const fetchOrders = useCallback(async () => {
+        const request = ++latestOrdersRequest.current;
         if (dateRangeError) {
             setOrders([]);
             setTotal(0);
@@ -257,17 +255,18 @@ export default function SettingsOrdersPage({
         params.set("page", String(page));
         params.set("limit", String(LIMIT));
 
+        let rows: OrderRow[] = [];
+        let count = 0;
         try {
             const res = await fetch(`/api/shop/orders?${params.toString()}`);
             const json = await res.json();
-            setOrders(json.rows ?? []);
-            setTotal(json.total ?? 0);
-        } catch {
-            setOrders([]);
-            setTotal(0);
-        } finally {
-            setLoading(false);
-        }
+            rows = json.rows ?? [];
+            count = json.total ?? 0;
+        } catch {}
+        if (request !== latestOrdersRequest.current) return;
+        setOrders(rows);
+        setTotal(count);
+        setLoading(false);
     }, [debouncedSearch, statusFilter, dateFrom, dateTo, dateRangeError, page]);
 
     useEffect(() => {
@@ -277,6 +276,12 @@ export default function SettingsOrdersPage({
         }
         fetchOrders();
     }, [fetchOrders]);
+
+    const changeStatus = (value: string) => {
+        if (value === statusFilter) return;
+        setStatusFilter(value);
+        setPage(1);
+    };
 
     const totalPages = Math.ceil(total / LIMIT);
 
@@ -358,7 +363,7 @@ export default function SettingsOrdersPage({
                     />
                 </div>
 
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select value={statusFilter} onValueChange={changeStatus}>
                     <SelectTrigger className="w-full sm:w-44">
                         <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -378,6 +383,7 @@ export default function SettingsOrdersPage({
                         value={dateFrom}
                         onChange={(e) => {
                             setDateFrom(e.target.value);
+                            setPage(1);
                             setStatsLoading(true);
                         }}
                         max={dateTo || undefined}
@@ -390,6 +396,7 @@ export default function SettingsOrdersPage({
                         value={dateTo}
                         onChange={(e) => {
                             setDateTo(e.target.value);
+                            setPage(1);
                             setStatsLoading(true);
                         }}
                         min={dateFrom || undefined}

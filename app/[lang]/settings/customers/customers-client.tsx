@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { useRouter, usePathname } from "next/navigation";
 import { User, Search, Loader2, Mail, SlidersHorizontal, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,13 @@ function formatSGD(amount: number): string {
 
 function formatDate(dateStr: string | null): string {
     return formatAdminDateMY(dateStr);
+}
+
+function listQueryFor(filtersQuery: string, page: number): string {
+    const params = new URLSearchParams(filtersQuery);
+    params.set("page", String(page));
+    params.set("limit", String(LIMIT));
+    return params.toString();
 }
 
 function getCustomerName(customer: CustomerOverviewRow): string {
@@ -200,9 +208,9 @@ export function CustomersClient({
     const [customers, setCustomers] = useState<CustomerOverviewRow[]>(initialData?.customers.rows ?? []);
     const [total, setTotal] = useState(initialData?.customers.total ?? 0);
     const [shipsToUnknown, setShipsToUnknown] = useState<number | null>(initialData?.customers.shipsToUnknown ?? null);
-    const [loading, setLoading] = useState(!initialData);
-
-    const hydratedFromServer = useRef(Boolean(initialData));
+    const [shownQuery, setShownQuery] = useState<string | null>(() =>
+        initialData ? listQueryFor(customerFilterParams(filters).toString(), 1) : null,
+    );
 
     const applyFilters = (next: (f: CustomerListFilters) => CustomerListFilters) => {
         setFilters(next);
@@ -210,18 +218,15 @@ export function CustomersClient({
     };
     const changeFilters = (patch: Partial<CustomerListFilters>) => applyFilters((f) => ({ ...f, ...patch }));
 
-    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            const next = search.trim() || null;
-            setFilters((f) => (f.search === next ? f : { ...f, search: next }));
-            setPage(1);
-        }, 350);
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [search]);
+    const pushSearch = useDebouncedCallback((typed: string) => {
+        const next = typed.trim() || null;
+        setFilters((f) => (f.search === next ? f : { ...f, search: next }));
+        setPage(1);
+    }, 350);
+    const typeSearch = (typed: string) => {
+        setSearch(typed);
+        pushSearch(typed);
+    };
 
     const filtersQuery = customerFilterParams(filters).toString();
     const panelCount = MEGA_FILTER_KEYS.filter((k) => isCustomerFilterActive(filters, k)).length;
@@ -238,16 +243,21 @@ export function CustomersClient({
     const changeSort = (sort: CustomerSort) => changeFilters({ sort });
 
     const clearFilter = (key: CustomerFilterKey) => {
-        if (key === "search") setSearch("");
+        if (key === "search") {
+            pushSearch.cancel();
+            setSearch("");
+        }
         applyFilters((f) => clearCustomerFilter(f, key));
     };
     const clearAll = () => {
+        pushSearch.cancel();
         setSearch("");
         setSegmentId(null);
         applyFilters(clearCustomerFilters);
     };
 
     const chooseSegment = (segment: CustomerSegment) => {
+        pushSearch.cancel();
         setSearch(segment.params.search ?? "");
         setSegmentId(segment.id);
         applyFilters((f) => ({ ...f, ...chosenSegmentFilters(segment.params) }));
@@ -259,34 +269,27 @@ export function CustomersClient({
     const stageHref = (stage: LifecycleStage) =>
         `${to("/settings/customers")}?${customerFilterParams({ stage: [stage] }).toString()}`;
 
-    const fetchCustomers = useCallback(async () => {
-        setLoading(true);
-        const params = new URLSearchParams(filtersQuery);
-        params.set("page", String(page));
-        params.set("limit", String(LIMIT));
-
-        try {
-            const res = await fetch(`/api/shop/customers?${params.toString()}`);
-            const json = await res.json();
+    const listQuery = listQueryFor(filtersQuery, page);
+    const loading = shownQuery !== listQuery;
+    useEffect(() => {
+        if (shownQuery === listQuery) return;
+        let live = true;
+        void (async () => {
+            let json: Partial<CustomersListResponse> = {};
+            try {
+                const res = await fetch(`/api/shop/customers?${listQuery}`);
+                json = (await res.json()) ?? {};
+            } catch {}
+            if (!live) return;
             setCustomers(json.rows ?? []);
             setTotal(json.total ?? 0);
             setShipsToUnknown(typeof json.shipsToUnknown === "number" ? json.shipsToUnknown : null);
-        } catch {
-            setCustomers([]);
-            setTotal(0);
-            setShipsToUnknown(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [filtersQuery, page]);
-
-    useEffect(() => {
-        if (hydratedFromServer.current) {
-            hydratedFromServer.current = false;
-            return;
-        }
-        fetchCustomers();
-    }, [fetchCustomers]);
+            setShownQuery(listQuery);
+        })();
+        return () => {
+            live = false;
+        };
+    }, [listQuery, shownQuery]);
 
     const totalPages = Math.ceil(total / LIMIT);
 
@@ -332,7 +335,7 @@ export function CustomersClient({
                     <Input
                         placeholder="Search by name or email…"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => typeSearch(e.target.value)}
                         className="pl-9"
                     />
                 </div>

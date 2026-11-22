@@ -90,6 +90,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({
     ok: true,
     row: responseRow,
-    stripe: stripe && { synced: stripe.synced, error: stripe.error },
+    stripe: stripe && {
+      synced: stripe.synced,
+      error: stripe.error,
+      pricesInPlace: stripe.pricesInPlace,
+      notices: stripe.notices,
+    },
   });
 }

@@ -25,6 +25,23 @@ import {
 } from "@/lib/crm/followup-rules";
 import { FollowUpActions, FollowUpAssignee, FollowUpDue } from "./followup-parts";
 
+export type FollowUpsFirstRead = FollowUpListData | { error: string };
+
+const COULD_NOT_LOAD = "Could not load follow-ups.";
+
+export async function readFollowUps(scope: FollowUpScope): Promise<FollowUpListData> {
+    const res = await fetch(`/api/settings/customers/followups?scope=${scope}`);
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.ok) throw new Error(json?.error ?? COULD_NOT_LOAD);
+    return json as FollowUpListData;
+}
+
+export const readFollowUpsFirst = (scope: FollowUpScope): Promise<FollowUpsFirstRead> =>
+    readFollowUps(scope).catch((e) => ({ error: e instanceof Error ? e.message : COULD_NOT_LOAD }));
+
+const listOf = (read: FollowUpsFirstRead | null) => (read && !("error" in read) ? read : null);
+const errorOf = (read: FollowUpsFirstRead | null) => (read && "error" in read ? read.error : null);
+
 export function FollowUpsTab({
     canEdit,
     initialScope = "mine",
@@ -32,38 +49,41 @@ export function FollowUpsTab({
 }: {
     canEdit: boolean;
     initialScope?: FollowUpScope;
-    initialData?: FollowUpListData;
+    initialData: FollowUpsFirstRead | null;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-    const [scope, setScope] = useState<FollowUpScope>(initialData?.scope ?? initialScope);
-    const [data, setData] = useState<FollowUpListData | null>(initialData ?? null);
-    const [loading, setLoading] = useState(!initialData);
-    const [error, setError] = useState<string | null>(null);
-    const hydrated = useRef(Boolean(initialData));
+    const [scope, setScope] = useState<FollowUpScope>(listOf(initialData)?.scope ?? initialScope);
+    const [data, setData] = useState<FollowUpListData | null>(listOf(initialData));
+    const [loading, setLoading] = useState(initialData === null);
+    const [error, setError] = useState<string | null>(errorOf(initialData));
+    const [firstReadShown, setFirstReadShown] = useState(initialData);
+    const [firstReadSuperseded, setFirstReadSuperseded] = useState(false);
+    const latest = useRef(0);
+
+    if (firstReadShown !== initialData) {
+        setFirstReadShown(initialData);
+        if (initialData && !firstReadSuperseded) {
+            setData(listOf(initialData));
+            setError(errorOf(initialData));
+            setLoading(false);
+        }
+    }
 
     const load = useCallback(async (which: FollowUpScope) => {
+        const id = ++latest.current;
+        setFirstReadSuperseded(true);
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/settings/customers/followups?scope=${which}`);
-            const json = await res.json().catch(() => null);
-            if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Could not load follow-ups.");
-            setData(json as FollowUpListData);
+            const list = await readFollowUps(which);
+            if (id === latest.current) setData(list);
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Could not load follow-ups.");
+            if (id === latest.current) setError(e instanceof Error ? e.message : COULD_NOT_LOAD);
         } finally {
-            setLoading(false);
+            if (id === latest.current) setLoading(false);
         }
     }, []);
-
-    useEffect(() => {
-        if (hydrated.current) {
-            hydrated.current = false;
-            return;
-        }
-        void load(scope);
-    }, [load, scope]);
 
     useEffect(() => {
         const reload = () => void load(scope);
@@ -72,7 +92,10 @@ export function FollowUpsTab({
     }, [load, scope]);
 
     const choose = (next: FollowUpScope) => {
-        setScope(next);
+        if (next !== scope) {
+            setScope(next);
+            void load(next);
+        }
         const url = new URL(window.location.href);
         if (next === "mine") url.searchParams.delete("scope");
         else url.searchParams.set("scope", next);

@@ -155,10 +155,15 @@ export function CustomerJourney({
     const [view, setView] = useState<"map" | "list" | null>(null);
     const [selectedId, setSelectedId] = useState<string>(NOW_ID);
     const pages = useRef(0);
+    const timelineReads = useRef({ started: 0, shown: 0 });
+    const followUpReads = useRef({ started: 0, shown: 0 });
 
     const refresh = useCallback(async () => {
+        const read = ++timelineReads.current.started;
         try {
             const page = await fetchPage(customerId, null);
+            if (read < timelineReads.current.shown) return;
+            timelineReads.current.shown = read;
             setEntries((prev) => {
                 const oldest = page.entries.length ? Date.parse(page.entries[page.entries.length - 1]!.at) : Infinity;
                 const fresh = new Set(page.entries.map((e) => e.id));
@@ -176,8 +181,12 @@ export function CustomerJourney({
     }, [customerId]);
 
     const refreshFollowUps = useCallback(async () => {
+        const read = ++followUpReads.current.started;
         try {
-            setFollowUps(await fetchFollowUps(customerId));
+            const data = await fetchFollowUps(customerId);
+            if (read < followUpReads.current.shown) return;
+            followUpReads.current.shown = read;
+            setFollowUps(data);
         } catch {}
     }, [customerId]);
 
@@ -185,6 +194,15 @@ export function CustomerJourney({
         void refresh();
         void refreshFollowUps();
     }, [refresh, refreshFollowUps, reloadSignal]);
+
+    const rereadTimelineOverLocalChange = () => {
+        timelineReads.current.shown = ++timelineReads.current.started;
+        void refresh();
+    };
+    const rereadFollowUpsOverLocalChange = () => {
+        followUpReads.current.shown = ++followUpReads.current.started;
+        void refreshFollowUps();
+    };
 
     const loadOlder = async () => {
         if (!next) return;
@@ -261,8 +279,12 @@ export function CustomerJourney({
                   }
                 : d,
         );
-        if (!nextRow) setEntries((prev) => prev.filter((e) => !(e.ref.type === "customer_followup" && e.ref.id === id)));
-        void refresh();
+        rereadFollowUpsOverLocalChange();
+        if (nextRow) void refresh();
+        else {
+            setEntries((prev) => prev.filter((e) => !(e.ref.type === "customer_followup" && e.ref.id === id)));
+            rereadTimelineOverLocalChange();
+        }
     };
 
     const deleteNote = async (note: CustomerNote) => {
@@ -275,6 +297,7 @@ export function CustomerJourney({
             }
             setNotes((prev) => prev.filter((n) => n.id !== note.id));
             setEntries((prev) => prev.filter((e) => e.id !== `note.added:${note.id}`));
+            rereadTimelineOverLocalChange();
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not delete the note");
         }
@@ -378,6 +401,7 @@ export function CustomerJourney({
                     }}
                     onFollowUpAdded={(row) => {
                         setFollowUps((d) => (d ? { ...d, rows: sortFollowUps([row, ...d.rows]) } : d));
+                        rereadFollowUpsOverLocalChange();
                         void refresh();
                     }}
                 />

@@ -14,6 +14,7 @@ export {
   activeDiscoverySourceOptions,
   archiveDiscoverySourceOption,
   assertCatalogAllowsSave,
+  discoverySourceChoices,
   findDiscoverySourceOption,
   normalizeDiscoverySourceCatalog,
   parseDiscoverySourceCatalog,
@@ -40,6 +41,16 @@ export {
 export async function getDiscoverySourceCatalog(): Promise<DiscoverySourceCatalog> {
   const stored = await getSiteSettings([DISCOVERY_SOURCE_SETTING_KEY]);
   return parseDiscoverySourceCatalog(stored[DISCOVERY_SOURCE_SETTING_KEY]);
+}
+
+export async function getDiscoverySourceCatalogOrThrow(): Promise<DiscoverySourceCatalog> {
+  const { data, error } = await supabaseAdmin()
+    .from("site_settings")
+    .select("value")
+    .eq("key", DISCOVERY_SOURCE_SETTING_KEY)
+    .maybeSingle();
+  if (error) throw new Error(`Discovery source catalog read failed: ${error.message}`);
+  return parseDiscoverySourceCatalog(data?.value);
 }
 
 export async function saveDiscoverySourceCatalog(

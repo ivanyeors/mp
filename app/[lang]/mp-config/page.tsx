@@ -5,6 +5,8 @@ import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
 import { getAdminContext } from "@/lib/auth/admin";
+import { discoverySourceChoices } from "@/lib/discovery-source";
+import { readDiscoverySourceCatalog } from "@/lib/discovery-source/cached";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
@@ -62,7 +64,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
   const staffEditRequested = editFlag === "1";
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish, staffEdit, resumeDraft] =
+  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish, staffEdit, resumeDraft, discoverySourceOptions] =
     await Promise.all([
       getConfiguratorOfferRange("pillow"),
       getPageFaq("mp-config", locale),
@@ -76,6 +78,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
       draftId && !resultId && !staffEditRequested
         ? loadResumeDraft(draftId, resultToken)
         : Promise.resolve(null),
+      readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)),
     ]);
   const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
   const liveResultId = staffEdit || resumeFinish ? resultId : resumeDraft?.id;
@@ -130,6 +133,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
           canViewResults
           servicePrices={servicePrices}
           measuredByStaff={measuredByStaff}
+          discoverySourceOptions={discoverySourceOptions}
         />
       ) : resumeFinish ? (
         <MpConfigClient
@@ -137,6 +141,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
           resumeFinish={resumeFinish}
           servicePrices={servicePrices}
           measuredByStaff={measuredByStaff}
+          discoverySourceOptions={discoverySourceOptions}
         />
       ) : (
       <MpConfigClient
@@ -151,6 +156,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         pointsPerDollar={pointsPerDollar}
         servicePrices={servicePrices}
         measuredByStaff={measuredByStaff}
+        discoverySourceOptions={discoverySourceOptions}
         pickMeasurer={pickMeasurer}
         partner={
           partner

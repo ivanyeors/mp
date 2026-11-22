@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AlertTriangle, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
@@ -600,7 +600,6 @@ export function XrayPillow({
   const [openLayer, setOpenLayer] = useState<number | null>(null);
   const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
   const [selected, setSelected] = useState<PieceRef | null>(null);
-  const selectedRef = useRef(selected);
   const [drag, setDrag] = useState<PouchDrag | null>(null);
   const dragRef = useRef<PouchDrag | null>(null);
   const heldGhost = useHeldGhost();
@@ -614,38 +613,49 @@ export function XrayPillow({
   useEffect(() => {
     placementsRef.current = placements;
   }, [placements]);
-  useEffect(() => {
-    selectedRef.current = selected;
-  }, [selected]);
 
-  useEffect(() => {
-    onDiveChange?.(dived);
-  }, [dived, onDiveChange]);
+  const divedRef = useRef<Section | null>(null);
+  const changeDive = useCallback(
+    (next: Section | null) => {
+      divedRef.current = next;
+      setDived(next);
+      onDiveChange?.(next);
+    },
+    [onDiveChange],
+  );
+  const attachRootAndTellHostItMountedUndived = useCallback(
+    (el: HTMLDivElement | null) => {
+      rootRef.current = el;
+      if (el && divedRef.current === null) onDiveChange?.(null);
+    },
+    [onDiveChange],
+  );
 
   const endDive = useCallback(() => {
-    setDived(null);
+    changeDive(null);
     setOpenSub(null);
     setOpenLayer(null);
     setHoverSub(null);
     setSelected(null);
-  }, []);
+  }, [changeDive]);
 
   const openPicker = useCallback((subSection: SubSection, layer: number | null) => {
     setOpenLayer(layer);
     setOpenSub(subSection);
   }, []);
 
+  const onDiveKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape" && !draggingRef.current) {
+      if (selected) {
+        setSelected(null);
+        return;
+      }
+      endDive();
+    }
+  });
   useEffect(() => {
     if (!dived) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !draggingRef.current) {
-        if (selectedRef.current) {
-          setSelected(null);
-          return;
-        }
-        endDive();
-      }
-    };
+    const onKey = (e: KeyboardEvent) => onDiveKey(e);
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!rootRef.current || rootRef.current.contains(target) || controlsSlot?.contains(target)) return;
@@ -827,7 +837,7 @@ export function XrayPillow({
   ) => {
     onPlacementsChange?.(next);
     setSelected(nextRef);
-    if (dived && nextRef.section !== dived) setDived(nextRef.section);
+    if (dived && nextRef.section !== dived) changeDive(nextRef.section);
     const label = pieceLabel(ref.itemId);
     toast.success(nudged ? `Moved ${label} within ${nextRef.section} ${nextRef.subSection}` : `Moved ${label} to ${nextRef.section} ${nextRef.subSection}`, {
       id: "xray-move",
@@ -961,15 +971,23 @@ export function XrayPillow({
     const here = alongExtent(fit.settle, ref);
     if (here) nudgeTo(ref, p.x + p.w / 2 + step.xMm * stage.k, (here.startMm + here.endMm) / 2);
   };
-  const nudgeByRef = useRef(nudgeBy);
-  const performMoveRef = useRef(performMove);
-  const takeOutSelectedRef = useRef(() => {});
-  useEffect(() => {
-    performMoveRef.current = performMove;
-    nudgeByRef.current = nudgeBy;
-    takeOutSelectedRef.current = () => {
+  const onMoveKey = useEffectEvent((e: KeyboardEvent) => {
+    if (isTypingTarget(e.target) || draggingRef.current) return;
+    if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
       if (selectedPiece) takeOut(selectedPiece);
-    };
+      return;
+    }
+    const step = nudgeKeyFor(e);
+    if (step) {
+      e.preventDefault();
+      nudgeBy(step);
+      return;
+    }
+    const kind = moveKeyFor(e);
+    if (!kind) return;
+    e.preventDefault();
+    performMove(kind);
   });
 
   const toView = (clientX: number, clientY: number) => {
@@ -1170,7 +1188,7 @@ export function XrayPillow({
   }, [editable]);
   const tapPouch = (ref: PieceRef, inDive: boolean) => {
     if (!inDive && !justDraggedRef.current) {
-      setDived(ref.section);
+      changeDive(ref.section);
       setOpenSub(null);
     }
     selectPiece(ref);
@@ -1233,12 +1251,6 @@ export function XrayPillow({
   }, [draftSnap]);
   useEffect(() => () => clearXrayDraft(placementsRef.current, "top"), []);
   useEffect(() => {
-    if (!dragRef.current) {
-      draftSignature.current = "";
-      setOwnDraft(null);
-    }
-  }, [placements]);
-  useEffect(() => {
     if (!drag?.active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -1251,26 +1263,9 @@ export function XrayPillow({
 
   useEffect(() => {
     if (!dived || !editable || !selectedPiece) return;
-    const onMoveKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target) || draggingRef.current) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        e.preventDefault();
-        takeOutSelectedRef.current();
-        return;
-      }
-      const step = nudgeKeyFor(e);
-      if (step) {
-        e.preventDefault();
-        nudgeByRef.current(step);
-        return;
-      }
-      const kind = moveKeyFor(e);
-      if (!kind) return;
-      e.preventDefault();
-      performMoveRef.current(kind);
-    };
-    window.addEventListener("keydown", onMoveKey);
-    return () => window.removeEventListener("keydown", onMoveKey);
+    const listener = (e: KeyboardEvent) => onMoveKey(e);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
   }, [dived, editable, selectedPiece]);
 
   const pieceChip = (cell: Cell, itemId: number, slots: number[]) => {
@@ -1550,7 +1545,7 @@ export function XrayPillow({
     );
 
   return (
-    <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
+    <div ref={attachRootAndTellHostItMountedUndived} className={className} style={{ pointerEvents: "none" }}>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${XRAY_VIEW.width} ${XRAY_VIEW.height}`}
@@ -1730,7 +1725,7 @@ export function XrayPillow({
               onClick={
                 editable
                   ? () => {
-                      setDived(section);
+                      changeDive(section);
                       setOpenSub(null);
                       setSelected(null);
                     }

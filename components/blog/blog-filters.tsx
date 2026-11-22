@@ -2,7 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 
 interface BlogFiltersProps {
     availableLabels: string[];
@@ -13,46 +14,45 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
     const pathname = usePathname() ?? "";
     const searchParams = useSearchParams();
 
-    const initialQuery = searchParams?.get("q") ?? "";
+    const urlQuery = searchParams?.get("q") ?? "";
     const activeLabel = searchParams?.get("label");
 
-    const [query, setQuery] = useState(initialQuery);
-    const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setDebouncedQuery(query), 300);
-        return () => clearTimeout(timer);
-    }, [query]);
-
-    useEffect(() => {
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
-        let changed = false;
-
-        if (debouncedQuery) {
-            if (params.get("q") !== debouncedQuery) {
-                params.set("q", debouncedQuery);
-                changed = true;
-            }
+    const [query, setQuery] = useState(urlQuery);
+    const [seenUrlQuery, setSeenUrlQuery] = useState(urlQuery);
+    const [ownQueriesInFlight, setOwnQueriesInFlight] = useState<string[]>([]);
+    const [outsideNavigations, setOutsideNavigations] = useState(0);
+    if (urlQuery !== seenUrlQuery) {
+        setSeenUrlQuery(urlQuery);
+        const landed = ownQueriesInFlight.indexOf(urlQuery);
+        if (landed >= 0) {
+            setOwnQueriesInFlight(ownQueriesInFlight.slice(landed + 1));
         } else {
-            if (params.has("q")) {
-                params.delete("q");
-                changed = true;
-            }
+            setOwnQueriesInFlight([]);
+            setOutsideNavigations(outsideNavigations + 1);
+            setQuery(urlQuery);
         }
+    }
+    const settlingQuery = ownQueriesInFlight.at(-1) ?? urlQuery;
 
-        if (changed) {
+    const go = (q: string, label: string | null | undefined) => {
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        if (q) params.set("q", q);
+        else params.delete("q");
+        if (label) params.set("label", label);
+        else params.delete("label");
+        if (q !== settlingQuery) setOwnQueriesInFlight([...ownQueriesInFlight, q]);
+        if (q !== settlingQuery || params.toString() !== (searchParams?.toString() ?? "")) {
             router.push(`${pathname}?${params.toString()}`);
         }
-    }, [debouncedQuery, pathname, router, searchParams]);
+    };
+
+    const pushQuery = useDebouncedCallback((q: string, typedDuring: number) => {
+        if (typedDuring === outsideNavigations) go(q, activeLabel);
+    }, 300);
 
     const toggleLabel = (label: string) => {
-        const params = new URLSearchParams(searchParams?.toString() ?? "");
-        if (activeLabel === label) {
-            params.delete("label");
-        } else {
-            params.set("label", label);
-        }
-        router.push(`${pathname}?${params.toString()}`);
+        pushQuery.cancel();
+        go(query, activeLabel === label ? null : label);
     };
 
     return (
@@ -64,7 +64,10 @@ export function BlogFilters({ availableLabels }: BlogFiltersProps) {
                 <input
                     type="text"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        pushQuery(e.target.value, outsideNavigations);
+                    }}
                     className="block w-full pl-10 pr-3 py-2 border border-input rounded-full bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm shadow-sm"
                     placeholder="Search articles..."
                 />

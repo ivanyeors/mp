@@ -18,7 +18,7 @@ const box = (html: string, id: string) => html.match(new RegExp(`<button[^>]*id=
 describe("the booking form's box", () => {
   it("is ticked by default, says what the emails are, and is not required", () => {
     nav.pathname = "/en-US/appointments";
-    const html = renderToString(<BookingFlow type="customisation" />);
+    const html = renderToString(<BookingFlow type="customisation" locations={[]} />);
     const tag = box(html, "booking-marketing-email");
     expect(tag).toContain('aria-checked="true"');
     expect(tag).not.toContain("required");
@@ -29,7 +29,7 @@ describe("the booking form's box", () => {
     nav.pathname = "/zh-CN/appointments";
     const html = renderToString(
       <I18nMessagesProvider locale="zh-CN" messages={zhCN}>
-        <BookingFlow type="customisation" />
+        <BookingFlow type="customisation" locations={[]} />
       </I18nMessagesProvider>,
     );
     expect(box(html, "booking-marketing-email")).toContain('aria-checked="true"');
@@ -44,7 +44,7 @@ describe("the customisation contact step's box", () => {
         values={{ email: "", phone: "", discoverySource: "", discoverySourceOther: "", notes: "", code: "", marketingEmail }}
         onChange={() => undefined}
         fieldErrors={{}}
-        locale="en-US"
+        discoverySourceOptions={[]}
         codeContext={null}
         onCodeStatus={() => undefined}
         formatAmount={(n) => `SGD ${n.toFixed(2)}`}

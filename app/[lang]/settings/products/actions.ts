@@ -54,5 +54,5 @@ export async function syncProductsFromInventory() {
   if (result.items.archived) parts.push(`${result.items.archived} archived`);
   if (result.items.adopted) parts.push(`${result.items.adopted} adopted`);
   if (result.items.legacy) parts.push(`${result.items.legacy} legacy`);
-  return { ok: true, message: `Synced: ${parts.join(", ")}` };
+  return { ok: true, message: `Synced: ${parts.join(", ")}`, stripeWarnings: result.stripeWarnings };
 }

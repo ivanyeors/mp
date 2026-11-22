@@ -33,9 +33,15 @@ export default async function ProductEditorPage({
         product?.ok
             ? {
                   product: { ok: true, row: product.row as LoadedProduct },
-                  categories: { ok: true, rows: categoryTree },
               }
             : undefined;
 
-    return <ProductEditorClient initialData={initialData} ai={ai} stripeMode={stripeMode()} />;
+    return (
+        <ProductEditorClient
+            initialData={initialData}
+            categories={categoryTree}
+            ai={ai}
+            stripeMode={stripeMode()}
+        />
+    );
 }

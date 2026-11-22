@@ -48,14 +48,9 @@ export default function AppointmentSettingsPage({
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const saveChain = useRef(Promise.resolve());
-  const skipFirstFetch = useRef(initialData != null);
 
-  const skipLocationsFetch = useRef(initialLocations != null);
   useEffect(() => {
-    if (skipLocationsFetch.current) {
-      skipLocationsFetch.current = false;
-      return;
-    }
+    if (initialLocations) return;
     let cancelled = false;
     (async () => {
       try {
@@ -70,13 +65,10 @@ export default function AppointmentSettingsPage({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialLocations]);
 
   useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
+    if (initialData) return;
     let cancelled = false;
     (async () => {
       try {
@@ -97,7 +89,7 @@ export default function AppointmentSettingsPage({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialData]);
 
   const saveAvailability = useCallback((patch: Partial<AppointmentSettings>) => {
     const run = async () => {

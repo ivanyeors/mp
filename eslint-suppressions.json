@@ -11,13 +11,13 @@
   },
   "app/[lang]/mbolster-config/mbolster-config-client.tsx": {
     "mp/no-effect": {
-      "count": 13
+      "count": 10
     },
     "react-hooks/exhaustive-deps": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 6
+      "count": 3
     }
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
@@ -25,7 +25,7 @@
       "count": 2
     },
     "mp/no-effect": {
-      "count": 17
+      "count": 15
     },
     "react-hooks/exhaustive-deps": {
       "count": 7
@@ -37,12 +37,7 @@
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 8
-    }
-  },
-  "app/[lang]/mp-maker/page.tsx": {
-    "mp/no-effect": {
-      "count": 3
+      "count": 6
     }
   },
   "app/[lang]/results/[id]/page.tsx": {
@@ -84,10 +79,10 @@
   },
   "app/[lang]/settings/analytics/ProspectJourneyCard.tsx": {
     "mp/no-effect": {
-      "count": 12
+      "count": 10
     },
     "react-hooks/set-state-in-effect": {
-      "count": 4
+      "count": 2
     }
   },
   "app/[lang]/settings/analytics/SalesTab.tsx": {
@@ -117,14 +112,6 @@
     }
   },
   "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 6
-    }
-  },
-  "app/[lang]/settings/blogs/blogs-client.tsx": {
     "mp/no-effect": {
       "count": 2
     }
@@ -177,12 +164,12 @@
   },
   "app/[lang]/settings/campaigns/email-preview.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/campaigns/funnel/funnel-client.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/campaigns/kept-draft.ts": {
@@ -197,15 +184,15 @@
   },
   "app/[lang]/settings/campaigns/thumbnail-frame.tsx": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "app/[lang]/settings/costings/page.tsx": {
     "mp/no-effect": {
-      "count": 10
+      "count": 8
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 1
     }
   },
   "app/[lang]/settings/costings/save/route.ts": {
@@ -221,14 +208,6 @@
   "app/[lang]/settings/customers/[id]/create-order-dialog.tsx": {
     "mp/no-effect": {
       "count": 3
-    }
-  },
-  "app/[lang]/settings/customers/[id]/customer-detail-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "app/[lang]/settings/customers/[id]/customer-fittings-card.tsx": {
@@ -252,11 +231,6 @@
   "app/[lang]/settings/customers/[id]/customer-pillow-readjust.tsx": {
     "mp/no-effect": {
       "count": 2
-    }
-  },
-  "app/[lang]/settings/customers/[id]/customer-reviews-card.tsx": {
-    "mp/no-effect": {
-      "count": 3
     }
   },
   "app/[lang]/settings/customers/[id]/customer-shortcuts.tsx": {
@@ -291,10 +265,7 @@
   },
   "app/[lang]/settings/customers/customers-client.tsx": {
     "mp/no-effect": {
-      "count": 4
-    },
-    "react-hooks/preserve-manual-memoization": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/customers/filters/filters-page-client.tsx": {
@@ -304,7 +275,7 @@
   },
   "app/[lang]/settings/customers/followups-tab.tsx": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "app/[lang]/settings/customers/review-match-parts.tsx": {
@@ -356,19 +327,8 @@
     }
   },
   "app/[lang]/settings/faq/faq-client.tsx": {
-    "mp/no-effect": {
-      "count": 4
-    },
     "react-hooks/purity": {
       "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "app/[lang]/settings/forms/forms-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
     }
   },
   "app/[lang]/settings/general/general-client.tsx": {
@@ -376,17 +336,12 @@
       "count": 2
     }
   },
-  "app/[lang]/settings/integrations/shopify/shopify-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
   "app/[lang]/settings/inventory/ShopifyAdminPanel.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 1
     }
   },
   "app/[lang]/settings/inventory/actions.ts": {
@@ -396,7 +351,7 @@
   },
   "app/[lang]/settings/inventory/configure/[card]/page.tsx": {
     "mp/no-effect": {
-      "count": 10
+      "count": 8
     },
     "react-hooks/set-state-in-effect": {
       "count": 3
@@ -425,7 +380,7 @@
   },
   "app/[lang]/settings/inventory/configure/soft-body-section.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     }
   },
   "app/[lang]/settings/inventory/page.tsx": {
@@ -433,13 +388,13 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 12
+      "count": 6
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 4
+      "count": 1
     }
   },
   "app/[lang]/settings/media/media-client.tsx": {
@@ -447,10 +402,10 @@
       "count": 7
     },
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "app/[lang]/settings/orders/[id]/easyship-fulfilment.tsx": {
@@ -465,10 +420,7 @@
   },
   "app/[lang]/settings/orders/orders-client.tsx": {
     "mp/no-effect": {
-      "count": 5
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 4
     }
   },
   "app/[lang]/settings/page-builder/page-builder-client.tsx": {
@@ -517,10 +469,7 @@
       "count": 1
     },
     "mp/no-effect": {
-      "count": 5
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 3
     }
   },
   "app/[lang]/settings/products/categories-manager.tsx": {
@@ -536,9 +485,6 @@
   },
   "app/[lang]/settings/products/products-client.tsx": {
     "mp/no-effect": {
-      "count": 7
-    },
-    "react-hooks/set-state-in-effect": {
       "count": 3
     }
   },
@@ -549,7 +495,7 @@
   },
   "app/[lang]/settings/results/[id]/result-detail-client.tsx": {
     "mp/no-effect": {
-      "count": 8
+      "count": 7
     },
     "react-hooks/preserve-manual-memoization": {
       "count": 1
@@ -610,10 +556,7 @@
   },
   "app/[lang]/shop/[slug]/product-reviews.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "app/[lang]/shop/checkout/confirmation/page.tsx": {
@@ -660,10 +603,7 @@
   },
   "components/analytics/analytics-notice-bar.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/analytics/drop-off-question.tsx": {
@@ -688,10 +628,7 @@
   },
   "components/auth/login-form.tsx": {
     "mp/no-effect": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 3
     }
   },
   "components/auth/profile-menu.tsx": {
@@ -742,17 +679,12 @@
   },
   "components/block-editor/use-editor-history.ts": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "components/block-editor/use-unsaved-guard.ts": {
     "mp/no-effect": {
       "count": 6
-    }
-  },
-  "components/blog/blog-filters.tsx": {
-    "mp/no-effect": {
-      "count": 3
     }
   },
   "components/configurator/addon-cards.tsx": {
@@ -770,7 +702,7 @@
   },
   "components/configurator/preview-contact-fields.tsx": {
     "mp/no-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "components/configurator/staff-assist-bolster-panel.tsx": {
@@ -791,10 +723,7 @@
   },
   "components/customise-tier-picker.tsx": {
     "mp/no-effect": {
-      "count": 5
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 4
     }
   },
   "components/effects/Aurora.jsx": {
@@ -855,7 +784,7 @@
   },
   "components/explore/explore-experience.tsx": {
     "mp/no-effect": {
-      "count": 11
+      "count": 9
     }
   },
   "components/haptics.tsx": {
@@ -873,7 +802,7 @@
       "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "components/product-builder/overlay-workbench.tsx": {
@@ -909,14 +838,9 @@
       "count": 1
     }
   },
-  "components/settings/ai-writing-section.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    }
-  },
   "components/settings/appointments-calendar.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/refs": {
       "count": 3
@@ -924,10 +848,7 @@
   },
   "components/settings/appointments-settings-sheet.tsx": {
     "mp/no-effect": {
-      "count": 3
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/settings/inventory-push-sheet.tsx": {
@@ -976,10 +897,10 @@
   },
   "components/settings/page-faqs-panel.tsx": {
     "mp/no-effect": {
-      "count": 4
+      "count": 3
     },
     "react-hooks/set-state-in-effect": {
-      "count": 3
+      "count": 2
     }
   },
   "components/settings/readjustment-panel.tsx": {
@@ -1015,13 +936,10 @@
   },
   "components/settings/settings-sidebar-nav.tsx": {
     "mp/no-effect": {
-      "count": 9
+      "count": 6
     },
     "react-hooks/exhaustive-deps": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 2
     }
   },
   "components/settings/shop-listing-toggles.tsx": {
@@ -1029,33 +947,9 @@
       "count": 2
     }
   },
-  "components/shop/cart-page-client.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "components/shop/cart-shell.tsx": {
     "mp/no-effect": {
       "count": 2
-    }
-  },
-  "components/shop/cart/cart-content.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
-  "components/shop/cart/cart-coupon-field.tsx": {
-    "mp/no-effect": {
-      "count": 2
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "components/shop/cart/cart-shipping-bar.tsx": {
@@ -1086,16 +980,6 @@
       "count": 2
     }
   },
-  "components/slide-in-pages/ambassadors-slide-in.tsx": {
-    "mp/no-effect": {
-      "count": 1
-    }
-  },
-  "components/slide-in-pages/basic-mpillow-learn-more-slide-in.tsx": {
-    "mp/no-effect": {
-      "count": 1
-    }
-  },
   "components/slide-in-pages/book-appointment-overlay.tsx": {
     "mp/no-effect": {
       "count": 1
@@ -1103,7 +987,7 @@
   },
   "components/slide-in-pages/booking-flow.tsx": {
     "mp/no-effect": {
-      "count": 2
+      "count": 1
     },
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -1111,7 +995,7 @@
   },
   "components/slide-in-pages/cervical-neck-support.tsx": {
     "mp/no-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "components/slide-in-pages/confirming-refresh.tsx": {
@@ -1141,12 +1025,12 @@
   },
   "components/spatial/soft-cut.ts": {
     "mp/no-effect": {
-      "count": 4
+      "count": 2
     }
   },
   "components/spatial/soft-top.ts": {
     "mp/no-effect": {
-      "count": 5
+      "count": 4
     },
     "react-hooks/exhaustive-deps": {
       "count": 2
@@ -1154,12 +1038,12 @@
   },
   "components/spatial/xray-cross-section.tsx": {
     "mp/no-effect": {
-      "count": 14
+      "count": 12
     }
   },
   "components/spatial/xray-pillow.tsx": {
     "mp/no-effect": {
-      "count": 16
+      "count": 12
     },
     "react-hooks/refs": {
       "count": 1
@@ -1208,15 +1092,12 @@
   },
   "components/tiktok/tiktok-player.tsx": {
     "mp/no-effect": {
-      "count": 2
+      "count": 1
     }
   },
   "components/ui/app-dock.tsx": {
     "react-hooks/preserve-manual-memoization": {
       "count": 7
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
     }
   },
   "components/ui/apple-cards-carousel.tsx": {
@@ -1230,16 +1111,10 @@
   "components/ui/bubble-menu.tsx": {
     "@next/next/no-img-element": {
       "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 2
     }
   },
   "components/ui/image-picker.tsx": {
     "@next/next/no-img-element": {
-      "count": 1
-    },
-    "react-hooks/set-state-in-effect": {
       "count": 1
     }
   },
@@ -1255,7 +1130,7 @@
   },
   "components/ui/shadcn-io/particles/index.tsx": {
     "react-hooks/exhaustive-deps": {
-      "count": 3
+      "count": 2
     },
     "react-hooks/immutability": {
       "count": 3
@@ -1272,11 +1147,6 @@
     }
   },
   "components/ui/top-loading-bar.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 2
-    }
-  },
-  "hooks/use-mobile.ts": {
     "react-hooks/set-state-in-effect": {
       "count": 1
     }

@@ -113,19 +113,11 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   }, [reload]);
 
   useEffect(() => {
-    if (linkKind === "pillow") {
-      if (!linkPillowSize) setLinkPillowSize("M");
-    }
-    if (linkKind === "bolster") {
-      if (!linkBolsterVariant) setLinkBolsterVariant("medium");
-    }
-  }, [linkKind, linkPillowSize, linkBolsterVariant]);
-
-  useEffect(() => {
+    let live = true;
     const load = async () => {
       if (linkKind === "part") {
         setLinkTemplates([]);
-        setLinkTemplateId("");
+        setLoadingLinkTemplates(false);
         return;
       }
 
@@ -137,6 +129,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             return;
           }
           const payload = await listTemplates("pillow", linkPillowSize, linkPillowKind);
+          if (!live) return;
           const list = (payload.templates ?? []) as Array<{ id: number; name: string }>;
           setLinkTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
         } else {
@@ -145,19 +138,23 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             return;
           }
           const payload = await listTemplates("bolster", linkBolsterVariant);
+          if (!live) return;
           const list = (payload.templates ?? []) as Array<{ id: number; name: string }>;
           setLinkTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
         }
       } catch (e) {
+        if (!live) return;
         setLinkTemplates([]);
         toast.error(e instanceof Error ? e.message : "Failed to load templates");
       } finally {
-        setLoadingLinkTemplates(false);
+        if (live) setLoadingLinkTemplates(false);
       }
     };
 
-    load();
-    setLinkTemplateId("");
+    void load();
+    return () => {
+      live = false;
+    };
   }, [linkKind, linkPillowKind, linkPillowSize, linkBolsterVariant]);
 
   const visible = useMemo(() => {
@@ -241,7 +238,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         <div className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground">Mapping type</div>
-            <Select value={linkKind} onValueChange={(v) => setLinkKind(v as "part" | "pillow" | "bolster")}>
+            <Select
+              value={linkKind}
+              onValueChange={(v) => {
+                setLinkKind(v as "part" | "pillow" | "bolster");
+                setLinkTemplateId("");
+              }}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -274,7 +277,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             {linkKind === "pillow" ? (
               <>
                 <div className="text-xs text-muted-foreground">Pillow kind</div>
-                <Select value={linkPillowKind} onValueChange={(v) => setLinkPillowKind(v as "basic" | "premium")}>
+                <Select
+                  value={linkPillowKind}
+                  onValueChange={(v) => {
+                    setLinkPillowKind(v as "basic" | "premium");
+                    setLinkTemplateId("");
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -289,7 +298,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             {linkKind === "bolster" ? (
               <>
                 <div className="text-xs text-muted-foreground">Bolster variant</div>
-                <Select value={linkBolsterVariant} onValueChange={(v) => setLinkBolsterVariant(v as "" | "short" | "medium" | "long")}>
+                <Select
+                  value={linkBolsterVariant}
+                  onValueChange={(v) => {
+                    setLinkBolsterVariant(v as "" | "short" | "medium" | "long");
+                    setLinkTemplateId("");
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={!linkBolsterVariant ? "Select bolster variant…" : undefined} />
                   </SelectTrigger>
@@ -308,7 +323,10 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             <div className="text-xs text-muted-foreground">Pillow size</div>
             <Select
               value={linkKind === "pillow" ? linkPillowSize : ""}
-              onValueChange={(v) => setLinkPillowSize(v as "" | "XS" | "S" | "M" | "L" | "XL")}
+              onValueChange={(v) => {
+                setLinkPillowSize(v as "" | "XS" | "S" | "M" | "L" | "XL");
+                setLinkTemplateId("");
+              }}
             >
               <SelectTrigger className="w-full" disabled={linkKind !== "pillow"}>
                 <SelectValue

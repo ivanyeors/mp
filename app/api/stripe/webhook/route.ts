@@ -86,9 +86,9 @@ async function recordWebhookFailure(
   admin: SupabaseClient,
   event: Stripe.Event,
   error: string
-) {
+): Promise<boolean> {
   try {
-    await admin.from("stripe_webhook_failures").upsert(
+    const { error: writeError } = await admin.from("stripe_webhook_failures").upsert(
       {
         event_id: event.id,
         event_type: event.type,
@@ -97,9 +97,12 @@ async function recordWebhookFailure(
       },
       { onConflict: "event_id" }
     );
+    if (!writeError) return true;
+    console.error("[stripe/webhook] Failed to write dead-letter row:", writeError.message);
   } catch (err) {
     console.error("[stripe/webhook] Failed to write dead-letter row:", err);
   }
+  return false;
 }
 
 const CONFIRMABLE_STATUSES = new Set(["pending", "payment_failed"]);
@@ -202,7 +205,23 @@ export async function POST(req: Request) {
           break;
         }
 
-        if (!orderId) break;
+        if (!orderId) {
+          if (session.payment_status !== "paid") break;
+          const intent =
+            typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? "none";
+          const link =
+            typeof session.payment_link === "string" ? session.payment_link : session.payment_link?.id ?? "none";
+          const detail =
+            `Stripe took ${(session.currency ?? "").toUpperCase()} ${((session.amount_total ?? 0) / 100).toFixed(2)} ` +
+            `in Checkout Session ${session.id} (payment ${intent}, payment link ${link}) ` +
+            `with no Order or Result to attach it to. No Order was made, no stock was deducted and no receipt was sent. ` +
+            `Refund it in Stripe or make the Order by hand.`;
+          console.error(`[stripe/webhook] ${detail}`);
+          const recorded = await recordWebhookFailure(admin, event, detail);
+          const told = (await sendTelegram(detail).catch(() => "failed")) === "sent";
+          if (!recorded && !told) throw new Error(`${detail} It could not be recorded or sent to Staff.`);
+          break;
+        }
 
         if (session.payment_status === "unpaid") {
           const pendingCartToken = session.metadata?.cart_token;

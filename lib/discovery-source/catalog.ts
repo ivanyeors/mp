@@ -119,6 +119,14 @@ export function activeDiscoverySourceOptions(
   return normalized.options.filter((o) => o.active);
 }
 
+export function discoverySourceChoices(catalog: DiscoverySourceCatalog, locale: Locale) {
+  return activeDiscoverySourceOptions(catalog).map((o) => ({
+    id: o.id,
+    label: o.labels[locale] ?? o.labels[DEFAULT_LOCALE],
+    labels: o.labels,
+  }));
+}
+
 export function findDiscoverySourceOption(
   catalog: DiscoverySourceCatalog,
   id: string,

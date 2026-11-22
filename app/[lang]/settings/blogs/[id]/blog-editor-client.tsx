@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
 import { useMobileDockActions } from "@/components/ui/page-dock-actions";
@@ -87,7 +88,6 @@ export default function BlogEditorPage({
 
     const [loading, setLoading] = useState(!isNew && !initialData);
     const [saving, setSaving] = useState(false);
-    const skipFirstFetch = useRef(initialData != null);
 
     const [slug, setSlug] = useState(initialRow?.slug ?? "");
     const [status, setStatus] = useState<string>(initialRow?.status ?? "draft");
@@ -123,31 +123,35 @@ export default function BlogEditorPage({
             .replace(/-+/g, "-")
             .slice(0, 200);
 
-    const loadPost = useCallback(async () => {
-        if (!postId) return;
-        setLoading(true);
-        const res = await fetch(`/api/blogs/${postId}`);
-        const json = await res.json();
-        if (json.ok && json.row) {
-            const row = json.row;
-            setSlug(row.slug);
-            setStatus(row.status);
-            setAuthor(row.author);
-            setImageUrl(row.image_url ?? "");
-            setImageAssetId(row.media_asset_id ?? null);
-            setLabels(row.labels ?? []);
-            setContent(mergeContent(row.content));
-        }
-        setLoading(false);
-    }, [postId]);
+    const readPost = () =>
+        fetch(`/api/blogs/${postId}`)
+            .then((res) => res.json())
+            .catch(() => null)
+            .then((json) => {
+                if (!json) toast.error("Couldn't load this post.");
+                else if (json.ok && json.row) {
+                    const row = json.row;
+                    setSlug(row.slug);
+                    setStatus(row.status);
+                    setAuthor(row.author);
+                    setImageUrl(row.image_url ?? "");
+                    setImageAssetId(row.media_asset_id ?? null);
+                    setLabels(row.labels ?? []);
+                    setContent(mergeContent(row.content));
+                }
+                setLoading(false);
+            });
+    const readPostOnMount = useEffectEvent(readPost);
 
     useEffect(() => {
-        if (skipFirstFetch.current) {
-            skipFirstFetch.current = false;
-            return;
-        }
-        loadPost();
-    }, [loadPost]);
+        if (initialData || !postId) return;
+        void readPostOnMount();
+    }, [initialData, postId]);
+
+    const reloadPost = () => {
+        setLoading(true);
+        void readPost();
+    };
 
     const handleSave = async (publishOverride?: string) => {
         setSaving(true);
@@ -182,7 +186,7 @@ export default function BlogEditorPage({
                 });
                 const json = await res.json();
                 if (!json.ok) alert(json.error ?? "Couldn't save.");
-                else loadPost();
+                else reloadPost();
             }
         } finally {
             setSaving(false);

@@ -84,16 +84,17 @@ describe("item refund amounts", () => {
   const order = { subtotal: 120, shipping_amount: 8, total: 104 };
   const cushions = { id: "a", quantity: 2, total_price: 100 };
   const caseLine = { id: "b", quantity: 1, total_price: 20 };
+  const lines = [cushions, caseLine];
 
   it("refunds a line's share of what was paid, after the discount", () => {
-    expect(lineRefundAmount(order, cushions, 2)).toBe(80);
-    expect(lineRefundAmount(order, cushions, 1)).toBe(40);
-    expect(lineRefundAmount(order, caseLine, 1)).toBe(16);
+    expect(lineRefundAmount(order, lines, cushions, 2)).toBe(80);
+    expect(lineRefundAmount(order, lines, cushions, 1)).toBe(40);
+    expect(lineRefundAmount(order, lines, caseLine, 1)).toBe(16);
   });
 
   it("never refunds more units than the line holds", () => {
-    expect(lineRefundAmount(order, cushions, 5)).toBe(80);
-    expect(lineRefundAmount(order, cushions, 0)).toBe(0);
+    expect(lineRefundAmount(order, lines, cushions, 5)).toBe(80);
+    expect(lineRefundAmount(order, lines, cushions, 0)).toBe(0);
   });
 
   it("every line plus shipping is exactly what was paid", () => {
@@ -115,7 +116,70 @@ describe("item refund amounts", () => {
   });
 
   it("an undiscounted order refunds list price", () => {
-    expect(lineRefundAmount({ subtotal: 45, shipping_amount: 5, total: 50 }, { id: "c", quantity: 3, total_price: 45 }, 1)).toBe(15);
+    const line = { id: "c", quantity: 3, total_price: 45 };
+    expect(lineRefundAmount({ subtotal: 45, shipping_amount: 5, total: 50 }, [line], line, 1)).toBe(15);
+  });
+
+  const everyLine = (lines: Array<{ id: string; quantity: number }>) => ({
+    items: lines.map((l) => ({ order_item_id: l.id, quantity: l.quantity })),
+    shipping: true,
+  });
+
+  it("every line of an Order that took S$456.93 refunds S$456.93, not a cent over", () => {
+    const order = { subtotal: 456.96, shipping_amount: 0, total: 456.93 };
+    const lines = [
+      { id: "a", quantity: 1, total_price: 152.32 },
+      { id: "b", quantity: 1, total_price: 228.48 },
+      { id: "c", quantity: 1, total_price: 76.16 },
+    ];
+    expect(selectionRefundAmount(order, lines, everyLine(lines))).toBe(456.93);
+    expect(lines.map((l) => lineRefundAmount(order, lines, l, 1))).toEqual([152.31, 228.47, 76.15]);
+  });
+
+  it("three S$1.00 lines with a S$0.02 discount refund S$2.98, not a cent under", () => {
+    const order = { subtotal: 3, shipping_amount: 0, total: 2.98 };
+    const lines = ["a", "b", "c"].map((id) => ({ id, quantity: 1, total_price: 1 }));
+    expect(selectionRefundAmount(order, lines, everyLine(lines))).toBe(2.98);
+    expect(lines.map((l) => lineRefundAmount(order, lines, l, 1))).toEqual([1, 0.99, 0.99]);
+  });
+
+  it("a part of a line rounds up to the cent, so its units refunded one at a time never leave a cent behind", () => {
+    const order = { subtotal: 3, shipping_amount: 0, total: 2.98 };
+    const line = { id: "a", quantity: 3, total_price: 3 };
+    expect(lineRefundAmount(order, [line], line, 1)).toBe(1);
+    expect(lineRefundAmount(order, [line], line, 2)).toBe(1.99);
+    expect(lineRefundAmount(order, [line], line, 3)).toBe(2.98);
+  });
+
+  it("a line's share does not depend on the order the lines arrive in", () => {
+    const order = { subtotal: 3, shipping_amount: 0, total: 2.98 };
+    const [a, b, c] = ["a", "b", "c"].map((id) => ({ id, quantity: 1, total_price: 1 }));
+    const orderings = [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]];
+    for (const lines of orderings) {
+      expect(lines.map((l) => [l.id, lineRefundAmount(order, lines, l, 1)])).toEqual(
+        expect.arrayContaining([["a", 1], ["b", 0.99], ["c", 0.99]]),
+      );
+    }
+  });
+
+  it("lines that add up to less than the subtotal get at most a cent above their floored share, and never more than was paid", () => {
+    const order = { subtotal: 10, shipping_amount: 0, total: 5 };
+    const lines = ["a", "b", "c"].map((id) => ({ id, quantity: 1, total_price: 1.01 }));
+    expect(lines.map((l) => lineRefundAmount(order, lines, l, 1))).toEqual([0.51, 0.51, 0.51]);
+    expect(selectionRefundAmount(order, lines, everyLine(lines))).toBe(1.53);
+  });
+
+  it("lines that add up to more than the subtotal are each floored, never rounded up", () => {
+    const order = { subtotal: 2, shipping_amount: 0, total: 1 };
+    const lines = ["a", "b", "c"].map((id) => ({ id, quantity: 1, total_price: 1.01 }));
+    expect(lines.map((l) => lineRefundAmount(order, lines, l, 1))).toEqual([0.5, 0.5, 0.5]);
+  });
+
+  it("refunds nothing when the subtotal is not positive or the line holds nothing", () => {
+    const empty = { id: "z", quantity: 0, total_price: 10 };
+    expect(lineRefundAmount({ subtotal: 0, shipping_amount: 0, total: 10 }, [cushions], cushions, 2)).toBe(0);
+    expect(lineRefundAmount(order, [cushions, empty], empty, 1)).toBe(0);
+    expect(lineRefundAmount({ subtotal: 120, shipping_amount: 50, total: 20 }, lines, cushions, 2)).toBe(0);
   });
 });
 
