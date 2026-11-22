@@ -45,6 +45,7 @@ const RAILS = [
   "scripts/pr-risk.mjs",
   "scripts/pr-risk.test.ts",
   "scripts/git-identity",
+  "scripts/lint-baseline.mjs",
 ];
 
 // Root files that are not rails. Markdown is only prose (CLAUDE.md and
