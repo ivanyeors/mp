@@ -43,6 +43,8 @@ export async function getDiscoverySourceCatalog(): Promise<DiscoverySourceCatalo
   return parseDiscoverySourceCatalog(stored[DISCOVERY_SOURCE_SETTING_KEY]);
 }
 
+export const DISCOVERY_SOURCE_READ_FAILED = "Couldn't read the Discovery source options, so they can't be changed.";
+
 export async function getDiscoverySourceCatalogOrThrow(): Promise<DiscoverySourceCatalog> {
   const { data, error } = await supabaseAdmin()
     .from("site_settings")

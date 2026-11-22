@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { SortableRow } from "@/components/ui/sortable-row";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  DISCOVERY_SOURCE_READ_FAILED,
   OTHER_DISCOVERY_SOURCE_ID,
   type DiscoverySourceCatalog,
   type DiscoverySourceOption,
@@ -67,7 +68,7 @@ function emptyLabels() {
   return { "en-US": "", "zh-CN": "" };
 }
 
-export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog };
+export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog } | { error: string };
 
 export default function FormsSettingsPage({
   initialData,
@@ -75,8 +76,9 @@ export default function FormsSettingsPage({
   initialData: FormsInitialData;
 }) {
   const [options, setOptions] = useState<DiscoverySourceOption[]>(
-    initialData.catalog?.options ?? [],
+    "catalog" in initialData ? initialData.catalog.options : [],
   );
+  const [loadError, setLoadError] = useState("error" in initialData ? initialData.error : null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -89,10 +91,11 @@ export default function FormsSettingsPage({
     try {
       const res = await fetch("/api/settings/forms/discovery-source");
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(getApiErrorMessage(data.error, "Couldn't load."));
-      setOptions(data.catalog?.options ?? []);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load.");
+      if (!res.ok || !Array.isArray(data.catalog?.options)) throw new Error(DISCOVERY_SOURCE_READ_FAILED);
+      setOptions(data.catalog.options);
+      setLoadError(null);
+    } catch {
+      setLoadError(DISCOVERY_SOURCE_READ_FAILED);
     } finally {
       setLoading(false);
     }
@@ -215,7 +218,13 @@ export default function FormsSettingsPage({
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
-                <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-none">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  disabled={loadError !== null}
+                >
                   <Plus className="mr-1 h-4 w-4" />
                   Add
                 </Button>
@@ -264,7 +273,7 @@ export default function FormsSettingsPage({
                       Cancel
                     </Button>
                   </DialogClose>
-                  <Button type="button" onClick={addOption} disabled={saving}>
+                  <Button type="button" onClick={addOption} disabled={saving || loadError !== null}>
                     Add option
                   </Button>
                 </DialogFooter>
@@ -275,7 +284,7 @@ export default function FormsSettingsPage({
               size="sm"
               className="flex-1 sm:flex-none"
               onClick={() => void save(options)}
-              disabled={saving || loading}
+              disabled={saving || loading || loadError !== null}
             >
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
               Save labels
@@ -287,6 +296,15 @@ export default function FormsSettingsPage({
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading…
+          </div>
+        ) : loadError !== null ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p role="alert" className="text-sm text-destructive">
+              {loadError}
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={() => void load()}>
+              Retry
+            </Button>
           </div>
         ) : (
           <DragDropProvider onDragEnd={handleDragEnd}>
