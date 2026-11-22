@@ -168,7 +168,7 @@ import {
 } from "@/lib/configurator/staff-assist-draft";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
-import type { ServicePrices } from "@/lib/pricing/service-prices";
+import type { ServiceFees } from "@/lib/pricing/service-prices";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
@@ -274,7 +274,7 @@ export function MbolsterConfigClient({
 }: {
   info: MbolsterConfigInfo;
   discoverySourceOptions: DiscoverySourceChoice[];
-  servicePrices?: ServicePrices | null;
+  servicePrices?: ServiceFees | null;
   measuredByStaff?: boolean;
   staffAssist?: boolean;
   partner?: {

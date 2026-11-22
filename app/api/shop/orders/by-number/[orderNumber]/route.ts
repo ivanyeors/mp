@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { secretMatches } from "@/lib/auth/secret";
 import { ORDER_WITH_ITEMS, type CustomerOrder } from "@/lib/shop/customer-orders";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { withoutCosts } from "@/lib/shop/without-costs";
 
 export const runtime = "nodejs";
 
@@ -34,5 +35,5 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, order });
+  return NextResponse.json({ ok: true, order: withoutCosts(order) });
 }

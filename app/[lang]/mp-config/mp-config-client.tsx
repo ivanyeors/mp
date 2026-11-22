@@ -2,7 +2,7 @@
 
 import { placedChargeLines, priceComposedBuild } from "@/lib/pricing/composed-price";
 import { resultServiceLines, sumServiceLines, type ServiceLine } from "@/lib/pricing/service-lines";
-import type { ServicePrices } from "@/lib/pricing/service-prices";
+import type { ServiceFees } from "@/lib/pricing/service-prices";
 
 import {
   useEffect,
@@ -460,7 +460,7 @@ export function MpConfigClient({
   info: MpConfigInfo;
   askEmailFirst?: boolean;
   resumeDraft?: ResumeDraft | null;
-  servicePrices?: ServicePrices | null;
+  servicePrices?: ServiceFees | null;
   measuredByStaff?: boolean;
   pickMeasurer?: MeasurerProfile[] | null;
   staffAssist?: boolean;
