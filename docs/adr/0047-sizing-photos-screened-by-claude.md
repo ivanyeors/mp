@@ -56,7 +56,11 @@ what passes.**
   it within 30 days, unless its safety systems flag it, in which case it can be kept for up to two
   years. The privacy notice needs to say photos are checked by an AI provider overseas.
 - Haiku can be wrong in both directions. Photos are optional, so a wrongly rejected photo costs
-  the customer a retake, not their order.
+  the customer a retake, not their order. How often it is wrong is measured by
+  `pnpm ai:eval-photos` (`scripts/eval-photo-screening.ts`): photos sorted into folders by what
+  they really show, each offered as both uploads and run three times, reporting good photos turned
+  down and bad photos kept. The photos are of people, so they stay outside git; the shot list is in
+  `lib/ai/photo-screening-eval.ts`. Run it before changing the model, the effort or the prompt.
 - An unchecked photo that is still unchecked at submit reaches no one; there is no Staff view of
   Sizing photos outside Telegram. If outages make that common, the next step is showing unchecked
   photos to Staff on the Result detail page.

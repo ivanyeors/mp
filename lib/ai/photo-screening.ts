@@ -170,17 +170,37 @@ export async function screenSizingPhoto(
     return { status: "unchecked", error: claudeCallError(e) };
   }
 
-  if (response.stop_reason !== "end_turn") return { status: "rejected", reason: PHOTO_NOT_USABLE };
+  return screeningFromResponse(response, view);
+}
+
+/**
+ * Pure — Claude's four answers, or null when it refused, ran out of room or
+ * answered something that can't be read.
+ */
+export function screeningAnswerOf(response: Pick<Anthropic.Message, "stop_reason" | "content">): PhotoScreeningAnswer | null {
+  if (response.stop_reason !== "end_turn") return null;
   const text = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    return { status: "rejected", reason: PHOTO_NOT_USABLE };
+    return null;
   }
   const answer = PhotoScreeningAnswerSchema.safeParse(json);
-  if (!answer.success) return { status: "rejected", reason: PHOTO_NOT_USABLE };
+  return answer.success ? answer.data : null;
+}
 
-  const verdict = photoScreeningVerdict(answer.data, view);
+/**
+ * Pure — what Claude's answer means for a photo taken for `view`. The request
+ * is the same for both views, so one answer can be read for each
+ * (`scripts/eval-photo-screening.ts` does).
+ */
+export function screeningFromResponse(
+  response: Pick<Anthropic.Message, "stop_reason" | "content" | "model">,
+  view: SizingPhotoView,
+): Exclude<PhotoScreening, { status: "unchecked" }> {
+  const answer = screeningAnswerOf(response);
+  if (!answer) return { status: "rejected", reason: PHOTO_NOT_USABLE };
+  const verdict = photoScreeningVerdict(answer, view);
   return verdict.ok ? { status: "passed", model: response.model } : { status: "rejected", reason: verdict.reason };
 }
