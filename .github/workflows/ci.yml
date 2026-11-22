@@ -131,13 +131,12 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: pnpm install --frozen-lockfile
 
-      # Two threads for the runner's two CPUs: ESLint is single-threaded by
-      # default. Same rules, same baseline, same result (measured November
-      # 2026: 110 s to 95 s on two CPUs). Most of the time is the React
+      # Single-threaded on purpose: on this runner --concurrency=2 took 2:43
+      # against 2:12 (PR #476, November 2026). Most of the time is the React
       # Compiler rules, which are worth keeping.
       - name: Lint
         if: steps.scope.outputs.code == 'true'
-        run: pnpm lint --concurrency=2
+        run: pnpm lint
 
       # `pnpm typecheck` runs `next typegen` first: next-env.d.ts and
       # .next/types/** are gitignored build artefacts that tsconfig.json
@@ -153,16 +152,15 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
 
       # Vitest's default is one worker fewer than the CPUs, so on this two-CPU
-      # runner it ran one test file at a time. Two workers, same tests:
-      # measured November 2026 on two CPUs, 559 s with one, 322 s with two,
-      # 301 s with three and 291 s with four; past two the gain is small and
-      # the timing-sensitive hook tests share less CPU.
+            # One worker, Vitest's default on two vCPUs, on purpose: with two the
+      # run's total test work doubled (import 149 s to 327 s, tests 386 s to
+      # 643 s), so each worker ran at half speed, the step saved 39 s, and
+      # two CPU-heavy email tests passed their 5 s limit (PR #476, November
+      # 2026). The two vCPUs behave like one core.
       - name: Test
         if: steps.scope.outputs.code == 'true'
-        run: pnpm test --maxWorkers=2
-
-      # The `*.check.ts` invariant scripts. Before this step nothing ran them,
-      # and eleven had drifted from the code unnoticed. The few that need a
+        run: pnpm test
+ # and eleven had drifted from the code unnoticed. The few that need a
       # live database are skipped here (see LIVE in scripts/checks.mjs).
       - name: Checks
         if: steps.scope.outputs.code == 'true'
