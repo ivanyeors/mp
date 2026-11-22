@@ -1,4 +1,5 @@
 import { markReadjustmentCancelledByEvent } from "@/lib/readjustment/lifecycle";
+import { sendTelegram } from "@/lib/telegram/notify";
 import { deleteEvent, getEventTiming, type EventState, type EventTiming } from "./calendar";
 import { isPhoneAllowed } from "./phone";
 import {
@@ -44,12 +45,26 @@ export async function cancelAppointment(
   const t = transitionReminder(row.status, { type: "cancel" });
   if (!t.ok || t.noop) return { kind: "not_live" };
 
-  await markReadjustmentCancelledByEvent(row.calendar_event_id, opts.cause === "removed" ? "staff" : "customer", {
-    now,
-    startsAt,
-    cancelledAt: opts.cause === "declined" ? declinedAt(timing, now) : now,
-  });
-  if (opts.cause !== "removed") await deleteEvent(row.calendar_event_id);
+  const bookingsCancelled = await markReadjustmentCancelledByEvent(
+    row.calendar_event_id,
+    opts.cause === "removed" ? "staff" : "customer",
+    { now, startsAt, cancelledAt: opts.cause === "declined" ? declinedAt(timing, now) : now },
+  );
+  if (opts.cause !== "removed") {
+    try {
+      await deleteEvent(row.calendar_event_id);
+    } catch (e) {
+      if (bookingsCancelled === 0) throw e;
+      await sendTelegram(
+        [
+          "⚠️ Re-adjustment cancelled, but its calendar event couldn't be removed",
+          `${row.guest_name} · ${row.starts_at}`,
+          `Google: ${e instanceof Error ? e.message : String(e)}`,
+          "Delete the event in Google Calendar to free the slot.",
+        ].join("\n"),
+      );
+    }
+  }
 
   const claimed = await updateReminder(
     row.calendar_event_id,

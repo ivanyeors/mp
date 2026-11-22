@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   deleteEvent: vi.fn(),
   timing: vi.fn(),
   updateReminder: vi.fn(async () => true),
+  telegram: vi.fn(async () => "sent"),
 }));
 
 vi.mock("@/lib/readjustment/lifecycle", () => ({ markReadjustmentCancelledByEvent: h.mark }));
@@ -17,6 +18,7 @@ vi.mock("@/lib/appointments/reminders-db", () => ({
   updateReminder: h.updateReminder,
 }));
 vi.mock("@/lib/appointments/remind", () => ({ sendOrRecord: vi.fn() }));
+vi.mock("@/lib/telegram/notify", () => ({ sendTelegram: h.telegram }));
 vi.mock("@/lib/appointments/whatsapp", () => ({ sendCancelMessage: vi.fn(), withinServiceWindow: () => true }));
 
 const { cancelAppointment } = await import("@/lib/appointments/cancel");
@@ -41,12 +43,13 @@ const settings = { whatsappEnabled: false } as never;
 beforeEach(() => {
   h.log.length = 0;
   h.mark.mockReset();
-  h.mark.mockImplementation(async () => void h.log.push("mark"));
+  h.mark.mockImplementation(async () => (h.log.push("mark"), 1));
   h.deleteEvent.mockReset();
   h.deleteEvent.mockImplementation(async () => void h.log.push("delete"));
   h.timing.mockReset();
   h.timing.mockResolvedValue({ startsAt: BOOKED, updatedAt: "2026-11-24T01:00:00.000Z" });
   h.updateReminder.mockClear();
+  h.telegram.mockClear();
 });
 
 describe("cancelAppointment and the re-adjustment refund", () => {
@@ -88,5 +91,20 @@ describe("cancelAppointment and the re-adjustment refund", () => {
     h.timing.mockRejectedValue(new Error("google down"));
     await cancelAppointment(row(), settings, { cause: "declined", now: NOW });
     expect(h.mark.mock.calls[0][2]).toMatchObject({ startsAt: BOOKED, cancelledAt: NOW });
+  });
+
+  it("finishes a refunded re-adjustment cancel when Google can't delete the event, and tells Staff", async () => {
+    h.deleteEvent.mockRejectedValue(new Error("events.delete failed (500)"));
+    const out = await cancelAppointment(row(), settings, { cause: "guest", now: NOW });
+    expect(out.kind).toBe("cancelled");
+    expect(h.updateReminder).toHaveBeenCalledWith("ev-1", { status: "cancelled", offered_slots: null }, "pending");
+    expect(String(h.telegram.mock.calls[0])).toContain("couldn't be removed");
+  });
+
+  it("still fails a cancel with no re-adjustment behind it when Google can't delete the event", async () => {
+    h.mark.mockResolvedValue(0);
+    h.deleteEvent.mockRejectedValue(new Error("events.delete failed (500)"));
+    await expect(cancelAppointment(row(), settings, { cause: "guest", now: NOW })).rejects.toThrow("500");
+    expect(h.updateReminder).not.toHaveBeenCalled();
   });
 });

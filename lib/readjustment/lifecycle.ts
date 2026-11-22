@@ -14,7 +14,7 @@ export async function markReadjustmentCancelledByEvent(
   by: CancelledBy,
   when: { now: Date; cancelledAt?: Date; startsAt?: string | null },
   admin: SupabaseClient = supabaseAdmin(),
-): Promise<void> {
+): Promise<number> {
   const { data, error } = await admin
     .from("readjustment_bookings")
     .update({ status: "cancelled", updated_at: when.now.toISOString() })
@@ -22,7 +22,8 @@ export async function markReadjustmentCancelledByEvent(
     .eq("status", "booked")
     .select(CANCELLED_BOOKING_COLUMNS);
   if (error) throw new Error(`Couldn't cancel the re-adjustment booking: ${error.message}`);
-  for (const booking of (data ?? []) as CancelledBooking[]) {
+  const moved = (data ?? []) as CancelledBooking[];
+  for (const booking of moved) {
     await refundCancelledReadjustment(
       admin,
       { ...booking, start_at: when.startsAt ?? booking.start_at },
@@ -31,6 +32,7 @@ export async function markReadjustmentCancelledByEvent(
       when.cancelledAt ?? when.now,
     );
   }
+  return moved.length;
 }
 
 export async function moveReadjustmentByEvent(

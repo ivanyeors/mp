@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
   refund: vi.fn(async () => ({ kind: "refunded" })),
   cancelAppointment: vi.fn(),
   deleteEvent: vi.fn(async () => {}),
+  liveStart: "2026-11-25T02:00:00.000Z",
 }));
 
 vi.mock("@/lib/auth/admin", () => ({
@@ -16,7 +17,7 @@ vi.mock("@/lib/auth/admin", () => ({
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn(async () => {}) }));
 vi.mock("@/lib/appointments/calendar", () => ({
   deleteEvent: h.deleteEvent,
-  getEventTiming: vi.fn(async () => ({ startsAt: "2026-11-25T02:00:00.000Z", updatedAt: null })),
+  getEventTiming: vi.fn(async () => ({ startsAt: h.liveStart, updatedAt: null })),
 }));
 vi.mock("@/lib/appointments/cancel", () => ({ cancelAppointment: h.cancelAppointment }));
 vi.mock("@/lib/appointments/reminders-db", () => ({
@@ -84,6 +85,7 @@ beforeEach(() => {
   h.refund.mockClear();
   h.cancelAppointment.mockReset();
   h.deleteEvent.mockClear();
+  h.liveStart = "2026-11-25T02:00:00.000Z";
 });
 
 describe("Staff cancel of a paid re-adjustment", () => {
@@ -108,5 +110,16 @@ describe("Staff cancel of a paid re-adjustment", () => {
     expect(res.status).toBe(200);
     expect(h.cancelAppointment).toHaveBeenCalledTimes(1);
     expect(h.refund).not.toHaveBeenCalled();
+  });
+
+  it("judges the refund against the visit's live time when Staff moved it in Google Calendar", async () => {
+    h.booking = paid({ start_at: "2026-11-21T02:00:00.000Z" });
+    h.liveStart = "2026-11-28T02:00:00.000Z";
+    h.cancelAppointment.mockResolvedValue({ kind: "not_live" });
+    const res = await cancel();
+    expect(res.status).toBe(200);
+    expect(h.cancelAppointment.mock.calls[0][2]).toMatchObject({ cause: "removed", startsAt: "2026-11-28T02:00:00.000Z" });
+    expect(h.refund).toHaveBeenCalledTimes(1);
+    expect((h.refund.mock.calls[0] as unknown as [unknown, Row])[1].start_at).toBe("2026-11-28T02:00:00.000Z");
   });
 });
