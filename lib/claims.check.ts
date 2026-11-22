@@ -18,6 +18,20 @@ const MUST_FLAG = [
   "颈椎枕（缓解颈部疼痛）",
   "让呼吸更顺畅。",
   "帮助俯睡时更易呼吸",
+  "促进更顺畅的呼吸",
+  "减轻不适，让你醒来更放松",
+  "Mpillow 帮助改善颈肩不适",
+  "无痛睡眠",
+  "康复期间使用",
+  "长期颈痛的骨科枕",
+  "Treats chronic neck pain.",
+  "Helps alleviate neck pain.",
+  "Eases shoulder pain overnight.",
+  "Features of our Premium neck & shoulder pain pillow",
+  "Our pillow for cervical neck pain is designed to help.",
+  "Clinically-proven design.",
+  "Recommended by our physiotherapist.",
+  "A posture corrector for sleep.",
 ];
 const MUST_PASS = [
   "A supportive shape that keeps your neck comfortable all night.",
@@ -27,11 +41,19 @@ const MUST_PASS = [
   "A little treat for tired parents.",
   "Your neck muscles take less strain overnight.",
   "认识与 Mpillow 合作的物理治疗中心。",
+  "What's the best pillow for neck pain? How to choose one in Singapore",
+  "Keeps your neck in the correct alignment.",
+  "Treat yourself to better sleep.",
+  "支撑垫填补颈部下方的空间，整夜减轻颈部肌肉的负担。",
+  "承托稳定、姿势舒适，减少夜间翻身，睡得更安稳。",
 ];
 for (const text of MUST_FLAG) assert.ok(findClaims(text).length > 0, `claims list misses: ${text}`);
 for (const text of MUST_PASS) assert.deepEqual(findClaims(text), [], `claims list over-matches: ${text}`);
 assert.ok(namesMedicalCondition("sleep apnea"));
 assert.ok(namesMedicalCondition("头部与颈椎手术后"));
+assert.ok(namesMedicalCondition("shoulder and cervical spine pain"));
+assert.ok(namesMedicalCondition("颈部疼痛"));
+assert.ok(!namesMedicalCondition("wake up with a stiff neck or shoulders"));
 assert.ok(!namesMedicalCondition("have broad or narrow shoulders"));
 
 function collectStrings(value: unknown, path: string, out: Array<[string, string]>) {
@@ -42,11 +64,14 @@ function collectStrings(value: unknown, path: string, out: Array<[string, string
   }
 }
 
+const CUSTOMER_QUOTE_PATH = /testimonialQuote$/;
+
 const problems: string[] = [];
 for (const [locale, messages] of [["en-US", enUS], ["zh-CN", zhCN]] as const) {
   const strings: Array<[string, string]> = [];
   collectStrings(messages, locale, strings);
   for (const [path, text] of strings) {
+    if (CUSTOMER_QUOTE_PATH.test(path)) continue;
     for (const rule of findClaims(text)) problems.push(`${path}: ${rule}: "${text.slice(0, 90)}"`);
     if (/whoItsForItems\[\d+\]$/.test(path) && namesMedicalCondition(text)) {
       problems.push(`${path}: names a medical condition as who it's for: "${text}"`);
@@ -61,6 +86,8 @@ const COPY_IN_CODE = [
   "app/[lang]/mp-config/page.tsx",
   "lib/seo/guides-content.ts",
   "lib/ecommerce/inventory-sync.ts",
+  "lib/seo/page-meta.ts",
+  "app/[lang]/mbolster-config/page.tsx",
 ];
 for (const rel of COPY_IN_CODE) {
   const source = readFileSync(join(process.cwd(), rel), "utf8").replace(/(["'`])\/[^"'`\s]*\1/g, '""');

@@ -54,6 +54,21 @@ Found while building, and fixed in the same slice:
 | mp-config zh-CN lede | 模块化设计面向缓解颈椎不适… | 模块化设计支持颈椎对齐、人体工学承托与长期舒适… |
 | Premium `seo_answer` seed (`inventory-sync.ts`, `answer-lede-coverage.check.ts`) | "Built for neck pain relief…" / 专为缓解颈椎不适… | "Built for cervical support…" / 专为颈椎承托… |
 
+**Review round (reviewer subagent, 22 Nov 2026).** The repo's Claude review was skipped (no `ANTHROPIC_API_KEY` secret), so the `reviewer` subagent checked the slice. It found:
+
+- gaps in the check: Chinese breathing word order; Chinese reduce-pain, pain-free, rehab, orthopaedic and guarantee terms; "treat" with an adjective; "alleviate" and "eases … pain"; pain missing from the condition list;
+- an over-match on the adjective "correct";
+- a scan that missed `lib/seo/page-meta.ts` and the Mbolster configurator.
+
+All fixed, with each case added to the self-test. Copy it found still making the claim, now rewritten:
+
+- "Features of our Premium neck & shoulder pain pillow" and "Our pillow for cervical neck pain…";
+- "The cervical pillow for neck pain helps…";
+- the zh Mbolster discover paragraph (Mpillow 帮助改善颈肩不适);
+- the Pick-your-Mpillow Premium card ("Choose Premium for chronic neck pain" / 长期颈痛, which `marketing-copy-slice-01.check.ts` asserted; that check now asserts "full fit" and no "pain").
+
+The customer testimonial ("the Mpillow successfully resolved my shoulder pain") is the customer's own words. It is exempt by name (`CUSTOMER_QUOTE_PATH`) and left for the owner to decide.
+
 **Owner step (live data):** the Premium product's live `seo_answer` is stored in the database, so the seed change does not reach it. Paste the new sentences in Settings → Products → Mpillow Premium → SEO (English: "Built for cervical support, modular serviceability, and long-term comfort that goes well beyond one-size foam."; Chinese: "专为颈椎承托、模块化维护与长期舒适而设计，超越一刀切泡沫枕。").
 
 ## Acceptance criteria

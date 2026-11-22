@@ -50,7 +50,7 @@ export const zhCN: Messages = {
         },
         premium: {
           title: "Premium",
-          description: "长期颈痛，选 Premium。可在新加坡门店进行一对一试配，海外顾客可在线测量。FibreCool 与颈椎支撑垫可按需加选。",
+          description: "需要按颈、头、肩全面贴合，选 Premium。可在新加坡门店进行一对一试配，海外顾客可在线测量。FibreCool 与颈椎支撑垫可按需加选。",
           badge: "专属贴合",
         },
       },
@@ -409,7 +409,7 @@ export const zhCN: Messages = {
         "模块化填充让你可以轻松调节 Mbolster 的软硬度（尤其适合侧睡）。填充物也可拆下机洗，让抱枕更卫生。",
       discoverTitle: "了解 Mbolster",
       discoverParagraphs: [
-        "Mbolster 与 Mpillow 搭配可进一步提升睡眠质量。Mpillow 帮助改善颈肩不适，而 Mbolster 则帮助侧睡者整晚维持更好的腰背姿势，减少肌肉拉扯与下背不适。",
+        "Mpillow 承托颈部，Mbolster 支撑侧睡，让颈部、脊柱与髋部一起得到承托。每个 Mbolster 都可按家人身高选择尺寸。",
         "传统抱枕过大或过硬时会非常不舒适，像抱着一块硬木。时间久了可能变软，内衬也可能因尘螨堆积而发黄。由于传统抱枕体积大，清洁往往更困难。",
         "M Bolster 打破传统：创新设计让你拥有更卫生、软硬平衡且更耐用的抱枕，带来每日舒适。",
       ],

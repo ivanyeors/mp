@@ -53,7 +53,7 @@ export const enUS: Messages = {
         premium: {
           title: "Premium",
           description:
-            "Choose Premium for chronic neck pain. Get a consultative fitting at our Singapore store, or measure online from overseas. FibreCool and cervical neck support are optional.",
+            "Choose Premium for a full fit to your neck, head and shoulders. Get a consultative fitting at our Singapore store, or measure online from overseas. FibreCool and cervical neck support are optional.",
           badge: "Custom fit",
         },
       },
@@ -286,9 +286,9 @@ export const enUS: Messages = {
         "Re-adjustment: one free visit within {freeWindowDays} days of purchase for Premium Mpillow, then {readjustmentFee} per visit",
         "Doorstep surcharge: $250 (includes transportation and one hour customisation)",
       ],
-      featuresTitle: "Features of our Premium neck & shoulder pain pillow",
+      featuresTitle: "Features of our Premium neck and shoulder pillow",
       featuresIntro:
-        "Our pillow for cervical neck pain is designed to help maintain proper spinal alignment. Tailored support can help you wake up feeling more refreshed.",
+        "Our cervical pillow is designed to help maintain proper spinal alignment. Tailored support can help you wake up feeling more refreshed.",
       features: [
         { title: "Customised to your specific shoulder, neck and head measurements", description: "A fitted pillow starts with accurate measurements so the support lands in the right places." },
         { title: "3 separate compartments maintain shape and allow for easy height adjustment", description: "Separate compartments help maintain structure and make fine-tuning the height easier." },
@@ -370,7 +370,7 @@ export const enUS: Messages = {
       differenceTitle: "The Mpillow Difference: Cervical Support Pillow",
       differenceParagraphs: [
         "An additional support for your curved neck.",
-        "The cervical pillow for neck pain helps to prevent fillings from getting flatter, as its shape keeps the integrity of the support.",
+        "The cervical neck support helps stop the fillings getting flatter, as its shape keeps the support in form.",
       ],
       additionalBenefitsTitle: "Additional Benefits of A Mpillow Cervical Support Pillow",
       additionalBenefits: [
