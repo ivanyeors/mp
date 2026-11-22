@@ -151,8 +151,7 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      # Vitest's default is one worker fewer than the CPUs, so on this two-CPU
-            # One worker, Vitest's default on two vCPUs, on purpose: with two the
+      # One worker, Vitest's default on two vCPUs, on purpose: with two the
       # run's total test work doubled (import 149 s to 327 s, tests 386 s to
       # 643 s), so each worker ran at half speed, the step saved 39 s, and
       # two CPU-heavy email tests passed their 5 s limit (PR #476, November
@@ -160,7 +159,9 @@ jobs:
       - name: Test
         if: steps.scope.outputs.code == 'true'
         run: pnpm test
- # and eleven had drifted from the code unnoticed. The few that need a
+
+      # The `*.check.ts` invariant scripts. Before this step nothing ran them,
+      # and eleven had drifted from the code unnoticed. The few that need a
       # live database are skipped here (see LIVE in scripts/checks.mjs).
       - name: Checks
         if: steps.scope.outputs.code == 'true'
