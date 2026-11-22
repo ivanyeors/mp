@@ -51,3 +51,5 @@ of that decision and folds the other two lists in.
   (`<page>:read`), not a level column, so the subset rule and the matrix stay boolean.
 - Amended by ADR 0028 (i): Customers splits the other way. `customers` stays the page key and now
   means seeing it; a tab-level `customers-edit` (`requires: ["customers"]`) grants every change.
+- Amended by ADR 0055 (Proposed): every page splits that way. The page key is View, and
+  `<page>-edit` is Edit. `<page>:read` is not used.
