@@ -729,10 +729,6 @@ export function XrayCrossSection({
   const tapRef = useRef<{ pointerId: number; x: number; y: number; closing: boolean } | null>(null);
   const [addState, setAddAt] = useState<{ target: SlabDropTarget; left: number; top: number } | null>(null);
   const addAt = addState?.target.section === cut.section ? addState : null;
-  const addOpen = useRef(false);
-  useEffect(() => {
-    addOpen.current = addAt !== null;
-  }, [addAt]);
   const [hoverState, setHoverColumn] = useState<Cell | null>(null);
   const hoverColumn = hoverState?.section === cut.section ? hoverState.subSection : null;
 
@@ -807,15 +803,22 @@ export function XrayCrossSection({
     setSpringSection(null);
   }, []);
 
+  const sectionToDrop = (target: SlabDropTarget | null) => (target && target.section !== cut.section ? target.section : null);
+  const aimAt = (target: SlabDropTarget | null) => {
+    setDropTarget(target);
+    onDropSection?.(sectionToDrop(target));
+  };
+
   const endHold = useCallback(() => {
     holdRef.current = null;
     disarmSpring();
     setHeld(null);
     setDropTarget(null);
+    onDropSection?.(null);
     setDropAlong(null);
     snappedAt.current = null;
     setOverTab(false);
-  }, [disarmSpring]);
+  }, [disarmSpring, onDropSection]);
 
   useEffect(() => {
     if (!held) return;
@@ -840,8 +843,9 @@ export function XrayCrossSection({
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       svgRef.current = null;
+      onDropSection?.(null);
     };
-  }, []);
+  }, [onDropSection]);
 
   useEffect(() => {
     const key = pendingFocus.current;
@@ -1060,13 +1064,13 @@ export function XrayCrossSection({
     onPointerDown: (e) => {
       if (!canAdd || e.button !== 0 || holdRef.current || following) return;
       if (e.target instanceof Element && e.target.closest("[data-slab-hit]")) return;
-      tapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, closing: addOpen.current };
+      tapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, closing: addAt !== null };
     },
     onPointerLeave: () => setHoverColumn(null),
     onPointerMove: (e) => {
       const hold = holdRef.current;
       if (!hold || hold.pointerId !== e.pointerId) {
-        if (canAdd && e.pointerType === "mouse" && !addOpen.current && !holdRef.current) {
+        if (canAdd && e.pointerType === "mouse" && addAt === null && !holdRef.current) {
           const onPouch = e.target instanceof Element && e.target.closest("[data-slab-hit]");
           const next = onPouch ? null : (cellAt(e.clientX, e.clientY)?.cell ?? null);
           setHoverColumn((c) => (c?.section === next?.section && c?.subSection === next?.subSection ? c : next));
@@ -1090,13 +1094,13 @@ export function XrayCrossSection({
         hold.target = target;
         hold.at = centre;
         setHeld({ ...hold });
-        setDropTarget(target);
+        aimAt(target);
         setHoverKey(null);
         return;
       }
       if (slabTargetKey(target) !== slabTargetKey(hold.target)) {
         hold.target = target;
-        setDropTarget(target);
+        aimAt(target);
       }
     },
     onPointerUp: (e) => {
@@ -1223,10 +1227,7 @@ export function XrayCrossSection({
     if (!onReadout) return;
     onReadout(readoutTone && readoutText ? { tone: readoutTone, text: readoutText } : null);
   }, [onReadout, readoutTone, readoutText]);
-  const dropSection = dropTarget && dropTarget.section !== cut.section ? dropTarget.section : null;
-  useEffect(() => {
-    onDropSection?.(dropSection);
-  }, [onDropSection, dropSection]);
+  const dropSection = sectionToDrop(dropTarget);
 
   const body = (
     <div ref={bodyRef} className={`relative space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>

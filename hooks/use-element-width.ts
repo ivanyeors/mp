@@ -16,7 +16,5 @@ export function useElementWidth<T extends HTMLElement>(): [React.RefCallback<T>,
     observer.current.observe(el);
   }, []);
 
-  React.useEffect(() => () => observer.current?.disconnect(), []);
-
   return [ref, width];
 }

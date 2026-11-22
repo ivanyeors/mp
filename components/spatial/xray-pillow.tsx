@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AlertTriangle, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
@@ -600,7 +600,6 @@ export function XrayPillow({
   const [openLayer, setOpenLayer] = useState<number | null>(null);
   const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
   const [selected, setSelected] = useState<PieceRef | null>(null);
-  const selectedRef = useRef(selected);
   const [drag, setDrag] = useState<PouchDrag | null>(null);
   const dragRef = useRef<PouchDrag | null>(null);
   const heldGhost = useHeldGhost();
@@ -614,9 +613,6 @@ export function XrayPillow({
   useEffect(() => {
     placementsRef.current = placements;
   }, [placements]);
-  useEffect(() => {
-    selectedRef.current = selected;
-  }, [selected]);
 
   const divedRef = useRef<Section | null>(null);
   const changeDive = useCallback(
@@ -648,17 +644,18 @@ export function XrayPillow({
     setOpenSub(subSection);
   }, []);
 
+  const onDiveKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape" && !draggingRef.current) {
+      if (selected) {
+        setSelected(null);
+        return;
+      }
+      endDive();
+    }
+  });
   useEffect(() => {
     if (!dived) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !draggingRef.current) {
-        if (selectedRef.current) {
-          setSelected(null);
-          return;
-        }
-        endDive();
-      }
-    };
+    const onKey = (e: KeyboardEvent) => onDiveKey(e);
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!rootRef.current || rootRef.current.contains(target) || controlsSlot?.contains(target)) return;
@@ -974,15 +971,23 @@ export function XrayPillow({
     const here = alongExtent(fit.settle, ref);
     if (here) nudgeTo(ref, p.x + p.w / 2 + step.xMm * stage.k, (here.startMm + here.endMm) / 2);
   };
-  const nudgeByRef = useRef(nudgeBy);
-  const performMoveRef = useRef(performMove);
-  const takeOutSelectedRef = useRef(() => {});
-  useEffect(() => {
-    performMoveRef.current = performMove;
-    nudgeByRef.current = nudgeBy;
-    takeOutSelectedRef.current = () => {
+  const onMoveKey = useEffectEvent((e: KeyboardEvent) => {
+    if (isTypingTarget(e.target) || draggingRef.current) return;
+    if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
       if (selectedPiece) takeOut(selectedPiece);
-    };
+      return;
+    }
+    const step = nudgeKeyFor(e);
+    if (step) {
+      e.preventDefault();
+      nudgeBy(step);
+      return;
+    }
+    const kind = moveKeyFor(e);
+    if (!kind) return;
+    e.preventDefault();
+    performMove(kind);
   });
 
   const toView = (clientX: number, clientY: number) => {
@@ -1246,12 +1251,6 @@ export function XrayPillow({
   }, [draftSnap]);
   useEffect(() => () => clearXrayDraft(placementsRef.current, "top"), []);
   useEffect(() => {
-    if (!dragRef.current) {
-      draftSignature.current = "";
-      setOwnDraft(null);
-    }
-  }, [placements]);
-  useEffect(() => {
     if (!drag?.active) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -1264,26 +1263,9 @@ export function XrayPillow({
 
   useEffect(() => {
     if (!dived || !editable || !selectedPiece) return;
-    const onMoveKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target) || draggingRef.current) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        e.preventDefault();
-        takeOutSelectedRef.current();
-        return;
-      }
-      const step = nudgeKeyFor(e);
-      if (step) {
-        e.preventDefault();
-        nudgeByRef.current(step);
-        return;
-      }
-      const kind = moveKeyFor(e);
-      if (!kind) return;
-      e.preventDefault();
-      performMoveRef.current(kind);
-    };
-    window.addEventListener("keydown", onMoveKey);
-    return () => window.removeEventListener("keydown", onMoveKey);
+    const listener = (e: KeyboardEvent) => onMoveKey(e);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
   }, [dived, editable, selectedPiece]);
 
   const pieceChip = (cell: Cell, itemId: number, slots: number[]) => {

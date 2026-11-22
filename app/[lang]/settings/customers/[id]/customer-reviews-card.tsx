@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Check, ExternalLink, Link2Off, Loader2, RefreshCw, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -29,47 +29,42 @@ const SHOP_STATUS: Record<CustomerReviewsData["shop"][number]["status"], string>
 
 const CHANNEL_LABEL = { email: "email", whatsapp: "WhatsApp" } as const;
 
+const COULD_NOT_LOAD = "Could not load reviews.";
+
+export const reviewsOnRecord = (data: CustomerReviewsData) => data.google.length + data.shop.length;
+
 export function CustomerReviewsCard({
     customerId,
     canEdit,
+    initialData,
     onCount,
 }: {
     customerId: string;
     canEdit: boolean;
+    initialData: CustomerReviewsData | null;
     onCount?: (count: number) => void;
 }) {
-    const [data, setData] = useState<CustomerReviewsData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [data, setData] = useState<CustomerReviewsData | null>(initialData);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(initialData ? null : COULD_NOT_LOAD);
     const [busy, setBusy] = useState<string | null>(null);
-    const started = useRef(false);
-    const onCountRef = useRef(onCount);
-    useEffect(() => {
-        onCountRef.current = onCount;
-    }, [onCount]);
 
-    const load = useCallback(async () => {
+    const load = async () => {
         setLoading(true);
         setError(null);
         try {
             const res = await fetch(`/api/shop/customers/${customerId}/reviews`);
             const json = await res.json().catch(() => null);
-            if (!res.ok || !json?.ok) throw new Error(json?.error ?? "Could not load reviews.");
+            if (!res.ok || !json?.ok) throw new Error(json?.error ?? COULD_NOT_LOAD);
             const next = json as CustomerReviewsData;
             setData(next);
-            onCountRef.current?.(next.google.length + next.shop.length);
+            onCount?.(reviewsOnRecord(next));
         } catch (e) {
-            setError(e instanceof Error ? e.message : "Could not load reviews.");
+            setError(e instanceof Error ? e.message : COULD_NOT_LOAD);
         } finally {
             setLoading(false);
         }
-    }, [customerId]);
-
-    useEffect(() => {
-        if (started.current) return;
-        started.current = true;
-        void load();
-    }, [load]);
+    };
 
     const act = async (key: string, fn: () => Promise<boolean>) => {
         setBusy(key);

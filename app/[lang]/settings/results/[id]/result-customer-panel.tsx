@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Search, UserPlus, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -194,18 +194,20 @@ function CustomerDialog({
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; phone?: string; form?: string }>({});
 
+  const latestSearch = useRef(0);
   const q = query.trim();
   useEffect(() => {
     if (mode !== "link" || q.length < 2) return;
     const timer = setTimeout(async () => {
+      const search = ++latestSearch.current;
       setSearching(true);
       try {
         const params = new URLSearchParams({ search: q, limit: "6", page: "1" });
         const res = await fetch(`/api/shop/customers?${params.toString()}`);
         const json = await res.json().catch(() => null);
-        setResults(res.ok ? ((json?.rows ?? []) as CustomerOverviewRow[]) : []);
+        if (search === latestSearch.current) setResults(res.ok ? ((json?.rows ?? []) as CustomerOverviewRow[]) : []);
       } finally {
-        setSearching(false);
+        if (search === latestSearch.current) setSearching(false);
       }
     }, 300);
     return () => clearTimeout(timer);

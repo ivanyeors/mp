@@ -192,6 +192,7 @@ import {
 import {
   PreviewContactFields,
   previewContactFieldChecks,
+  type DiscoverySourceChoice,
 } from "@/components/configurator/preview-contact-fields";
 import {
   checkoutCodeDiscount,
@@ -450,7 +451,9 @@ export function MpConfigClient({
   pillowOwner = null,
   readjustmentPolicy = DEFAULT_READJUSTMENT_POLICY,
   pointsPerDollar = null,
+  discoverySourceOptions,
 }: {
+  discoverySourceOptions: DiscoverySourceChoice[];
   readjustmentPolicy?: ReadjustmentPolicy;
   pointsPerDollar?: number | null;
   pillowOwner?: { name: string } | null;
@@ -1102,13 +1105,16 @@ export function MpConfigClient({
     }
   }, [currentStep, nameFields, ageFields, healthFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
 
-  useEffect(() => {
+  const [errorsStep, setErrorsStep] = useState(currentStep);
+  if (errorsStep !== currentStep) {
+    setErrorsStep(currentStep);
     setFieldErrors({});
-  }, [currentStep]);
-
-  useEffect(() => {
+  }
+  const [errorsPrunedFor, setErrorsPrunedFor] = useState(activeFields);
+  if (errorsPrunedFor !== activeFields) {
+    setErrorsPrunedFor(activeFields);
     setFieldErrors((prev) => pruneFieldErrors(prev, activeFields));
-  }, [activeFields]);
+  }
 
   const tryAdvance = (fields: FieldCheck[], onOk: () => void | Promise<void>) => {
     const errors = buildFieldErrorMap(fields);
@@ -1940,6 +1946,7 @@ export function MpConfigClient({
           const all = await fetch(HOLD_SHIPPING_METHODS_PATH).then((r) => r.json());
           methods = all.rows ?? [];
         }
+        if (cancelled) return;
         setShippingMethods(methods);
         setSelectedShippingId((prev) => {
           if (methods.some((m) => m.id === prev)) return prev;
@@ -1949,7 +1956,9 @@ export function MpConfigClient({
           return stored?.id ?? methods[0]?.id ?? "";
         });
       })
-      .catch(() => setShippingMethods([]));
+      .catch(() => {
+        if (!cancelled) setShippingMethods([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -3356,7 +3365,7 @@ export function MpConfigClient({
 
                 {askingDetails && !resumeFinish && !staffEdit && (
                 <PreviewContactFields
-                    locale={locale}
+                    discoverySourceOptions={discoverySourceOptions}
                     fieldErrors={fieldErrors}
                     values={contactValues}
                     codeContext={codeContext}
@@ -4826,7 +4835,7 @@ export function MpConfigClient({
                     case and shipping after that — nothing is charged now.
                   </p>
                   <PreviewContactFields
-                    locale={locale}
+                    discoverySourceOptions={discoverySourceOptions}
                     fieldErrors={fieldErrors}
                     values={contactValues}
                     codeContext={NO_ORDER_CODE_CONTEXT}

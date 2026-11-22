@@ -8,6 +8,7 @@ import {
   archiveDiscoverySourceOption,
   assertCatalogAllowsSave,
   DEFAULT_DISCOVERY_SOURCE_CATALOG,
+  discoverySourceChoices,
   DISCOVERY_SOURCE_SETTING_KEY,
   normalizeDiscoverySourceOther,
   OTHER_DISCOVERY_SOURCE_ID,
@@ -69,6 +70,26 @@ assert.equal(
 const activeIds = activeDiscoverySourceOptions(archived).map((o) => o.id);
 assert.ok(!activeIds.includes("instagram"));
 assert.ok(activeIds.includes(OTHER_DISCOVERY_SOURCE_ID));
+assert.deepEqual(
+  discoverySourceChoices(archived, "en-US").map((o) => [o.id, o.label]),
+  [
+    ["google", "Google"],
+    ["friend-family", "Friend / family"],
+    ["clinic-partner", "Clinic / partner"],
+    ["walk-in", "Walk-in"],
+    [OTHER_DISCOVERY_SOURCE_ID, "Other"],
+  ],
+);
+assert.deepEqual(
+  discoverySourceChoices(archived, "zh-CN").map((o) => [o.id, o.label]),
+  [
+    ["google", "谷歌"],
+    ["friend-family", "朋友 / 家人"],
+    ["clinic-partner", "诊所 / 合作伙伴"],
+    ["walk-in", "路过 / 到店"],
+    [OTHER_DISCOVERY_SOURCE_ID, "其他"],
+  ],
+);
 assert.equal(
   resolveDiscoverySourceLabel(archived, "instagram", "en-US"),
   "Instagram",
@@ -170,7 +191,7 @@ assert.match(adminApi, /export async function GET/);
 assert.match(adminApi, /export async function PUT/);
 
 const publicApi = read("app/api/discovery-source/route.ts");
-assert.match(publicApi, /activeDiscoverySourceOptions/);
+assert.match(publicApi, /discoverySourceChoices/);
 assert.doesNotMatch(publicApi, /requireAdmin/);
 
 assert.equal(roleHasPermission("owner", "forms"), true);

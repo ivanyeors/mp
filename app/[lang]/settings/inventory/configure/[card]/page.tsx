@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import Link from "next/link";
 import { notFound, useParams, usePathname } from "next/navigation";
@@ -371,6 +371,7 @@ export default function ConfigureCardPage() {
   const [saving, setSaving] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
+  const [linesFailed, setLinesFailed] = useState(false);
   const [pillowTemplates, setPillowTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
   const [pillowSelectedTemplateId, setPillowSelectedTemplateId] = useState<number | ''>('');
   const [pillowTemplateName, setPillowTemplateName] = useState('');
@@ -403,14 +404,34 @@ export default function ConfigureCardPage() {
     return bolsterTemplates.find((t) => t.id === bolsterSelectedTemplateId) ?? null;
   }, [bolsterTemplates, bolsterSelectedTemplateId]);
 
-  const loadAll = useCallback(async () => {
+  const bolsterLength = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : null;
+
+  const loadRequest = useRef(0);
+  const templatePick = useRef(0);
+  const linesLoaded = useRef(false);
+  const loadAll = useCallback(async (readLines: boolean) => {
+    const request = ++loadRequest.current;
     setLoading(true);
-    const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }] = await Promise.all([
+    const [{ data: itemsData }, { data: productsData, error: productsError }, { data: bomData, error: bomError }, { data: bolsterConfig }, bolsterLinesRead] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("pillow_products").select("id,size,kind,default_filling_template_id").eq("is_active", true),
       supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
       supabaseClient.from("bolster_length_config").select("variant,default_filling_template_id"),
+      readLines && bolsterLength
+        ? supabaseClient.from("bolster_bom_lines").select("item_id,quantity").eq("variant", bolsterLength)
+        : null,
     ]);
+    if (request !== loadRequest.current) return;
+    if (bolsterLinesRead?.error) {
+      setLinesFailed(true);
+    } else if (bolsterLinesRead) {
+      type LineRow = { item_id: number; quantity: number | string };
+      setBolsterLines((bolsterLinesRead.data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) })));
+      setLinesFailed(false);
+      linesLoaded.current = true;
+      templatePick.current += 1;
+      setBolsterSelectedTemplateId('');
+    }
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
     const prods = (productsData ?? []) as Product[];
     setProducts(prods);
@@ -461,14 +482,22 @@ export default function ConfigureCardPage() {
         lines[existingIdx] = { item_id: itemId, quantity };
       }
     });
-    setBomByKind(next);
+    if (!bolsterLength && (bomError || productsError)) {
+      setLinesFailed(true);
+    } else if (!bolsterLength) {
+      setBomByKind(next);
+      setLinesFailed(false);
+      templatePick.current += 1;
+      setPillowSelectedTemplateId('');
+    }
     setLoading(false);
-  }, []);
+  }, [bolsterLength]);
 
   useEffect(() => {
-    loadAll();
+    linesLoaded.current = false;
+    loadAll(true);
     const onChanged = () => {
-      loadAll();
+      loadAll(!linesLoaded.current);
     };
     if (typeof window !== "undefined") {
       window.addEventListener("inventory:changed", onChanged);
@@ -487,26 +516,10 @@ export default function ConfigureCardPage() {
       };
     }
     return;
-  }, [loadAll]);
+  }, [loadAll, bolsterLength]);
 
   useEffect(() => {
-    const loadVariant = async () => {
-      if (!bolsterOpen || !bolsterVariant) return;
-      const variant = bolsterVariant === 'Short (0.8m)'
-        ? 'short' : bolsterVariant === 'Long (1.2m)'
-        ? 'long' : 'medium';
-      type LineRow = { item_id: number; quantity: number | string };
-      const { data } = await supabaseClient
-        .from('bolster_bom_lines')
-        .select('item_id,quantity')
-        .eq('variant', variant);
-      const rows = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
-      setBolsterLines(rows);
-    };
-    loadVariant();
-  }, [bolsterOpen, bolsterVariant]);
-
-  useEffect(() => {
+    let live = true;
     const load = async () => {
       if (!open || !selectedSize || !selectedPillowKind) return;
       try {
@@ -516,12 +529,15 @@ export default function ConfigureCardPage() {
           selectedPillowKind,
           selectedPillowKind === 'premium' ? premiumVariant : undefined,
         );
-        setPillowTemplates(list);
+        if (live) setPillowTemplates(list);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
+        if (live) toast.error(e instanceof Error ? e.message : "Couldn't load templates.");
       }
     };
     load();
+    return () => {
+      live = false;
+    };
   }, [open, selectedSize, selectedPillowKind, premiumVariant, loadTemplates]);
 
   useEffect(() => {
@@ -613,7 +629,7 @@ export default function ConfigureCardPage() {
     }));
   }, [settingsPath]);
 
-  const loadTemplateLines = async (templateId: number) => {
+  const loadTemplateLines = useCallback(async (templateId: number) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), { method: 'GET' })
     const payload = await res.json().catch(() => null)
     if (!res.ok) {
@@ -622,7 +638,7 @@ export default function ConfigureCardPage() {
     }
     type LineRow = { item_id: number | string; quantity: number | string }
     return ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }))
-  }
+  }, [settingsPath]);
 
   const deleteTemplateById = async (templateId: number) => {
     const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
@@ -768,35 +784,40 @@ export default function ConfigureCardPage() {
   };
 
   const selectPillowTemplate = async (next: number | '') => {
+    const pick = ++templatePick.current;
     setPillowSelectedTemplateId(next);
     if (next === '' || !selectedPillowKind || !selectedSize) return;
     try {
       const lines = await loadTemplateLines(next);
+      if (pick !== templatePick.current) return;
       setBomByKind((prev) => ({
         ...prev,
         [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: lines },
       }));
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
+      if (pick === templatePick.current) toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
   const selectBolsterTemplate = async (next: number | '') => {
+    const pick = ++templatePick.current;
     setBolsterSelectedTemplateId(next);
     if (next === '') return;
     try {
-      setBolsterLines(await loadTemplateLines(next));
+      const lines = await loadTemplateLines(next);
+      if (pick !== templatePick.current) return;
+      setBolsterLines(lines);
       toast.success('Template loaded into editor');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
+      if (pick === templatePick.current) toast.error(err instanceof Error ? err.message : "Couldn't load the template.");
     }
   };
 
   const changePremiumVariant = (value: string) => {
     if (value === 'linen' || value === 'fibrecool') {
       setPremiumVariant(value);
-      setPillowSelectedTemplateId('');
+      void selectPillowTemplate('');
     }
   };
 
@@ -876,7 +897,7 @@ export default function ConfigureCardPage() {
                   <>
                     {pillowSelectedTemplate && (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setPillowSelectedTemplateId('')}>
+                        <Button variant="ghost" size="sm" onClick={() => void selectPillowTemplate('')}>
                           Unlink
                         </Button>
                         <Button
@@ -890,7 +911,7 @@ export default function ConfigureCardPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" onClick={() => saveSelected(selectedPillowKind, selectedSize)} disabled={saving}>
+                    <Button size="sm" onClick={() => saveSelected(selectedPillowKind, selectedSize)} disabled={saving || linesFailed}>
                       {saving ? 'Saving…' : 'Save changes'}
                     </Button>
                   </>
@@ -952,6 +973,7 @@ export default function ConfigureCardPage() {
                     </Button>
                     <Button
                       variant="secondary"
+                      disabled={linesFailed}
                       onClick={async () => {
                         const name = pillowTemplateName.trim();
                         if (!name) { toast.message('Enter a template name.'); return; }
@@ -1038,17 +1060,23 @@ export default function ConfigureCardPage() {
                 loadTemplateLines={loadTemplateLines}
               />
               <Separator className="lg:hidden" />
-              <SizeEditor
-                size={selectedSize}
-                items={items}
-                bom={bomByKind[selectedPillowKind]}
-                setBom={(next) => {
-                  setBomByKind((prev) => ({
-                    ...prev,
-                    [selectedPillowKind]: typeof next === 'function' ? (next as (p: BomState) => BomState)(prev[selectedPillowKind]) : next,
-                  }))
-                }}
-              />
+              {linesFailed ? (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn&apos;t load this pillow&apos;s parts. Refresh the page to try again.
+                </p>
+              ) : (
+                <SizeEditor
+                  size={selectedSize}
+                  items={items}
+                  bom={bomByKind[selectedPillowKind]}
+                  setBom={(next) => {
+                    setBomByKind((prev) => ({
+                      ...prev,
+                      [selectedPillowKind]: typeof next === 'function' ? (next as (p: BomState) => BomState)(prev[selectedPillowKind]) : next,
+                    }))
+                  }}
+                />
+              )}
               </div>
               </div>
               </TabsContent>
@@ -1073,7 +1101,7 @@ export default function ConfigureCardPage() {
                     if (!selectedPillowKind || !selectedSize) return;
                     saveSelected(selectedPillowKind, selectedSize);
                   }}
-                  disabled={saving}
+                  disabled={saving || linesFailed}
                 >
                   {saving ? 'Saving…' : 'Save changes'}
                 </Button>
@@ -1095,7 +1123,7 @@ export default function ConfigureCardPage() {
                       if (!selectedPillowKind || !selectedSize) return;
                       saveSelected(selectedPillowKind, selectedSize);
                     }}
-                    disabled={saving}
+                    disabled={saving || linesFailed}
                   >
                     {saving ? 'Saving…' : 'Save changes'}
                   </Button>
@@ -1135,7 +1163,7 @@ export default function ConfigureCardPage() {
                   <>
                     {bolsterSelectedTemplate && (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => setBolsterSelectedTemplateId('')}>
+                        <Button variant="ghost" size="sm" onClick={() => void selectBolsterTemplate('')}>
                           Unlink
                         </Button>
                         <Button
@@ -1149,7 +1177,7 @@ export default function ConfigureCardPage() {
                         </Button>
                       </>
                     )}
-                    <Button size="sm" onClick={saveBolster} disabled={saving}>
+                    <Button size="sm" onClick={saveBolster} disabled={saving || linesFailed}>
                       {saving ? 'Saving…' : 'Save'}
                     </Button>
                   </>
@@ -1197,6 +1225,7 @@ export default function ConfigureCardPage() {
                     </Button>
                     <Button
                       variant="secondary"
+                      disabled={linesFailed}
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
                         if (!name) { toast.message('Enter a template name.'); return; }
@@ -1275,12 +1304,18 @@ export default function ConfigureCardPage() {
                 loadTemplateLines={loadTemplateLines}
               />
               <Separator className="lg:hidden" />
-              <BolsterEditor
-                items={items}
-                lines={bolsterLines}
-                setLines={setBolsterLines}
-                variant={bolsterVariant}
-              />
+              {linesFailed ? (
+                <p role="alert" className="text-sm text-destructive">
+                  Couldn&apos;t load this bolster&apos;s parts. Refresh the page to try again.
+                </p>
+              ) : (
+                <BolsterEditor
+                  items={items}
+                  lines={bolsterLines}
+                  setLines={setBolsterLines}
+                  variant={bolsterVariant}
+                />
+              )}
               </div>
               </div>
               </TabsContent>
@@ -1300,7 +1335,7 @@ export default function ConfigureCardPage() {
           {bolsterDrawerTab === "product" && (
             <>
               <div className="hidden justify-end md:flex lg:hidden">
-                <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+                <Button onClick={saveBolster} disabled={saving || linesFailed}>{saving ? 'Saving…' : 'Save'}</Button>
               </div>
               <MobileStickyActionBar>
                 <div className="flex items-center justify-between gap-3">
@@ -1312,7 +1347,7 @@ export default function ConfigureCardPage() {
                       {bolsterSelectedTemplate ? 'Saving also updates this template.' : 'No template linked.'}
                     </div>
                   </div>
-                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving}>
+                  <Button size="lg" className="shrink-0" onClick={saveBolster} disabled={saving || linesFailed}>
                     {saving ? 'Saving…' : 'Save'}
                   </Button>
                 </div>
@@ -1515,7 +1550,66 @@ function FillingConfigPanel({
     settleOn("", templateDraftOf(kind, { name: "", notes: "", active: true, keys: [templateKey], placements: [], bolsterMix: [] }));
   }, [templateKey, kind, settleOn]);
 
-  const openLastDraft = useRef<(list: FillingTemplateRow[]) => void>(() => {});
+  const selectTemplate = async (id: number | "", list: FillingTemplateRow[] = templates) => {
+    if (id === "") {
+      resetEditor();
+      return;
+    }
+    setSelectedId(id);
+    setBaseline(null);
+    setRestored(null);
+    const meta = list.find((t) => t.id === id);
+    setName(meta?.name ?? "");
+    setNotes(meta?.notes ?? "");
+    setActive(meta?.is_active ?? true);
+    setScopeKeys(meta?.keys?.length ? meta.keys : [templateKey]);
+    setDeleteConfirm(false);
+    try {
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error ?? "Couldn't load the template.";
+        throw new Error(typeof message === "string" ? message : "Couldn't load the template.");
+      }
+      const served = (payload?.keys ?? []) as string[];
+      if (served.length) setScopeKeys(served);
+      type LineRow = { item_id: number | string; quantity: number | string };
+      setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
+      let loadedPlacements: PillowPlacement[] = [];
+      let loadedMix: BolsterPlacement[] = [];
+      if (kind === "pillow") {
+        const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
+        loadedPlacements = rowsToPillowPlacements(placementRows);
+        setPlacements(loadedPlacements);
+        setHadPlacements(placementRows.length > 0);
+      } else {
+        const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
+        loadedMix = rowsToBolsterPlacements(placementRows);
+        setBolsterMix(loadedMix);
+        setHadPlacements(placementRows.length > 0);
+      }
+      settleOn(
+        id,
+        templateDraftOf(kind, {
+          name: meta?.name ?? "",
+          notes: meta?.notes ?? "",
+          active: meta?.is_active ?? true,
+          keys: served.length ? served : meta?.keys?.length ? meta.keys : [templateKey],
+          placements: loadedPlacements,
+          bolsterMix: loadedMix,
+        }),
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't load the template.");
+    }
+  };
+
+  const openLastDraft = useEffectEvent((list: FillingTemplateRow[]) => {
+    const last = listDrafts(draftScope)[0];
+    if (!last || last.key === "new") return;
+    const t = list.find((x) => String(x.id) === last.key);
+    if (t) void selectTemplate(t.id, list);
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -1525,7 +1619,7 @@ function FillingConfigPanel({
         const list = await loadFillingTemplates(kind, templateKey);
         if (cancelled) return;
         setTemplates(list);
-        openLastDraft.current(list);
+        openLastDraft(list);
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load filling templates.");
       }
@@ -1598,60 +1692,6 @@ function FillingConfigPanel({
     }
   };
 
-  const selectTemplate = async (id: number | "", list: FillingTemplateRow[] = templates) => {
-    if (id === "") {
-      resetEditor();
-      return;
-    }
-    setSelectedId(id);
-    setBaseline(null);
-    setRestored(null);
-    const meta = list.find((t) => t.id === id);
-    setName(meta?.name ?? "");
-    setNotes(meta?.notes ?? "");
-    setActive(meta?.is_active ?? true);
-    setScopeKeys(meta?.keys?.length ? meta.keys : [templateKey]);
-    setDeleteConfirm(false);
-    try {
-      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) {
-        const message = payload?.error ?? "Couldn't load the template.";
-        throw new Error(typeof message === "string" ? message : "Couldn't load the template.");
-      }
-      const served = (payload?.keys ?? []) as string[];
-      if (served.length) setScopeKeys(served);
-      type LineRow = { item_id: number | string; quantity: number | string };
-      setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
-      let loadedPlacements: PillowPlacement[] = [];
-      let loadedMix: BolsterPlacement[] = [];
-      if (kind === "pillow") {
-        const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-        loadedPlacements = rowsToPillowPlacements(placementRows);
-        setPlacements(loadedPlacements);
-        setHadPlacements(placementRows.length > 0);
-      } else {
-        const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
-        loadedMix = rowsToBolsterPlacements(placementRows);
-        setBolsterMix(loadedMix);
-        setHadPlacements(placementRows.length > 0);
-      }
-      settleOn(
-        id,
-        templateDraftOf(kind, {
-          name: meta?.name ?? "",
-          notes: meta?.notes ?? "",
-          active: meta?.is_active ?? true,
-          keys: served.length ? served : meta?.keys?.length ? meta.keys : [templateKey],
-          placements: loadedPlacements,
-          bolsterMix: loadedMix,
-        }),
-      );
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't load the template.");
-    }
-  };
-
   const spatialRows = () =>
     kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
   const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
@@ -1680,14 +1720,6 @@ function FillingConfigPanel({
       const data = { ...b.data, ...patch };
       return { id, data, sig: JSON.stringify(data) };
     });
-  useEffect(() => {
-    openLastDraft.current = (list) => {
-      const last = listDrafts(draftScope)[0];
-      if (!last || last.key === "new") return;
-      const t = list.find((x) => String(x.id) === last.key);
-      if (t) void selectTemplate(t.id, list);
-    };
-  });
 
   const putTemplatePlacements = async (templateId: number, nextName?: string) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {

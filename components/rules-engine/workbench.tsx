@@ -1473,7 +1473,7 @@ function TemplatePicker({
   );
 }
 
-function TemplateSelect({
+export function TemplateSelect({
   flow,
   locale,
   size,
@@ -1509,6 +1509,7 @@ function TemplateSelect({
       `/settings/inventory/configure/templates?${qs}`,
       locale,
     );
+    let live = true;
     void fetch(url)
       .then((r) => r.json())
       .then((data) => {
@@ -1516,9 +1517,14 @@ function TemplateSelect({
           id: number | string;
           name: string;
         }[];
-        setOptions(rows.map((t) => ({ id: String(t.id), name: t.name })));
+        if (live) setOptions(rows.map((t) => ({ id: String(t.id), name: t.name })));
       })
-      .catch(() => setOptions([]));
+      .catch(() => {
+        if (live) setOptions([]);
+      });
+    return () => {
+      live = false;
+    };
   }, [flow, size, locale]);
 
   return (

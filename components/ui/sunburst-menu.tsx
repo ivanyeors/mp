@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useMotionValue, useMotionValueEvent, animate }
 import { Menu, X, ChevronLeft } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useElementWidth } from "@/hooks/use-element-width";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   arcCentroid,
@@ -90,20 +91,11 @@ export function SunburstMenu({
   // and clamp the diameter to it (only shrink, never grow past the caller's
   // `size`). ringWidth/holeRadius scale by the same factor so the rings keep
   // their proportions inside the smaller viewBox — visuals unchanged, just smaller.
-  const measureRef = React.useRef<HTMLDivElement>(null);
-  const [containerW, setContainerW] = React.useState<number | null>(null);
+  const [measureRef, containerW] = useElementWidth<HTMLDivElement>();
   // Phones get bigger type, bigger glyphs and a tappable centre trigger; the
   // wedge geometry itself is the caller's (they pass a larger size/ringWidth
   // for the same `isMobile`), so the component only floors what a thumb needs.
   const isMobile = useIsMobile();
-  React.useEffect(() => {
-    const el = measureRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setContainerW(el.clientWidth));
-    ro.observe(el);
-    setContainerW(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
   // ponytail: floor the diameter so a very narrow x-ray dive column can't shrink
   // the closed center trigger (buttonSize below) down to an untappable few px.
   // The open bloom may then overflow a sub-140px column slightly (it's a

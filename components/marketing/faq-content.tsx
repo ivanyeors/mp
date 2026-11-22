@@ -65,6 +65,11 @@ export function FaqAnswer({ answer, locale }: { answer: string; locale: Locale }
 export function FaqContent({ categories, locale, initialSlug }: FaqContentProps) {
   const [query, setQuery] = useState("");
   const [openSlug, setOpenSlug] = useState(initialSlug ?? "");
+  const [seenSlug, setSeenSlug] = useState(initialSlug);
+  if (seenSlug !== initialSlug) {
+    setSeenSlug(initialSlug);
+    if (initialSlug) setOpenSlug(initialSlug);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -83,7 +88,6 @@ export function FaqContent({ categories, locale, initialSlug }: FaqContentProps)
 
   useEffect(() => {
     if (!initialSlug) return;
-    setOpenSlug(initialSlug);
     const el = document.getElementById(initialSlug);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import type { CartItemClient } from "@/lib/types/ecommerce";
@@ -59,22 +58,10 @@ export function CartContent({
   const currency = items[0]?.currency ?? "SGD";
   const handleNavigate = onClose;
 
-  const standardVariantIds = items
-    .filter((i) => !i.customizationId)
-    .map((i) => i.variantId);
-  const { stock } = useCartStock(standardVariantIds);
+  const { stock } = useCartStock(items, updateQuantity);
 
   const maxFor = (item: CartItemClient): number | undefined =>
     item.customizationId ? undefined : stock[item.variantId];
-
-  useEffect(() => {
-    for (const item of items) {
-      const max = maxFor(item);
-      if (max != null && max > 0 && item.quantity > max) {
-        updateQuantity(item.variantId, max, item.customizationId);
-      }
-    }
-  }, [stock]);
 
   const hasShortage = items.some((item) => {
     const max = maxFor(item);

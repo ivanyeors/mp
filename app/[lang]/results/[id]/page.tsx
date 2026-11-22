@@ -240,22 +240,25 @@ function ResultStatusPage() {
       ? (pairedRole === "anchor" ? pairAuthorized : null) ?? result?.authorized_amount
       : pairFinal;
 
-  const reloadResult = async () => {
+  const readResult = async (): Promise<ResultPublic | null> => {
     const qs = new URLSearchParams();
     if (token) qs.set("token", token);
     if (sessionId) qs.set("session_id", sessionId);
     const res = await fetch(`/api/results/${id}?${qs.toString()}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "Failed to load");
-    setResult(data.result);
+    return data.result;
   };
+  const reloadResult = async () => setResult(await readResult());
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setError(null);
       try {
-        await reloadResult();
+        const loaded = await readResult();
+        if (!cancelled) setResult(loaded);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
       } finally {

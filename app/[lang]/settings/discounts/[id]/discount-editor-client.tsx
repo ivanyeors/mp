@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import {
     RefreshCw,
@@ -286,8 +286,6 @@ export function DiscountEditorClient({
     const [original, setOriginal] = useState<Coupon | null>(initialCoupon);
     const [loading, setLoading] = useState(!isNew && !initialData);
 
-    const hydratedFromServer = useRef(Boolean(initialData));
-
     useEffect(() => {
         if (!initialCoupon) return;
         setForm((prev) => ({
@@ -311,30 +309,21 @@ export function DiscountEditorClient({
     const [productSearch, setProductSearch] = useState("");
     const [categorySearch, setCategorySearch] = useState("");
 
-    const fetchCoupon = useCallback(async () => {
-        if (isNew) return;
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/shop/coupons/${rawId}`);
-            if (!res.ok) throw new Error("Not found");
-            const json = await res.json();
-            setOriginal(json.row);
-            setForm(couponToForm(json.row));
-            setAppliesTo(appliesToFromCoupon(json.row));
-        } catch {
-            setError("Couldn't load the discount.");
-        } finally {
-            setLoading(false);
-        }
-    }, [isNew, rawId]);
-
     useEffect(() => {
-        if (hydratedFromServer.current) {
-            hydratedFromServer.current = false;
-            return;
-        }
-        fetchCoupon();
-    }, [fetchCoupon]);
+        if (initialData || isNew) return;
+        fetch(`/api/shop/coupons/${rawId}`)
+            .then((res) => {
+                if (!res.ok) throw new Error("Not found");
+                return res.json();
+            })
+            .then((json) => {
+                setOriginal(json.row);
+                setForm(couponToForm(json.row));
+                setAppliesTo(appliesToFromCoupon(json.row));
+            })
+            .catch(() => setError("Couldn't load the discount."))
+            .finally(() => setLoading(false));
+    }, [initialData, isNew, rawId]);
 
     useEffect(() => {
         if (initialData) return;

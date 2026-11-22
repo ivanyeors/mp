@@ -313,6 +313,16 @@ type SavedMix = {
 
 const EMPTY_SAVED_MIX: SavedMix = { pillow: [], bolster: [], items: [] };
 
+type TemplatePreview = {
+  placementRows: Array<PillowPlacementRow | BolsterPlacementRow>;
+  lines: Array<{ item_id: number; quantity: number }>;
+  notes: string;
+  colorOverrides: ColorOverrideRow[];
+  dimensionOverrides: DimensionOverridesPayload | undefined;
+};
+
+type LandedPreview = { generation: number; keepMix: boolean; preview: TemplatePreview | null };
+
 function savedMixOf(mix: ResultFillingMixPayload | null): SavedMix {
   if (!mix) return EMPTY_SAVED_MIX;
   return {
@@ -380,7 +390,8 @@ export default function ResultDetailPage({
   const skipDetailFetch = useRef(Boolean(initialData?.detail));
   const skipPrepFetch = useRef(Boolean(initialData?.assignPrep));
   const skipFillingItemsFetch = useRef(Boolean(initialData?.fillingItems));
-  const skipScopeReset = useRef(Boolean(initialData?.detail));
+  const prepRequest = useRef(0);
+  const previewRequest = useRef(0);
   const [prepLoading, setPrepLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -444,6 +455,46 @@ export default function ResultDetailPage({
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const mixMode = row ? fillingMixMode(row) : "view";
   const canEditMix = mixMode !== "view";
+
+  const scope = `${productType}:${assignSize}:${assignTier}:${assignLength}`;
+  const [shownScope, setShownScope] = useState(scope);
+  const [mixGeneration, setMixGeneration] = useState(0);
+  if (shownScope !== scope) {
+    setShownScope(scope);
+    setMixGeneration((g) => g + 1);
+    setFillingTemplateId("");
+    setAssignPrep(null);
+    if (mixOrigin !== "saved") {
+      setPlacements([]);
+      setBolsterMix([]);
+    }
+    setTemplateHadPlacements(true);
+    setTemplateLegacyLines([]);
+  }
+
+  const [landedPreview, setLandedPreview] = useState<LandedPreview | null>(null);
+  const [shownPreview, setShownPreview] = useState<LandedPreview | null>(null);
+  if (shownPreview !== landedPreview) {
+    setShownPreview(landedPreview);
+    if (landedPreview?.generation === mixGeneration) {
+      const { keepMix, preview } = landedPreview;
+      if (!keepMix && !preview) {
+        setPlacements([]);
+        setBolsterMix([]);
+      } else if (!keepMix && preview) {
+        if (productType === "pillow") setPlacements(rowsToPillowPlacements(preview.placementRows as PillowPlacementRow[]));
+        else setBolsterMix(rowsToBolsterPlacements(preview.placementRows as BolsterPlacementRow[]));
+        setMixOrigin("template");
+      }
+      if (preview) {
+        setTemplateHadPlacements(preview.placementRows.length > 0);
+        setTemplateLegacyLines(preview.lines);
+        setTemplateNotes(preview.notes);
+        setColorOverrides(preview.colorOverrides);
+        setDimensionOverrides(preview.dimensionOverrides);
+      }
+    }
+  }
   const hasSavedMix = savedMix.pillow.length > 0 || savedMix.bolster.length > 0;
   const canReconfigure =
     productType === "pillow" &&
@@ -475,9 +526,12 @@ export default function ResultDetailPage({
   }, [row, productType, assignLength, assignSize, assignTier]);
 
   const loadAssignPrep = useCallback(async () => {
+    const request = ++prepRequest.current;
     if (!canEditMix || !sizeKey) {
       setAssignPrep(null);
       setFillingTemplates([]);
+      setPrepLoading(false);
+      setTemplatesLoading(false);
       return;
     }
     setPrepLoading(true);
@@ -510,6 +564,7 @@ export default function ResultDetailPage({
       const res = await fetch(`/api/results/assign/prep?${qs.toString()}`);
       const payload = (await res.json().catch(() => null)) as AssignPrepData | { error?: string } | null;
       if (!res.ok) throw new Error((payload as { error?: string })?.error ?? "Couldn't load the assignment preview.");
+      if (request !== prepRequest.current) return;
       const prep = payload as AssignPrepData;
       setAssignPrep(prep);
       setFillingTemplates(
@@ -523,12 +578,15 @@ export default function ResultDetailPage({
         })),
       );
     } catch (e) {
+      if (request !== prepRequest.current) return;
       toast.error(e instanceof Error ? e.message : "Couldn't load the assignment preview.");
       setAssignPrep(null);
       setFillingTemplates([]);
     } finally {
-      setPrepLoading(false);
-      setTemplatesLoading(false);
+      if (request === prepRequest.current) {
+        setPrepLoading(false);
+        setTemplatesLoading(false);
+      }
     }
   }, [
     canEditMix,
@@ -546,21 +604,6 @@ export default function ResultDetailPage({
   useEffect(() => {
     mixOriginRef.current = mixOrigin;
   }, [mixOrigin]);
-
-  useEffect(() => {
-    if (skipScopeReset.current) {
-      skipScopeReset.current = false;
-      return;
-    }
-    setFillingTemplateId("");
-    setAssignPrep(null);
-    if (mixOriginRef.current !== "saved") {
-      setPlacements([]);
-      setBolsterMix([]);
-    }
-    setTemplateHadPlacements(true);
-    setTemplateLegacyLines([]);
-  }, [assignSize, assignTier, assignLength, productType]);
 
   useEffect(() => {
     if (skipPrepFetch.current) {
@@ -605,6 +648,8 @@ export default function ResultDetailPage({
 
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string, opts: { keepMix?: boolean } = {}) => {
+      const request = ++previewRequest.current;
+      const requestedFor = mixGeneration;
       if (!templateId) {
         if (!opts.keepMix) {
           setPlacements([]);
@@ -621,32 +666,28 @@ export default function ResultDetailPage({
         );
         const payload = await res.json().catch(() => null);
         if (!res.ok) throw new Error(payload?.error ?? "Couldn't load the template.");
+        if (request !== previewRequest.current) return;
         type LineRow = { item_id: number | string; quantity: number | string };
-        const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({
-          item_id: Number(l.item_id),
-          quantity: Number(l.quantity),
-        }));
-        if (productType === "pillow") {
-          const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-          if (!opts.keepMix) setPlacements(rowsToPillowPlacements(placementRows));
-          setTemplateHadPlacements(placementRows.length > 0);
-        } else {
-          const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
-          if (!opts.keepMix) setBolsterMix(rowsToBolsterPlacements(placementRows));
-          setTemplateHadPlacements(placementRows.length > 0);
-        }
-        if (!opts.keepMix) setMixOrigin("template");
-        setTemplateLegacyLines(lines);
-        setTemplateNotes(String(payload?.template?.notes ?? ""));
-        setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
-        setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
+        setLandedPreview({
+          generation: requestedFor,
+          keepMix: Boolean(opts.keepMix),
+          preview: {
+            placementRows: payload?.placements ?? [],
+            lines: ((payload?.lines ?? []) as LineRow[]).map((l) => ({
+              item_id: Number(l.item_id),
+              quantity: Number(l.quantity),
+            })),
+            notes: String(payload?.template?.notes ?? ""),
+            colorOverrides: (payload?.colorOverrides ?? []) as ColorOverrideRow[],
+            dimensionOverrides: (payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined,
+          },
+        });
       } catch {
-        if (opts.keepMix) return;
-        setPlacements([]);
-        setBolsterMix([]);
+        if (opts.keepMix || request !== previewRequest.current) return;
+        setLandedPreview({ generation: requestedFor, keepMix: false, preview: null });
       }
     },
-    [productType, to],
+    [mixGeneration, to],
   );
 
   const ownTemplateId = row?.filling_template_id ?? null;
@@ -691,6 +732,7 @@ export default function ResultDetailPage({
   }, [loadFillingMix]);
 
   const restoreSavedMix = useCallback(() => {
+    setMixGeneration((g) => g + 1);
     setPlacements(savedMix.pillow);
     setBolsterMix(savedMix.bolster);
     setMixOrigin("saved");

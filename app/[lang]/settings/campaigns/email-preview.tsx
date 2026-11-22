@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
+import { useElementWidth } from "@/hooks/use-element-width";
 import { PresetPicker } from "@/components/block-editor/preset-picker";
 
 export type PreviewDevice = "desktop" | "mobile";
@@ -56,16 +57,9 @@ export function EmailPreview({
     selected: string | null;
     onSelectBlock: (id: string) => void;
 }) {
-    const box = useRef<HTMLDivElement>(null);
+    const [box, boxWidth] = useElementWidth<HTMLDivElement>();
+    const width = boxWidth || FRAME_WIDTH.desktop;
     const frame = useRef<HTMLIFrameElement>(null);
-    const [width, setWidth] = useState<number>(FRAME_WIDTH.desktop);
-    useEffect(() => {
-        const el = box.current;
-        if (!el || typeof ResizeObserver === "undefined") return;
-        const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width || FRAME_WIDTH.desktop));
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
 
     const frameWidth = FRAME_WIDTH[device];
     const scale = Math.min(1, width / frameWidth);

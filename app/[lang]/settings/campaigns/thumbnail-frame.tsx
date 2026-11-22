@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useElementWidth } from "@/hooks/use-element-width";
 import { cn } from "@/lib/utils";
 import { previewStarters } from "./actions";
 
@@ -49,15 +50,7 @@ export function ThumbnailFrame({
     }, [id, own]);
     const html = own ? given : loaded;
 
-    const box = useRef<HTMLDivElement>(null);
-    const [width, setWidth] = useState(0);
-    useEffect(() => {
-        const el = box.current;
-        if (!el || typeof ResizeObserver === "undefined") return;
-        const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, []);
+    const [box, width] = useElementWidth<HTMLDivElement>();
     const scale = width ? width / FRAME_WIDTH : 0.25;
 
     return (
