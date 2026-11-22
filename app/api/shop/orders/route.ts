@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listAdminOrders } from "@/lib/ecommerce/admin/orders-list";
-import { requireAdmin } from "@/lib/auth/admin";
+import { adminCanSeeCost, requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     sort: searchParams.get("sort"),
     date_from: searchParams.get("date_from"),
     date_to: searchParams.get("date_to"),
-  });
+  }, { canSeeCost: await adminCanSeeCost() });
 
   return NextResponse.json(result.body, { status: result.status });
 }

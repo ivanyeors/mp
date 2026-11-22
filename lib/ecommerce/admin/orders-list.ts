@@ -1,3 +1,4 @@
+import type { CostVisibility } from "@/lib/ecommerce/admin/products";
 import { sumOrderItemQuantities } from "@/lib/ecommerce/orders";
 import {
   applyOrdersPaidAtRange,
@@ -21,7 +22,7 @@ export interface AdminOrdersListParams {
 export interface AdminOrderRow extends Record<string, unknown> {
   id: string;
   items_count: number;
-  margin: { gross_margin: number; margin_pct: number | null } | null;
+  margin?: { gross_margin: number; margin_pct: number | null } | null;
 }
 
 export interface AdminOrdersListPayload {
@@ -37,7 +38,8 @@ export type AdminOrdersListResult =
   | { status: 400 | 500; body: { error: string } };
 
 export async function listAdminOrders(
-  params: AdminOrdersListParams = {},
+  params: AdminOrdersListParams,
+  { canSeeCost }: CostVisibility,
 ): Promise<AdminOrdersListResult> {
   const status = params.status ?? null;
   const email = params.email ?? null;
@@ -84,7 +86,7 @@ export async function listAdminOrders(
 
   const orderIds = (data ?? []).map((row: { id: string }) => row.id);
   const marginByOrder = new Map<string, { gross_margin: number; margin_pct: number | null }>();
-  if (orderIds.length > 0) {
+  if (canSeeCost && orderIds.length > 0) {
     const { data: margins, error: marginError } = await admin
       .from("order_margins")
       .select("order_id, gross_margin, margin_pct")
@@ -106,7 +108,7 @@ export async function listAdminOrders(
       return {
         ...rest,
         items_count: sumOrderItemQuantities(items),
-        margin: marginByOrder.get(row.id) ?? null,
+        ...(canSeeCost ? { margin: marginByOrder.get(row.id) ?? null } : {}),
       };
     },
   ) as AdminOrderRow[];

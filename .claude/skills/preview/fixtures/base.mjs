@@ -1,8 +1,8 @@
 // Who signs in to the preview: one Owner, a Staff member with no
 // permissions for checking what a refused page looks like
-// (`preview shoot --as staff@preview.local …`), and a clerk with Inventory
-// and Products but not Costings, who sees no cost price
-// (`preview shoot --as clerk@preview.local …`).
+// (`preview shoot --as staff@preview.local …`), and a clerk with Inventory,
+// Products, Orders and Analytics but not Costings, who sees no cost price,
+// cost at sale or margin (`preview shoot --as clerk@preview.local …`).
 //
 // Every fixture file exports a function of { scenario, now } returning
 // { users, tables, rpc }. Files load in name order; rows for the same table
@@ -24,7 +24,7 @@ export default function base() {
       admin_roles: [
         { id: "role-owner", key: "owner", name: "Owner", description: "Everything", is_system: true, grants_all: true, permissions: [], created_at: at, updated_at: at },
         { id: "role-staff", key: "staff", name: "Staff", description: "No pages", is_system: false, grants_all: false, permissions: [], created_at: at, updated_at: at },
-        { id: "role-clerk", key: "clerk", name: "Clerk", description: "Inventory and Products, no Costings", is_system: false, grants_all: false, permissions: ["inventory", "products", "media"], created_at: at, updated_at: at },
+        { id: "role-clerk", key: "clerk", name: "Clerk", description: "Inventory, Products, Orders and Analytics, no Costings", is_system: false, grants_all: false, permissions: ["inventory", "products", "media", "orders", "analytics"], created_at: at, updated_at: at },
       ],
       admin_users: [
         { id: "member-owner", auth_user_id: OWNER.id, email: OWNER.email, role: "owner", role_id: "role-owner", is_active: true, created_at: at, updated_at: at },

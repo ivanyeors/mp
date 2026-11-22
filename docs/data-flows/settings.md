@@ -35,6 +35,21 @@ Add from Inventory answer every other role with no cost, write no cost
 column for it (so a stored cost is kept), and refuse its request that sets
 one. MSRP is not gated.
 
+Cost captured at sale (`order_items.unit_cost` / `total_cost`) and margin
+(`order_margins`) follow the same permission. A Result order line's
+`customization_snapshot` no longer carries the build's `cogs` or a service
+`costPrice` (customers can read it; the trigger in
+`20261122130000_customers_never_see_costs` strips both on every write), and
+the order detail still drops those keys for a role without `costings`, for
+rows written before that migration is applied. Without `costings`, the order
+detail, Orders list and Orders dashboard (page and `/api/shop/orders*`) send
+no cost, COGS or margin and skip the `order_margins` read, and the Orders
+pages drop the Unit cost column, Realized margin card, Margin column and Gross
+margin tile. Analytics' Sales report sends only revenue, units, order and line
+counts and Sales over time, and the tab becomes "Sales" with no margin cards,
+Sales with no cost, or Margin by product / part. Prices paid, totals and
+refunds are unchanged.
+
 ## Pages that touch inventory, prices, products and orders
 
 | Page | Calls | Writes |
