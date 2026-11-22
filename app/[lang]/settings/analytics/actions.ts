@@ -1,9 +1,10 @@
 "use server";
 
 import { loadSalesReport } from "@/lib/analytics/sales-report";
-import { partCategoryLabel } from "@/lib/analytics/sold-lines";
+import { partCategoryLabel, salesReportWithoutCost } from "@/lib/analytics/sold-lines";
 import { sgDate, sgMonthRange } from "@/lib/analytics/sg-calendar";
 import { assertAdmin } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -12,9 +13,11 @@ export type TimelineViewMode = "parts" | "products";
 // ponytail: do not `export type { X }` from "use server" — SWC emits runtime refs (TimelinePoint is not defined)
 
 export async function getSalesReport(input: { from: string; to: string }) {
-  await assertAdmin("analytics");
+  const ctx = await assertAdmin("analytics");
   const report = await loadSalesReport({ from: input.from, to: input.to });
-  return { ok: true as const, ...report };
+  if (hasPermission(ctx, "costings")) return { ok: true as const, canSeeCost: true as const, ...report };
+  const { fromMonth, toMonth } = report;
+  return { ok: true as const, canSeeCost: false as const, fromMonth, toMonth, ...salesReportWithoutCost(report) };
 }
 
 export type InventoryMovementGroup = "category" | "size" | "type";

@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import {
   loadAdminOrderDetail,
   loadAdminOrderMpConfigLinks,
@@ -20,10 +21,10 @@ export default async function OrderDetailRoute({
   const { lang, id } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  await requireAdminPage("orders", locale);
+  const ctx = await requireAdminPage("orders", locale);
 
   const [order, timeline, mpConfigLinks, payLink] = await Promise.all([
-    loadAdminOrderDetail(id),
+    loadAdminOrderDetail(id, { canSeeCost: hasPermission(ctx, "costings") }),
     loadAdminOrderTimeline(id),
     loadAdminOrderMpConfigLinks(id),
     loadPayLinkRow(supabaseAdmin(), id).catch(() => null),
