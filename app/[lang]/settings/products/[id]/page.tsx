@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { hasPermission } from "@/lib/auth/permissions";
 import { readAiWritingAvailability } from "@/lib/ai/page-availability";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
@@ -24,10 +25,11 @@ export default async function ProductEditorPage({
 
     if (id === "new") redirect(withLocale("/settings/products", locale));
 
-    await requireAdminPage("products", locale);
+    const ctx = await requireAdminPage("products", locale);
+    const canSeeCost = hasPermission(ctx, "costings");
 
     const [product, categoryTree, ai] = await Promise.all([
-        getAdminProduct(id),
+        getAdminProduct(id, { canSeeCost }),
         getCategoryTree(),
         readAiWritingAvailability(),
     ]);
@@ -45,6 +47,7 @@ export default async function ProductEditorPage({
             categories={categoryTree}
             ai={ai}
             stripeMode={stripeMode()}
+            canSeeCost={canSeeCost}
         />
     );
 }

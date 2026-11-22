@@ -146,6 +146,7 @@ export type PushResult =
 export async function pushFamilyToProducts(
   itemIds: number[],
   confirmed: ConfirmedPrice[],
+  canSeeCost: boolean,
 ): Promise<PushResult> {
   if (itemIds.length === 0) return { ok: false, error: "No items given", status: 400 };
   const admin = supabaseAdmin();
@@ -180,7 +181,7 @@ export async function pushFamilyToProducts(
   const family = toFamilies(items, sizes, products)[0]!;
   const toPush = sizesToPush(family.sizes);
 
-  const failure = checkPushPrices(category, toPush, confirmed);
+  const failure = checkPushPrices(category, toPush, confirmed, canSeeCost);
   if (failure) {
     return {
       ok: false,

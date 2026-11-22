@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
     throw new Error(`REDIRECT ${url}`);
   },
 }));
-vi.mock("@/lib/auth/admin", () => ({ requireAdminPage: async () => undefined }));
+vi.mock("@/lib/auth/admin", () => ({ requireAdminPage: async () => ({ permissions: new Set(["products"]) }) }));
 vi.mock("@/lib/ecommerce/admin/products", () => ({
   getAdminProduct: async (id: string) => {
     calls.editorCode.push(`getAdminProduct ${id}`);

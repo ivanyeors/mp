@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
 vi.mock("@/lib/auth/admin", () => ({
   requireAdmin: vi.fn().mockResolvedValue(null),
   requireAnyAdmin: vi.fn().mockResolvedValue(null),
+  adminCanSeeCost: vi.fn().mockResolvedValue(true),
   getAdminContext: vi.fn().mockResolvedValue({ userId: "u1", email: "ops@example.com" }),
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn() }));

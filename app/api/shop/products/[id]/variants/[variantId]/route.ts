@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/admin";
+import { adminCanSeeCost, requireAdmin } from "@/lib/auth/admin";
+import { withoutCostPrice } from "@/lib/ecommerce/admin/products";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 import { stripePriceIdColumn } from "@/lib/stripe/mode";
 
 export const runtime = "nodejs";
+
+const COST_REFUSED = "Only staff with Costings access can set a cost price.";
 
 const UpdateVariantSchema = z.object({
   sku: z.string().nullable().optional(),
@@ -36,10 +39,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const canSeeCost = await adminCanSeeCost();
+  if (!canSeeCost && parsed.data.cost_price != null) {
+    return NextResponse.json({ error: COST_REFUSED }, { status: 403 });
+  }
+
   const admin = supabaseAdmin();
 
   const { data: product } = await admin.from("products").select("is_auto_generated").eq("id", id).single();
   const update = { ...parsed.data };
+  if (!canSeeCost) delete update.cost_price;
   if (product?.is_auto_generated) {
     delete update.price;
     delete update.cost_price;
@@ -65,7 +74,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   return NextResponse.json({
     ok: true,
-    row,
+    row: canSeeCost ? row : withoutCostPrice(row),
     stripe: stripe && {
       synced: stripe.synced,
       error: stripe.error,
