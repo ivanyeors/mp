@@ -115,3 +115,40 @@ describe("a role without customers", () => {
     expect((await call()).status).toBe(403);
   });
 });
+
+describe("POST /api/shop/customers: Staff add a Customer", () => {
+  beforeEach(() => signIn("crm-editor"));
+
+  const post = (body: unknown) => list.POST(req("POST", body));
+
+  it("saves the email lower-cased and the mobile normalised, and says it is new", async () => {
+    const res = await post({ email: "  Bo.Lim@X.test ", first_name: "Bo", last_name: "Lim", phone: "9123 4567" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.created).toBe(true);
+    expect(json.row).toMatchObject({ email: "bo.lim@x.test", first_name: "Bo", last_name: "Lim", phone: "+6591234567" });
+    expect(h.db.customers).toHaveLength(2);
+    expect(h.db.admin_audit_log?.at(-1)).toMatchObject({ action: "customer.create", entity_id: json.row.id });
+  });
+
+  it("returns the Customer who already has that email, whatever its capitals, and creates nobody", async () => {
+    const res = await post({ email: "ANA@x.test", first_name: "Someone", last_name: "Else" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ created: false, row: { id: "c1", first_name: "Ana" } });
+    expect(h.db.customers).toEqual([{ id: "c1", email: "ana@x.test", first_name: "Ana", last_name: "Tan", tags: [] }]);
+    expect(h.db.admin_audit_log ?? []).toEqual([]);
+  });
+
+  it.each([
+    ["a mobile that is not one", { email: "bo@x.test", phone: "12" }, "phone"],
+    ["no email", { first_name: "Bo" }, "email"],
+    ["an email that is not one", { email: "bo-at-x" }, "email"],
+  ])("refuses %s, names the field and saves nothing", async (_name, body, field) => {
+    const res = await post(body);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.field).toBe(field);
+    expect(typeof json.error).toBe("string");
+    expect(h.db.customers).toHaveLength(1);
+  });
+});

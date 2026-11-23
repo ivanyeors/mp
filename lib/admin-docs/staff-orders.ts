@@ -3,10 +3,10 @@ import type { DocGuide, DocSection } from "./types";
 
 export const STAFF_ORDERS_GUIDE: DocGuide = {
   slug: "staff-orders",
-  title: "Selling from the Customer page",
+  title: "Selling from the Customer or Orders page",
   summary:
     "Make an order for a customer with products and services, send them a link to pay on their own phone, and see it through to paid.",
-  updated: "7 November 2026",
+  updated: "23 November 2026",
 };
 
 const CUSTOMERS = { label: "Customers", href: "/settings/customers" };
@@ -22,7 +22,7 @@ export function staffOrdersGuideSections(): DocSection[] {
       blocks: [
         {
           kind: "p",
-          text: "A customer at the counter or on the phone wants something: a spare case, an ear pad, a re-adjustment, a measurement visit. You put the order together on their Customer page, and they pay for it on their own phone through a link we send them.",
+          text: "A customer at the counter or on the phone wants something: a spare case, an ear pad, a re-adjustment, a measurement visit. You put the order together on their Customer page, or from Orders, and they pay for it on their own phone through a link we send them.",
         },
         {
           kind: "list",
@@ -39,12 +39,15 @@ export function staffOrdersGuideSections(): DocSection[] {
       id: "make",
       heading: "Make the order",
       blocks: [
-        { kind: "p", text: "You need the Orders permission. The Create order button is in the Order history card." },
+        {
+          kind: "p",
+          text: "You need the Orders permission. Create order is at the top of a customer's page, and at the top of Orders.",
+        },
         {
           kind: "steps",
           items: [
-            "Open the customer under Customers.",
-            "Press Create order.",
+            "Open the customer under Customers and press Create order. Or press Create order on Orders, then search for the customer by name, email or mobile and pick them.",
+            "Someone new? On Orders, choose New customer and type their name, email and mobile. An email is required, because the payment link goes there. If that email already belongs to a customer, the order goes under their record and nobody is created twice. Adding a customer needs the Customers: make changes permission.",
             "Search for products and press Add; add any service. Change quantities with − and +.",
             "Choose where it goes: At a studio (handed over or done there, no shipping charge, no courier label), or Deliver to an address, with one of their saved addresses or a new one and a delivery method.",
             "Type a discount code if they have one, and press Apply.",
@@ -56,7 +59,7 @@ export function staffOrdersGuideSections(): DocSection[] {
           kind: "note",
           text: `Stripe cannot take less than SGD ${MIN_CHARGE.toFixed(2)}, so a smaller order is refused. A service-only order is always at a studio.`,
         },
-        { kind: "links", items: [CUSTOMERS] },
+        { kind: "links", items: [CUSTOMERS, ORDERS] },
       ],
     },
     {

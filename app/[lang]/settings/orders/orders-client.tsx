@@ -10,7 +10,9 @@ import {
     TrendingUp,
     Search,
     Loader2,
+    Plus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,6 +49,8 @@ import { StatTile } from "@/components/settings/stat-tile";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
 import { EmptyState } from "@/components/settings/empty-state";
 import { orderStatusLabel } from "@/lib/shop/order-display";
+import { CreateOrderDialog } from "@/app/[lang]/settings/customers/[id]/create-order-dialog";
+import { OrderCustomerDialog, type OrderCustomer } from "./order-customer-dialog";
 
 type DashboardStats = {
     total_orders: number;
@@ -166,9 +170,13 @@ function toDashboardStats(s: {
 export default function SettingsOrdersPage({
     initialData,
     canSeeCost,
+    canCreateOrder = false,
+    canCreateCustomer = false,
 }: {
     initialData?: OrdersInitialData;
     canSeeCost: boolean;
+    canCreateOrder?: boolean;
+    canCreateCustomer?: boolean;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -194,6 +202,8 @@ export default function SettingsOrdersPage({
         initialData?.dashboard ? toDashboardStats(initialData.dashboard.stats) : null,
     );
     const [statsLoading, setStatsLoading] = useState(!initialData?.dashboard);
+    const [statsReload, setStatsReload] = useState(0);
+    const [newOrder, setNewOrder] = useState<"customer" | OrderCustomer | null>(null);
 
     const skipStatsFetch = useRef(Boolean(initialData?.dashboard));
     const skipOrdersFetch = useRef(Boolean(initialData?.list));
@@ -236,7 +246,7 @@ export default function SettingsOrdersPage({
         return () => {
             cancelled = true;
         };
-    }, [dateFrom, dateTo, dateRangeError]);
+    }, [dateFrom, dateTo, dateRangeError, statsReload]);
 
     const latestOrdersRequest = useRef(0);
     const fetchOrders = useCallback(async () => {
@@ -301,13 +311,19 @@ export default function SettingsOrdersPage({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
                   <InfoTip label="About Orders">
                     <p>View and manage all customer orders.</p>
                   </InfoTip>
                 </div>
+                {canCreateOrder ? (
+                    <Button onClick={() => setNewOrder("customer")}>
+                        <Plus className="h-4 w-4" />
+                        Create order
+                    </Button>
+                ) : null}
             </div>
 
             <div className={`grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 ${canSeeCost ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
@@ -612,6 +628,31 @@ export default function SettingsOrdersPage({
                 </div>
             )}
             </div>
+
+            {newOrder === "customer" ? (
+                <OrderCustomerDialog
+                    canCreateCustomer={canCreateCustomer}
+                    onClose={() => setNewOrder(null)}
+                    onPicked={setNewOrder}
+                />
+            ) : newOrder ? (
+                <CreateOrderDialog
+                    key={newOrder.id}
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) setNewOrder(null);
+                    }}
+                    customerId={newOrder.id}
+                    customerName={newOrder.name}
+                    customerEmail={newOrder.email}
+                    ordersHref={(orderId) => to(`/settings/orders/${orderId}`)}
+                    onCreated={() => {
+                        setStatsReload((n) => n + 1);
+                        void fetchOrders();
+                    }}
+                    onChangeCustomer={() => setNewOrder("customer")}
+                />
+            ) : null}
         </div>
     );
 }

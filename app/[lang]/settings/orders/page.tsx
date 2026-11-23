@@ -28,5 +28,12 @@ export default async function OrdersPage({
     list: list.status === 200 ? (list.body as unknown as OrdersInitialData["list"]) : null,
   };
 
-  return <SettingsOrdersPage initialData={initialData} canSeeCost={canSeeCost} />;
+  return (
+    <SettingsOrdersPage
+      initialData={initialData}
+      canSeeCost={canSeeCost}
+      canCreateOrder={hasPermission(ctx, "customers")}
+      canCreateCustomer={hasPermission(ctx, "customers-edit")}
+    />
+  );
 }
