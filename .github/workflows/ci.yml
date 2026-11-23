@@ -69,8 +69,10 @@ jobs:
       # some read CONTEXT.md, ADRs and docs/marketing-page/ directly.
       #
       # The hook tests run only when a file they exercise changed: the hooks,
-      # the ESLint config and rules they run for real, the checks runner the
-      # stop hook calls, or the installed packages.
+      # the ESLint config and rules they run for real, the pre-commit hook and
+      # lint-baseline.mjs they copy and run, the checks runner the stop hook
+      # calls, or the installed packages. scripts/ci-workflow.test.ts fails if
+      # verify.test.ts reads a file from the checkout that this list misses.
       - name: Scope
         id: scope
         run: |
@@ -93,7 +95,7 @@ jobs:
               *) code=true ;;
             esac
             case "$f" in
-              .claude/hooks/*|eslint.config.*|eslint-rules/*|scripts/checks.mjs|package.json|pnpm-lock.yaml|.npmrc)
+              .claude/hooks/*|eslint.config.*|eslint-rules/*|.githooks/*|scripts/lint-baseline.mjs|scripts/checks.mjs|package.json|pnpm-lock.yaml|.npmrc)
                 echo "$f is exercised by the hook tests"
                 hooks=true
                 ;;

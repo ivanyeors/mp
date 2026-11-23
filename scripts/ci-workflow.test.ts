@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -35,6 +35,25 @@ describe("ci.yml", () => {
     const excluded = [...job("test").matchAll(/--exclude (\S+)/g)].map((m) => m[1]);
     expect(excluded).toEqual([".claude/hooks/verify.test.ts"]);
     expect(job("hooks")).toContain(`vitest run ${excluded[0]}`);
+  });
+
+  // The hook tests run only when Scope sees a file they exercise change, and
+  // the shards leave them out, so a file they copy or run from this checkout
+  // that Scope does not list would change with no test running. node_modules
+  // stands for the packages, which package.json and the lockfile cover.
+  it("Scope lists every file the hook tests read from this checkout", () => {
+    const line = job("scope").split("\n").find((l) => l.includes(".claude/hooks/*|"));
+    const globs = line!.trim().replace(/\)$/, "").split("|");
+    const covered = (file: string) =>
+      globs.some((g) => new RegExp(`^${g.replace(/[.+?^${}()[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`).test(file));
+    const hookTest = readFileSync(join(__dirname, "../.claude/hooks/verify.test.ts"), "utf8");
+    const read = [...hookTest.matchAll(/path\.join\(HERE, "([^"]+)"/g)].map((m) => m[1]);
+    const files = [...new Set(read)].filter((p) => p !== "node_modules");
+    expect(files.length).toBeGreaterThan(2);
+    for (const p of [".claude/hooks/verify.mjs", ".claude/hooks/verify.test.ts", "package.json", "pnpm-lock.yaml", ...files]) {
+      const file = statSync(join(__dirname, "..", p)).isDirectory() ? `${p}/any.mjs` : p;
+      expect(covered(file), `${p} is read by the hook tests but Scope does not list it`).toBe(true);
+    }
   });
 
   it("splits the suite into exactly the shards the matrix lists", () => {
