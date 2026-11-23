@@ -7,19 +7,21 @@ const h = vi.hoisted(() => ({
   timing: vi.fn(),
   updateReminder: vi.fn(async () => true),
   telegram: vi.fn(async () => "sent"),
+  allowed: false,
+  sendCancel: vi.fn(async () => "wamid.out"),
 }));
 
 vi.mock("@/lib/readjustment/lifecycle", () => ({ markReadjustmentCancelledByEvent: h.mark }));
 vi.mock("@/lib/appointments/calendar", () => ({ deleteEvent: h.deleteEvent, getEventTiming: h.timing }));
-vi.mock("@/lib/appointments/phone", () => ({ isPhoneAllowed: () => false }));
+vi.mock("@/lib/appointments/phone", () => ({ isPhoneAllowed: () => h.allowed }));
 vi.mock("@/lib/appointments/reminders-db", () => ({
   getReminderByEventId: vi.fn(),
   lastInboundAt: vi.fn(),
   updateReminder: h.updateReminder,
 }));
-vi.mock("@/lib/appointments/remind", () => ({ sendOrRecord: vi.fn() }));
+vi.mock("@/lib/appointments/remind", () => ({ sendOrRecord: async (_id: string, send: () => unknown) => send() }));
 vi.mock("@/lib/telegram/notify", () => ({ sendTelegram: h.telegram }));
-vi.mock("@/lib/appointments/whatsapp", () => ({ sendCancelMessage: vi.fn(), withinServiceWindow: () => true }));
+vi.mock("@/lib/appointments/whatsapp", () => ({ sendCancelMessage: h.sendCancel, withinServiceWindow: () => true }));
 
 const { cancelAppointment } = await import("@/lib/appointments/cancel");
 
@@ -50,6 +52,8 @@ beforeEach(() => {
   h.timing.mockResolvedValue({ startsAt: BOOKED, updatedAt: "2026-11-24T01:00:00.000Z" });
   h.updateReminder.mockClear();
   h.telegram.mockClear();
+  h.allowed = false;
+  h.sendCancel.mockClear();
 });
 
 describe("cancelAppointment and the re-adjustment refund", () => {
@@ -106,5 +110,16 @@ describe("cancelAppointment and the re-adjustment refund", () => {
     h.deleteEvent.mockRejectedValue(new Error("events.delete failed (500)"));
     await expect(cancelAppointment(row(), settings, { cause: "guest", now: NOW })).rejects.toThrow("500");
     expect(h.updateReminder).not.toHaveBeenCalled();
+  });
+
+  it("passes the refund-time line through to the customer's cancel message only when asked", async () => {
+    h.allowed = true;
+    const on = { whatsappEnabled: true } as never;
+    await cancelAppointment(row(), on, { cause: "guest", within24h: true, now: NOW, mentionRefundTime: true });
+    await cancelAppointment(row(), on, { cause: "guest", within24h: true, now: NOW });
+    expect(h.sendCancel.mock.calls.map((c) => (c as unknown[])[1])).toMatchObject([
+      { mentionRefundTime: true },
+      { mentionRefundTime: undefined },
+    ]);
   });
 });

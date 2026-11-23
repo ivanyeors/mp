@@ -131,6 +131,111 @@ async function flagOrder(
   await addOrderTimelineEvent(orderId, eventType, detail, metadata);
 }
 
+async function settleSucceededRefunds(
+  admin: SupabaseClient,
+  paymentIntentId: string,
+  chargeId: string | null,
+  refunds: Stripe.Refund[],
+) {
+  if (refunds.length === 0) return;
+  const refundedOrderId = await orderIdForIntent(admin, paymentIntentId);
+  if (!refundedOrderId) return;
+
+  const { data: order, error: refundedError } = await admin
+    .from("orders")
+    .select(
+      "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
+    )
+    .eq("id", refundedOrderId)
+    .maybeSingle();
+
+  if (refundedError) throw new Error(`Refund lookup for ${paymentIntentId} failed: ${refundedError.message}`);
+  if (!order) return;
+
+  const wasFullyRefunded = order.status === "refunded";
+
+  let newlyRecorded = 0;
+  const recordedNow: Stripe.Refund[] = [];
+  for (const r of refunds) {
+    const { recorded } = await recordLedgerEntry(admin, order.id, {
+      type: "refund",
+      amount: -(r.amount / 100),
+      currency: (r.currency ?? order.currency ?? "SGD").toUpperCase(),
+      stripeObjectId: r.id,
+      metadata: {
+        charge_id: chargeId,
+        payment_intent: paymentIntentId,
+        reason: r.reason ?? null,
+      },
+      occurredAt: stripeTime(r.created),
+    });
+    if (recorded) {
+      newlyRecorded++;
+      recordedNow.push(r);
+      const rmaId = r.metadata?.rma_request_id;
+      if (rmaId) {
+        try {
+          await applyRmaTransition(admin, { rmaId, to: "refunded", actorType: "system" });
+        } catch (err) {
+          console.error(`[stripe/webhook] RMA ${rmaId} settle failed:`, err);
+        }
+      }
+    }
+  }
+
+  if (newlyRecorded === 0) return;
+
+  const state = await rollupOrderMoney(admin, order.id);
+  const nowFullyRefunded = state.status === "refunded";
+
+  await clawbackRefundPoints(admin, order.id, recordedNow);
+
+  await addOrderTimelineEvent(
+    order.id,
+    nowFullyRefunded ? "refunded" : "partially_refunded",
+    nowFullyRefunded
+      ? "Order fully refunded via Stripe"
+      : `Partial refund recorded via Stripe (${state.amountRefunded} of ${state.amountCaptured})`,
+    {
+      charge_id: chargeId,
+      payment_intent: paymentIntentId,
+      amount_refunded: state.amountRefunded,
+    }
+  );
+
+  if (nowFullyRefunded && !wasFullyRefunded) {
+    scheduleLabelCancel(admin, order.id);
+    if (order.partner_id) {
+      try {
+        await voidCommissionsForOrder(admin, order.id);
+      } catch (err) {
+        console.error(`[stripe/webhook] Commission void failed for ${order.id}:`, err);
+      }
+    }
+    if (order.coupon_id) {
+      const { decrementCouponUsage } = await import("@/lib/ecommerce/discounts");
+      try {
+        await decrementCouponUsage(order.coupon_id);
+      } catch (err) {
+        console.error(`[stripe/webhook] Coupon usage decrement failed for ${order.id}:`, err);
+      }
+    }
+    if (order.customer_id) {
+      try {
+        await updateCustomerStats(order.customer_id);
+      } catch (err) {
+        console.error(`[stripe/webhook] Customer stats update failed:`, err);
+      }
+    }
+  }
+
+  try {
+    await sendRefundEmail(order.id, order, state.amountRefunded, admin);
+  } catch (err) {
+    console.error(`[stripe/webhook] Refund email failed for ${order.id}:`, err);
+  }
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -583,110 +688,27 @@ export async function POST(req: Request) {
           typeof charge.payment_intent === "string"
             ? charge.payment_intent
             : charge.payment_intent?.id ?? null;
-
         if (!paymentIntentId) break;
-
-        const refundedOrderId = await orderIdForIntent(admin, paymentIntentId);
-        if (!refundedOrderId) break;
-
-        const { data: order, error: refundedError } = await admin
-          .from("orders")
-          .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
-          )
-          .eq("id", refundedOrderId)
-          .maybeSingle();
-
-        if (refundedError) throw new Error(`Refund lookup for ${paymentIntentId} failed: ${refundedError.message}`);
-        if (!order) break;
-
-        const wasFullyRefunded = order.status === "refunded";
 
         // ponytail: relies on charge.refunds.data (Stripe returns the latest ~10). Ceiling: an
         // order with >10 distinct refunds could miss older ids on a late redelivery. Upgrade path:
-        // handle refund.* events directly.
-        const refunds = (charge.refunds?.data ?? []).filter((r) => r.status === "succeeded");
-        let newlyRecorded = 0;
-        const recordedNow: Stripe.Refund[] = [];
-        for (const r of refunds) {
-          const { recorded } = await recordLedgerEntry(admin, order.id, {
-            type: "refund",
-            amount: -(r.amount / 100),
-            currency: (r.currency ?? order.currency ?? "SGD").toUpperCase(),
-            stripeObjectId: r.id,
-            metadata: {
-              charge_id: charge.id,
-              payment_intent: paymentIntentId,
-              reason: r.reason ?? null,
-            },
-            occurredAt: stripeTime(r.created),
-          });
-          if (recorded) {
-            newlyRecorded++;
-            recordedNow.push(r);
-            const rmaId = r.metadata?.rma_request_id;
-            if (rmaId) {
-              try {
-                await applyRmaTransition(admin, { rmaId, to: "refunded", actorType: "system" });
-              } catch (err) {
-                console.error(`[stripe/webhook] RMA ${rmaId} settle failed:`, err);
-              }
-            }
-          }
-        }
+        // handle refund.created directly, as refund.updated is.
+        const succeeded = (charge.refunds?.data ?? []).filter((r) => r.status === "succeeded");
+        await settleSucceededRefunds(admin, paymentIntentId, charge.id, succeeded);
+        break;
+      }
 
-        if (newlyRecorded === 0) break;
-
-        const state = await rollupOrderMoney(admin, order.id);
-        const nowFullyRefunded = state.status === "refunded";
-
-        await clawbackRefundPoints(admin, order.id, recordedNow);
-
-        await addOrderTimelineEvent(
-          order.id,
-          nowFullyRefunded ? "refunded" : "partially_refunded",
-          nowFullyRefunded
-            ? "Order fully refunded via Stripe"
-            : `Partial refund recorded via Stripe (${state.amountRefunded} of ${state.amountCaptured})`,
-          {
-            charge_id: charge.id,
-            payment_intent: paymentIntentId,
-            amount_refunded: state.amountRefunded,
-          }
-        );
-
-        if (nowFullyRefunded && !wasFullyRefunded) {
-          scheduleLabelCancel(admin, order.id);
-          if (order.partner_id) {
-            try {
-              await voidCommissionsForOrder(admin, order.id);
-            } catch (err) {
-              console.error(`[stripe/webhook] Commission void failed for ${order.id}:`, err);
-            }
-          }
-          if (order.coupon_id) {
-            const { decrementCouponUsage } = await import("@/lib/ecommerce/discounts");
-            try {
-              await decrementCouponUsage(order.coupon_id);
-            } catch (err) {
-              console.error(`[stripe/webhook] Coupon usage decrement failed for ${order.id}:`, err);
-            }
-          }
-          if (order.customer_id) {
-            try {
-              await updateCustomerStats(order.customer_id);
-            } catch (err) {
-              console.error(`[stripe/webhook] Customer stats update failed:`, err);
-            }
-          }
-        }
-
-        try {
-          await sendRefundEmail(order.id, order, state.amountRefunded, admin);
-        } catch (err) {
-          console.error(`[stripe/webhook] Refund email failed for ${order.id}:`, err);
-        }
-
+      case "refund.updated": {
+        if ((event.data.object as Stripe.Refund).status !== "succeeded") break;
+        const refund = await getStripe().refunds.retrieve((event.data.object as Stripe.Refund).id);
+        if (refund.status !== "succeeded") break;
+        const paymentIntentId =
+          typeof refund.payment_intent === "string"
+            ? refund.payment_intent
+            : refund.payment_intent?.id ?? null;
+        if (!paymentIntentId) break;
+        const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id ?? null;
+        await settleSucceededRefunds(admin, paymentIntentId, chargeId, [refund]);
         break;
       }
 

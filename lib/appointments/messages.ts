@@ -3,6 +3,8 @@ import { formatDateSgt, formatTimeSgt } from "./format";
 
 export const TALK_TO_TEAM = `message our team on WhatsApp at ${SUPPORT_WHATSAPP_DISPLAY}`;
 
+export const CANCEL_ANYWAY_BUTTON = "Cancel anyway";
+
 export const whenLabel = (iso: string) => `${formatDateSgt(iso)} at ${formatTimeSgt(iso)}`;
 
 export const guestText = {
@@ -12,6 +14,11 @@ export const guestText = {
     "Thanks, we'll switch off aftercare messages for you. You can also turn them off yourself in your Mpillow account.",
   cancelQuestion: (startsAt: string) =>
     `Do you want to cancel your appointment on ${whenLabel(startsAt)}? Reply "cancel appointment" to cancel it. To stop aftercare messages, reply "stop".`,
+  visitDayCancelQuestion: (startsAt: string, fee: { amount: number; currency: string }) =>
+    [
+      `Your appointment is today at ${formatTimeSgt(startsAt)}. Cancellations on the day of the visit are refunded manually only, so if you cancel now, your ${fee.currency} ${fee.amount.toFixed(2)} fee won't be refunded automatically. Our team will review it and let you know.`,
+      `Tap "${CANCEL_ANYWAY_BUTTON}" to cancel. To keep your appointment, you don't need to do anything.`,
+    ].join("\n\n"),
   slotHint: () =>
     `To move your appointment, tap "View times" above and pick one, or reply "none of these" to cancel it. For anything else, please ${TALK_TO_TEAM}.`,
   noUpcoming: () =>
@@ -35,11 +42,18 @@ export const guestText = {
     `Done — your appointment is now ${whenLabel(startsAt)} (Asia/Singapore). See you then!`,
   stillOn: (startsAt: string) =>
     `Your appointment is still on for ${whenLabel(startsAt)}. To change it, tap Reschedule on our reminder. For anything else, please ${TALK_TO_TEAM}.`,
-  cancelled: (p: { guestName: string; typeLabel: string; startsAt: string; bookingUrl: string }) =>
+  cancelled: (p: {
+    guestName: string;
+    typeLabel: string;
+    startsAt: string;
+    bookingUrl: string;
+    mentionRefundTime?: boolean;
+  }) =>
     [
       `Hi ${p.guestName}, your ${p.typeLabel} appointment on ${whenLabel(p.startsAt)} has been cancelled.`,
       `You can rebook here: ${p.bookingUrl}`,
       `If you have any questions, please ${TALK_TO_TEAM}.`,
+      ...(p.mentionRefundTime ? ["Refunds take 5–10 business days to be processed."] : []),
     ].join("\n\n"),
   cancelFailed: () => `Sorry — we couldn't cancel that automatically. Please ${TALK_TO_TEAM}.`,
 };

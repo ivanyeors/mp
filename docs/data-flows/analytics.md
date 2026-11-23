@@ -40,7 +40,7 @@ written only from those: the Stripe webhook and Result Accept.
   | Shop / re-adjustment charge | `checkout.session.completed` / `async_payment_succeeded` | the event's `created` (for PayNow, when the money settled) |
   | Result hold capture | Accept | the capture's balance transaction (`paymentIntentCapturedAt`) |
   | Result Balance payment | Accept | the same, for the Balance payment's intent |
-  | Refund | `charge.refunded` | the refund's `created` |
+  | Refund | `charge.refunded`, or `refund.updated` for one that settles later (PayNow) | the refund's `created` |
   | Dispute loss and fee, refund reversal | `charge.dispute.closed`, `refund.failed` | the event's `created` |
 
   A Result paid in two parts (a Balance payment, then the hold's capture) is

@@ -24,8 +24,8 @@ would pass or fail for the wrong reason.
 
 - [ ] Stripe CLI authenticated to MELLOW LIFE (live `acct_1UEobvCMlMx7bA76`,
       sandbox `acct_1UEocJFmfnDU9wZa`).
-- [ ] `we_1UEpVxCMlMx7bA76xFJYdCCj` subscribed to `refund.updated` — 10 events, up
-      from 9. Host `custom.mpillow.com`.
+- [x] `we_1UEpVxCMlMx7bA76xFJYdCCj` subscribed to `refund.updated` — 11 events, up
+      from 10 (2026-11-23). Host `custom.mpillow.com`.
 - [ ] A Singapore bank account with a PayNow-participating app.
 - [ ] A second phone, to scan the QR the first one renders.
 - [ ] `npm run stripe:sync-all` run against **live** (live had 0 products on

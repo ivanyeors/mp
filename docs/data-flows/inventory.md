@@ -130,7 +130,7 @@ flowchart TD
   - The ledger insert and the `returned_quantity` update are separate
     statements.
 - **Nothing else adds stock.** Specifically:
-  - Stripe refunds (`charge.refunded`), cancels and refund requests never
+  - Stripe refunds (`charge.refunded`, `refund.updated`), cancels and refund requests never
     restock.
   - RMA has no inventory code. An RMA refund settles through the same
     `charge.refunded` path.

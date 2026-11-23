@@ -34,6 +34,7 @@ export async function cancelAppointment(
     within24h?: boolean;
     now?: Date;
     startsAt?: string | null;
+    mentionRefundTime?: boolean;
   },
 ): Promise<CancelOutcome> {
   const now = opts.now ?? new Date();
@@ -88,6 +89,7 @@ export async function cancelAppointment(
         typeLabel: type.label,
         startsAt: row.starts_at,
         bookingUrl: type.bookingUrl,
+        mentionRefundTime: opts.mentionRefundTime,
       },
       { within24h },
     ),

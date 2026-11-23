@@ -49,7 +49,7 @@ export function cancellationRefund(
   return sgtDate(now) < sgtDate(booking.start_at) ? "refund" : "staff_decides";
 }
 
-type Fee = { amount: number; currency: string; orderNumber: string | null };
+export type Fee = { amount: number; currency: string; orderNumber: string | null };
 
 export type RefundOutcome =
   | { kind: "nothing" }
@@ -127,6 +127,27 @@ async function tellCustomer(booking: CancelledBooking, outcome: RefundOutcome) {
   }
 }
 
+export async function heldFee(
+  admin: SupabaseClient,
+  feeOrderId: string,
+): Promise<{ order: FeeOrder & { payment_reference: string }; fee: Fee } | null> {
+  const { data, error } = await admin
+    .from("orders")
+    .select("id, order_number, status, payment_reference, currency, total, amount_captured, amount_refunded")
+    .eq("id", feeOrderId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const order = data as FeeOrder | null;
+  if (!order || !order.payment_reference || NOT_REFUNDABLE.has(order.status)) return null;
+  const amount = refundableAmount(order);
+  if (amount <= 0) return null;
+  const currency = String(order.currency ?? "SGD").toUpperCase();
+  return {
+    order: { ...order, payment_reference: order.payment_reference },
+    fee: { amount, currency, orderNumber: order.order_number == null ? null : String(order.order_number) },
+  };
+}
+
 // ponytail: the status move to `cancelled` is the claim and a failed Stripe call is not retried —
 // Staff get a Telegram alert to refund from the Order by hand. Ceiling: a crash between the claim
 // and the Stripe call leaves no alert. Upgrade path: a sweep over cancelled paid bookings whose
@@ -143,21 +164,11 @@ async function settleFee(
 
   const who = `${booking.guest_name} · ${booking.product_label}`;
   try {
-    const { data, error } = await admin
-      .from("orders")
-      .select("id, order_number, status, payment_reference, currency, total, amount_captured, amount_refunded")
-      .eq("id", booking.fee_order_id!)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    const order = data as FeeOrder | null;
-    if (!order || !order.payment_reference || NOT_REFUNDABLE.has(order.status)) {
-      return { kind: "already_settled" };
-    }
-    const amount = refundableAmount(order);
-    if (amount <= 0) return { kind: "already_settled" };
-    const currency = String(order.currency ?? "SGD").toUpperCase();
+    const held = await heldFee(admin, booking.fee_order_id!);
+    if (!held) return { kind: "already_settled" };
+    const { order, fee } = held;
+    const { amount, currency } = fee;
     const orderRef = `Order #${order.order_number ?? "?"}`;
-    const fee: Fee = { amount, currency, orderNumber: order.order_number == null ? null : String(order.order_number) };
 
     if (decision === "staff_decides") {
       await sendTelegram(

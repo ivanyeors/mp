@@ -4,9 +4,12 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 import {
   CANCELLED_BOOKING_COLUMNS,
+  cancellationRefund,
+  heldFee,
   refundCancelledReadjustment,
   type CancelledBooking,
   type CancelledBy,
+  type Fee,
 } from "./refund";
 
 export async function markReadjustmentCancelledByEvent(
@@ -33,6 +36,27 @@ export async function markReadjustmentCancelledByEvent(
     );
   }
   return moved.length;
+}
+
+export async function visitDayFeeByEvent(
+  calendarEventId: string,
+  startsAt: string,
+  now: Date,
+  admin: SupabaseClient = supabaseAdmin(),
+): Promise<Fee | null> {
+  const { data, error } = await admin
+    .from("readjustment_bookings")
+    .select("complimentary, fee_order_id")
+    .eq("calendar_event_id", calendarEventId)
+    .eq("status", "booked");
+  if (error) throw new Error(`Couldn't read the re-adjustment booking: ${error.message}`);
+  for (const b of (data ?? []) as Array<{ complimentary: boolean; fee_order_id: string | null }>) {
+    const decision = cancellationRefund({ ...b, start_at: startsAt }, "booked", "customer", now);
+    if (decision !== "staff_decides") continue;
+    const held = await heldFee(admin, b.fee_order_id!);
+    if (held) return held.fee;
+  }
+  return null;
 }
 
 export async function moveReadjustmentByEvent(

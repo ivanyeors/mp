@@ -27,8 +27,8 @@ account can establish:
       there forwards the wrong account's events and every row below would pass or
       fail for the wrong reason. Run `stripe login` and confirm
       `acct_1UEobvCMlMx7bA76` (live) / `acct_1UEocJFmfnDU9wZa` (sandbox).
-- [ ] `we_1UEpVxCMlMx7bA76xFJYdCCj` subscribed to `refund.updated` (slice 02) —
-      10 events, up from 9. Host must stay `custom.mpillow.com`; Stripe does not
+- [x] `we_1UEpVxCMlMx7bA76xFJYdCCj` subscribed to `refund.updated` (slice 02, done 2026-11-23) —
+      11 events, up from 10. Host must stay `custom.mpillow.com`; Stripe does not
       follow redirects and `work.mpillow.com` 308s, which has broken delivery here
       before.
 - [ ] A Singapore bank account with a PayNow-participating app, for live rows.

@@ -57,15 +57,15 @@ aspirational.
 
 ## Acceptance criteria
 
-- [ ] `refund.updated` with `succeeded` writes exactly one ledger row and rolls up.
-- [ ] Re-delivery of the same event writes nothing further (idempotent on refund id).
-- [ ] A **card** refund emitting both `charge.refunded` and `refund.updated` records
+- [x] `refund.updated` with `succeeded` writes exactly one ledger row and rolls up.
+- [x] Re-delivery of the same event writes nothing further (idempotent on refund id).
+- [x] A **card** refund emitting both `charge.refunded` and `refund.updated` records
       **one** row — verified by a test, since this is the regression the slice risks.
-- [ ] `refund.updated` with `failed` is a no-op; `refund.failed` still posts the
+- [x] `refund.updated` with `failed` is a no-op; `refund.failed` still posts the
       reversal exactly once.
 - [ ] A `pending` refund appears on the order timeline.
 - [ ] An unmatched refund dead-letters rather than vanishing.
-- [ ] Webhook endpoint subscribed to `refund.updated` — **manual Dashboard step** on
+- [x] Webhook endpoint subscribed to `refund.updated` — **manual Dashboard step** on
       `we_1UEpVxCMlMx7bA76xFJYdCCj`, host `custom.mpillow.com`.
 
 ## Notes
@@ -73,3 +73,29 @@ aspirational.
 Ship this **before** PayNow carries any volume. It is the only slice here that
 fixes something already broken, and it is not PayNow-specific — it is async refunds
 generally, of which PayNow is simply the first.
+
+## Built (2026-11-22)
+
+`refund.updated` with `succeeded` runs the same code as `charge.refunded`
+(`settleSucceededRefunds` in `app/api/stripe/webhook/route.ts`): ledger row,
+rollup, RMA settle, points clawback, full-refund side effects and the refund
+email, all once per refund id. It first re-reads the refund from Stripe and
+trusts that status, not the event's: a retried "succeeded" event that lands
+after `refund.failed` would otherwise record a refund that never happened.
+Test: `app/api/stripe/webhook/__tests__/async-refund.test.ts`.
+
+Deliberately not built:
+
+- **A timeline event for a pending refund.** The Order refund, refund-request
+  and RMA paths already note the refund on the Order when they create it (the
+  Order cancel writes `cancel_initiated`). A refund made in the Stripe Dashboard
+  is not noted until it settles.
+- **Dead-lettering an unmatched refund.** It does what `charge.refunded` does:
+  records nothing. Nothing reads `stripe_webhook_failures`, so a dead-letter row
+  would tell no one. The one real case, a Balance payment refunded before
+  Accept, is in `docs/known-issues.md`.
+
+Live endpoint `we_1UEpVxCMlMx7bA76xFJYdCCj` subscribed to `refund.updated` on
+2026-11-23 (11 events). The sandbox account `acct_1UEocJFmfnDU9wZa` was not
+reachable from that session; subscribe its endpoint too before testing a pending
+refund in test mode.
