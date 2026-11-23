@@ -2,6 +2,7 @@
 
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
+import { outsideTestRecipients, readTestRecipients, TEST_RECIPIENT_REFUSAL } from "@/lib/auth/test-recipients";
 import { validateEmailCopy } from "@/lib/email/copy";
 import { editableEmail, readSavedCopy, resetCopy, variantCase, writeCopy } from "@/lib/email/copy-admin";
 import { emailAddressOf } from "@/lib/email/campaign-transport";
@@ -94,6 +95,7 @@ export async function sendEmailCopyTest(
   const addresses = [...new Set((Array.isArray(to) ? to : []).map((t) => emailAddressOf(t)).filter((t): t is string => Boolean(t)))];
   if (addresses.length === 0) return { ok: false, error: "Enter an email address to send the test to." };
   if (addresses.length > MAX_TEST_RECIPIENTS) return { ok: false, error: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
+  if (outsideTestRecipients(addresses, await readTestRecipients(ctx.email)).length) return { ok: false, error: TEST_RECIPIENT_REFUSAL };
 
   const rendered = variantCase(checked.email, variantId).render("happy", checked.values);
   const transport = getDefaultTransport();

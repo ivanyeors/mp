@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import {
+  checkCampaignDomain,
   checkCampaignFrom,
   emailAddressOf,
   RESEND_FREE_SEND_LIMITS,
@@ -133,7 +134,7 @@ export type DeliverySetup = Pick<
   "transport" | "campaignFrom" | "campaignDomain" | "orderFrom" | "replyTo" | "origin" | "unsubscribeSecret" | "fetchImpl"
 >;
 
-export function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "unsubscribeSecret">): PreflightCheck[] {
+function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "unsubscribeSecret">): PreflightCheck[] {
   const checks: PreflightCheck[] = [];
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
 
@@ -169,8 +170,22 @@ export function campaignConfigChecks(setup: Omit<DeliverySetup, "fetchImpl" | "u
   return checks;
 }
 
-export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
+export async function campaignDomainCheck(setup: Pick<DeliverySetup, "transport" | "campaignFrom" | "campaignDomain" | "orderFrom">): Promise<PreflightCheck> {
+  const from = checkCampaignFrom({ from: setup.campaignFrom, domain: setup.campaignDomain, orderFrom: setup.orderFrom });
+  if (setup.transport?.name !== "resend" || !from.ok) {
+    return { key: "domain", ok: false, detail: "not checked: Resend and the sending address are not both set up" };
+  }
+  return { key: "domain", ...(await checkCampaignDomain(setup.transport, from.domain)) };
+}
+
+export async function campaignSetupChecks(setup: Omit<DeliverySetup, "fetchImpl" | "unsubscribeSecret">): Promise<PreflightCheck[]> {
   const checks = campaignConfigChecks(setup);
+  checks.splice(checks.findIndex((c) => c.key === "from") + 1, 0, await campaignDomainCheck(setup));
+  return checks;
+}
+
+export async function campaignDeliveryChecks(setup: DeliverySetup): Promise<PreflightCheck[]> {
+  const checks = await campaignSetupChecks(setup);
   const add = (key: string, ok: boolean, detail: string) => checks.push({ key, ok, detail });
 
   const route = await probeUnsubscribeRoute(setup.origin, setup.fetchImpl);

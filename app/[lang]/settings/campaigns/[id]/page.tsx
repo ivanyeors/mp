@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { readTestRecipients } from "@/lib/auth/test-recipients";
 import { hasPermission } from "@/lib/auth/permissions";
 import { listSegments } from "@/lib/crm/segments";
 import { playbooksFound } from "@/lib/email-campaigns/starters";
@@ -52,6 +53,7 @@ export default async function EmailCampaignPage({
             waves={waves}
             segments={options}
             staffEmail={ctx.email}
+            testRecipients={await readTestRecipients(ctx.email)}
             pointsLive={points}
             ai={ai}
             keptToday={keptToday(waves, new Date())}

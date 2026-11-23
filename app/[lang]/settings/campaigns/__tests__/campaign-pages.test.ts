@@ -19,6 +19,7 @@ vi.mock("@/lib/crm/segments", () => ({
   }),
 }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
+vi.mock("@/lib/auth/test-recipients", () => ({ readTestRecipients: async (self: string) => [self] }));
 vi.mock("@/lib/email-campaigns/store", () => ({
   getCampaign: vi.fn(async (_admin: unknown, id: string) => h.campaigns.get(id) ?? null),
   listCampaigns: vi.fn(async () => [...h.campaigns.values()].map((campaign) => ({ campaign, stats: { handed: 0, firstSentAt: null, lastSentAt: null } }))),

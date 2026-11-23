@@ -182,6 +182,21 @@ describe("it refuses before sending anything", () => {
     await refused({ orderFrom: "orders@hello.mpillow.com" }, "from");
   });
 
+  it("a sending domain Resend has not verified", async () => {
+    const resend = (status: string) => {
+      const t = fakeTransport();
+      t.transport.sendingDomains = async () => [{ name: "hello.mpillow.com", status }];
+      return t;
+    };
+    const pending = resend("pending");
+    const r = await refused({ transport: pending.transport }, "domain");
+    expect(r.preflight.checks.find((c) => c.key === "domain")!.detail).toMatch(/in Resend but not verified \(pending\)/);
+    expect(pending.sent).toEqual([]);
+    await refused({ transport: resend("verified").transport, campaignFrom: "Mpillow <hello@custom.mpillow.com>", campaignDomain: "custom.mpillow.com" }, "domain");
+    const verified = resend("verified");
+    expect((await runCampaignWave(announce(), setup({ transport: verified.transport }))).ran).toBe(true);
+  });
+
   it("a site without the unsubscribe route (README, first hazard)", async () => {
     await refused({ fetchImpl: site({ live: false }) as unknown as typeof fetch }, "unsubscribe_route");
     await refused({ fetchImpl: site({ configured: false }) as unknown as typeof fetch }, "unsubscribe_route");
