@@ -23,6 +23,10 @@ vi.mock("@/lib/auth/admin", () => ({
   }),
 }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: vi.fn(async (a: { action: string }) => void h.audit.push(a)) }));
+vi.mock("@/lib/auth/test-recipients", async (orig) => ({
+  ...(await orig<typeof import("@/lib/auth/test-recipients")>()),
+  readTestRecipients: async () => ["me@mpillow.com", "ops@mpillow.com", "amy@mpillow.com", "ben@mpillow.com"],
+}));
 vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: vi.fn(async () => ({ id: "p1", name: "Ivan Yeo" })) }));
 vi.mock("@/lib/email/transport", async (orig) => ({
   ...(await orig<typeof import("@/lib/email/transport")>()),
@@ -157,7 +161,13 @@ describe("preview and test", () => {
     expect(h.sent[0].subject).toBe("[Test] Order MP-10428 confirmed");
     expect(h.sent[0].html).toContain("Hello there");
     expect(h.rows.size).toBe(0);
-    expect(await actions.sendEmailCopyTest(ID, null, words(), ["a@x.test", "b@x.test", "c@x.test", "d@x.test"])).toMatchObject({ ok: false });
+    expect(await actions.sendEmailCopyTest(ID, null, words(), ["me@mpillow.com", "ops@mpillow.com", "amy@mpillow.com", "ben@mpillow.com"])).toMatchObject({ ok: false });
+  });
+
+  it("goes only to someone with an Admin Panel login, whatever the page sends", async () => {
+    const res = await actions.sendEmailCopyTest(ID, null, words(), ["me@mpillow.com", "someone@gmail.com"]);
+    expect(res).toEqual({ ok: false, error: "A test goes only to someone with an Admin Panel login: pick them from the list." });
+    expect(h.sent).toEqual([]);
   });
 });
 

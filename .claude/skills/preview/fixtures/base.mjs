@@ -12,8 +12,14 @@ export const OWNER = { id: "00000000-0000-4000-8000-000000000001", email: "owner
 export const STAFF = { id: "00000000-0000-4000-8000-000000000002", email: "staff@preview.local" };
 export const CLERK = { id: "00000000-0000-4000-8000-000000000006", email: "clerk@preview.local" };
 
-export default function base() {
+export default function base({ scenario } = {}) {
   const at = "2026-01-05T02:00:00Z";
+  // `--scenario shared-login`: the Owner login is a shared studio account with two Staff
+  // profiles, so the header shows the "Who are you?" picker beside the breadcrumb.
+  const profiles =
+    scenario === "shared-login"
+      ? ["Amy", "Ben"].map((name, i) => ({ id: `00000000-0000-4000-8000-0000005a000${i + 1}`, name, admin_user_id: "member-owner", archived_at: null, created_at: at, updated_at: at }))
+      : [];
   return {
     users: [
       { ...OWNER, user_metadata: { full_name: "Preview Owner" } },
@@ -26,6 +32,7 @@ export default function base() {
         { id: "role-staff", key: "staff", name: "Staff", description: "No pages", is_system: false, grants_all: false, permissions: [], created_at: at, updated_at: at },
         { id: "role-clerk", key: "clerk", name: "Clerk", description: "Inventory, Products, Orders and Analytics, no Costings", is_system: false, grants_all: false, permissions: ["inventory", "products", "media", "orders", "analytics"], created_at: at, updated_at: at },
       ],
+      mp_staff: profiles,
       admin_users: [
         { id: "member-owner", auth_user_id: OWNER.id, email: OWNER.email, role: "owner", role_id: "role-owner", is_active: true, created_at: at, updated_at: at },
         { id: "member-staff", auth_user_id: STAFF.id, email: STAFF.email, role: "staff", role_id: "role-staff", is_active: true, created_at: at, updated_at: at },

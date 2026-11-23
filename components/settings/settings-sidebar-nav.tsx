@@ -533,10 +533,14 @@ function SettingsBreadcrumbTrail({
       <BreadcrumbList className="flex-nowrap overflow-hidden">
         {crumbs.map((crumb, i) => {
           const isLast = i === crumbs.length - 1;
+          const offPhone = i < crumbs.length - 2 ? "max-md:hidden" : "";
+          const leadsOnPhone = i === crumbs.length - 2 && i > 0;
           return (
             <Fragment key={`${crumb.label}-${i}`}>
-              {i > 0 ? <BreadcrumbSeparator /> : null}
-              <BreadcrumbItem className={isLast ? "min-w-0" : "shrink-0"}>
+              {i > 0 ? <BreadcrumbSeparator className={leadsOnPhone ? "max-md:hidden" : offPhone} /> : null}
+              <BreadcrumbItem
+                className={cn(offPhone, isLast ? "min-w-0 max-md:max-w-[65%] max-md:shrink-0" : "min-w-0 md:shrink-0")}
+              >
                 {isLast || !crumb.href || !canOpen(crumb.href, permissions) ? (
                   <BreadcrumbPage className="truncate" title={crumb.label}>
                     {crumb.label}

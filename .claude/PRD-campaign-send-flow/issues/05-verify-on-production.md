@@ -30,7 +30,10 @@ before the first real wave. Nothing in this slice is code.
    verified. On 2026-11-23 it was not: production sent from `custom.mpillow.com`, the site's
    own host, while Resend holds `hello.mpillow.com`, so Resend refused every test (403).
 2. [ ] **Run every check:** one-click unsubscribe and signed links pass.
-3. [ ] **A test** to a Gmail, an Outlook and a Yahoo inbox:
+3. [ ] **A test** to a Gmail, an Outlook and a Yahoo inbox. Since 2026-11-23 a test goes
+   only to someone with an Admin Panel login, picked from a list (owner: no typed
+   addresses), one person a send. Each of the three inboxes therefore needs a Member
+   (Users & permissions) that has signed in once; deactivate them after.
    - it lands in the inbox, not spam;
    - Gmail's Unsubscribe button works;
    - the button signs in;

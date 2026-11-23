@@ -35,6 +35,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
+import { TestRecipientSelect } from "@/components/settings/test-recipient-select";
 import { Label } from "@/components/ui/label";
 import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Progress } from "@/components/ui/progress";
@@ -85,7 +86,6 @@ import {
     CAMPAIGN_LIMITS,
     CAMPAIGN_PLACEHOLDERS,
     MAX_EXCLUDED_SEGMENTS,
-    MAX_TEST_RECIPIENTS,
     MAX_WAVE_SIZE,
     variablesInEmail,
     type Campaign,
@@ -229,6 +229,7 @@ export function CampaignEditor({
     waves = [],
     segments: givenSegments,
     staffEmail,
+    testRecipients = [staffEmail.trim().toLowerCase()],
     pointsLive = false,
     ai = AI_OFF,
     keptToday = 0,
@@ -247,6 +248,7 @@ export function CampaignEditor({
     waves?: CampaignWaveStats[];
     segments: SegmentOption[];
     staffEmail: string;
+    testRecipients?: string[];
     pointsLive?: boolean;
     ai?: AiWritingAvailability;
     keptToday?: number;
@@ -479,7 +481,7 @@ export function CampaignEditor({
         return out;
     }, [readiness, advice, content, savedContent, inChinese]);
 
-    const [testTo, setTestTo] = useState(staffEmail);
+    const [testTo, setTestTo] = useState(testRecipients[0]);
     const [testLanguage, setTestLanguage] = useState<Locale>(DEFAULT_LOCALE);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -490,8 +492,7 @@ export function CampaignEditor({
         setTestResult(null);
         try {
             if (dirty && !locked && !(await save())) return;
-            const addresses = testTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
-            const res = await sendCampaignTestAction(campaign.id, addresses, ...(version && testLanguage === CHINESE ? [{ language: CHINESE }] : []));
+            const res = await sendCampaignTestAction(campaign.id, [testTo], ...(version && testLanguage === CHINESE ? [{ language: CHINESE }] : []));
             if (!res.ok) setTestResult({ ok: false, text: res.error });
             else if (res.failed.length) setTestResult({ ok: false, text: `Sent ${res.sent}. Couldn't send to ${res.failed.map((f) => `${f.to} (${f.error})`).join(", ")}.` });
             else setTestResult({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}. Check the inbox, and the spam folder.` });
@@ -1643,12 +1644,12 @@ export function CampaignEditor({
                                 <CardHeader>
                                     <CardTitle className="text-base">Send a test</CardTitle>
                                     <CardDescription>
-                                        Sends this email to you, with &ldquo;[Test]&rdquo; before the subject. It isn&apos;t counted as sent to anyone.
+                                        Sends this email to the person you pick, with &ldquo;[Test]&rdquo; before the subject. It isn&apos;t counted as sent to anyone.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
-                                    <Field label="Send to" htmlFor="c-test" hint={`Up to ${MAX_TEST_RECIPIENTS} addresses, separated by commas.`}>
-                                        <Input id="c-test" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                                    <Field label="Send to" htmlFor="c-test" hint="Anyone with an Admin Panel login. Add one in Users & permissions.">
+                                        <TestRecipientSelect id="c-test" value={testTo} recipients={testRecipients} onChange={setTestTo} />
                                     </Field>
                                     {version ? (
                                         <PresetPicker

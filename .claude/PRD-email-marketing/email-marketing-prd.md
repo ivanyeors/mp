@@ -31,7 +31,8 @@ it would go to, and sends it in waves.
      **Claimed**.
    - *Everyone subscribed to marketing email.*
    - *A saved **Segment*** from the Customers list.
-3. **Send a test.** To up to three addresses, with "[Test]" before the subject. It goes through
+3. **Send a test.** To one person with an Admin Panel login (an active **Member**), picked from
+   a list, never a typed address (owner, 2026-11-23), with "[Test]" before the subject. It goes through
    the same transport and headers as a real send, and is not counted as sent to anyone.
 4. **Check readiness.** Every check the migration's wave sender runs, in plain words:
    - the campaign Resend key;
