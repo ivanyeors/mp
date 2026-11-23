@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
-import { requireAdmin } from "@/lib/auth/admin";
+import { adminCanSeeCost, requireAdmin } from "@/lib/auth/admin";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 import { stripeProductIdColumn } from "@/lib/stripe/mode";
 import { pingIndexNow, productUrls } from "@/lib/seo/indexnow";
@@ -33,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
 
-  const result = await getAdminProduct(id);
+  const result = await getAdminProduct(id, { canSeeCost: await adminCanSeeCost() });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 404 });
   return NextResponse.json({ ok: true, row: result.row });
 }

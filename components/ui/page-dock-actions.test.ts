@@ -24,6 +24,7 @@ describe("renderKey", () => {
     expect(renderKey([action({ title: "Saving…" })])).not.toBe(base);
     expect(renderKey([action({ active: true })])).not.toBe(base);
     expect(renderKey([action({ badge: true })])).not.toBe(base);
+    expect(renderKey([action({ disabled: true })])).not.toBe(base);
     expect(renderKey([action(), action({ id: "cancel" })])).not.toBe(base);
   });
 

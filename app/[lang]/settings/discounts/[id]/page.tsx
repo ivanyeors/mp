@@ -26,7 +26,7 @@ export default async function DiscountEditorPage({
     const isNew = id === "new";
     const [coupon, products, categoryTree] = await Promise.all([
         isNew ? null : getAdminCoupon(id),
-        listAdminProducts(new URLSearchParams({ limit: "100" })),
+        listAdminProducts(new URLSearchParams({ limit: "100" }), { canSeeCost: false }),
         getCategoryTree(),
     ]);
 

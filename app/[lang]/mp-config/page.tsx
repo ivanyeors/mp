@@ -19,8 +19,8 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import {
   DEFAULT_READJUSTMENT_POLICY,
   loadReadjustmentPolicy,
-  loadServicePrices,
-  type ServicePrices,
+  loadServiceFees,
+  type ServiceFees,
 } from "@/lib/pricing/service-prices";
 import { actingProfile, memberProfiles } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -80,7 +80,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         : Promise.resolve(null),
       readDiscoverySourceCatalog().then((catalog) => discoverySourceChoices(catalog, locale)),
     ]);
-  const servicePrices: ServicePrices | null = await loadServicePrices(supabaseAdmin()).catch(() => null);
+  const servicePrices: ServiceFees | null = await loadServiceFees(supabaseAdmin()).catch(() => null);
   const liveResultId = staffEdit || resumeFinish ? resultId : resumeDraft?.id;
   const measuring = !liveResultId && staffCtx ? await actingProfile(staffCtx.memberId) : null;
   const measuredByStaff = liveResultId

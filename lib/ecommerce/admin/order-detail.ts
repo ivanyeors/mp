@@ -1,3 +1,4 @@
+import type { CostVisibility } from "@/lib/ecommerce/admin/products";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export interface AdminOrderDetailPayload {
@@ -10,7 +11,22 @@ export type AdminOrderDetailResult =
   | { status: 200; body: AdminOrderDetailPayload }
   | { status: 404; body: { error: string } };
 
-export async function loadAdminOrderDetail(id: string): Promise<AdminOrderDetailResult> {
+const COST_AT_SALE_KEYS = new Set(["unit_cost", "total_cost", "cogs", "costPrice"]);
+
+function withoutCostAtSale(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutCostAtSale);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !COST_AT_SALE_KEYS.has(key))
+      .map(([key, v]) => [key, withoutCostAtSale(v)]),
+  );
+}
+
+export async function loadAdminOrderDetail(
+  id: string,
+  { canSeeCost }: CostVisibility,
+): Promise<AdminOrderDetailResult> {
   const admin = supabaseAdmin();
 
   const [{ data, error }, { data: margin }] = await Promise.all([
@@ -19,12 +35,15 @@ export async function loadAdminOrderDetail(id: string): Promise<AdminOrderDetail
       .select("*, order_items(*), order_timeline(*)")
       .eq("id", id)
       .single(),
-    admin.from("order_margins").select("*").eq("order_id", id).maybeSingle(),
+    canSeeCost
+      ? admin.from("order_margins").select("*").eq("order_id", id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   if (error) return { status: 404, body: { error: "Order not found" } };
 
-  const orderItems = Array.isArray(data.order_items) ? data.order_items : [];
+  const storedItems: unknown[] = Array.isArray(data.order_items) ? data.order_items : [];
+  const orderItems = canSeeCost ? storedItems : storedItems.map(withoutCostAtSale);
   const timeline = Array.isArray(data.order_timeline)
     ? [...data.order_timeline].sort(
         (a: { created_at: string }, b: { created_at: string }) =>

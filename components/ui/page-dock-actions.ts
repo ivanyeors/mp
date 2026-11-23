@@ -21,7 +21,7 @@ export function renderKey(actions: readonly DockAction[]): string {
   // JSON, not a delimiter join: a title is free text and may hold the delimiter
   // (a Result's own name can), which would let two different sets share a key.
   return JSON.stringify(
-    actions.map((a) => [a.id, a.title, Boolean(a.active), Boolean(a.badge)]),
+    actions.map((a) => [a.id, a.title, Boolean(a.active), Boolean(a.badge), Boolean(a.disabled)]),
   );
 }
 

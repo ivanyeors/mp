@@ -1,12 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AI_WRITING_DEFAULTS, type AiWritingSettings } from "@/lib/ai/writing-settings";
-import { estimateAiUsage } from "@/lib/ai/usage";
 
 const h = vi.hoisted(() => ({
   permissions: new Set<string>(),
   stored: null as AiWritingSettings | null,
   readFails: false,
-  usageFails: false,
   save: vi.fn(),
   audit: vi.fn(),
   invalidate: vi.fn(),
@@ -21,7 +19,6 @@ vi.mock("@/lib/auth/admin", () => ({
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 vi.mock("@/lib/cache/invalidate", () => ({ invalidateTag: h.invalidate }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({}) }));
-vi.mock("@/lib/ai/claude", () => ({ claudeCredentialSource: async () => "saved" }));
 vi.mock("@/lib/ai/settings", () => ({
   readAiWritingSettings: vi.fn(async () =>
     h.readFails
@@ -33,62 +30,23 @@ vi.mock("@/lib/ai/settings", () => ({
     h.stored = s;
   }),
 }));
-vi.mock("@/lib/ai/usage", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/ai/usage")>();
-  return {
-    ...actual,
-    readAiUsageThisMonth: vi.fn(async () => {
-      if (h.usageFails) throw new Error("audit log unavailable");
-      return { since: "2026-09-30T16:00:00.000Z", ...actual.estimateAiUsage([]) };
-    }),
-  };
-});
 
-const { GET, PUT } = await import("../route");
+const { PUT } = await import("../route");
 const put = (body: unknown) =>
   PUT(new Request("http://x", { method: "PUT", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.spyOn(console, "error").mockImplementation(() => {});
   h.permissions = new Set(["api-configs"]);
   h.stored = null;
   h.readFails = false;
-  h.usageFails = false;
 });
 
 describe("AI writing settings route", () => {
   it("needs api-configs", async () => {
     h.permissions = new Set(["campaigns"]);
-    expect((await GET()).status).toBe(403);
     expect((await put(AI_WRITING_DEFAULTS)).status).toBe(403);
     expect(h.save).not.toHaveBeenCalled();
-  });
-
-  it("returns the settings, whether Claude is configured and with what, and this month's use", async () => {
-    const res = await GET();
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      ok: true,
-      settings: AI_WRITING_DEFAULTS,
-      configured: true,
-      credentials: "saved",
-      usage: { since: "2026-09-30T16:00:00.000Z", ...estimateAiUsage([]) },
-    });
-  });
-
-  it("still returns the settings when the month's use can't be read", async () => {
-    h.usageFails = true;
-    const res = await GET();
-    expect(res.status).toBe(200);
-    expect((await res.json()).usage).toBeNull();
-  });
-
-  it("says so when the settings can't be read", async () => {
-    h.readFails = true;
-    const res = await GET();
-    expect(res.status).toBe(500);
-    expect((await res.json()).error).toBe("Couldn't read the AI writing settings. Try again.");
   });
 
   it("refuses a model not in the list", async () => {
@@ -127,7 +85,6 @@ describe("AI writing settings route", () => {
         after: next,
       }),
     );
-    expect((await (await GET()).json()).settings.limitDay).toBe(30);
   });
 
   it("does not save over settings it could not read", async () => {

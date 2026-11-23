@@ -71,7 +71,7 @@ beforeEach(async () => {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<SettingsOrdersPage initialData={initialData} />));
+  act(() => root!.render(<SettingsOrdersPage initialData={initialData} canSeeCost />));
   await settle(400);
 });
 afterEach(async () => {

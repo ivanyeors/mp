@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   SERVICE_LABELS,
   loadServicePrices,
+  type ServiceFees,
   type ServiceKey,
   type ServicePrices,
 } from "@/lib/pricing/service-prices";
@@ -28,12 +29,12 @@ export function measurementServiceKey(row: ServiceFeeRow): ServiceKey | null {
   return tier === "premium" ? "measurement_premium" : "measurement_basic";
 }
 
-export function resultServiceLines(row: ServiceFeeRow, prices: ServicePrices | null): ServiceLine[] {
+export function resultServiceLines(row: ServiceFeeRow, prices: ServicePrices | ServiceFees | null): ServiceLine[] {
   const key = measurementServiceKey(row);
   if (!key) return [];
   if (!prices) throw new Error(`Service price for "${key}" is required but was not loaded`);
   const price = prices[key];
-  return [{ key, label: SERVICE_LABELS[key], msrp: price.msrp, costPrice: price.costPrice }];
+  return [{ key, label: SERVICE_LABELS[key], msrp: price.msrp, costPrice: "costPrice" in price ? price.costPrice : null }];
 }
 
 export async function loadResultServiceLines(

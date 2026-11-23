@@ -22,6 +22,7 @@ import {
   costingsHrefFor,
   sizesToPush,
   unsyncedSizes,
+  waitingOnCostings,
   type InventoryFamily,
 } from "@/lib/ecommerce/inventory-families";
 
@@ -44,11 +45,14 @@ function detail(family: InventoryFamily): string {
   return `${sizes}, ${price}`;
 }
 
-async function fetchUnpushedFamilies(): Promise<InventoryFamily[]> {
+async function fetchUnpushedFamilies(): Promise<{ families: InventoryFamily[]; canSeeCost: boolean }> {
   const res = await fetch("/api/shop/products/from-inventory");
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? "Couldn't load inventory.");
-  return ((json.rows ?? []) as InventoryFamily[]).filter((f) => f.push !== "pushed");
+  return {
+    families: ((json.rows ?? []) as InventoryFamily[]).filter((f) => f.push !== "pushed"),
+    canSeeCost: json.can_see_cost === true,
+  };
 }
 
 export function InventoryPushSheet({
@@ -82,12 +86,16 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
   const to = (href: string) => withLocale(href, locale);
 
   const [families, setFamilies] = useState<InventoryFamily[] | null>(null);
+  const [canSeeCost, setCanSeeCost] = useState(false);
   const [pushing, setPushing] = useState<InventoryFamily | null>(null);
 
   const load = useCallback(
     () =>
       fetchUnpushedFamilies()
-        .then(setFamilies)
+        .then((loaded) => {
+          setFamilies(loaded.families);
+          setCanSeeCost(loaded.canSeeCost);
+        })
         .catch((err: unknown) => {
           toast.error(err instanceof Error ? err.message : "Couldn't load inventory.");
           setFamilies([]);
@@ -132,12 +140,17 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                 <ul className="divide-y">
                   {group.map((family) => {
                     const unsynced = unsyncedSizes(family.category, sizesToPush(family.sizes));
+                    const waiting = unsynced.length > 0 && !canSeeCost;
                     return (
                       <li key={family.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{family.title}</div>
                           <div className="text-xs text-muted-foreground">{detail(family)}</div>
-                          {unsynced.length > 0 ? (
+                          {waiting ? (
+                            <div className="text-xs text-amber-700 dark:text-amber-300">
+                              Waiting on Costings. {waitingOnCostings(family.category, unsynced)}
+                            </div>
+                          ) : unsynced.length > 0 ? (
                             <div className="text-xs text-amber-700 dark:text-amber-300">
                               {unsynced.length === 1 && sizesToPush(family.sizes).length === 1
                                 ? "Needs a cost and MSRP in Costings"
@@ -145,7 +158,7 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                             </div>
                           ) : null}
                         </div>
-                        {unsynced.length > 0 ? (
+                        {unsynced.length > 0 && canSeeCost ? (
                           <Button asChild size="sm" variant="outline" className="shrink-0">
                             <Link
                               href={to(costingsHrefFor(unsynced.map((s) => s.itemId)))}
@@ -159,6 +172,7 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
                           <Button
                             size="sm"
                             className="shrink-0"
+                            disabled={waiting}
                             onClick={() => setPushing(family)}
                             aria-label={`Push ${family.title} to Products`}
                           >
@@ -186,6 +200,7 @@ function PushList({ onPushed }: { onPushed?: () => void }) {
           void load();
           onPushed?.();
         }}
+        canSeeCost={canSeeCost}
       />
     </>
   );
