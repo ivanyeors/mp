@@ -114,6 +114,12 @@ describe("approveApplication: the listing the applicant sent", () => {
     expect(applicationRow()).toMatchObject({ application_status: "approved", partner_id: partner.id });
   });
 
+  it("creates the partner's location not taking bookings, listed or not", async () => {
+    await approveApplication(ROW_ID, { ...TERMS, list: true });
+    expect(partners()[0].visible).toBe(true);
+    expect(partners()[0].bookable).toBe(false);
+  });
+
   it("publishes the listing when Staff do not say otherwise", async () => {
     await approveApplication(ROW_ID, TERMS);
     expect(partners()).toHaveLength(1);

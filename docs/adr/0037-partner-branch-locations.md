@@ -24,8 +24,9 @@ the partner business and its first clinic. A branch carries only its place:
   display name is `name · branch_name` when the clinic has a name.
 - It is saved `visible=false`, with no logo, website, write-up, referral code
   or Partner account. Whether it shows on `/our-partners` is the main row's
-  `visible`. A new branch takes the main row's `bookable`, and Staff can then
-  turn each one on or off in Settings → Appointments.
+  `visible`. A new branch takes the main row's `bookable` (off for a new partner
+  since 2026-11-23), and Staff can then turn each one on or off in
+  Settings → Appointments.
 
 Every clinic is therefore a real Location: a customer picks "Alignwell · Tampines"
 in the booking picker, and Staff record a Result there. Readers that list
