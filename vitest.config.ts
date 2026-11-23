@@ -1,8 +1,9 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    tsconfigPaths: true,
+    alias: [{ find: /^@\//, replacement: fileURLToPath(new URL("./", import.meta.url)) }],
   },
   // Tests never need Tailwind. Vite can't load postcss.config.mjs's
   // string-form plugin, which broke `vitest related` (the hooks' test run)
