@@ -56,6 +56,12 @@ describe("ci.yml", () => {
     }
   });
 
+  it("checks the suite out with full history, which lint-baseline.test.ts reads", () => {
+    const baselineTest = readFileSync(join(__dirname, "lint-baseline.test.ts"), "utf8");
+    expect(baselineTest).toContain('"rev-list", "--max-parents=0"');
+    expect(job("test")).toMatch(/uses: actions\/checkout@\S+[^\n]*\n\s+with:\n\s+fetch-depth: 0\n/);
+  });
+
   it("splits the suite into exactly the shards the matrix lists", () => {
     const test = job("test");
     const shards = test.match(/shard: \[([^\]]*)\]/)?.[1].split(",").map((s) => Number(s.trim()));

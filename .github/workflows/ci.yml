@@ -195,7 +195,13 @@ jobs:
         shard: [1, 2]
 
     steps:
+      # Full history, without old file contents, as in scope:
+      # scripts/lint-baseline.test.ts compares against the repository's first
+      # commit, which a shallow clone does not have.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Enable corepack
         run: corepack enable
