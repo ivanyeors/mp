@@ -148,6 +148,56 @@ describe("an image block", () => {
     expect(savedContent().blocks[1]).toMatchObject({ image: { asset: PHOTO, decorative: true } });
   });
 
+  it("takes alt text for a linked image that was marked decorative, and saves it", async () => {
+    mount(draftWith(CONTENT));
+    await addBlock("Image");
+    await chooseImage();
+    const image = card(1);
+    await click(image.querySelector<HTMLButtonElement>('button[role="checkbox"]')!);
+    await choose(image.querySelector<HTMLButtonElement>('button[id$="-link"]')!, "Book a fitting");
+
+    const alt = image.querySelector<HTMLInputElement>('input[id$="-alt"]')!;
+    expect(alt.disabled).toBe(false);
+    expect(alt.value).toBe("A FibreCool cover on a bed");
+    expect(image.querySelector('button[role="checkbox"]')).toBeNull();
+    typeField(alt, "We are open: book a fitting");
+    await settle();
+
+    await act(async () => button("Save changes")!.click());
+    await settle();
+    expect(savedContent().blocks[1]).toEqual({
+      id: expect.any(String),
+      type: "image",
+      image: { asset: PHOTO, alt: "We are open: book a fitting" },
+      link: { target: "book_fitting" },
+      width: "full",
+    });
+  });
+
+  it("stops saying a block is wrong once that block is changed, and keeps saying it of the others", async () => {
+    const refusal = "A linked image needs alt text: it is what the link says.";
+    actions.saveCampaign.mockResolvedValueOnce({
+      ok: false,
+      error: "Check the highlighted fields.",
+      fieldErrors: { "content.blocks.0.text": "Write the heading.", "content.blocks.1.image.alt": refusal },
+    });
+    mount(draftWith({ ...CONTENT, blocks: [...CONTENT.blocks, { id: "photo", type: "image", image: { asset: PHOTO, alt: "" }, link: { target: "shop" }, width: "full" }] }));
+    typeField(document.querySelector<HTMLInputElement>("#c-name")!, "Studio move");
+    await settle();
+    const image = card(1);
+    expect(image.textContent).toContain(refusal);
+    expect(image.querySelector('button[role="checkbox"]')).toBeNull();
+    await act(async () => button("Save changes")!.click());
+    await settle();
+    const said = () => [...image.querySelectorAll(".text-destructive")].map((p) => p.textContent);
+    expect(said()).toEqual([refusal]);
+
+    typeField(image.querySelector<HTMLInputElement>('input[id$="-alt"]')!, "The shop");
+    await settle();
+    expect(said()).toEqual([]);
+    expect(card(0).textContent).toContain("Write the heading.");
+  });
+
   it("keeps what Staff change while the image's email copy is being made", async () => {
     const LATE = "7a2d3c4e-5f60-4a7b-8c9d-0e1f2a3b4c5d";
     picker.assetId = LATE;

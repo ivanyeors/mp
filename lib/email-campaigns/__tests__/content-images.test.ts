@@ -48,6 +48,14 @@ describe("an image block", () => {
     ]);
   });
 
+  it("never offers decorative to a linked image with no alt text, since that would be refused next", () => {
+    const linked = { target: "url", url: "https://www.mpillow.com/en-US/appointments?type=fitting" };
+    expect(issues(one(image({ image: { asset: PHOTO, alt: "" }, link: linked })))).toEqual([
+      ["blocks.0.image.alt", "A linked image needs alt text: it is what the link says."],
+    ]);
+    expect(issues(one(image({ image: { asset: PHOTO, alt: "We are open: book a fitting" }, link: linked })))).toEqual([]);
+  });
+
   it("holds no URL of its own, refuses anything but an asset id, and caps the alt text", () => {
     expect(issues(one(image({ image: { asset: "https://evil.example/pixel.gif", alt: "x" } })))).toEqual([["blocks.0.image.asset", "Choose an image."]]);
     expect(CampaignContentPreviewSchema.safeParse(one(image({ image: { asset: "https://evil.example/pixel.gif", alt: "x" } }))).success).toBe(false);

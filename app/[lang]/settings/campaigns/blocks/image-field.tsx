@@ -54,6 +54,7 @@ export function ImageField({
     idPrefix,
     inset = false,
     allowDecorative = true,
+    altHint = "What a screen reader says, and what shows when images are off.",
     layoutLocked = false,
 }: {
     image: BlockImage;
@@ -63,6 +64,7 @@ export function ImageField({
     idPrefix: string;
     inset?: boolean;
     allowDecorative?: boolean;
+    altHint?: string;
     layoutLocked?: boolean;
 }) {
     const shown = usePlaced(image.asset);
@@ -131,7 +133,7 @@ export function ImageField({
                 </Suspense>
             )}
             {imageError ? <p className="text-xs text-destructive">{imageError}</p> : null}
-            <Field label="Alt text" htmlFor={altId} error={errors["image.alt"]} hint="What a screen reader says, and what shows when images are off.">
+            <Field label="Alt text" htmlFor={altId} error={errors["image.alt"]} hint={altHint}>
                 <Input
                     id={altId}
                     value={decorative ? "" : image.alt}
