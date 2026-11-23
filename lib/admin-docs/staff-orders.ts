@@ -52,6 +52,7 @@ export function staffOrdersGuideSections(): DocSection[] {
             "Choose where it goes: At a studio (handed over or done there, no shipping charge, no courier label), or Deliver to an address, with one of their saved addresses or a new one and a delivery method.",
             "Type a discount code if they have one, and press Apply.",
             "Add a note for the customer if you like (it shows in the email and on the payment page), and an internal note for the team.",
+            "Under Payment, leave Send a payment link, or choose Already paid if they have paid you (see below).",
             "Check the total, which is worked out by the server as you go, and press Create order.",
           ],
         },
@@ -81,6 +82,41 @@ export function staffOrdersGuideSections(): DocSection[] {
       ],
     },
     {
+      id: "paid",
+      heading: "If they have already paid",
+      blocks: [
+        {
+          kind: "p",
+          text: "A customer who paid at the counter needs no link. Choose Already paid when you make the order, or press Mark as paid on the order's page later, and say how it was paid.",
+        },
+        {
+          kind: "table",
+          head: ["How it was paid", "What to pick", "What it means"],
+          rows: [
+            [
+              "On Stripe (the card reader in the Stripe app, a payment taken in the Stripe dashboard)",
+              "The Stripe payment in the list. Only payments of exactly the order's total from the last 7 days that no order has claimed are shown.",
+              "The order is tied to that payment and dated by it. Refunds go back through Stripe as usual.",
+            ],
+            [
+              "Cash, PayNow or a bank transfer to our account, or another way",
+              "The matching line under Outside Stripe. Another way needs a note.",
+              "No Stripe payment is linked. To refund it, return the money the way it came, then press Record refund on the order.",
+            ],
+          ],
+        },
+        {
+          kind: "list",
+          items: [
+            "Marking it paid confirms the order, takes its stock out and emails the customer their confirmation. It cannot be undone, so check the money has arrived first.",
+            "The payment link stops working. If the customer still manages to pay through it, the order is flagged as paid twice: refund one of the two payments.",
+            "Who marked it, how, and which Stripe payment are kept in the Audit Log and on the order's timeline.",
+          ],
+        },
+        { kind: "links", items: [ORDERS] },
+      ],
+    },
+    {
       id: "pay",
       heading: "What the customer sees",
       blocks: [
@@ -107,6 +143,7 @@ export function staffOrdersGuideSections(): DocSection[] {
           head: ["What happens", "The order"],
           rows: [
             ["They pay", "Confirmed and paid; its stock comes out; a delivered order gets its courier label. Treat it like any other order."],
+            ["They pay you another way", "Press Mark as paid on the order. It is confirmed the same way, and the link stops working."],
             ["They open the payment and leave", "Nothing changes. The link still works."],
             [`${PAY_LINK_LIFETIME_DAYS} days pass unpaid`, "The daily job cancels it. Email the link again before then to give it more time."],
             ["You cancel it", "Use Cancel on the order. The link stops working at once."],

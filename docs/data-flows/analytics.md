@@ -6,7 +6,7 @@ counts, how it gets its cost, and what happens when it has none. Terms follow
 
 Analytics tracks this site's sales only. Shopify is not read.
 
-## A sale is what Stripe took
+## A sale is what Stripe took, or what Staff marked paid
 
 ```mermaid
 flowchart TD
@@ -23,13 +23,18 @@ flowchart TD
   rep --> tl["Sales over time"]
 ```
 
-Every platform payment goes through Stripe: shop Checkout, a Result's
+Every customer-started payment goes through Stripe: shop Checkout, a Result's
 Authorization hold and its capture, a Balance payment by link or at the
 counter reader, and a re-adjustment fee. The money ledger (`order_payments`) is
-written only from those: the Stripe webhook and Result Accept.
+written from those (the Stripe webhook and Result Accept) and from one more
+place: Staff marking a Staff order paid (ADR 0056), by a Stripe payment they
+pick, or as paid outside Stripe (cash, a transfer), which writes a `charge`
+with no Stripe id and `metadata.source = 'outside_stripe'`.
 
 - **When a Sale counts.** An Order is a Sale once its ledger holds a Stripe
-  `charge` and the payment flow has confirmed it (`paid_at` set). A payment
+  `charge`, or one marked `outside_stripe`, and the payment flow has confirmed
+  it (`paid_at` set). `isSaleCharge` (`lib/ecommerce/outside-stripe.ts`) is the
+  test; a `charge` with no Stripe id and no such mark does not count. A payment
   that lands on a cancelled Order is flagged for Staff to refund or reinstate,
   and is not a Sale until then.
 - **When it is dated.** By its latest charge's `occurred_at`, Stripe's own time
@@ -41,6 +46,9 @@ written only from those: the Stripe webhook and Result Accept.
   | Result hold capture | Accept | the capture's balance transaction (`paymentIntentCapturedAt`) |
   | Result Balance payment | Accept | the same, for the Balance payment's intent |
   | Refund | `charge.refunded`, or `refund.updated` for one that settles later (PayNow) | the refund's `created` |
+  | Staff order marked paid by a Stripe payment | `markStaffOrderPaid` | the payment's capture (`paymentIntentCapturedAt`) |
+  | Staff order marked paid outside Stripe | `markStaffOrderPaid` | when Staff marked it |
+  | Refund recorded by hand (paid outside Stripe) | `recordOutsideRefund` | when Staff recorded it |
   | Dispute loss and fee, refund reversal | `charge.dispute.closed`, `refund.failed` | the event's `created` |
 
   A Result paid in two parts (a Balance payment, then the hold's capture) is
