@@ -40,9 +40,9 @@ permissions:
 
 jobs:
   guard:
-    # A pinned image, not ubuntu-latest: these jobs need only bash and gh, and
-    # the label's move to Ubuntu 26 put a notice on every run.
-    runs-on: ubuntu-26.04
+    # One CPU at a third of the 2-core price: this needs only bash, gh and jq
+    # and finishes in seconds, but every job is billed at least a minute.
+    runs-on: ubuntu-slim
     timeout-minutes: 5
 
     env:

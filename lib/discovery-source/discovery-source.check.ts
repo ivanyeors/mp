@@ -190,9 +190,16 @@ assert.match(adminApi, /requireAdmin\("forms"\)/);
 assert.match(adminApi, /export async function GET/);
 assert.match(adminApi, /export async function PUT/);
 
-const publicApi = read("app/api/discovery-source/route.ts");
-assert.match(publicApi, /discoverySourceChoices/);
-assert.doesNotMatch(publicApi, /requireAdmin/);
+for (const page of ["app/[lang]/mp-config/page.tsx", "app/[lang]/mbolster-config/page.tsx"]) {
+  assert.match(read(page), /discoverySourceChoices/, `${page} hands the configurator its sources`);
+}
+for (const client of [
+  "components/configurator/preview-contact-fields.tsx",
+  "app/[lang]/mp-config/mp-config-client.tsx",
+  "app/[lang]/mbolster-config/mbolster-config-client.tsx",
+]) {
+  assert.doesNotMatch(read(client), /\/api\/discovery-source/, `${client} asks no endpoint for the sources`);
+}
 
 assert.equal(roleHasPermission("owner", "forms"), true);
 assert.equal(roleHasPermission("viewer", "forms"), false);

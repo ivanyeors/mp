@@ -32,7 +32,6 @@ describe("slice 10 — order build snapshot", () => {
       { item_id: 40, quantity: 1, role: "addon" },
     ],
     nameByItem,
-    cogs: 42,
     pricing: { goods: 140, services: 0, subtotal: 140, discount: 0, shipping: 8, tax: 12, total: 160 },
   });
 
@@ -86,7 +85,6 @@ describe("slice 10 — order build snapshot", () => {
       fillingTemplateName: null,
       buildLines: [{ item_id: 99, quantity: 2, role: "filling", category: "filling" }],
       nameByItem: new Map(),
-      cogs: 0,
       pricing: { goods: 0, services: 0, subtotal: 0, discount: 0, shipping: 0, tax: 0, total: 0 },
     });
     expect(bare.build_lines[0]?.name).toBe("Item #99");

@@ -9,10 +9,13 @@ import { reResolveShopifyLineCosts } from "@/lib/shopify/order-mirror-ingest";
 import {
   READJUSTMENT_POLICY_LIMITS,
   SERVICE_KEYS,
+  SERVICE_LABELS,
   isValidReadjustmentFeeCents,
   loadReadjustmentPolicy,
   loadServicePrices,
 } from "@/lib/pricing/service-prices";
+import { productPriceLabel, storedProductPrice, type StoredProductPrice } from "@/lib/costings/product-price-rows";
+import { getInventoryItemDisplayLabel } from "@/app/[lang]/settings/inventory/item-label";
 
 const BOLSTER_VARIANTS = ["short", "medium", "long"] as const;
 type BolsterVariant = (typeof BOLSTER_VARIANTS)[number];
@@ -40,14 +43,17 @@ const toCents = (value: unknown): number | null => {
   return Math.round(numeric * 100);
 };
 
+const Cents = z.number().int().min(0);
+
 const ProductPayloadSchema = z
   .object({
     key: z.string().min(1),
     kind: z.enum(["pillow", "bolster"]),
     productId: z.number().int().positive().optional(),
     variant: z.enum(["short", "medium", "long", "linen", "fibrecool"]).optional(),
-    msrpCents: z.number().int().min(0).nullable(),
-    compareAtCents: z.number().int().min(0).nullable().optional(),
+    msrpCents: Cents.nullable(),
+    compareAtCents: Cents.nullable().optional(),
+    base: z.object({ msrpCents: Cents.nullable(), compareAtCents: Cents.nullable() }),
   })
   .superRefine((value, ctx) => {
     if (value.kind === "pillow") {
@@ -87,9 +93,10 @@ const PayloadSchema = z.object({
   rows: z.array(
     z.object({
       itemId: z.number().int().positive(),
-      costPriceCents: z.number().int().min(0).nullable(),
-      msrpCents: z.number().int().min(0).nullable(),
-      compareAtCents: z.number().int().min(0).nullable().optional(),
+      costPriceCents: Cents.nullable(),
+      msrpCents: Cents.nullable(),
+      compareAtCents: Cents.nullable().optional(),
+      base: z.object({ costPriceCents: Cents.nullable(), msrpCents: Cents.nullable(), compareAtCents: Cents.nullable() }),
     }),
   ),
   products: z.array(ProductPayloadSchema).optional(),
@@ -97,8 +104,9 @@ const PayloadSchema = z.object({
     .array(
       z.object({
         key: z.enum(SERVICE_KEYS),
-        msrpCents: z.number().int().min(0),
-        costCents: z.number().int().min(0).nullable(),
+        msrpCents: Cents,
+        costCents: Cents.nullable(),
+        base: z.object({ msrpCents: Cents, costCents: Cents.nullable() }),
       }),
     )
     .superRefine((rows, ctx) => {
@@ -117,11 +125,153 @@ const PayloadSchema = z.object({
     .object({
       freeVisits: z.number().int().min(0).max(READJUSTMENT_POLICY_LIMITS.freeVisits),
       freeWindowDays: z.number().int().min(0).max(READJUSTMENT_POLICY_LIMITS.freeWindowDays),
+      base: z.object({ freeVisits: z.number().int().min(0), freeWindowDays: z.number().int().min(0) }),
     })
     .optional(),
 });
 
 type ProductPayload = z.infer<typeof ProductPayloadSchema>;
+type Payload = z.infer<typeof PayloadSchema>;
+type PriceConflict = { key: string; name: string };
+
+const READJUSTMENT_POLICY_NAME = "Complimentary re-adjustment";
+
+function conflictMessage(names: readonly string[]): string {
+  return names.length === 1
+    ? `Someone changed this price since you opened it — Refresh to see it: ${names[0]}.`
+    : `Someone changed these prices since you opened them — Refresh to see them: ${names.join(", ")}.`;
+}
+
+const sameValues = (left: ReadonlyArray<number | null>, right: ReadonlyArray<number | null>) =>
+  left.every((value, i) => value === right[i]);
+
+const movedUnderEdit = (
+  stored: ReadonlyArray<number | null>,
+  base: ReadonlyArray<number | null>,
+  saving: ReadonlyArray<number | null>,
+) => !sameValues(stored, base) && !sameValues(stored, saving);
+
+const productRef = (row: ProductPayload) =>
+  row.kind === "pillow"
+    ? {
+        kind: "pillow" as const,
+        key: row.key,
+        productId: row.productId!,
+        premiumVariant: row.variant === "linen" || row.variant === "fibrecool" ? row.variant : null,
+      }
+    : { kind: "bolster" as const, variant: row.variant as "short" | "medium" | "long" };
+
+async function findPriceConflicts(
+  admin: ReturnType<typeof supabaseAdmin>,
+  payload: Payload,
+): Promise<PriceConflict[]> {
+  type StoredItemPrice = {
+    item_id: number;
+    cost_price: string | number | null;
+    msrp: string | number | null;
+    compare_at_price: string | number | null;
+  };
+  const products = payload.products ?? [];
+  const services = payload.services ?? [];
+  const policy = payload.readjustmentPolicy;
+
+  const [itemRead, productRead, storedServices, storedPolicy] = await Promise.all([
+    payload.rows.length > 0
+      ? admin
+          .from("item_prices")
+          .select("item_id,cost_price,msrp,compare_at_price")
+          .in("item_id", payload.rows.map((row) => row.itemId))
+      : { data: [], error: null },
+    products.length > 0
+      ? admin.from("product_prices").select("key,kind,product_id,variant,msrp,compare_at_price")
+      : { data: [], error: null },
+    services.length > 0 ? loadServicePrices(admin) : null,
+    policy ? loadReadjustmentPolicy(admin) : null,
+  ]);
+  if (itemRead.error) throw new Error(itemRead.error.message);
+  if (productRead.error) throw new Error(productRead.error.message);
+
+  const storedItems = new Map(
+    ((itemRead.data ?? []) as StoredItemPrice[]).map((row) => [Number(row.item_id), row]),
+  );
+  const staleItemIds = payload.rows
+    .filter((row) => {
+      const stored = storedItems.get(row.itemId);
+      return movedUnderEdit(
+        [toCents(stored?.cost_price ?? null), toCents(stored?.msrp ?? null), toCents(stored?.compare_at_price ?? null)],
+        [row.base.costPriceCents, row.base.msrpCents, row.base.compareAtCents],
+        [row.costPriceCents, row.msrpCents, row.compareAtCents ?? null],
+      );
+    })
+    .map((row) => row.itemId);
+
+  const storedProducts = (productRead.data ?? []) as StoredProductPrice[];
+  const staleProducts = products.filter((row) => {
+    const stored = storedProductPrice(storedProducts, productRef(row));
+    return movedUnderEdit(
+      [toCents(stored?.msrp ?? null), toCents(stored?.compare_at_price ?? null)],
+      [row.base.msrpCents, row.base.compareAtCents],
+      [row.msrpCents, row.compareAtCents ?? null],
+    );
+  });
+
+  const staleServices = storedServices
+    ? services.filter((row) =>
+        movedUnderEdit(
+          [toCents(storedServices[row.key].msrp), toCents(storedServices[row.key].costPrice)],
+          [row.base.msrpCents, row.base.costCents],
+          [row.msrpCents, row.costCents],
+        ),
+      )
+    : [];
+
+  const stalePolicy =
+    policy && storedPolicy
+      ? movedUnderEdit(
+          [storedPolicy.freeVisits, storedPolicy.freeWindowDays],
+          [policy.base.freeVisits, policy.base.freeWindowDays],
+          [policy.freeVisits, policy.freeWindowDays],
+        )
+      : false;
+
+  if (staleItemIds.length === 0 && staleProducts.length === 0 && staleServices.length === 0 && !stalePolicy) {
+    return [];
+  }
+
+  const pillowIds = staleProducts.flatMap((row) => (row.kind === "pillow" && row.productId ? [row.productId] : []));
+  const [itemNames, pillowNames] = await Promise.all([
+    staleItemIds.length > 0
+      ? admin.from("items").select("id,category,name,size,subtype").in("id", staleItemIds)
+      : { data: [], error: null },
+    pillowIds.length > 0 ? admin.from("pillow_products").select("id,size").in("id", pillowIds) : { data: [], error: null },
+  ]);
+  type NamedItem = { id: number; category: string; name: string | null; size: string | null; subtype: string | null };
+  const itemById = new Map(((itemNames.data ?? []) as NamedItem[]).map((item) => [Number(item.id), item]));
+  const sizeByPillow = new Map(
+    ((pillowNames.data ?? []) as Array<{ id: number; size: string }>).map((pillow) => [Number(pillow.id), pillow.size]),
+  );
+
+  return [
+    ...staleItemIds.map((itemId) => {
+      const item = itemById.get(itemId);
+      return { key: `item:${itemId}`, name: item ? getInventoryItemDisplayLabel(item) : `Item ${itemId}` };
+    }),
+    ...staleProducts.map((row) => {
+      const ref = productRef(row);
+      const name =
+        ref.kind === "bolster"
+          ? productPriceLabel(ref)
+          : productPriceLabel({
+              kind: "pillow",
+              size: sizeByPillow.get(ref.productId) ?? `#${ref.productId}`,
+              premiumVariant: ref.premiumVariant,
+            });
+      return { key: row.key, name };
+    }),
+    ...staleServices.map((row) => ({ key: row.key, name: SERVICE_LABELS[row.key] })),
+    ...(stalePolicy ? [{ key: "readjustmentPolicy", name: READJUSTMENT_POLICY_NAME }] : []),
+  ];
+}
 
 const toDecimalString = (value: number | null) => (value === null ? null : (value / 100).toFixed(2));
 
@@ -332,6 +482,23 @@ export async function POST(req: Request) {
 
   const productRows = payload.products ?? [];
   const admin = supabaseAdmin();
+
+  let conflicts: PriceConflict[];
+  try {
+    // ponytail: check-then-write, so a save landing between this read and the writes below is still
+    // overwritten (a window of one round trip). Upgrade: one Postgres function that locks the rows
+    // (select ... for update), compares each base and writes, all in one transaction.
+    conflicts = await findPriceConflicts(admin, payload);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Couldn't check the saved prices.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+  if (conflicts.length > 0) {
+    return NextResponse.json(
+      { error: conflictMessage(conflicts.map((conflict) => conflict.name)), conflicts },
+      { status: 409 },
+    );
+  }
 
   if (payload.services || payload.readjustmentPolicy) {
     try {

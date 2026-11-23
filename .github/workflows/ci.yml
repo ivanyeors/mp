@@ -13,6 +13,12 @@ name: ci
 # Pull-request only: the required checks pass on the PR's merge commit before it
 # can merge, and Vercel rebuilds main on deploy, so re-running on push to main
 # would add minutes without adding a gate.
+#
+# Paused for minutes: once the account has used CI_PAUSE_AT_MINUTES of the
+# month's Actions minutes (scripts/actions-minutes.mjs), verify skips install,
+# lint, typecheck, tests and checks with a warning, so pull requests stay
+# mergeable by hand instead of waiting on a job GitHub will not start. The
+# unverified job then marks the head so auto-merge does not merge it.
 
 on:
   pull_request:
@@ -40,6 +46,9 @@ jobs:
     # whose runner was a little slower, mid-test, with nothing failing.
     timeout-minutes: 25
 
+    outputs:
+      paused: ${{ steps.minutes.outputs.pause }}
+
     steps:
       # Full history for gitleaks, but without old file contents: those are
       # mostly past copies of graphify-out/graph.json (30 MB each), and a full
@@ -50,14 +59,31 @@ jobs:
           fetch-depth: 0
           filter: blob:none
 
+      # Plain node from the runner image: this runs before install. Without
+      # the ACTIONS_BILLING_TOKEN secret it reads nothing and CI runs in full.
+      - name: Actions minutes
+        id: minutes
+        env:
+          BILLING_TOKEN: ${{ secrets.ACTIONS_BILLING_TOKEN }}
+          PAUSE_AT: ${{ vars.CI_PAUSE_AT_MINUTES }}
+          OWNER: ${{ github.repository_owner }}
+        run: node scripts/actions-minutes.mjs
+
       # A pull request that changes only Markdown nothing tests (PRDs, ADRs,
       # notes) skips install, lint, typecheck, tests and checks: about ten
       # minutes saved, and the job still reports, so a required check passes.
       # A Markdown file counts as code when any test or check names it, since
       # some read CONTEXT.md, ADRs and docs/marketing-page/ directly.
+      # Paused for minutes, everything is out of scope.
       - name: Scope
         id: scope
+        env:
+          PAUSED: ${{ steps.minutes.outputs.pause }}
         run: |
+          if [ "$PAUSED" = true ]; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Anything unexpected (no diff, a failed git command) runs everything.
           if ! files="$(git diff --name-only HEAD^1 HEAD)" || [ -z "$files" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
@@ -105,6 +131,9 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: pnpm install --frozen-lockfile
 
+      # Single-threaded on purpose: on this runner --concurrency=2 took 2:43
+      # against 2:12 (PR #476, November 2026). Most of the time is the React
+      # Compiler rules, which are worth keeping.
       - name: Lint
         if: steps.scope.outputs.code == 'true'
         run: pnpm lint
@@ -122,6 +151,11 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      # One worker, Vitest's default on two vCPUs, on purpose: with two the
+      # run's total test work doubled (import 149 s to 327 s, tests 386 s to
+      # 643 s), so each worker ran at half speed, the step saved 39 s, and
+      # two CPU-heavy email tests passed their 5 s limit (PR #476, November
+      # 2026). The two vCPUs behave like one core.
       - name: Test
         if: steps.scope.outputs.code == 'true'
         run: pnpm test
@@ -132,3 +166,35 @@ jobs:
       - name: Checks
         if: steps.scope.outputs.code == 'true'
         run: pnpm checks
+
+  # Paused for minutes, verify succeeds without verifying anything. This puts
+  # an action_required check on the head, which says so on the pull request
+  # and which auto-merge refuses (scripts/pr-risk.mjs merges only when every
+  # check other than verify passed). Its own job so the write token never
+  # shares a runner with pull request code; it costs a minute only when paused.
+  unverified:
+    needs: verify
+    if: needs.verify.outputs.paused == 'true'
+    # One CPU at a third of the 2-core price, for a job that takes seconds.
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      checks: write
+
+    steps:
+      - name: Mark this head unverified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/$GH_REPO/check-runs" --method POST \
+            -f name="CI paused: Actions minutes" \
+            -f head_sha="$HEAD_SHA" \
+            -f status=completed \
+            -f conclusion=action_required \
+            -f details_url="$RUN_URL" \
+            -f "output[title]=Lint, typecheck, tests and checks did not run" \
+            -f "output[summary]=This month's Actions minutes reached CI_PAUSE_AT_MINUTES, so CI skipped this head. Merge by hand only if you accept that; auto-merge will not merge it. Push again after the 1st (UTC), or raise CI_PAUSE_AT_MINUTES, to run CI in full." \
+            > /dev/null

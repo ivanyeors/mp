@@ -1,10 +1,10 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { formatBaseline, mergeBaselines, parseAgainst, totalsByRule } from "./lint-baseline.mjs";
+import { formatBaseline, lowerEntry, mergeBaselines, parseAgainst, totalsByRule } from "./lint-baseline.mjs";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "lint-baseline.mjs");
 const repo = path.resolve(path.dirname(script), "..");
@@ -94,6 +94,22 @@ describe("mergeBaselines", () => {
   });
 });
 
+describe("lowerEntry (the pre-commit step's prune)", () => {
+  const c = (count: number) => ({ count });
+  it("lowers a count to the cap, drops a rule the cap lacks, and never raises", () => {
+    const b = { "lib/a.ts": { fell: c(3), same: c(2), rose: c(1), gone: c(4) }, "lib/b.ts": { r: c(1) } };
+    lowerEntry(b, "lib/a.ts", { fell: c(1), same: c(2), rose: c(9) });
+    expect(b).toEqual({ "lib/a.ts": { fell: c(1), same: c(2), rose: c(1) }, "lib/b.ts": { r: c(1) } });
+  });
+
+  it("drops an entry left empty, and leaves a file with no entry alone", () => {
+    const b = { "lib/a.ts": { r: c(2) } };
+    lowerEntry(b, "lib/a.ts", undefined);
+    lowerEntry(b, "lib/none.ts", { r: c(5) });
+    expect(b).toEqual({});
+  });
+});
+
 describe("--resolve", () => {
   const gitIn = (dir: string, ...args: string[]) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   const resolveIn = (dir: string) => spawnSync("node", [script, "--resolve"], { cwd: dir, encoding: "utf8" });
@@ -133,6 +149,75 @@ describe("--resolve", () => {
     expect(r.status).toBe(1);
     expect(r.stdout).toContain("not in a merge conflict");
     expect(readFileSync(path.join(dir, "eslint-suppressions.json"), "utf8")).toBe(before);
+  });
+});
+
+describe("--prune-staged (the pre-commit step)", () => {
+  const gitIn = (dir: string, ...args: string[]) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const put = (dir: string, file: string, text: string) => {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    writeFileSync(path.join(dir, file), text);
+  };
+  const debuggers = (n: number) => "debugger;\n".repeat(n);
+  const staged = (dir: string) => JSON.parse(gitIn(dir, "show", ":eslint-suppressions.json"));
+  const working = (dir: string) => JSON.parse(readFileSync(path.join(dir, "eslint-suppressions.json"), "utf8"));
+
+  it("lowers only what this commit stages, drops a deleted file, keeps an unparsable one, and carries the drop to the working file", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "lint-baseline-prune-"));
+    symlinkSync(path.join(repo, "node_modules"), path.join(dir, "node_modules"));
+    put(dir, "eslint.config.mjs", 'export default [{ rules: { "no-debugger": "error" } }];\n');
+    put(dir, ".gitignore", "node_modules\n");
+    put(dir, "lib/lowered.js", debuggers(3));
+    put(dir, "lib/unstaged.js", debuggers(2));
+    put(dir, "lib/deleted.js", debuggers(1));
+    put(dir, "lib/broken.js", debuggers(2));
+    const rule = (count: number) => ({ "no-debugger": { count } });
+    put(
+      dir,
+      "eslint-suppressions.json",
+      formatBaseline({
+        "lib/lowered.js": rule(3),
+        "lib/unstaged.js": rule(2),
+        "lib/deleted.js": rule(1),
+        "lib/broken.js": rule(2),
+      }),
+    );
+    gitIn(dir, "init", "-q", "-b", "main");
+    gitIn(dir, "config", "user.email", "t@example.com");
+    gitIn(dir, "config", "user.name", "t");
+    gitIn(dir, "add", ".");
+    gitIn(dir, "commit", "-q", "-m", "base");
+
+    put(dir, "lib/lowered.js", debuggers(1));
+    put(dir, "lib/unstaged.js", "");
+    put(dir, "lib/broken.js", "debugger;\nconst = ;\n");
+    gitIn(dir, "add", "lib/lowered.js", "lib/broken.js");
+    gitIn(dir, "rm", "-q", "lib/deleted.js");
+
+    const r = spawnSync("node", [script, "--prune-staged"], { cwd: dir, encoding: "utf8" });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stderr).toContain("lowered eslint-suppressions.json in this commit for lib/lowered.js, lib/deleted.js");
+
+    expect(staged(dir)).toEqual({
+      "lib/lowered.js": rule(1),
+      "lib/unstaged.js": rule(2),
+      "lib/broken.js": rule(2),
+    });
+    expect(working(dir)).toEqual(staged(dir));
+    expect(gitIn(dir, "diff", "--name-only", "--", "eslint-suppressions.json")).toBe("");
+  });
+
+  it("leaves the baseline alone when nothing staged has an entry", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "lint-baseline-prune-"));
+    put(dir, "eslint-suppressions.json", formatBaseline({ "lib/a.js": { "no-debugger": { count: 1 } } }));
+    put(dir, "lib/other.js", "");
+    gitIn(dir, "init", "-q", "-b", "main");
+    gitIn(dir, "add", ".");
+    const before = gitIn(dir, "show", ":eslint-suppressions.json");
+    const r = spawnSync("node", [script, "--prune-staged"], { cwd: dir, encoding: "utf8" });
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe("");
+    expect(gitIn(dir, "show", ":eslint-suppressions.json")).toBe(before);
   });
 });
 

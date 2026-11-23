@@ -45,6 +45,7 @@ const RAILS = [
   "scripts/pr-risk.mjs",
   "scripts/pr-risk.test.ts",
   "scripts/git-identity",
+  "scripts/lint-baseline.mjs",
 ];
 
 // Root files that are not rails. Markdown is only prose (CLAUDE.md and
@@ -282,7 +283,7 @@ export function reviewReason(comments, head, base) {
   if (base && mine.some((v) => v.kind === "clean" && v.against === base)) return null;
   const last = verdicts.at(-1);
   const others = last ? ` (its last verdict was ${last.kind} at ${last.sha} against ${last.against})` : "";
-  return `Claude review has not passed this head ${head} against ${base ?? "the default branch"}${others}. It posts a verdict only when the ANTHROPIC_API_KEY repository secret is set`;
+  return `Claude review has not passed this head ${head} against ${base ?? "the default branch"}${others}. It posts a verdict only when the CLAUDE_CODE_OAUTH_TOKEN repository secret is set`;
 }
 
 // Immediately before the merge: main's tip must still be the one the facts

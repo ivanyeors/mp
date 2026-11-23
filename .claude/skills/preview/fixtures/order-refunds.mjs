@@ -5,6 +5,10 @@
 //   a code, S$8 shipping, S$120.50 paid on one card charge. Delivered.
 // - MP2002, a customised (Result) Order, in production: a premium pillow and
 //   its measurement, paid on a hold plus a Balance payment.
+//
+// Both carry cost at sale and an order_margins row, as the view would compute
+// it, so the order screen shows Unit cost and Realized margin to a role with
+// Costings.
 
 const SHOP = "0f0f0f0f-0000-4000-8000-000000002001";
 const RESULT = "0f0f0f0f-0000-4000-8000-000000002002";
@@ -148,6 +152,10 @@ export default function orderRefunds({ now }) {
         { id: "pay_preview_shop", order_id: SHOP, type: "charge", amount: 120.5, currency: "SGD", stripe_object_id: "pi_preview_shop", metadata: {}, occurred_at: t(9), created_at: t(9) },
         { id: "pay_preview_hold", order_id: RESULT, type: "charge", amount: 400, currency: "SGD", stripe_object_id: "pi_preview_hold", metadata: {}, occurred_at: t(3), created_at: t(3) },
         { id: "pay_preview_topup", order_id: RESULT, type: "charge", amount: 110, currency: "SGD", stripe_object_id: "pi_preview_topup", metadata: {}, occurred_at: t(3), created_at: t(3) },
+      ],
+      order_margins: [
+        { order_id: SHOP, order_number: "MP2001", revenue: 125, discount: 12.5, shipping: 8, tax: 0, cogs: 33, net_revenue: 120.5, gross_margin: 79.5, margin_pct: 70.67 },
+        { order_id: RESULT, order_number: "MP2002", revenue: 510, discount: 0, shipping: 0, tax: 0, cogs: 104, net_revenue: 510, gross_margin: 406, margin_pct: 79.61 },
       ],
       order_timeline: [
         { id: "tl_preview_1", order_id: SHOP, event_type: "paid", message: "Payment received via Stripe", metadata: {}, created_at: t(9) },

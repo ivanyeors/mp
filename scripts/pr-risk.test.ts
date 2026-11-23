@@ -134,6 +134,7 @@ describe("classify", () => {
     ["rails", "scripts/checks.mjs"],
     ["rails", "scripts/pr-risk.mjs"],
     ["rails", "scripts/git-identity"],
+    ["rails: writes the baseline on every commit", "scripts/lint-baseline.mjs"],
     ["rails", "vitest.config.ts"],
     ["rails", "tsconfig.json"],
     ["rails", "tsconfig.ci.json"],
@@ -289,6 +290,11 @@ describe("decide", () => {
     ["a cancelled check", { checkRuns: runs({ name: "x", status: "completed", conclusion: "cancelled" }) }, /ended cancelled/],
     ["a timed-out check", { checkRuns: runs({ name: "x", status: "completed", conclusion: "timed_out" }) }, /ended timed_out/],
     ["an unknown conclusion", { checkRuns: runs({ name: "x", status: "completed", conclusion: "something_new" }) }, /ended something_new/],
+    [
+      "CI paused for Actions minutes (verify passed without running)",
+      { checkRuns: runs({ name: "CI paused: Actions minutes", status: "completed", conclusion: "action_required" }) },
+      /CI paused: Actions minutes check ended action_required/,
+    ],
     ["verify failed", { checkRuns: runs({ name: "verify", status: "completed", conclusion: "failure" }) }, /verify check must succeed/],
     ["verify skipped", { checkRuns: [{ name: "verify", status: "completed", conclusion: "skipped" }] }, /verify check must succeed, and it ended skipped/],
     ["verify neutral", { checkRuns: [{ name: "verify", status: "completed", conclusion: "neutral" }] }, /verify check must succeed, and it ended neutral/],
@@ -302,7 +308,7 @@ describe("decide", () => {
     ["Vercel success but another errored", { statuses: [{ context: "Vercel", state: "success" }, { context: "x", state: "error" }] }, /x=error/],
     ["Vercel success but another pending", { statuses: [{ context: "Vercel", state: "success" }, { context: "x", state: "pending" }] }, /x=pending/],
     ["an unresolved thread", { unresolvedThreads: 1 }, /1 review thread\(s\) are unresolved/],
-    ["no review verdict", { comments: comments() }, /has not passed this head .*ANTHROPIC_API_KEY/],
+    ["no review verdict", { comments: comments() }, /has not passed this head .*CLAUDE_CODE_OAUTH_TOKEN/],
     ["findings at the head", { comments: comments({ login: "claude[bot]", body: `Verdict: findings at ${HEAD} against main` }) }, /found problems at/],
     ["findings beside a clean at the head", { comments: [...facts().comments, { login: "github-actions[bot]", body: `Verdict: findings at ${HEAD} against main` }] }, /found problems at/],
     ["findings against another base beside a clean", { comments: [...facts().comments, { login: "claude[bot]", body: `Verdict: findings at ${HEAD} against rails/01` }] }, /found problems at/],
@@ -391,6 +397,12 @@ describe("claude-review.yml", () => {
     const group = squash(/claude-review-\$\{\{ github\.event\.pull_request\.number \}\}-\$\{\{\s*\(([\s\S]*?)\)\s*&& 'review' \|\| github\.run_id \}\}/.exec(yml)?.[1] ?? "");
     expect(cond).toContain("vars.AUTO_MERGE_CODE == 'on'");
     expect(group).toBe(cond);
+  });
+
+  it("signs in with the subscription token alone, since the monthly API credit does not pay for Claude Code", () => {
+    expect(yml).toContain("claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}");
+    expect(yml).toContain("HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}");
+    expect(yml).not.toMatch(/anthropic_api_key|secrets\.ANTHROPIC_API_KEY/);
   });
 });
 

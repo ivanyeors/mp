@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { loadAdminOrderDetail } from "@/lib/ecommerce/admin/order-detail";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/admin";
+import { adminCanSeeCost, requireAdmin } from "@/lib/auth/admin";
 import { deductStockWhenSold } from "@/lib/ecommerce/order-stock";
 
 export const runtime = "nodejs";
@@ -34,7 +34,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (denied) return denied;
 
   const { id } = await params;
-  const result = await loadAdminOrderDetail(id);
+  const result = await loadAdminOrderDetail(id, { canSeeCost: await adminCanSeeCost() });
 
   return NextResponse.json(result.body, { status: result.status });
 }

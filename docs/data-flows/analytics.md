@@ -105,6 +105,7 @@ no fillings (ADR 0003), so the fillings were left out.
 | Tab | Question | Cards |
 |---|---|---|
 | Sales & margin | What did we sell, what did it cost, what did we keep? | KPIs, Sales with no cost, Margin by product / part, Sales over time |
+| Sales (a role without Costings) | What did we sell, and what did it bring in? | Revenue, Sales over time. `getSalesReport` sends no COGS, margin, cost coverage, gaps or breakdown |
 | Stock & builds | How did stock move, and what goes into each build? | Inventory movement, Stock value link, Product configuration |
 | Customers | Who customises with us, and what stops people buying? | Results answers, Why people leave |
 | Traffic & search | How do people find the site, and where do they go next? | Search visibility, Prospect journey |

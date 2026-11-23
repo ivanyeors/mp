@@ -15,6 +15,11 @@ export const ANALYTICS_TAB_QUESTIONS: Record<AnalyticsTab, string> = {
   traffic: "How do people find the site, and where do they go next?",
 };
 
+export function analyticsTabText(tab: AnalyticsTab, canSeeCost: boolean): { label: string; question: string } {
+  if (tab === "sales" && !canSeeCost) return { label: "Sales", question: "What did we sell, and what did it bring in?" };
+  return { label: ANALYTICS_TAB_LABELS[tab], question: ANALYTICS_TAB_QUESTIONS[tab] };
+}
+
 export function parseAnalyticsTab(value: string | string[] | undefined): AnalyticsTab {
   const v = Array.isArray(value) ? value[0] : value;
   return (ANALYTICS_TABS as readonly string[]).includes(v ?? "") ? (v as AnalyticsTab) : "sales";
