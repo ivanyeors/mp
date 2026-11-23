@@ -47,6 +47,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AI_WRITING_NO_CREDENTIALS, type AiWritingAvailability } from "@/lib/ai/availability";
 import { DRAFT_STAGE_TEXT, draftBlocker, draftTitle, withEditedBlocks } from "@/lib/email-campaigns/ai-drafted";
 import { REFINE_BUTTON_LABEL, REFINE_STAGE_TEXT, ideasBlocker } from "@/lib/email-campaigns/ai-refine-brief";
+import { errorsAfterBlockEdit } from "@/lib/email-campaigns/block-errors";
 import {
     campaignWordsOf,
     clearAllBlocker,
@@ -285,8 +286,10 @@ export function CampaignEditor({
     const editButton = (patch: Partial<CampaignWords["button"]>, burst?: string) =>
         history.set((e) => ({ ...e, button: { ...e.button, ...patch } }), { burst });
     const editContent = (next: CampaignContent, burst?: string) => history.set((e) => ({ ...e, content: next }), { burst });
-    const setBlocks = (blocks: EmailBlock[], burst?: string) =>
+    const setBlocks = (blocks: EmailBlock[], burst?: string) => {
+        setFieldErrors((errors) => errorsAfterBlockEdit(errors, content?.blocks ?? [], blocks));
         history.set((e) => (e.content ? { ...e, content: withoutGoneChinese(withEditedBlocks(e.content, blocks)) } : e), { burst });
+    };
     const setChineseBlocks = (blocks: EmailBlock[], burst?: string) =>
         history.set((e) => (e.content ? { ...e, content: withChineseBlocks(e.content, blocks) } : e), { burst });
     const editChinese = (edit: (c: CampaignContent) => CampaignContent, burst?: string) => history.set((e) => (e.content ? { ...e, content: edit(e.content) } : e), { burst });

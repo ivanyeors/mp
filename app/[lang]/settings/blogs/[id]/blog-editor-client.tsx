@@ -22,6 +22,12 @@ import {
     MOBILE_MD_EXTRA_COMMANDS,
 } from "@/components/settings/markdown-toolbar";
 import { rehypeStripUnsafeHtml } from "@/lib/blog-editor/strip-unsafe-html";
+import {
+    blogSlug,
+    blogSlugWhileTyping,
+    errorText,
+    trimSlugHyphens,
+} from "@/lib/blog-post-input";
 
 const MDEditor = dynamic(
     () => import("@uiw/react-md-editor").then((mod) => mod.default),
@@ -115,14 +121,6 @@ export default function BlogEditorPage({
         }));
     };
 
-    const generateSlug = (title: string) =>
-        title
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/-+/g, "-")
-            .slice(0, 200);
-
     const readPost = () =>
         fetch(`/api/blogs/${postId}`)
             .then((res) => res.json())
@@ -154,40 +152,40 @@ export default function BlogEditorPage({
     };
 
     const handleSave = async (publishOverride?: string) => {
+        const titleForSlug =
+            content[DEFAULT_LOCALE]?.title.trim() ||
+            Object.values(content).find((loc) => loc.title.trim())?.title ||
+            "";
+        const slugToSave = trimSlugHyphens(slug.trim()) || blogSlug(titleForSlug);
+        const statusToSave = publishOverride ?? status;
+        const failed = isNew ? "Couldn't create the post." : "Couldn't save the post.";
+        setSlug(slugToSave);
         setSaving(true);
-        const payload = {
-            slug,
-            status: publishOverride ?? status,
-            author,
-            image_url: imageUrl || null,
-            media_asset_id: imageAssetId,
-            labels,
-            content,
-        };
 
         try {
-            if (isNew) {
-                const res = await fetch("/api/blogs", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                const json = await res.json();
-                if (json.ok && json.row) {
-                    router.push(to(`/settings/blogs/${json.row.id}`));
-                } else {
-                    alert(json.error ?? "Couldn't create the post.");
-                }
-            } else {
-                const res = await fetch(`/api/blogs/${postId}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
-                const json = await res.json();
-                if (!json.ok) alert(json.error ?? "Couldn't save.");
-                else reloadPost();
+            const res = await fetch(isNew ? "/api/blogs" : `/api/blogs/${postId}`, {
+                method: isNew ? "POST" : "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    slug: slugToSave,
+                    status: statusToSave,
+                    author,
+                    image_url: imageUrl || null,
+                    media_asset_id: imageAssetId,
+                    labels,
+                    content,
+                }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!json?.ok || (isNew && !json.row)) {
+                toast.error(errorText(json?.error, failed));
+                return;
             }
+            toast.success(publishOverride === "published" ? "Post saved and published." : "Post saved.");
+            if (isNew) router.push(to(`/settings/blogs/${json.row.id}`));
+            else reloadPost();
+        } catch {
+            toast.error(`${failed} Check your connection and try again.`);
         } finally {
             setSaving(false);
         }
@@ -261,15 +259,19 @@ export default function BlogEditorPage({
                     <input
                         type="text"
                         value={slug}
-                        onChange={(e) => setSlug(e.target.value)}
+                        onChange={(e) => setSlug(blogSlugWhileTyping(e.target.value))}
+                        onBlur={() => setSlug(trimSlugHyphens)}
                         placeholder="my-blog-post-url"
                         className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base max-md:min-h-11 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
+                    <p className="text-xs text-muted-foreground break-all">
+                        Web address of the post: /blog/{slug || "my-blog-post-url"}. Leave it empty to make it from the title.
+                    </p>
                     {activeContent.title && (
                         <button
                             type="button"
                             className="text-xs text-primary hover:underline active:opacity-60 max-md:inline-flex max-md:min-h-11 max-md:items-center"
-                            onClick={() => setSlug(generateSlug(activeContent.title))}
+                            onClick={() => setSlug(blogSlug(activeContent.title))}
                         >
                             Auto-generate from title
                         </button>

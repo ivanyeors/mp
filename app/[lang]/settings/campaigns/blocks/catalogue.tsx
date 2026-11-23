@@ -20,6 +20,7 @@ import {
     emptyBlock,
     IMAGE_LINK_TARGETS,
     isHttpsUrl,
+    LINKED_IMAGE_ALT,
     paragraphRuns,
     PRODUCT_BUTTON_LABEL,
     SPLIT_SIDES,
@@ -304,7 +305,8 @@ function ImageForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefi
         delete unlinked.link;
         if (v === NO_LINK) return onChange(unlinked);
         const target = v as ImageLinkTarget;
-        onChange({ ...unlinked, link: target === "url" ? { target, url: b.link?.url ?? "" } : { target } });
+        const said = { asset: b.image.asset, alt: b.image.alt };
+        onChange({ ...unlinked, image: said, link: target === "url" ? { target, url: b.link?.url ?? "" } : { target } });
     };
     return (
         <div className="space-y-4">
@@ -315,6 +317,8 @@ function ImageForm({ block: b, onChange, readOnly, layoutLocked, errors, idPrefi
                 errors={errors}
                 idPrefix={idPrefix}
                 inset={b.width === "inset"}
+                allowDecorative={!b.link}
+                altHint={b.link && !b.image.alt.trim() ? LINKED_IMAGE_ALT : undefined}
                 layoutLocked={layoutLocked}
             />
             <Field label="Links to" htmlFor={linkId}>

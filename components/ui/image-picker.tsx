@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { Upload, Loader2, ImageIcon, Check, Search, HardDrive } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
+import { uploadImage } from "@/lib/media-assets/upload-image";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,13 +66,10 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
   const [driveOpen, setDriveOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
-  // Only the latest load writes, and it keeps what was uploaded while it ran.
   const loadId = useRef(0);
-  const uploadedSinceLoad = useRef<PickerAsset[]>([]);
 
   const loadAssets = useCallback(async () => {
     const id = ++loadId.current;
-    uploadedSinceLoad.current = [];
     setLoading(true);
     try {
       // ponytail: load all kinds when picker allows; imageOnly still requests kind=image
@@ -114,8 +112,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             kind: a.kind ?? "image",
             tags: Array.isArray(a.tags) ? a.tags : [],
           }));
-      const loadedIds = new Set(loaded.map((a) => a.id));
-      setAssets([...uploadedSinceLoad.current.filter((a) => !loadedIds.has(a.id)), ...loaded]);
+      setAssets(loaded);
 
       if (foldersData.ok && Array.isArray(foldersData.folders)) {
         setFolders(
@@ -152,51 +149,16 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
 
   const uploadFile = async (file: File) => {
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("/api/media", { method: "POST", body: formData });
-      const data = await res.json();
-      const added: PickerAsset | null =
-        data.ok && data.asset?.hosted_url
-          ? {
-              id: data.asset.id,
-              name: data.asset.name,
-              url: data.asset.hosted_url,
-              alt: data.asset.alt_text ?? null,
-              created_at: data.asset.created_at,
-              folder_id: data.asset.folder_id ?? null,
-              kind: data.asset.kind ?? "image",
-              tags: Array.isArray(data.asset.tags) ? data.asset.tags : [],
-            }
-          : data.ok && data.file
-            ? // Fallback shape from /api/media
-              {
-                id: data.file.id,
-                name: data.file.name,
-                url: data.file.url,
-                alt: null,
-                created_at: new Date().toISOString(),
-                folder_id: null,
-                kind: "image",
-                tags: [],
-              }
-            : null;
-      if (added) {
-        uploadedSinceLoad.current.push(added);
-        setAssets((prev) => [added, ...prev]);
-        toast.success("Image uploaded");
-      } else {
-        toast.error(getApiErrorMessage(data.error, "Upload failed"));
-      }
-    } catch (error) {
-      console.error("Upload error", error);
-      toast.error("Upload failed");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    const res = await uploadImage(file);
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
     }
+    toast.success("Image uploaded");
+    onSelect({ assetId: res.asset.id, url: res.asset.hosted_url, alt: res.asset.alt_text ?? null });
+    setOpen(false);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,11 +213,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
     dragCounter.current = 0;
 
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      await uploadFile(file);
-    } else {
-      toast.error("Please drop an image file");
-    }
+    if (file) await uploadFile(file);
   };
 
   const isUsed = useCallback(
@@ -307,14 +265,14 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
           onDrop={handleDrop}
         >
           <DialogHeader>
-            <div className="flex items-center justify-between mt-2">
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <DialogTitle>Select Asset</DialogTitle>
                 <DialogDescription>
-                  Pick from the media library, Google Drive, upload, or drag &amp; drop.
+                  Upload or drop an image to attach it, or pick one below.
                 </DialogDescription>
               </div>
-              <div className="flex gap-2 mr-6">
+              <div className="flex gap-2 max-sm:justify-center sm:mr-6">
                 <input
                   type="file"
                   accept="image/*"

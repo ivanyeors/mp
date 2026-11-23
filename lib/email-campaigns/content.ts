@@ -104,6 +104,9 @@ const NO_TAGS = "Words only: no HTML tags.";
 
 const most = (max: number) => `At most ${max.toLocaleString("en-SG")} characters.`;
 
+const ALT_OR_DECORATIVE = "Describe the image for anyone who can't see it, or mark it decorative.";
+export const LINKED_IMAGE_ALT = "A linked image needs alt text: it is what the link says.";
+
 const httpsLink = z
   .string()
   .max(CONTENT_LIMITS.url, most(CONTENT_LIMITS.url))
@@ -178,13 +181,10 @@ function blockSchema({ required }: { required: boolean }) {
   const asset = required
     ? z.string().regex(ASSET_ID, "Choose an image.")
     : z.string().refine((v) => v === "" || ASSET_ID.test(v), "An image is a Media Asset's id.");
-  const image = z
-    .strictObject({ asset, alt: optionalWords(CONTENT_LIMITS.alt), decorative: z.boolean().optional() })
-    .superRefine((im, ctx) => {
-      if (required && !im.decorative && !im.alt) {
-        ctx.addIssue({ code: "custom", path: ["alt"], message: "Describe the image for anyone who can't see it, or mark it decorative." });
-      }
-    });
+  const imageFields = z.strictObject({ asset, alt: optionalWords(CONTENT_LIMITS.alt), decorative: z.boolean().optional() });
+  const image = imageFields.superRefine((im, ctx) => {
+    if (required && !im.decorative && !im.alt) ctx.addIssue({ code: "custom", path: ["alt"], message: ALT_OR_DECORATIVE });
+  });
   const describedImage = z.strictObject({ asset, alt: optionalWords(CONTENT_LIMITS.alt) }).superRefine((im, ctx) => {
     if (required && !im.alt) ctx.addIssue({ code: "custom", path: ["alt"], message: "Describe the image for anyone who can't see it." });
   });
@@ -254,14 +254,15 @@ function blockSchema({ required }: { required: boolean }) {
       .strictObject({
         id: BlockId,
         type: z.literal("image"),
-        image,
+        image: imageFields,
         link: imageLink.optional(),
         width: z.enum(IMAGE_WIDTHS),
       })
       .superRefine((b, ctx) => {
-        if (required && b.link && b.image.decorative) {
-          ctx.addIssue({ code: "custom", path: ["image", "alt"], message: "A linked image needs alt text: it is what the link says." });
-        }
+        if (!required) return;
+        const said = Boolean(b.image.alt) && !b.image.decorative;
+        const mustSay = Boolean(b.link) || !b.image.decorative;
+        if (mustSay && !said) ctx.addIssue({ code: "custom", path: ["image", "alt"], message: b.link ? LINKED_IMAGE_ALT : ALT_OR_DECORATIVE });
       }),
     z.strictObject({
       id: BlockId,

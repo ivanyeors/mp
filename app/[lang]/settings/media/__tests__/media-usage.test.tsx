@@ -47,7 +47,7 @@ function mockFetch() {
     if (url === "/api/media-assets/a1/usage") return json({ ok: true, usages: [usage] });
     if (url.match(/^\/api\/media-assets\/[^/]+\/usage$/)) return json({ ok: true, usages: [] });
     if (url === "/api/media-assets") return json({ ok: true, assets });
-    if (url === "/api/media" && init?.method === "POST") return json({ ok: true });
+    if (url === "/api/media" && init?.method === "POST") return json({ ok: true, asset: { id: "u1", name: "new.png", hosted_url: "https://cdn.test/new.webp", created_at: "2026-11-23T00:00:00Z" } });
     if (url === "/api/media/replace") return json({ ok: true, summary: replaced });
     return json({ ok: true });
   });
