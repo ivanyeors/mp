@@ -1,31 +1,18 @@
 import { after, NextResponse } from "next/server";
-import { z } from "zod";
 import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
 import { getAdminBlogPostById, type BlogLocalizedContent } from "@/lib/blogs";
 import { isEditorialChange, preserveSeoAnswer } from "@/lib/blog-content-merge";
+import {
+    BLOG_SLUG_MESSAGE,
+    BLOG_SLUG_PATTERN,
+    blogInputError,
+    UpdateBlogSchema,
+} from "@/lib/blog-post-input";
 
 export const runtime = "nodejs";
-
-const UpdateBlogSchema = z.object({
-    slug: z.string().trim().min(1).max(300).optional(),
-    status: z.enum(["draft", "published", "unpublished"]).optional(),
-    content: z.record(z.string(), z.object({
-        title: z.string().min(1),
-        sub_header: z.string().optional().default(""),
-        description: z.string().optional().default(""),
-        body: z.string().optional().default(""),
-        seo_keywords: z.array(z.string()).optional().default([]),
-        seo_answer: z.string().max(1000).optional(),
-    })).optional(),
-    image_url: z.string().nullable().optional(),
-    media_asset_id: z.string().uuid().nullable().optional(),
-    author: z.string().optional(),
-    published_at: z.string().nullable().optional(),
-    labels: z.array(z.string()).optional(),
-});
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -47,21 +34,27 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const body = await req.json().catch(() => null);
     const parsed = UpdateBlogSchema.safeParse(body);
     if (!parsed.success) {
-        return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+        return NextResponse.json({ error: blogInputError(parsed.error) }, { status: 400 });
     }
 
     const updates: Record<string, unknown> = { ...parsed.data };
 
-    if (parsed.data.content) {
+    if (parsed.data.content || parsed.data.slug) {
         const { data: existing } = await supabaseAdmin()
             .from("blog_posts")
-            .select("content")
+            .select("slug, content")
             .eq("id", id)
             .maybeSingle();
-        const before = (existing?.content ?? null) as Record<string, BlogLocalizedContent> | null;
-        const content = preserveSeoAnswer(before, parsed.data.content);
-        updates.content = content;
-        if (isEditorialChange(before, content)) updates.content_updated_at = new Date().toISOString();
+        const renamed = parsed.data.slug !== undefined && parsed.data.slug !== existing?.slug;
+        if (renamed && !BLOG_SLUG_PATTERN.test(parsed.data.slug ?? "")) {
+            return NextResponse.json({ error: BLOG_SLUG_MESSAGE }, { status: 400 });
+        }
+        if (parsed.data.content) {
+            const before = (existing?.content ?? null) as Record<string, BlogLocalizedContent> | null;
+            const content = preserveSeoAnswer(before, parsed.data.content);
+            updates.content = content;
+            if (isEditorialChange(before, content)) updates.content_updated_at = new Date().toISOString();
+        }
     }
 
     if (parsed.data.status === "published" && !parsed.data.published_at) {

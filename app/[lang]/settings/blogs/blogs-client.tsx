@@ -57,20 +57,28 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
         }
     }, []);
 
-    const toggleStatus = async (id: string, currentStatus: string) => {
-        const newStatus = currentStatus === "published" ? "unpublished" : "published";
-        await fetch(`/api/blogs/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: newStatus }),
-        });
+    const sendChange = async (url: string, init: RequestInit, failed: string) => {
+        const json = await fetch(url, init)
+            .then((res) => res.json())
+            .catch(() => null);
+        if (!json?.ok) toast.error(typeof json?.error === "string" ? json.error : failed);
         fetchPosts();
     };
 
+    const toggleStatus = (id: string, currentStatus: string) =>
+        sendChange(
+            `/api/blogs/${id}`,
+            {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: currentStatus === "published" ? "unpublished" : "published" }),
+            },
+            "Couldn't change the post's status.",
+        );
+
     const deletePost = async (id: string) => {
         if (!confirm("Delete this blog post?")) return;
-        await fetch(`/api/blogs/${id}`, { method: "DELETE" });
-        fetchPosts();
+        await sendChange(`/api/blogs/${id}`, { method: "DELETE" }, "Couldn't delete the post.");
     };
 
 
