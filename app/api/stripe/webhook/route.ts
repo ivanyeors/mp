@@ -351,7 +351,7 @@ export async function POST(req: Request) {
         const { data: order, error: orderError } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, paid_at, payment_reference, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
           )
           .eq("id", orderId)
           .maybeSingle();
@@ -395,6 +395,30 @@ export async function POST(req: Request) {
           const detail = `Order ${orderId} was paid while ${order.status}. Not fulfilled: refund or reinstate it.`;
           await flagOrder(admin, orderId, "paid_while_closed", detail, { stripe_session_id: session.id });
           await recordWebhookFailure(admin, event, detail);
+          break;
+        }
+
+        if (order.paid_at && paymentIntent && order.payment_reference !== paymentIntent) {
+          const { recorded } = await recordLedgerEntry(admin, orderId, {
+            type: "charge",
+            amount: totals.amountTotal,
+            currency: order.currency ?? "SGD",
+            stripeObjectId: paymentIntent,
+            metadata: { stripe_session_id: session.id, paid_twice: true },
+            occurredAt: stripeEventTime(event),
+          });
+          if (recorded) {
+            await rollupOrderMoney(admin, orderId);
+            const detail =
+              `Order ${order.order_number} was already paid when Stripe took ${(order.currency ?? "SGD").toUpperCase()} ` +
+              `${totals.amountTotal.toFixed(2)} more for it (payment ${paymentIntent}). Nothing more was sent or taken ` +
+              `from stock. Refund one of the two payments.`;
+            await flagOrder(admin, orderId, "paid_twice", detail, {
+              stripe_session_id: session.id,
+              payment_intent: paymentIntent,
+            });
+            await recordWebhookFailure(admin, event, detail);
+          }
           break;
         }
 

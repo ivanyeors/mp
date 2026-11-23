@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { usesPostalCode } from "@/lib/shipping/countries";
 import { SERVICE_KEYS, type ServiceKey } from "@/lib/pricing/service-prices";
+import { OUTSIDE_STRIPE_METHODS, OUTSIDE_STRIPE_METHOD_LABELS } from "@/lib/ecommerce/outside-stripe";
 
 export const PAY_LINK_LIFETIME_DAYS = 7;
 
@@ -65,6 +66,38 @@ const DraftFields = z.object({
   internal_note: z.string().trim().max(INTERNAL_NOTE_MAX).optional(),
 });
 
+export const PaidHowSchema = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("stripe"),
+      payment_intent_id: z.string().regex(/^pi_[A-Za-z0-9_]+$/, "Pick a Stripe payment"),
+    }),
+    z.object({
+      kind: z.literal("outside"),
+      method: z.enum(OUTSIDE_STRIPE_METHODS),
+      note: z.string().trim().max(NOTE_MAX).optional(),
+    }),
+  ])
+  .refine((how) => how.kind !== "outside" || how.method !== "other" || Boolean(how.note), {
+    message: "Say how it was paid",
+    path: ["note"],
+  });
+export type PaidHow = z.infer<typeof PaidHowSchema>;
+
+export type StripePaymentOption = {
+  id: string;
+  amount: number;
+  currency: string;
+  paidAt: string;
+  method: string | null;
+  description: string | null;
+  email: string | null;
+};
+
+export function paidHowLabel(how: PaidHow): string {
+  return how.kind === "stripe" ? `Stripe payment ${how.payment_intent_id}` : OUTSIDE_STRIPE_METHOD_LABELS[how.method];
+}
+
 const hasALine = (d: { goods: unknown[]; services: unknown[] }) => d.goods.length + d.services.length > 0;
 const NO_LINES = { message: "Add at least one product or service", path: ["goods"] };
 
@@ -73,6 +106,7 @@ export type StaffOrderDraft = z.infer<typeof StaffOrderDraftSchema>;
 
 export const CreateStaffOrderSchema = DraftFields.extend({
   send_email: z.boolean().default(true),
+  paid: PaidHowSchema.optional(),
 }).refine(hasALine, NO_LINES);
 export type CreateStaffOrderInput = z.infer<typeof CreateStaffOrderSchema>;
 

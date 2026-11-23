@@ -15,6 +15,7 @@ import {
   staffRefundIdempotencyKey,
   stripeRefundReason,
 } from "@/lib/ecommerce/admin-refund";
+import { PAID_OUTSIDE_STRIPE_REFUND, paidOutsideStripe } from "@/lib/ecommerce/outside-stripe";
 import { staffRefundDeniedReason } from "@/lib/results/post-delivery-refund";
 import { voidCommissionsForItems } from "@/lib/commissions/ledger";
 
@@ -64,7 +65,7 @@ type OrderLine = {
 
 async function paymentIntentsOf(
   admin: SupabaseClient,
-  order: { id: string; payment_reference: string },
+  order: { id: string; payment_reference: string | null },
 ): Promise<string[]> {
   const { data, error } = await admin
     .from("order_payments")
@@ -79,7 +80,8 @@ async function paymentIntentsOf(
         .filter((id): id is string => typeof id === "string" && id.startsWith("pi_")),
     ),
   ];
-  return intents.length > 0 ? intents : [order.payment_reference];
+  if (intents.length > 0) return intents;
+  return order.payment_reference ? [order.payment_reference] : [];
 }
 
 function money(amount: number, currency: string): string {
@@ -107,7 +109,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, order_number, payment_reference, total, amount_refunded, amount_captured, currency, status, shipped_at, delivered_at, refund_request_status, partner_id, items:order_items(id, product_title, quantity, kind, customization_snapshot)",
+      "id, order_number, payment_reference, paid_at, payment_method, total, amount_refunded, amount_captured, currency, status, shipped_at, delivered_at, refund_request_status, partner_id, items:order_items(id, product_title, quantity, kind, customization_snapshot)",
     )
     .eq("id", orderId)
     .single();
@@ -128,8 +130,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: resultGate }, { status: 400 });
   }
 
-  if (!order.payment_reference) {
+  const outsideStripe = paidOutsideStripe(order);
+  if (!order.payment_reference && !outsideStripe) {
     return NextResponse.json({ error: "Order has no payment to refund" }, { status: 400 });
+  }
+  const intents = await paymentIntentsOf(admin, order);
+  if (intents.length === 0) {
+    return NextResponse.json({ error: PAID_OUTSIDE_STRIPE_REFUND }, { status: 400 });
   }
 
   if (order.status === "refunded") {
@@ -166,9 +173,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const amountCents = Math.round(amount * 100);
   const isFullRefund = amountCents >= Math.round(remaining * 100);
 
-  const intents = await paymentIntentsOf(admin, order);
   let parts: Array<{ paymentIntentId: string; cents?: number }>;
-  if (intents.length === 1) {
+  if (intents.length === 1 && !outsideStripe) {
     parts = [{ paymentIntentId: intents[0], ...(isFullRefund ? {} : { cents: amountCents }) }];
   } else {
     const split = splitRefundAcrossIntents(amountCents, await intentRefundableBalances(intents));

@@ -5,6 +5,7 @@ import { recordAdminAction } from "@/lib/auth/audit";
 import { getPublicOrigin } from "@/lib/site-url";
 import { createStaffOrder } from "@/lib/staff-orders/create";
 import { payLinkUrl } from "@/lib/staff-orders/link";
+import { markStaffOrderPaid } from "@/lib/staff-orders/mark-paid";
 import { quoteStaffOrder, quoteView } from "@/lib/staff-orders/quote";
 import { sendPaymentRequest } from "@/lib/staff-orders/send";
 import { CreateStaffOrderSchema } from "@/lib/staff-orders/shared";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid order" }, { status: 400 });
   }
-  const { send_email: sendEmail, ...draft } = parsed.data;
+  const { send_email: sendEmail, paid: paidHow, ...draft } = parsed.data;
 
   const admin = supabaseAdmin();
   let created;
@@ -48,8 +49,30 @@ export async function POST(req: Request) {
   });
 
   const origin = getPublicOrigin(req);
+  const actor = { userId: ctx.userId, email: ctx.email };
+
+  let paid: { ok: true; method: string; warnings: string[] } | { ok: false; error: string } | null = null;
+  if (paidHow) {
+    const marked = await markStaffOrderPaid(admin, created.orderId, paidHow, actor).catch((err: unknown) => ({
+      ok: false as const,
+      status: 500,
+      error: err instanceof Error ? err.message : "Could not mark the order paid",
+    }));
+    paid = marked.ok ? { ok: true, method: marked.method, warnings: marked.warnings } : { ok: false, error: marked.error };
+    if (marked.ok) {
+      await recordAdminAction({
+        actor: { ...actor, memberId: ctx.memberId },
+        action: "order.mark_paid",
+        entityType: "order",
+        entityId: created.orderId,
+        before: { paid_at: null },
+        after: { paid_at: marked.paidAt, paid: paidHow, warnings: marked.warnings },
+      });
+    }
+  }
+
   let emailed: { ok: true; sentTo: string } | { ok: false; error: string } | null = null;
-  if (sendEmail) {
+  if (sendEmail && !paidHow) {
     const sent = await sendPaymentRequest(admin, created.orderId, { origin, actorEmail: ctx.email }).catch(
       (err: unknown) => ({ ok: false as const, status: 500, error: err instanceof Error ? err.message : "Email failed" }),
     );
@@ -62,6 +85,7 @@ export async function POST(req: Request) {
       order: { id: created.orderId, order_number: created.orderNumber, total: quote.total },
       link: { url: payLinkUrl(origin, created.token, quote.customer.locale), expires_at: created.expiresAt },
       emailed,
+      paid,
     },
     { status: 201 },
   );

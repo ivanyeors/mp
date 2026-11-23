@@ -9,6 +9,7 @@ import {
   cancelRefundIdempotencyKey,
   isPaidOrder,
 } from "@/lib/ecommerce/admin-refund";
+import { paidOutsideStripe } from "@/lib/ecommerce/outside-stripe";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, order_number, payment_reference, paid_at, total, amount_refunded, amount_captured, currency, status, stripe_session_id"
+      "id, order_number, payment_reference, paid_at, payment_method, total, amount_refunded, amount_captured, currency, status, stripe_session_id"
     )
     .eq("id", orderId)
     .single();
@@ -37,6 +38,16 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   if (order.status === "refunded") {
     return NextResponse.json({ error: "Order is already refunded" }, { status: 400 });
+  }
+
+  if (paidOutsideStripe(order) && !order.payment_reference) {
+    return NextResponse.json(
+      {
+        error:
+          "This order was paid outside Stripe, so cancelling it cannot send the money back. Return the money the way it came, then use Record refund on the order: a full refund closes it.",
+      },
+      { status: 400 },
+    );
   }
 
   if (isPaidOrder(order)) {

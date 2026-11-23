@@ -6,6 +6,8 @@ import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { refundPayment } from "@/lib/stripe/refunds";
 import { refundableAmount } from "@/lib/ecommerce/admin-refund";
+import { recordOutsideRefund } from "@/lib/ecommerce/outside-refund";
+import { paidOutsideStripe } from "@/lib/ecommerce/outside-stripe";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { applyRmaTransition } from "@/lib/rma/transition";
 import { rmaRefundAmount, type RmaRefundLine, type RmaRefundOrder } from "@/lib/rma/refund";
@@ -108,7 +110,7 @@ export async function issueRmaRefund(rmaId: string) {
   const { data, error } = await admin
     .from("rma_requests")
     .select(
-      "id, status, resolution, orders(id, payment_reference, subtotal, shipping_amount, discount_amount, points_discount, self_purchase_units, total, amount_refunded, amount_captured, currency, coupons!coupon_id(applies_to), order_items(id, quantity, total_price, unit_price, kind, customization_snapshot)), rma_request_items(order_item_id, quantity)",
+      "id, status, resolution, orders(id, payment_reference, paid_at, payment_method, subtotal, shipping_amount, discount_amount, points_discount, self_purchase_units, total, amount_refunded, amount_captured, currency, coupons!coupon_id(applies_to), order_items(id, quantity, total_price, unit_price, kind, customization_snapshot)), rma_request_items(order_item_id, quantity)",
     )
     .eq("id", rmaId)
     .maybeSingle();
@@ -122,6 +124,8 @@ export async function issueRmaRefund(rmaId: string) {
       | (RmaRefundOrder & {
           id: string;
           payment_reference: string | null;
+          paid_at: string | null;
+          payment_method: string | null;
           amount_refunded: number | null;
           amount_captured: number | null;
           currency: string;
@@ -134,16 +138,37 @@ export async function issueRmaRefund(rmaId: string) {
   if (rma.resolution !== "refund") throw new Error("This return is not a refund.");
   if (rma.status !== "received") throw new Error("Mark the return received before issuing the refund.");
   const order = rma.orders;
-  if (!order?.payment_reference) throw new Error("Order has no payment to refund.");
+  const outsideStripe = Boolean(order) && paidOutsideStripe(order!) && !order!.payment_reference;
+  if (!order || (!order.payment_reference && !outsideStripe)) throw new Error("Order has no payment to refund.");
 
   const remaining = refundableAmount(order);
   const requested = rmaRefundAmount(order, order.order_items ?? [], rma.rma_request_items);
   const amount = Math.min(requested, remaining);
   if (!(amount > 0)) throw new Error("Nothing left to refund on this order.");
 
+  if (outsideStripe) {
+    const recorded = await recordOutsideRefund(
+      admin,
+      order.id,
+      { amount, note: `Return ${rmaId}: money returned the way it was paid.` },
+      { email: actor.email },
+    );
+    if (!recorded.ok) throw new Error(recorded.error);
+    await applyRmaTransition(admin, {
+      rmaId,
+      to: "refunded",
+      actorType: "staff",
+      actor,
+      emailMessage: "We have returned your payment the way you paid it.",
+    });
+    revalidatePath(`/settings/rma/${rmaId}`);
+    return { ok: true, amount };
+  }
+
   const amountCents = Math.round(amount * 100);
   const isFull = amountCents >= Math.round(remaining * 100);
 
+  if (!order.payment_reference) throw new Error("Order has no payment to refund.");
   const refund = await refundPayment({
     paymentIntentId: order.payment_reference,
     ...(isFull ? {} : { amount }),
