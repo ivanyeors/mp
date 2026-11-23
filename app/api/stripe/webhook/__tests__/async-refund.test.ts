@@ -18,8 +18,8 @@ vi.mock("@/lib/stripe/client", () => ({
     webhooks: { constructEvent: () => h.event },
     refunds: {
       retrieve: async (id: string) => {
-        const sent = (h.event as { data: { object: { id: string } } }).data.object;
-        return { ...sent, id, status: h.liveStatus ?? (sent as { status: string }).status };
+        const sent = (h.event as { data: { object: { id: string; status: string } } }).data.object;
+        return { ...sent, id, status: h.liveStatus ?? sent.status };
       },
     },
   }),
