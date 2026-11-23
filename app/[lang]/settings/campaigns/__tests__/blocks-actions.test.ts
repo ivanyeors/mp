@@ -17,6 +17,10 @@ vi.mock("@/lib/auth/admin", () => ({
 const recordAdminAction = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction }));
 vi.mock("@/lib/staff/working-as", () => ({ getWorkingAs: vi.fn(async () => ({ id: "s1", name: "Ivan Yeo" })) }));
+vi.mock("@/lib/auth/test-recipients", async (orig) => ({
+  ...(await orig<typeof import("@/lib/auth/test-recipients")>()),
+  readTestRecipients: async () => ["me@mpillow.com", "amy@mpillow.com"],
+}));
 vi.mock("@/lib/email-campaigns/setup", () => ({ campaignSenderSetup: () => ({ origin: "https://custom.mpillow.com" }) }));
 vi.mock("@/lib/email-campaigns/sender", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/email-campaigns/sender")>()),
@@ -186,6 +190,17 @@ describe("Points balance (slice 13)", () => {
 });
 
 describe("a test send", () => {
+  it("goes only to someone with an Admin Panel login, whatever the page sends", async () => {
+    const id = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
+    h.row = { id, created_at: "t", updated_at: "t", locked_at: null, archived_at: null, ...campaignRowFromDraft(CampaignDraftSchema.parse(INPUT)) };
+    const before = h.tests.length;
+    expect(await sendCampaignTestAction(id, ["amy@mpillow.com", "someone@gmail.com"])).toEqual({
+      ok: false,
+      error: "A test goes only to someone with an Admin Panel login: pick them from the list.",
+    });
+    expect(h.tests).toHaveLength(before);
+  });
+
   it("fills a block campaign's Variables with the sample customer's, and greets a legacy one's sender", async () => {
     const id = "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a";
     const row = { id, created_at: "t", updated_at: "t", locked_at: null, archived_at: null };

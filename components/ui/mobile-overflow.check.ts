@@ -15,6 +15,10 @@ const carousel = read("components/ui/apple-cards-carousel.tsx");
 const sizeMatters = read("components/slide-in-pages/size-matters-slide-in.tsx");
 const measureCarousel = read("components/product-sections/measure-carousel-section.tsx");
 const settingsNav = read("components/settings/settings-sidebar-nav.tsx");
+const campaignEditor = read("app/[lang]/settings/campaigns/campaign-editor.tsx");
+const richTextStyle = read("components/block-editor/rich-text-style.ts");
+const richTextEditor = read("components/block-editor/rich-text-editor.tsx");
+const richTextView = read("components/block-editor/rich-text-view.tsx");
 const settingsGeneral = read("app/[lang]/settings/general/general-client.tsx");
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
@@ -51,6 +55,21 @@ assert.match(settingsNav, /min-h-svh w-full min-w-0 overflow-x-(?:hidden|clip) m
 assert.match(settingsNav, /min-w-0 max-w-full px-3 (?:py-3|pt-3 pb-)/);
 assert.match(settingsGeneral, /min-w-0 max-w-full overflow-x-auto/);
 assert.match(settingsGeneral, /flex-col gap-3 sm:flex-row/);
+
+// Admin header on a phone: beside the "Who are you?" picker the current page keeps
+// its name (it was squeezed to one letter), and the crumbs before its parent give way.
+assert.match(settingsNav, /i < crumbs\.length - 2 \? "max-md:hidden"/);
+assert.match(settingsNav, /isLast \? "min-w-0 max-md:max-w-\[65%\] max-md:shrink-0" : "min-w-0 md:shrink-0"/);
+
+// Campaign editor, Send tab: one `minmax(0, 1fr)` column on a phone, so a long unbroken
+// message (a provider's error) wraps inside its card instead of widening both cards past the screen.
+assert.match(campaignEditor, /grid grid-cols-1 gap-6 lg:grid-cols-2/);
+assert.match(campaignEditor, /role="status" className=\{cn\("break-words text-sm"/);
+
+// One-line rich text (a campaign's Subject and Preview line): a placeholder longer than
+// the box ends in an ellipsis. As a zero-height float it wrapped and spilled over the hint below.
+assert.match(richTextStyle, /RICH_TEXT_ONE_LINE = \[[\s\S]*?before:absolute [^"]*before:inset-x-0 [^"]*before:h-auto [^"]*before:truncate/);
+for (const src of [richTextEditor, richTextView]) assert.match(src, /singleLine && RICH_TEXT_ONE_LINE/);
 
 // Inputs ≥16px on mobile (text-base) before pinch-zoom lock (slice 13)
 assert.match(input, /text-base[\s\S]*?md:text-sm/);

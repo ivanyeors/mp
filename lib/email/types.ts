@@ -26,9 +26,15 @@ export interface TransportResult {
   id?: string;
 }
 
+export interface SendingDomain {
+  name: string;
+  status: string;
+}
+
 export interface EmailTransport {
   readonly name: string;
   send(email: OutgoingEmail): Promise<TransportResult>;
+  sendingDomains?(): Promise<SendingDomain[]>;
 }
 
 export interface OrderEmailItem {

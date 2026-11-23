@@ -3,7 +3,7 @@
 import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { RichTextRun, RichTextValue, RichTextVariable } from "./rich-text-doc";
-import { RICH_TEXT_BOX, RICH_TEXT_EMPTY, VARIABLE_CHIP } from "./rich-text-style";
+import { RICH_TEXT_BOX, RICH_TEXT_EMPTY, RICH_TEXT_ONE_LINE, VARIABLE_CHIP } from "./rich-text-style";
 
 function RunView({ run, variables }: { run: RichTextRun; variables: readonly RichTextVariable[] }) {
   if ("var" in run) {
@@ -70,7 +70,7 @@ export function RichTextView({
       aria-readonly="true"
       aria-multiline={singleLine ? "false" : "true"}
       {...aria}
-      className={cn(RICH_TEXT_BOX, singleLine && "min-h-9", readOnly && "bg-muted/30", className)}
+      className={cn(RICH_TEXT_BOX, singleLine && RICH_TEXT_ONE_LINE, readOnly && "bg-muted/30", className)}
     >
       {value.length ? (
         value.map((p, i) =>

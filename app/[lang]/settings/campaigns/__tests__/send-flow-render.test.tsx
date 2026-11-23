@@ -141,6 +141,19 @@ describe("the waves", () => {
 });
 
 describe("the Send card", () => {
+  it("picks who gets the test from a list of Admin Panel logins, with no box to type an address in", () => {
+    const campaign = { ...FIRST_CAMPAIGN_DRAFT, id: "5a1d3c2e-7b4f-4e6a-9c8d-0f1e2d3c4b5a", createdAt: "t", updatedAt: "t", lockedAt: null, archivedAt: null, createdBy: null };
+    const html = renderToStaticMarkup(
+      <CampaignEditor campaign={campaign} draft={campaign} stats={null} segments={[]} staffEmail="Owner@mpillow.com" testRecipients={["owner@mpillow.com", "amy@mpillow.com"]} />,
+    );
+    const control = /<(\w+)[^>]*\bid="c-test"[^>]*>/.exec(html);
+    expect(control?.[1]).toBe("button");
+    expect(control?.[0]).toContain('role="combobox"');
+    expect(html).not.toMatch(/<input[^>]*\bid="c-test"/);
+    expect(text(html)).toContain("owner@mpillow.com");
+    expect(text(html)).not.toContain("separated by commas");
+  });
+
   it("opens on the checklist, with the waves below, and no browser confirm", () => {
     const campaign = {
       ...FIRST_CAMPAIGN_DRAFT,

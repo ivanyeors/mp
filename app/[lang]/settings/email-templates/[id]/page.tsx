@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { readTestRecipients } from "@/lib/auth/test-recipients";
 import { editableEmail, groupLabel, readSavedCopy, type SavedCopy } from "@/lib/email/copy-admin";
 import { defaultEmailCopy } from "@/lib/email/copy";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -32,6 +33,7 @@ export default async function EmailTemplatePage({ params }: { params: Promise<{ 
             saved={saved}
             readError={readError}
             staffEmail={ctx.email}
+            testRecipients={await readTestRecipients(ctx.email)}
         />
     );
 }

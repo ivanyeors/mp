@@ -9,10 +9,10 @@ import { richTextFromWords, richTextWords, type RichTextVariable } from "@/compo
 import { RichTextInline } from "@/components/block-editor/rich-text-view";
 import { VariablePalette } from "@/components/block-editor/variable-palette";
 import { VariableTargets } from "@/components/block-editor/variable-targets";
+import { TestRecipientSelect } from "@/components/settings/test-recipient-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MobileStickyActionBar, mobileStickyActionBarSpacerClassName } from "@/components/ui/mobile-sticky-action-bar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -83,6 +83,7 @@ export function EmailCopyEditor({
     saved,
     readError,
     staffEmail,
+    testRecipients = [staffEmail.trim().toLowerCase()],
 }: {
     spec: EmailCopySpec;
     groupLabel: string;
@@ -90,6 +91,7 @@ export function EmailCopyEditor({
     saved: SavedCopy;
     readError: string | null;
     staffEmail: string;
+    testRecipients?: string[];
 }) {
     const router = useRouter();
     const locale = getLocaleFromPathname(usePathname() ?? "") ?? DEFAULT_LOCALE;
@@ -155,12 +157,11 @@ export function EmailCopyEditor({
         router.refresh();
     };
 
-    const [testTo, setTestTo] = useState(staffEmail);
+    const [testTo, setTestTo] = useState(testRecipients[0]);
     const sendTest = async () => {
         setBusy("test");
         setStatus(null);
-        const addresses = testTo.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
-        const res = await sendEmailCopyTest(spec.id, variant, values, addresses);
+        const res = await sendEmailCopyTest(spec.id, variant, values, [testTo]);
         setBusy(null);
         if (!res.ok) {
             setErrors(res.fieldErrors ?? {});
@@ -317,9 +318,9 @@ export function EmailCopyEditor({
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                                <div className="flex-1 space-y-1.5">
+                                <div className="min-w-0 flex-1 space-y-1.5">
                                     <Label htmlFor="copy-test">Send to</Label>
-                                    <Input id="copy-test" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                                    <TestRecipientSelect id="copy-test" value={testTo} recipients={testRecipients} onChange={setTestTo} />
                                 </div>
                                 <Button variant="outline" onClick={sendTest} disabled={busy !== null}>
                                     {busy === "test" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}

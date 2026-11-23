@@ -1,5 +1,19 @@
 import { JWT } from "google-auth-library";
-import type { EmailTransport, OutgoingEmail, TransportResult } from "./types";
+import type { EmailTransport, OutgoingEmail, SendingDomain, TransportResult } from "./types";
+
+const RESEND_DOMAINS_TIMEOUT_MS = 5000;
+
+export function resendErrorText(body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { name?: unknown; message?: unknown };
+    if (typeof parsed?.message === "string" && parsed.message) {
+      return typeof parsed.name === "string" && parsed.name ? `${parsed.name}: ${parsed.message}` : parsed.message;
+    }
+  } catch {
+    return body;
+  }
+  return body;
+}
 
 export class ConsoleTransport implements EmailTransport {
   readonly name = "console";
@@ -38,11 +52,27 @@ export class ResendTransport implements EmailTransport {
 
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`Resend send failed (${res.status}): ${detail}`);
+      throw new Error(`Resend send failed (${res.status}): ${resendErrorText(detail)}`);
     }
 
     const json = (await res.json().catch(() => ({}))) as { id?: string };
     return { id: json.id };
+  }
+
+  async sendingDomains(): Promise<SendingDomain[]> {
+    const res = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${this.apiKey}` },
+      signal: AbortSignal.timeout(RESEND_DOMAINS_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(`Resend domains failed (${res.status}): ${resendErrorText(detail)}`);
+    }
+    const json = (await res.json().catch(() => null)) as { data?: unknown } | null;
+    if (!Array.isArray(json?.data)) throw new Error("Resend domains failed: the answer was not a list");
+    return json.data.flatMap((d: { name?: unknown; status?: unknown }) =>
+      typeof d?.name === "string" && typeof d?.status === "string" ? [{ name: d.name.toLowerCase(), status: d.status }] : [],
+    );
   }
 }
 

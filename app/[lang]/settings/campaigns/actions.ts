@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
+import { outsideTestRecipients, readTestRecipients, TEST_RECIPIENT_REFUSAL } from "@/lib/auth/test-recipients";
 import { CAMPAIGN_TEST_AUDIT_ACTION } from "@/lib/customer-migration/campaign-ledger";
 import { listSegments } from "@/lib/crm/segments";
 import { audienceRefusal } from "@/lib/email-campaigns/audience-refusal";
@@ -339,6 +340,7 @@ export async function sendCampaignTestAction(
   if (!Array.isArray(to) || to.length > MAX_TEST_RECIPIENTS) {
     return { ok: false, error: `A test goes to at most ${MAX_TEST_RECIPIENTS} addresses.` };
   }
+  if (outsideTestRecipients(to.map(String), await readTestRecipients(ctx.email)).length) return { ok: false, error: TEST_RECIPIENT_REFUSAL };
   const recipient = campaign.content ? SAMPLE_RECIPIENT : { firstName: await staffFirstName(ctx.memberId) };
   const locale = isSupportedLocale(language) ? language : DEFAULT_LOCALE;
   const result = await sendCampaignTest(campaign, { to: to.filter((t) => typeof t === "string"), ...recipient, ...(locale === DEFAULT_LOCALE ? {} : { locale }) }, campaignSenderSetup());

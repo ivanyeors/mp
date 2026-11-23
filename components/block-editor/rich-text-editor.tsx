@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { docFromValue, RICH_TEXT_NODES, valueFromDoc, type DocNode, type RichTextVariable } from "./rich-text-doc";
 import { closeVariableMenu, richTextExtensions, type VariableMenuHandlers, type VariableMenuState } from "./rich-text-schema";
 import type { RichTextProps } from "./rich-text";
-import { RICH_TEXT_BOX } from "./rich-text-style";
+import { RICH_TEXT_BOX, RICH_TEXT_ONE_LINE } from "./rich-text-style";
 import { RichTextView } from "./rich-text-view";
 import { useVariableTargets, type VariableTarget } from "./variable-targets";
 
@@ -227,7 +227,7 @@ export default function RichTextEditor(props: RichTextProps) {
         ...(placeholder ? { "aria-placeholder": placeholder } : {}),
         ...(variables.length ? { "aria-autocomplete": "list" } : {}),
         ...(menuOpen ? { "aria-controls": menuId, "aria-activedescendant": `${menuId}-${variableMenu.active}` } : {}),
-        class: cn(RICH_TEXT_BOX, singleLine && "min-h-9", "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50", className),
+        class: cn(RICH_TEXT_BOX, singleLine && RICH_TEXT_ONE_LINE, "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50", className),
       },
       handleTextInput: (view, _from, _to, text) => {
         const { $from, empty } = view.state.selection;
