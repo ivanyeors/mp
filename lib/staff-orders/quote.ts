@@ -12,6 +12,7 @@ import { quoteShippingMethods } from "@/lib/shipping/quote";
 import { collectionAddress, isSelfCollect, methodDeliversTo } from "@/lib/shipping/self-collect";
 import { readShippingSettings } from "@/lib/shipping/settings";
 import type { Product, ShippingMethod } from "@/lib/types/ecommerce";
+import { BUILT_TO_ORDER, quoteBuilds, type BuildInput, type QuotedBuild } from "@/lib/staff-orders/builds";
 import {
   MIN_CHARGE,
   mergeQuantities,
@@ -21,8 +22,6 @@ import {
   type StaffOrderLine,
   type StaffOrderQuoteView,
 } from "@/lib/staff-orders/shared";
-
-const CUSTOMISED_ONLY = new Set(["pillow", "bolster"]);
 
 export type StaffOrderCustomer = {
   id: string;
@@ -50,6 +49,7 @@ type VariantRow = StockVariant & {
 export type StaffOrderQuote = StaffOrderQuoteView & {
   customer: StaffOrderCustomer;
   variants: Map<string, VariantRow>;
+  builds: QuotedBuild[];
   servicePrices: ServicePrices | null;
   shippingAddress: Record<string, unknown>;
   shippingMethodId: string | null;
@@ -103,17 +103,16 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
   if (!customer) return refuse(404, "Customer not found");
 
   const goods = mergeQuantities(draft.goods, "variant_id");
+  const draftBuilds = draft.builds ?? [];
+  const variantIds = [...new Set([...goods, ...draftBuilds].map((g) => g.variant_id))];
   const variants = new Map<string, VariantRow>();
-  if (goods.length > 0) {
+  if (variantIds.length > 0) {
     const { data, error } = await admin
       .from("product_variants")
       .select(
         "id, product_id, sku, title, price, currency, cost_price, image_url, weight_grams, is_active, pillow_product_id, item_id, track_inventory, option1, products!inner(id, slug, content, product_type, status, category_id)",
       )
-      .in(
-        "id",
-        goods.map((g) => g.variant_id),
-      );
+      .in("id", variantIds);
     if (error) throw new Error(error.message);
     for (const row of (data ?? []) as unknown as VariantRow[]) variants.set(row.id, row);
   }
@@ -125,11 +124,8 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
     if (!v || !product || !v.is_active || product.status === "archived") {
       return refuse(400, "A product in this order is no longer for sale. Remove it and try again.");
     }
-    if (CUSTOMISED_ONLY.has(product.product_type)) {
-      return refuse(
-        400,
-        `${productTitle(product)} is a customised build. Start a customisation for it; a Staff order takes products and services only.`,
-      );
+    if (BUILT_TO_ORDER.has(product.product_type)) {
+      return refuse(400, `${productTitle(product)} is built to order. Choose its fillings before adding it.`);
     }
     if ((v.currency ?? "SGD").toUpperCase() !== "SGD") {
       return refuse(400, `${productTitle(product)} is not priced in SGD.`);
@@ -158,6 +154,47 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
     lines.filter((l): l is Extract<StaffOrderLine, { kind: "goods" }> => l.kind === "goods"),
   );
   if (shortage) return refuse(400, shortage);
+
+  const buildInputs: BuildInput[] = [];
+  for (const b of draftBuilds) {
+    const v = variants.get(b.variant_id);
+    const product = v?.products ?? null;
+    if (!v || !product || !v.is_active || product.status === "archived") {
+      return refuse(400, "A pillow or bolster in this order is no longer for sale. Remove it and try again.");
+    }
+    if (!BUILT_TO_ORDER.has(product.product_type)) {
+      return refuse(400, `${productTitle(product)} has no fillings to choose. Add it as a product.`);
+    }
+    if ((v.currency ?? "SGD").toUpperCase() !== "SGD") {
+      return refuse(400, `${productTitle(product)} is not priced in SGD.`);
+    }
+    buildInputs.push({ draft: b, variant: v, name: [productTitle(product), v.title].filter(Boolean).join(" · ") });
+  }
+  const reserved = new Map<number, number>();
+  for (const g of goods) {
+    const itemId = variants.get(g.variant_id)?.item_id;
+    if (itemId != null) reserved.set(itemId, (reserved.get(itemId) ?? 0) + g.quantity);
+  }
+  const built = await quoteBuilds(admin, buildInputs, reserved);
+  if (!built.ok) return refuse(built.status, built.error);
+  built.builds.forEach((build, i) => {
+    const { draft: b, variant } = buildInputs[i];
+    const v = variants.get(variant.id)!;
+    lines.push({
+      kind: "goods",
+      variantId: v.id,
+      productId: v.products!.id,
+      categoryId: v.products!.category_id ?? null,
+      sku: v.sku ?? "",
+      title: productTitle(v.products),
+      variantTitle: v.title ?? null,
+      imageUrl: v.image_url ?? null,
+      unitPrice: build.unitPrice,
+      quantity: b.quantity,
+      stockAvailable: 0,
+      build: build.summary,
+    });
+  });
 
   const services = mergeQuantities(draft.services, "key");
   let servicePrices: ServicePrices | null = null;
@@ -329,6 +366,7 @@ export async function quoteStaffOrder(admin: SupabaseClient, draft: StaffOrderDr
       delivery,
       customer,
       variants,
+      builds: built.builds,
       servicePrices,
       shippingAddress,
       shippingMethodId,

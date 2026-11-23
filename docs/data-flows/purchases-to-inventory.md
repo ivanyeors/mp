@@ -44,7 +44,7 @@ flowchart TD
 |---|---|---|---|---|
 | Shop | `POST /api/stripe/webhook` | After the webhook stamps `paid_at` | The Variant: its Composed sellable's build, its Item, or its own `stock_quantity` | Claim `orders.inventory_deducted_at` |
 | Result | `POST /api/results/[id]/accept` | After capture, once the Order exists | The build frozen on the Order line | Claim `orders.inventory_deducted_at` |
-| Staff order | `POST /api/stripe/webhook`, as Shop | After the webhook stamps `paid_at` | As Shop (Variants only; Service lines take nothing) | Claim `orders.inventory_deducted_at` |
+| Staff order | `POST /api/stripe/webhook`, as Shop | After the webhook stamps `paid_at` | As Shop: a Variant's Item or build, and for a pillow or bolster the recipe with the fillings Staff chose (case 1 or 2); Service lines take nothing | Claim `orders.inventory_deducted_at` |
 | Staff order, marked paid | `markStaffOrderPaid` (`POST /api/staff-orders`, `…/[id]/mark-paid`) | After it stamps `paid_at` | As Shop | The same claim |
 | Staff status change | `PATCH /api/shop/orders/[id]`, `markOrderShipped` | When the Order becomes sold | As Shop | Claim `orders.inventory_deducted_at` |
 | In-store | Inventory page cart | Immediately | Warehouse + Filling Template, or parts | Unique `sale_id` × `sale_line` × Item |
@@ -221,9 +221,23 @@ stock exactly as a shop Order does, because it is settled the same way:
    as checkout does, and writes nothing to the ledger. `createStaffOrder`
    inserts the Order `pending`, its `order_items` (Service lines are
    `kind 'service'`), the courier quote and an `order_payment_links` row.
+   - **A pillow or bolster** (ADR 0057) comes in the draft's `builds`, with a
+     Filling Template and the placements Staff laid out
+     (`lib/staff-orders/builds.ts`). It is priced at the Composed sellable's
+     Costings MSRP plus each placed Ear Comfort Pad's MSRP, its placements are validated as a Result's are, and
+     `buildShortage` checks `composedBuildLines` (the recipe's non-filling
+     Items and the chosen fillings, times the quantity, across every build in
+     the order, after its accessory lines' own Items) against
+     `inventory_balances`. `createStaffOrder` writes a
+     `customization_configs` row and puts the build on the line's snapshot
+     (`source: "staff_order"`: `filling_lines` for stock, `filling_placements`
+     for the workshop), so it deducts through case 1 or 2 below like a
+     customised shop line. It has no `result_id` and makes no Results record.
+     A pillow or bolster in `goods`, with no build, is refused.
 2. **`POST /api/pay/[token]/checkout`** (the Pay button on `/pay/[token]`)
-   checks stock again and opens a Stripe Checkout Session carrying `order_id`
-   and `purpose: staff_order`, for the Order's stored total.
+   checks stock again (Variants against `variant_stock`, builds with
+   `savedBuildsShortage`) and opens a Stripe Checkout Session carrying
+   `order_id` and `purpose: staff_order`, for the Order's stored total.
 3. **`POST /api/stripe/webhook`** confirms it on `checkout.session.completed`
    through the shop branch above: `paid_at` first, then the claim and
    `deductInventoryForOrder`. A `staff_order` session that expires unpaid does

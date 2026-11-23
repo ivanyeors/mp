@@ -36,9 +36,13 @@ export function staffOrderAdmin(db: FakeDb) {
         }
         if (!Array.isArray(row)) return insertOne(withDefaults(row));
         const list = (db[table] ??= []);
-        for (const r of row) list.push({ id: `${table}-${list.length + 1}`, ...withDefaults(r) });
+        const stored = row.map((r) => {
+          const kept = { id: `${table}-${list.length + 1}`, ...withDefaults(r) };
+          list.push(kept);
+          return kept;
+        });
         return {
-          select: () => ({ then: (res: (v: unknown) => unknown) => Promise.resolve({ data: row, error: null }).then(res) }),
+          select: () => ({ then: (res: (v: unknown) => unknown) => Promise.resolve({ data: stored, error: null }).then(res) }),
           then: (res: (v: unknown) => unknown) => Promise.resolve({ data: null, error: null }).then(res),
         };
       };

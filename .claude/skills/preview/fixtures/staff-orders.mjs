@@ -8,6 +8,8 @@
 //                     /pay/5a1e5a1e-0000-4000-8000-0000000f0001
 //   MP-20261101-0002  paid, delivered by Standard        /pay/5a1e5a1e-0000-4000-8000-0000000f0002
 //   MP-20261020-0003  link expired, still pending         /pay/5a1e5a1e-0000-4000-8000-0000000f0003
+//   MP-20261121-0004  paid: an Mpillow Premium M built with fillings Staff adjusted, and a neck support
+//                     /settings/orders/00000000-0000-4000-8000-0000005f0004
 //
 // Products are storefront.mjs's Cervical Neck Support; the studio is
 // partner-locations.mjs's own Location.
@@ -17,7 +19,19 @@ const STUDIO = "00000000-0000-4000-8000-0000000a0006";
 const NECK_M = "00000000-0000-4000-8000-00000000b003";
 const NECK_L = "00000000-0000-4000-8000-00000000b004";
 
+// Pillows and a bolster Staff can add to an order with their fillings (ADR 0057):
+// active Variants of analytics.mjs's products, linked to its pillow products
+// (Basic M is 3, Premium M is 8, Premium L is 9) and priced in Costings below.
+const BUILT = {
+  premiumM: "00000000-0000-4000-8000-0000005fb001",
+  premiumL: "00000000-0000-4000-8000-0000005fb002",
+  basicM: "00000000-0000-4000-8000-0000005fb003",
+  bolsterM: "00000000-0000-4000-8000-0000005fb004",
+};
+const BOLSTER_TEMPLATE = 601;
+
 const ORDER = {
+  built: "00000000-0000-4000-8000-0000005f0004",
   payable: "00000000-0000-4000-8000-0000005f0001",
   paid: "00000000-0000-4000-8000-0000005f0002",
   expired: "00000000-0000-4000-8000-0000005f0003",
@@ -98,8 +112,121 @@ export default function staffOrders({ now }) {
       total_cost: 9,
     });
 
+  const builtVariant = (id, productId, title, price, extra) => ({
+    id,
+    product_id: productId,
+    sku: `MP-${title.toUpperCase().replace(/\s+/g, "-")}`,
+    title,
+    option2: null,
+    option3: null,
+    price,
+    compare_at_price: null,
+    currency: "SGD",
+    cost_price: null,
+    track_inventory: true,
+    weight_grams: 1800,
+    image_url: null,
+    is_active: true,
+    item_id: null,
+    pillow_product_id: null,
+    ...extra,
+  });
+  const piece = (section, subSection, slot, itemId) => ({
+    section,
+    sub_section: subSection,
+    slot,
+    item_id: itemId,
+    row_index: slot - 1,
+    insert_order: null,
+    offset_x_mm: null,
+    offset_y_mm: null,
+  });
+  // Costings' "Side sleeper" (template 202) with one more 6D S in the centre back.
+  const builtPlacements = [
+    piece("left", "middle", 1, 68),
+    piece("left", "middle", 2, 68),
+    piece("center", "middle", 1, 67),
+    piece("center", "back", 1, 67),
+    piece("right", "middle", 1, 68),
+    piece("right", "middle", 2, 68),
+  ];
+  const builtSnapshot = {
+    source: "staff_order",
+    product_type: "pillow",
+    pillow_product_id: 8,
+    bolster_variant: null,
+    filling_template_id: null,
+    filling_template_name: null,
+    based_on_template: { id: 202, name: "Side sleeper" },
+    filling_placements: builtPlacements,
+    config_lines: [],
+    filling_lines: [
+      { item_id: 67, subtype: "", name: "6D S", quantity: 2 },
+      { item_id: 68, subtype: "", name: "6D M", quantity: 4 },
+    ],
+    total_addon_price: 0,
+    summary: "Fillings: Adjusted from Side sleeper · 6 pieces",
+  };
+
   return {
     tables: {
+      product_variants: [
+        builtVariant(BUILT.basicM, "prod-pillow-basic", "M", 220, { option1: "M", pillow_product_id: 3 }),
+        builtVariant(BUILT.premiumM, "prod-pillow-premium", "M", 320, { option1: "M", pillow_product_id: 8 }),
+        builtVariant(BUILT.premiumL, "prod-pillow-premium", "L", 340, { option1: "L", pillow_product_id: 9 }),
+        builtVariant(BUILT.bolsterM, "prod-bolster", "Medium", 190, { option1: "medium" }),
+      ],
+      // The recipe of each: its cover and case (Satin White, Natural White Linen), and
+      // the bolster's case. Premium M and L are priced by results.mjs.
+      bom_lines: [
+        { product_id: 3, item_id: 3, quantity: 1 },
+        { product_id: 3, item_id: 8, quantity: 1 },
+        { product_id: 8, item_id: 3, quantity: 1 },
+        { product_id: 8, item_id: 8, quantity: 1 },
+        { product_id: 9, item_id: 4, quantity: 1 },
+        { product_id: 9, item_id: 9, quantity: 1 },
+      ],
+      bolster_bom_lines: [{ variant: "medium", item_id: 85, quantity: 1 }],
+      product_prices: [
+        { key: "product:pillow:3", kind: "pillow", product_id: 3, variant: null, msrp: 220, currency: "SGD" },
+        { key: "product:bolster:medium", kind: "bolster", product_id: null, variant: "medium", msrp: 190, currency: "SGD" },
+      ],
+      bolster_length_config: [{ variant: "medium", default_filling_template_id: BOLSTER_TEMPLATE }],
+      bom_templates: [
+        {
+          id: BOLSTER_TEMPLATE,
+          kind: "bolster",
+          key: "medium",
+          role: "filling",
+          name: "Medium, firm",
+          notes: null,
+          is_active: true,
+          created_at: at(40),
+          updated_at: at(40),
+        },
+      ],
+      bom_template_keys: [{ template_id: BOLSTER_TEMPLATE, key: "medium", created_at: at(40) }],
+      bolster_template_placements: [67, 67, 68, 68, 69].map((item_id, i) => ({
+        template_id: BOLSTER_TEMPLATE,
+        slot: i + 1,
+        item_id,
+      })),
+      customization_configs: [
+        {
+          id: "00000000-0000-4000-8000-0000005fc001",
+          product_type: "pillow",
+          pillow_product_id: 8,
+          bolster_variant: null,
+          ecom_product_id: null,
+          bom_template_id: null,
+          config_lines: [],
+          filling_lines: builtSnapshot.filling_lines,
+          llm_metadata: { source: "staff_order" },
+          summary: builtSnapshot.summary,
+          total_addon_price: 0,
+          created_at: at(2),
+        },
+      ],
       // A delivery method with a real (uuid) id, listed first: the Create order
       // dialog's Deliver option prices it. storefront.mjs's methods have slug ids.
       shipping_methods: [
@@ -133,6 +260,25 @@ export default function staffOrders({ now }) {
         },
       ],
       orders: [
+        {
+          ...base,
+          id: ORDER.built,
+          order_number: "MP-20261121-0004",
+          status: "confirmed",
+          subtotal: 355,
+          shipping_amount: 0,
+          total: 355,
+          shipping_address: collect,
+          shipping_method_id: null,
+          internal_notes: "Second pillow for the guest room. Wants it a touch higher at the back than her own.",
+          notes: null,
+          paid_at: at(2),
+          payment_reference: "pi_preview_staff_built",
+          stripe_session_id: "cs_preview_staff_built",
+          inventory_deducted_at: at(2),
+          created_at: at(2),
+          updated_at: at(2),
+        },
         {
           ...base,
           id: ORDER.payable,
@@ -186,12 +332,39 @@ export default function staffOrders({ now }) {
         },
       ],
       order_items: [
+        line(ORDER.built, 5, {
+          variant_id: BUILT.premiumM,
+          kind: "goods",
+          sku: "MP-M",
+          product_title: "Mpillow Premium",
+          variant_title: "M",
+          quantity: 1,
+          unit_price: 320,
+          total_price: 320,
+          unit_cost: 92,
+          total_cost: 92,
+          customization_id: "00000000-0000-4000-8000-0000005fc001",
+          customization_snapshot: builtSnapshot,
+        }),
+        neck(ORDER.built, 6, NECK_M, "M", 1, 35),
         neck(ORDER.payable, 1, NECK_M, "M", 1, 35),
         readjust(ORDER.payable, 2),
         neck(ORDER.paid, 3, NECK_L, "L", 1, 42),
         neck(ORDER.expired, 4, NECK_M, "M", 1, 35),
       ],
       order_payment_links: [
+        {
+          order_id: ORDER.built,
+          token: "5a1e5a1e-0000-4000-8000-0000000f0004",
+          expires_at: new Date(now.getTime() + 5 * 86_400_000).toISOString(),
+          created_by: null,
+          created_by_email: "owner@preview.local",
+          last_sent_at: at(2),
+          last_sent_to: "aisha.rahman@example.com",
+          send_count: 1,
+          created_at: at(2),
+          updated_at: at(2),
+        },
         {
           order_id: ORDER.payable,
           token: TOKEN.payable,

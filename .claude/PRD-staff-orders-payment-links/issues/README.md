@@ -15,6 +15,7 @@ layer it touches: schema, server, screen, copy and tests.
 | 03 | The Payment link: `/pay/[token]`, `POST /api/pay/[token]/checkout`, one live Checkout per Order, the webhook's `expired` branch, the daily expiry sweep | AFK | **done** | 02 | 12–16 |
 | 04 | The Payment request email: editable copy, registry entry, resend route | AFK | **done** | 02 | 8, 10 |
 | 05 | Staff screens: Create order on the Customer page (with Copy and QR), the Payment link card on the Order page, the Documentation guide | AFK | **done** | 02–04 | 1–11 |
+| 07 | Pillows and bolsters on a Staff order, with a Filling Template chosen and adjusted before the order is made (ADR 0057); larger prices and *Add* on hover in the product list | AFK | **done** | 02, 05 | owner request 2026-11-23 |
 | 06 | Sign-off: staging, Stripe test cards and PayNow, both locales, a handset scanning the QR | HITL | **not started** | 01–05 | all |
 
 ## Build notes (2026-11-07)

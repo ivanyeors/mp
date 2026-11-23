@@ -36,9 +36,14 @@ for (const helper of ["CELLS", "placementsToCells", "cellsToPlacements"]) {
     `cells.ts still exports ${helper}`);
 }
 const orderDetail = readFileSync("app/[lang]/settings/orders/[id]/order-detail-client.tsx", "utf8");
+const placementBreakdown = readFileSync("app/[lang]/settings/orders/[id]/placement-breakdown.tsx", "utf8");
 assert.ok(
-  orderDetail.includes('from "@/lib/spatial-fillings/cells"'),
-  "order detail imports CELLS from the lib, not the deleted component",
+  placementBreakdown.includes('from "@/lib/spatial-fillings/cells"'),
+  "order detail's placement breakdown imports CELLS from the lib, not the deleted component",
+);
+assert.ok(
+  orderDetail.includes('from "./placement-breakdown"') && !/const CELLS\b/.test(orderDetail),
+  "order detail shows placements through the one breakdown, with no cell list of its own",
 );
 
 const BOLSTER_EDITORS: Record<string, string> = {

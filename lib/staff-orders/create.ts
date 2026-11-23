@@ -24,16 +24,48 @@ export async function createStaffOrder(
   now: Date = new Date(),
 ): Promise<CreateOutcome> {
   const goods = quote.lines.filter((l) => l.kind === "goods");
+  const built = goods.filter((l) => l.build);
+  if (built.length !== quote.builds.length) {
+    return { ok: false, status: 500, error: "The order's builds do not match its lines" };
+  }
+
+  let configIds: string[] = [];
+  if (quote.builds.length > 0) {
+    const { data: configs, error: configError } = await admin
+      .from("customization_configs")
+      .insert(quote.builds.map((b) => b.config))
+      .select("id");
+    if (configError || !configs || configs.length !== quote.builds.length) {
+      return { ok: false, status: 500, error: configError?.message ?? "Failed to save the builds" };
+    }
+    configIds = (configs as Array<{ id: string }>).map((c) => String(c.id));
+  }
+  const dropConfigs = async () => {
+    if (configIds.length > 0) await admin.from("customization_configs").delete().in("id", configIds);
+  };
+  let buildIndex = 0;
+  const buildOf = goods.map((l) => {
+    if (!l.build) return null;
+    const at = buildIndex++;
+    return { customization_id: configIds[at], customization_snapshot: quote.builds[at].snapshot };
+  });
+
   let goodsCosts: Array<{ unit_cost: number | null; total_cost: number | null }>;
   try {
     goodsCosts = await orderLinesCosts(
       admin,
-      goods.map((l) => {
+      goods.map((l, i) => {
         const v = quote.variants.get(l.variantId) ?? null;
-        return { variant: v ? { ...v, cost_price: v.cost_price } : null, quantity: l.quantity };
+        return {
+          variant: v ? { ...v, cost_price: v.cost_price } : null,
+          quantity: l.quantity,
+          customization_id: buildOf[i]?.customization_id ?? null,
+          customization_snapshot: buildOf[i]?.customization_snapshot ?? null,
+        };
       }),
     );
   } catch (err) {
+    await dropConfigs();
     return { ok: false, status: 500, error: err instanceof Error ? err.message : "Failed to load item costs" };
   }
 
@@ -64,19 +96,24 @@ export async function createStaffOrder(
     .select("id, order_number")
     .single();
   if (orderError || !order) {
+    await dropConfigs();
     return { ok: false, status: 500, error: orderError?.message ?? "Failed to create the order" };
   }
   const orderId = order.id as string;
   const undo = async (error: string, status = 500): Promise<CreateOutcome> => {
     await admin.from("orders").delete().eq("id", orderId);
+    await dropConfigs();
     return { ok: false, status, error };
   };
 
   let goodsIndex = 0;
   const rows = quote.lines.map((line) => {
     if (line.kind === "goods") {
-      const cost = goodsCosts[goodsIndex++] ?? { unit_cost: null, total_cost: null };
+      const at = goodsIndex++;
+      const cost = goodsCosts[at] ?? { unit_cost: null, total_cost: null };
       return {
+        customization_id: buildOf[at]?.customization_id ?? null,
+        customization_snapshot: buildOf[at]?.customization_snapshot ?? null,
         order_id: orderId,
         variant_id: line.variantId,
         kind: "goods",
