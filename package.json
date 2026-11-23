@@ -117,7 +117,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.4.3",
     "fast-check": "^4.10.3",
-    "jsdom": "^26.1.0",
+    "jsdom": "^31.0.1",
     "shadcn": "^4.23.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
