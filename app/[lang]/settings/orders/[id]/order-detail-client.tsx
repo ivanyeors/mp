@@ -79,6 +79,8 @@ import { refundableAmount } from "@/lib/ecommerce/admin-refund";
 import { EasyshipFulfilment } from "./easyship-fulfilment";
 import { RefundDialog, type RefundIssued } from "./refund-dialog";
 import { PaymentLinkCard, type PaymentLinkCardData } from "./payment-link-card";
+import { RecordRefundDialog } from "./record-refund-dialog";
+import { paidOutsideStripe, paymentMethodLabel } from "@/lib/ecommerce/outside-stripe";
 
 const ORDER_STATUSES: OrderStatus[] = [
     "pending",
@@ -460,6 +462,13 @@ export default function OrderDetailPage({
         order.status !== "refunded" &&
         order.status !== "pending" &&
         order.status !== "payment_failed" &&
+        refundableRemaining > 0;
+
+    const canRecordRefund =
+        !!order &&
+        paidOutsideStripe(order) &&
+        !order.payment_reference &&
+        order.status !== "refunded" &&
         refundableRemaining > 0;
 
     const canCancel =
@@ -1215,8 +1224,14 @@ export default function OrderDetailPage({
                     {initialData?.paymentLink ? (
                         <PaymentLinkCard
                             orderId={order.id}
-                            order={{ status: order.status, paid_at: order.paid_at }}
+                            order={{
+                                status: order.status,
+                                paid_at: order.paid_at,
+                                order_number: order.order_number,
+                                total: order.total,
+                            }}
                             link={initialData.paymentLink}
+                            onPaid={() => void Promise.all([fetchOrder(), fetchTimeline()])}
                         />
                     ) : null}
 
@@ -1539,8 +1554,8 @@ export default function OrderDetailPage({
                         <CardContent className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Method</span>
-                                <span className="font-medium capitalize">
-                                    {order.payment_method ?? "—"}
+                                <span className="text-right font-medium">
+                                    {paymentMethodLabel(order.payment_method)}
                                 </span>
                             </div>
                             {order.payment_reference && (
@@ -1653,6 +1668,14 @@ export default function OrderDetailPage({
                                 <p className="text-sm text-destructive pt-1">{actionError}</p>
                             )}
                             <div className="flex flex-col gap-2 pt-2 border-t">
+                                {canRecordRefund && (
+                                    <RecordRefundDialog
+                                        orderId={order.id}
+                                        paymentMethod={order.payment_method}
+                                        remaining={refundableRemaining}
+                                        onRecorded={() => void Promise.all([fetchOrder(), fetchTimeline()])}
+                                    />
+                                )}
                                 {canRefund && (
                                     <RefundDialog
                                         order={order}

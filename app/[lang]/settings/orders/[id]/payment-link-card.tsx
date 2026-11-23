@@ -13,6 +13,7 @@ import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { getClientPublicOrigin } from "@/lib/site-url";
 import { payLinkPath, payLinkState, type PayLinkState } from "@/lib/staff-orders/shared";
+import { MarkPaidDialog } from "./mark-paid-dialog";
 
 export type PaymentLinkCardData = {
     token: string;
@@ -45,10 +46,12 @@ export function PaymentLinkCard({
     orderId,
     order,
     link,
+    onPaid,
 }: {
     orderId: string;
-    order: { status: string; paid_at: string | null };
+    order: { status: string; paid_at: string | null; order_number: string; total: number };
     link: PaymentLinkCardData;
+    onPaid: () => void;
 }) {
     const [data, setData] = useState(link);
     const [sending, setSending] = useState(false);
@@ -112,7 +115,9 @@ export function PaymentLinkCard({
                 <p className="text-muted-foreground">
                     {data.lastSentAt && data.lastSentTo
                         ? `Emailed to ${data.lastSentTo}, ${date(data.lastSentAt)}${data.sendCount > 1 ? ` (${data.sendCount} times)` : ""}.`
-                        : "Not emailed yet."}
+                        : usable
+                          ? "Not emailed yet."
+                          : "The link was never emailed."}
                     {data.createdByEmail ? ` Made by ${data.createdByEmail}.` : ""}
                 </p>
 
@@ -154,6 +159,18 @@ export function PaymentLinkCard({
                             {state === "expired" ? "Renew and email again" : "Email the link again"}
                         </Button>
                         <p className="text-xs text-muted-foreground">Sending it again gives it another 7 days.</p>
+                        <div className="space-y-2 border-t pt-3">
+                            <MarkPaidDialog
+                                orderId={orderId}
+                                orderNumber={order.order_number}
+                                total={Number(order.total)}
+                                onPaid={onPaid}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Already paid another way, at the counter or by transfer? Mark it paid instead of waiting
+                                for the link.
+                            </p>
+                        </div>
                     </>
                 ) : null}
             </CardContent>
