@@ -16,6 +16,9 @@ const sizeMatters = read("components/slide-in-pages/size-matters-slide-in.tsx");
 const measureCarousel = read("components/product-sections/measure-carousel-section.tsx");
 const settingsNav = read("components/settings/settings-sidebar-nav.tsx");
 const campaignEditor = read("app/[lang]/settings/campaigns/campaign-editor.tsx");
+const richTextStyle = read("components/block-editor/rich-text-style.ts");
+const richTextEditor = read("components/block-editor/rich-text-editor.tsx");
+const richTextView = read("components/block-editor/rich-text-view.tsx");
 const settingsGeneral = read("app/[lang]/settings/general/general-client.tsx");
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
@@ -62,6 +65,11 @@ assert.match(settingsNav, /isLast \? "min-w-0 max-md:max-w-\[65%\] max-md:shrink
 // message (a provider's error) wraps inside its card instead of widening both cards past the screen.
 assert.match(campaignEditor, /grid grid-cols-1 gap-6 lg:grid-cols-2/);
 assert.match(campaignEditor, /role="status" className=\{cn\("break-words text-sm"/);
+
+// One-line rich text (a campaign's Subject and Preview line): a placeholder longer than
+// the box ends in an ellipsis. As a zero-height float it wrapped and spilled over the hint below.
+assert.match(richTextStyle, /RICH_TEXT_ONE_LINE = \[[\s\S]*?before:absolute [^"]*before:inset-x-0 [^"]*before:h-auto [^"]*before:truncate/);
+for (const src of [richTextEditor, richTextView]) assert.match(src, /singleLine && RICH_TEXT_ONE_LINE/);
 
 // Inputs ≥16px on mobile (text-base) before pinch-zoom lock (slice 13)
 assert.match(input, /text-base[\s\S]*?md:text-sm/);

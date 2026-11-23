@@ -8,3 +8,8 @@ export const RICH_TEXT_BOX = [
 
 export const VARIABLE_CHIP =
   "mx-0.5 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-px align-baseline text-[0.85em] font-medium whitespace-nowrap text-foreground";
+
+export const RICH_TEXT_ONE_LINE = [
+  "min-h-9",
+  "[&_.is-editor-empty:first-child]:relative [&_.is-editor-empty:first-child]:before:absolute [&_.is-editor-empty:first-child]:before:inset-x-0 [&_.is-editor-empty:first-child]:before:h-auto [&_.is-editor-empty:first-child]:before:truncate",
+].join(" ");
