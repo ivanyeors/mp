@@ -4,6 +4,7 @@ import { after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { assertAdmin, assertAnyAdmin } from '@/lib/auth/admin'
+import { hasPermission } from '@/lib/auth/permissions'
 import { loadTemplateKeys, templateIdsForKey } from '@/lib/filling-templates/membership'
 import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
@@ -15,7 +16,7 @@ import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
 import { setProductBaseImage, syncItemImageToProducts } from '@/lib/ecommerce/item-image-sync'
 import { resolveAddonImageUrls } from '@/lib/results/addon-images'
 import { listInventoryFamilies } from '@/lib/ecommerce/shop-listings'
-import { toCents, type CostingPrices, type InventoryFamily } from '@/lib/ecommerce/inventory-families'
+import { familiesWithoutCost, toCents, withoutCost, type CostingPrices, type InventoryFamily } from '@/lib/ecommerce/inventory-families'
 
 function scheduleMirrorReResolve(variantIds: number[]) {
   after(() => {
@@ -416,10 +417,11 @@ export async function getItemImageUrls(): Promise<Record<number, string>> {
 }
 
 export async function getInventoryCostingState(): Promise<{
+  canSeeCost: boolean
   prices: Record<number, CostingPrices>
   families: InventoryFamily[]
 }> {
-  await assertAdmin('inventory')
+  const canSeeCost = hasPermission(await assertAdmin('inventory'), 'costings')
   const admin = supabaseAdmin()
   const [{ data, error }, families] = await Promise.all([
     admin.from('item_prices').select('item_id, cost_price, msrp'),
@@ -428,9 +430,10 @@ export async function getInventoryCostingState(): Promise<{
   if (error) throw new Error(error.message)
   const prices: Record<number, CostingPrices> = {}
   for (const row of data ?? []) {
-    prices[Number(row.item_id)] = { costCents: toCents(row.cost_price), msrpCents: toCents(row.msrp) }
+    const price = { costCents: toCents(row.cost_price), msrpCents: toCents(row.msrp) }
+    prices[Number(row.item_id)] = canSeeCost ? price : withoutCost(price)
   }
-  return { prices, families }
+  return { canSeeCost, prices, families: canSeeCost ? families : familiesWithoutCost(families) }
 }
 
 const COMPOSED_PRODUCT_SLUGS = ['mpillow-basic', 'mpillow-premium', 'mbolster'] as const
@@ -472,8 +475,11 @@ export async function getComposedProductImageUrls(): Promise<Partial<Record<Comp
 }
 
 export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
-  await assertAdmin('inventory')
+  const canSeeCost = hasPermission(await assertAdmin('inventory'), 'costings')
   const parsed = AddItemSchema.parse(input)
+  if (!canSeeCost && parsed.costPrice !== undefined) {
+    throw new Error('Only staff with Costings access can set a cost price.')
+  }
   const admin = supabaseAdmin()
 
   const rawSize = parsed.size?.trim()
@@ -515,6 +521,16 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
     if (value === undefined) return null
     const cents = Math.round(value * 100)
     return (cents / 100).toFixed(2)
+  }
+
+  const savePrices = async (itemId: number) => {
+    const msrp = toCurrencyString(parsed.msrp)
+    const cost_price = toCurrencyString(parsed.costPrice)
+    if (msrp === null && cost_price === null) return
+    const row: { item_id: number; msrp: string | null; cost_price?: string | null } = { item_id: itemId, msrp }
+    if (canSeeCost) row.cost_price = cost_price
+    const { error: priceErr } = await admin.from('item_prices').upsert(row)
+    if (priceErr) throw new Error(priceErr.message)
   }
 
   const { data: item, error: insertErr } = await admin
@@ -559,16 +575,7 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
           .single()
         if (reviveErr) throw new Error(reviveErr.message)
 
-        const priceRow = {
-          item_id: revived.id,
-          cost_price: toCurrencyString(parsed.costPrice),
-          msrp: toCurrencyString(parsed.msrp),
-        }
-
-        if (priceRow.cost_price !== null || priceRow.msrp !== null) {
-          const { error: priceErr } = await admin.from('item_prices').upsert(priceRow)
-          if (priceErr) throw new Error(priceErr.message)
-        }
+        await savePrices(Number(revived.id))
 
         if (parsed.initialStock > 0) {
           await insertStockIn(
@@ -586,16 +593,7 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
     throw new Error(insertErr.message)
   }
 
-  const priceRow = {
-    item_id: item.id,
-    cost_price: toCurrencyString(parsed.costPrice),
-    msrp: toCurrencyString(parsed.msrp),
-  }
-
-  if (priceRow.cost_price !== null || priceRow.msrp !== null) {
-    const { error: priceErr } = await admin.from('item_prices').upsert(priceRow)
-    if (priceErr) throw new Error(priceErr.message)
-  }
+  await savePrices(Number(item.id))
 
   if (parsed.initialStock > 0) {
     await insertStockIn(

@@ -282,7 +282,6 @@ export interface OrderItemCustomizationSnapshot {
     category?: string;
     name?: string;
   }>;
-  cogs?: number;
   pricing?: { subtotal: number; shipping: number; tax: number; total: number };
 }
 

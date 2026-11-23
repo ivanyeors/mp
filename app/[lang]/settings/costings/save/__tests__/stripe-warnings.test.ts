@@ -76,7 +76,16 @@ const save = async () => {
     new Request("https://x.test/en-US/settings/costings/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: [{ itemId: 7, costPriceCents: 500, msrpCents: 2900 }] }),
+      body: JSON.stringify({
+        rows: [
+          {
+            itemId: 7,
+            costPriceCents: 500,
+            msrpCents: 2900,
+            base: { costPriceCents: 500, msrpCents: 2900, compareAtCents: null },
+          },
+        ],
+      }),
     }),
   );
   return { status: res.status, body: await res.json() };
@@ -175,7 +184,7 @@ describe.each([
 
       expect(h.variantUpdates).toEqual([]);
       expect(h.stripe).not.toHaveBeenCalled();
-      if (run === save && table !== "item_prices") {
+      if (run === save) {
         expect(status).toBe(500);
         expect(body).toEqual({ error: "statement timeout" });
         return;

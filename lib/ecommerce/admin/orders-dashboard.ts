@@ -1,6 +1,8 @@
+import type { CostVisibility } from "@/lib/ecommerce/admin/products";
 import {
   applyOrdersPaidAtRange,
   parseOrdersPaidAtRange,
+  type OrdersPaidAtRange,
 } from "@/lib/ecommerce/orders-paid-at-range";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -25,16 +27,19 @@ export interface OrdersDashboardStats {
   total_revenue: number;
   average_order_value: number;
   pending_orders: number;
-  total_gross_margin: number;
-  avg_margin_pct: number | null;
+  total_gross_margin?: number;
+  avg_margin_pct?: number | null;
 }
+
+type MarginTotals = { total_gross_margin: number; avg_margin_pct: number | null };
 
 export type OrdersDashboardResult =
   | { status: 200; body: { ok: true; stats: OrdersDashboardStats } }
   | { status: 400 | 500; body: { error: string } };
 
 export async function loadOrdersDashboard(
-  params: OrdersDashboardParams = {},
+  params: OrdersDashboardParams,
+  { canSeeCost }: CostVisibility,
 ): Promise<OrdersDashboardResult> {
   const paidAtRange = parseOrdersPaidAtRange(
     params.date_from ?? null,
@@ -46,7 +51,7 @@ export async function loadOrdersDashboard(
 
   const admin = supabaseAdmin();
 
-  const [totalResult, revenueResult, pendingResult, marginResult] = await Promise.all([
+  const [totalResult, revenueResult, pendingResult, margins] = await Promise.all([
     applyOrdersPaidAtRange(
       admin.from("orders").select("*", { count: "exact", head: true }),
       paidAtRange.range,
@@ -59,14 +64,7 @@ export async function loadOrdersDashboard(
       admin.from("orders").select("*", { count: "exact", head: true }).eq("status", "pending"),
       paidAtRange.range,
     ),
-    applyOrdersPaidAtRange(
-      admin
-        .from("order_margins")
-        .select("order_id, gross_margin, margin_pct, orders!inner(paid_at)")
-        .not("orders.status", "eq", "cancelled"),
-      paidAtRange.range,
-      "orders.paid_at",
-    ),
+    canSeeCost ? loadMarginTotals(admin, paidAtRange.range) : null,
   ]);
 
   if (totalResult.error) {
@@ -78,8 +76,8 @@ export async function loadOrdersDashboard(
   if (pendingResult.error) {
     return { status: 500, body: { error: pendingResult.error.message } };
   }
-  if (marginResult.error) {
-    return { status: 500, body: { error: marginResult.error.message } };
+  if (margins && "error" in margins) {
+    return { status: 500, body: { error: margins.error } };
   }
 
   const totalOrders = totalResult.count ?? 0;
@@ -90,6 +88,37 @@ export async function loadOrdersDashboard(
   const totalRevenue = aggNumber(revenueAgg, "revenue_sum");
   const revenueCount = aggNumber(revenueAgg, "revenue_count");
   const averageOrderValue = revenueCount > 0 ? totalRevenue / revenueCount : 0;
+
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      stats: {
+        total_orders: totalOrders,
+        revenue: totalRevenue,
+        avg_order_value: averageOrderValue,
+        total_revenue: totalRevenue,
+        average_order_value: averageOrderValue,
+        pending_orders: pendingOrders,
+        ...margins,
+      },
+    },
+  };
+}
+
+async function loadMarginTotals(
+  admin: ReturnType<typeof supabaseAdmin>,
+  range: OrdersPaidAtRange,
+): Promise<MarginTotals | { error: string }> {
+  const marginResult = await applyOrdersPaidAtRange(
+    admin
+      .from("order_margins")
+      .select("order_id, gross_margin, margin_pct, orders!inner(paid_at)")
+      .not("orders.status", "eq", "cancelled"),
+    range,
+    "orders.paid_at",
+  );
+  if (marginResult.error) return { error: marginResult.error.message };
 
   const marginRows = marginResult.data ?? [];
   const paidAtOf = (row: { orders?: unknown }): string | null => {
@@ -121,9 +150,7 @@ export async function loadOrdersDashboard(
       chunks.map((ids) => admin.from("order_payments").select("order_id").in("order_id", ids)),
     );
     for (const ledgerResult of ledgerResults) {
-      if (ledgerResult.error) {
-        return { status: 500, body: { error: ledgerResult.error.message } };
-      }
+      if (ledgerResult.error) return { error: ledgerResult.error.message };
       for (const row of (ledgerResult.data ?? []) as Array<{ order_id: string }>) {
         ledgerOrderIds.add(row.order_id);
       }
@@ -145,20 +172,5 @@ export async function loadOrdersDashboard(
       ? marginPcts.reduce((sum, pct) => sum + pct, 0) / marginPcts.length
       : null;
 
-  return {
-    status: 200,
-    body: {
-      ok: true,
-      stats: {
-        total_orders: totalOrders,
-        revenue: totalRevenue,
-        avg_order_value: averageOrderValue,
-        total_revenue: totalRevenue,
-        average_order_value: averageOrderValue,
-        pending_orders: pendingOrders,
-        total_gross_margin: totalGrossMargin,
-        avg_margin_pct: avgMarginPct,
-      },
-    },
-  };
+  return { total_gross_margin: totalGrossMargin, avg_margin_pct: avgMarginPct };
 }

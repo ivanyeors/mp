@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ update: vi.fn() }));
 
-vi.mock("@/lib/auth/admin", () => ({ requireAdmin: vi.fn(async () => null) }));
+vi.mock("@/lib/auth/admin", () => ({ requireAdmin: vi.fn(async () => null), adminCanSeeCost: vi.fn(async () => true) }));
 vi.mock("@/lib/stripe/sync", () => ({
   syncProductToStripeSafe: vi.fn(async () => ({
     synced: true,

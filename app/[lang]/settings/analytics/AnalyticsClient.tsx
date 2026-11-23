@@ -26,13 +26,7 @@ import {
   type MpConfigMetricBreakdown,
 } from "./actions";
 import { SalesTab } from "./SalesTab";
-import {
-  ANALYTICS_TAB_LABELS,
-  ANALYTICS_TAB_QUESTIONS,
-  ANALYTICS_TABS,
-  parseAnalyticsTab,
-  type AnalyticsTab,
-} from "./tabs";
+import { ANALYTICS_TABS, analyticsTabText, parseAnalyticsTab, type AnalyticsTab } from "./tabs";
 
 const CardSkeleton = () => <div className="min-h-[360px] w-full animate-pulse rounded-xl bg-muted" />;
 const ProductConfigurationCard = dynamic(() => import("./ProductConfigurationCard").then((m) => m.ProductConfigurationCard), { ssr: false, loading: CardSkeleton });
@@ -300,7 +294,13 @@ function CustomersTab({ period }: { period: Period }) {
   );
 }
 
-export default function AnalyticsClient({ initialTab = "sales" }: { initialTab?: AnalyticsTab }) {
+export default function AnalyticsClient({
+  initialTab = "sales",
+  canSeeCost,
+}: {
+  initialTab?: AnalyticsTab;
+  canSeeCost: boolean;
+}) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const [tab, setTab] = useState<AnalyticsTab>(initialTab);
@@ -335,14 +335,14 @@ export default function AnalyticsClient({ initialTab = "sales" }: { initialTab?:
         <TabsList className="w-full sm:w-fit">
           {ANALYTICS_TABS.map((t) => (
             <TabsTrigger key={t} value={t}>
-              {ANALYTICS_TAB_LABELS[t]}
+              {analyticsTabText(t, canSeeCost).label}
             </TabsTrigger>
           ))}
         </TabsList>
-        <p className="pt-2 text-sm text-muted-foreground">{ANALYTICS_TAB_QUESTIONS[tab]}</p>
+        <p className="pt-2 text-sm text-muted-foreground">{analyticsTabText(tab, canSeeCost).question}</p>
 
         <TabsContent value="sales" className="pt-4">
-          <SalesTab from={period.from} to={period.to} dateRange={period.dateRange} />
+          <SalesTab from={period.from} to={period.to} dateRange={period.dateRange} canSeeCost={canSeeCost} />
         </TabsContent>
         <TabsContent value="stock" className="pt-4">
           <StockTab period={period} costingsHref={withLocale("/settings/costings", locale)} />

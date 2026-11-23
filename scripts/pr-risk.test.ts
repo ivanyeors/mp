@@ -134,6 +134,7 @@ describe("classify", () => {
     ["rails", "scripts/checks.mjs"],
     ["rails", "scripts/pr-risk.mjs"],
     ["rails", "scripts/git-identity"],
+    ["rails: writes the baseline on every commit", "scripts/lint-baseline.mjs"],
     ["rails", "vitest.config.ts"],
     ["rails", "tsconfig.json"],
     ["rails", "tsconfig.ci.json"],

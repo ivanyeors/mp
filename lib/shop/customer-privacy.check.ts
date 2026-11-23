@@ -88,6 +88,18 @@ async function main() {
   await mustNotRead("orders *", "orders", "*", "internal_notes");
   await mustNotRead("customer_notes", "customer_notes", "*");
   await mustNotRead("customer_followups (CRM 06)", "customer_followups", "*");
+  await mustNotRead("order_items.unit_cost", "order_items", "unit_cost", "unit_cost");
+  await mustNotRead("order_items.total_cost", "order_items", "total_cost", "total_cost");
+  await mustNotRead("order_items snapshot cogs", "order_items", "cogs:customization_snapshot->cogs", "cogs");
+  await mustNotRead("order_items snapshot service costPrice", "order_items", "svc_cost:customization_snapshot->service_lines->0->costPrice", "svc_cost");
+  await mustNotRead("product_variants.cost_price", "product_variants", "cost_price", "cost_price");
+  await mustNotRead("item_prices.cost_price", "item_prices", "cost_price", "cost_price");
+  await mustNotRead("service_prices.cost_price", "service_prices", "cost_price", "cost_price");
+  await mustNotRead("order_margins", "order_margins", "*");
+  await mustNotRead("order_shipments", "order_shipments", "*");
+  await mustNotRead("shipping_rate_quotes", "shipping_rate_quotes", "*");
+  await mustNotRead("shipping_methods.markup_percent", "shipping_methods", "markup_percent", "markup_percent");
+  await mustNotRead("shopify_order_lines.unit_cost", "shopify_order_lines", "unit_cost", "unit_cost");
 
   const me = await mustRead("customers.id (lib/shop/customer-addresses.ts)", () =>
     db.from("customers").select("id").eq("auth_user_id", user.id).maybeSingle(),

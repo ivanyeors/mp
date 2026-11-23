@@ -25,6 +25,7 @@ import {
   marginPct,
   sizesToPush,
   unsyncedSizes,
+  waitingOnCostings,
   type InventoryFamily,
 } from "@/lib/ecommerce/inventory-families";
 
@@ -35,16 +36,20 @@ export function PushToProductsDialog({
   open,
   onOpenChange,
   onPushed,
+  canSeeCost,
 }: {
   family: InventoryFamily | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPushed?: () => void;
+  canSeeCost: boolean;
 }) {
   return (
     <Dialog open={open && family !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        {family ? <PushForm family={family} onOpenChange={onOpenChange} onPushed={onPushed} /> : null}
+        {family ? (
+          <PushForm family={family} onOpenChange={onOpenChange} onPushed={onPushed} canSeeCost={canSeeCost} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -54,10 +59,12 @@ function PushForm({
   family,
   onOpenChange,
   onPushed,
+  canSeeCost,
 }: {
   family: InventoryFamily;
   onOpenChange: (open: boolean) => void;
   onPushed?: () => void;
+  canSeeCost: boolean;
 }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -70,9 +77,9 @@ function PushForm({
 
   const pushingSizes = sizesToPush(family.sizes);
   const unsynced = unsyncedSizes(family.category, pushingSizes);
-  const belowCost = pushingSizes.filter(
-    (s) => s.costCents != null && s.msrpCents != null && s.msrpCents <= s.costCents,
-  );
+  const belowCost = canSeeCost
+    ? pushingSizes.filter((s) => s.costCents != null && s.msrpCents != null && s.msrpCents <= s.costCents)
+    : [];
   const ready = pushingSizes.length > 0 && unsynced.length === 0;
   const adding = family.push === "partial";
   const inShop = family.productStatus === "active";
@@ -138,9 +145,9 @@ function PushForm({
           <thead className="bg-muted/50 text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Size</th>
-              <th className="px-3 py-2 text-right font-medium">Cost</th>
+              {canSeeCost ? <th className="px-3 py-2 text-right font-medium">Cost</th> : null}
               <th className="px-3 py-2 text-right font-medium">MSRP</th>
-              <th className="px-3 py-2 text-right font-medium">Margin</th>
+              {canSeeCost ? <th className="px-3 py-2 text-right font-medium">Margin</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -150,15 +157,19 @@ function PushForm({
               return (
                 <tr key={s.itemId}>
                   <td className="px-3 py-2">{s.size ?? "One size"}</td>
-                  <td className={cn("px-3 py-2 text-right tabular-nums", s.costCents == null && "text-amber-600 dark:text-amber-400")}>
-                    {money(s.costCents)}
-                  </td>
+                  {canSeeCost ? (
+                    <td className={cn("px-3 py-2 text-right tabular-nums", s.costCents == null && "text-amber-600 dark:text-amber-400")}>
+                      {money(s.costCents)}
+                    </td>
+                  ) : null}
                   <td className={cn("px-3 py-2 text-right tabular-nums", s.msrpCents == null && "text-amber-600 dark:text-amber-400")}>
                     {money(s.msrpCents)}
                   </td>
-                  <td className={cn("px-3 py-2 text-right tabular-nums", loss ? "font-medium text-destructive" : "text-muted-foreground")}>
-                    {margin == null ? "—" : `${margin}%`}
-                  </td>
+                  {canSeeCost ? (
+                    <td className={cn("px-3 py-2 text-right tabular-nums", loss ? "font-medium text-destructive" : "text-muted-foreground")}>
+                      {margin == null ? "—" : `${margin}%`}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
@@ -166,7 +177,15 @@ function PushForm({
         </table>
       </div>
 
-      {unsynced.length > 0 ? (
+      {unsynced.length > 0 && !canSeeCost ? (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <CircleDollarSign className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div className="space-y-1">
+            <p className="font-medium">Waiting on Costings</p>
+            <p>{waitingOnCostings(family.category, unsynced)}</p>
+          </div>
+        </div>
+      ) : unsynced.length > 0 ? (
         <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           <CircleDollarSign className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <div className="space-y-2">

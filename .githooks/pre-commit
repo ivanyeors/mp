@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Commit a pruned lint baseline (owner, 2026-11-22).
+#
+# .claude/hooks/verify.mjs lints every edit without pruning
+# eslint-suppressions.json, so a count that fell is still in the working file
+# until a task completes or the session stops, and a commit made before then,
+# or by a worker in its own worktree, would carry it. `pnpm lint` in CI fails
+# on such a count ("suppressions left that do not occur anymore"). This lowers
+# the entries of the code files being committed to what their staged content
+# has, and stages the baseline and nothing else. It only ever lowers a count;
+# scripts/lint-baseline.mjs (--prune-staged) says how.
+#
+# Installed with pre-push: scripts/git-identity sets core.hooksPath to
+# .githooks, a relative path, so git runs this from the root of whichever
+# worktree is committing and it prunes that worktree's baseline.
+#
+# It never fails a commit. When it cannot run it says so, and CI's lint is the
+# backstop.
+set -uo pipefail
+
+script="scripts/lint-baseline.mjs"
+[ -f "$script" ] || exit 0
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: no node, so eslint-suppressions.json in this commit is not pruned." >&2
+  exit 0
+fi
+node "$script" --prune-staged || echo "pre-commit: eslint-suppressions.json in this commit is not pruned." >&2
+exit 0

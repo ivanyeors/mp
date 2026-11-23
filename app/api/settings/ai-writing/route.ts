@@ -3,30 +3,10 @@ import { invalidateTag } from "@/lib/cache/invalidate";
 import { requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { claudeCredentialSource } from "@/lib/ai/claude";
 import { readAiWritingSettings, saveAiWritingSettings } from "@/lib/ai/settings";
-import { readAiUsageThisMonth } from "@/lib/ai/usage";
 import { AiWritingSettingsSchema } from "@/lib/ai/writing-settings";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-export async function GET() {
-  try {
-    await requireAdminContext("api-configs");
-  } catch (res) {
-    return res as NextResponse;
-  }
-  const admin = supabaseAdmin();
-  const read = await readAiWritingSettings(admin);
-  if (!read.ok) return NextResponse.json({ error: read.error }, { status: 500 });
-  const usage = await readAiUsageThisMonth(admin).catch((err: unknown) => {
-    console.error("[ai-writing] usage read failed:", err instanceof Error ? err.message : err);
-    return null;
-  });
-  const credentials = await claudeCredentialSource();
-  return NextResponse.json({ ok: true, settings: read.settings, configured: credentials !== null, credentials, usage });
-}
 
 export async function PUT(req: Request) {
   let ctx;
