@@ -23,7 +23,8 @@ permissions:
 
 jobs:
   sweep:
-    runs-on: ubuntu-26.04
+    # One CPU at a third of the 2-core price, for a job that takes seconds.
+    runs-on: ubuntu-slim
     timeout-minutes: 10
 
     env:
