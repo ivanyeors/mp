@@ -18,6 +18,7 @@ import { dispatchPartnerEmail } from "@/lib/email/partner";
 import { getSiteOrigin } from "@/lib/site-url";
 import { ensureReferralCode } from "@/lib/referrals";
 import { applicantLogoFolder, isStoredLogoUrl } from "@/lib/partner-upload/urls";
+import { newLocationTakesBookings } from "@/lib/locations/new-location";
 import {
   canTransitionApplication,
   type ApplicationFields,
@@ -129,6 +130,7 @@ export async function approveApplication(
         description,
         type: "partner",
         visible: list,
+        bookable: newLocationTakesBookings("partner"),
         position: nextPosition,
         address: q.address ?? null,
         postal_code: q.postal_code ?? null,

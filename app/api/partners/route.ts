@@ -10,6 +10,7 @@ import {
   BranchesSchema,
   savePartnerBranches,
 } from "@/lib/locations/save-branches";
+import { newLocationTakesBookings } from "@/lib/locations/new-location";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ const CreateSchema = z.object({
   address: z.string().nullable().optional(),
   postal_code: z.string().nullable().optional(),
   branch_name: z.string().trim().max(120).nullable().optional(),
-  bookable: z.boolean().optional().default(true),
+  bookable: z.boolean().optional(),
   branches: BranchesSchema.optional(),
 });
 
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
         address: parsed.address ?? null,
         postal_code: parsed.postal_code ?? null,
         branch_name: parsed.branch_name || null,
-        bookable: parsed.bookable,
+        bookable: parsed.bookable ?? newLocationTakesBookings(parsed.type),
         position: nextPosition,
       })
       .select("*")

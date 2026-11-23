@@ -915,7 +915,8 @@ export default function PartnersSettingsPage({
                   <Label>Locations</Label>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Every clinic this partner runs. Each one shows on the public page and can be
-                    picked for bookings and Results.
+                    picked for Results. A new partner takes bookings once you turn it on in
+                    Settings → Appointments.
                   </p>
                 </div>
                 <PartnerLocationsFields
