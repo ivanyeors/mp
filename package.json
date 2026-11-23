@@ -33,7 +33,7 @@
     "@anthropic-ai/sdk": "^0.131.0",
     "@dnd-kit/dom": "0.5.1",
     "@dnd-kit/react": "^0.5.1",
-    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/core": "^6.1.22",
     "@fullcalendar/daygrid": "^6.1.22",
     "@fullcalendar/interaction": "^6.1.22",
     "@fullcalendar/react": "^6.1.21",
