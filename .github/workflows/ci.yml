@@ -5,14 +5,12 @@ name: ci
 # when every part it needs passed.
 #
 # Until November 2026 all of it ran in one job, one step after another: 13 to
-# 19 minutes. Each GitHub runner here has two vCPUs that behave like one core
-# (PR #476 measured two Vitest workers at half speed each), so more workers on
-# one runner do not help; more runners do. The suite now runs as two shards on
-# two runners, beside lint and typecheck on their own runners. And
-# .claude/hooks/verify.test.ts, which runs the real ESLint many times to test
-# the editing hook and was 3 to 4 minutes of every run, now runs in its own
-# job, only when something it tests changed (see Scope). The first complete
-# run of this layout took 3 min 55 s from start to verify (PR #479).
+# 19 minutes. Now the suite runs as two shards on two runners, beside lint and
+# typecheck on their own runners, and .claude/hooks/verify.test.ts, which runs
+# the real ESLint many times to test the editing hook and was 3 to 4 minutes
+# of every run, runs in its own job, only when something it tests changed (see
+# Scope). With one test worker per shard (see the test job), a run took 6 min
+# from start to verify (PR #479).
 #
 # The production build and type-safety are gated by Vercel, not here: Vercel
 # builds a preview for every pull request and builds production on deploy, so a
@@ -244,12 +242,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # One worker, Vitest's default on two vCPUs, on purpose: with two the
-      # run's total test work doubled (import 149 s to 327 s, tests 386 s to
-      # 643 s), so each worker ran at half speed, the step saved 39 s, and
-      # two CPU-heavy email tests passed their 5 s limit (PR #476, November
-      # 2026). PR #479's shards with two workers showed the same: loading 411
-      # files took 152 s, about what one worker took for all 805.
+      # One worker, Vitest's default on these two-vCPU runners, on purpose
+      # (owner, 2026-11-23). Two are faster per shard (PR #479: 140 to 206 s
+      # against 294 and 298 s with one), but on the whole suite PR #476 saw
+      # two CPU-heavy email tests pass their 5 s limit with two workers, and a
+      # check that fails at random costs more than the two minutes.
+      # --maxWorkers=2 is the change, once those tests cannot time out.
       #
       # --silent=passed-only keeps console output from failing tests only: a
       # passing run printed about 360 blocks of expected error logging, which
