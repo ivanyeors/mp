@@ -265,14 +265,14 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
           onDrop={handleDrop}
         >
           <DialogHeader>
-            <div className="flex items-center justify-between mt-2">
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <DialogTitle>Select Asset</DialogTitle>
                 <DialogDescription>
-                  Upload an image or drag one in, and it is attached straight away. Or pick one from the library or Google Drive.
+                  Upload or drop an image to attach it, or pick one below.
                 </DialogDescription>
               </div>
-              <div className="flex gap-2 mr-6">
+              <div className="flex gap-2 max-sm:justify-center sm:mr-6">
                 <input
                   type="file"
                   accept="image/*"
