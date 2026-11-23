@@ -122,6 +122,18 @@ describe("ImagePicker", () => {
     expect(document.querySelector("[role=dialog]")).toBeNull();
   });
 
+  it("stacks its heading above its buttons on a phone, and sets them side by side only from sm up", async () => {
+    mount();
+    await open();
+    const title = [...document.querySelectorAll("[role=dialog] h2")].find((h) => h.textContent === "Select Asset")!;
+    const header = title.parentElement!.parentElement!;
+    expect(header.contains(button("Upload"))).toBe(true);
+    const classes = [...header.classList];
+    expect(classes).toContain("flex-col");
+    expect(classes).toContain("sm:flex-row");
+    expect(classes.filter((c) => c === "flex-row" || c === "items-center" || c === "justify-between")).toEqual([]);
+  });
+
   it("shows the latest load when an older one lands after it", async () => {
     mount();
     await open();
