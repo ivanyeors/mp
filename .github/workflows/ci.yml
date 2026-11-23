@@ -5,14 +5,14 @@ name: ci
 # when every part it needs passed.
 #
 # Until November 2026 all of it ran in one job, one step after another: 13 to
-# 19 minutes. The runner for a private repository has 2 cores, and Vitest
-# uses one fewer worker than there are cores, so the suite ran one file at a
-# time; and .claude/hooks/verify.test.ts, which runs the real ESLint a few
-# hundred times to test the editing hook, was 3 to 4 minutes of it. Timed on
-# 2 cores (2026-11-22): the suite without the hook tests took 459 s on one
-# worker, 277 s on two, and 125 s and 115 s as two shards of two workers. So
-# each shard uses every core, and the hook tests run in their own job, only
-# when something they test changed (see Scope).
+# 19 minutes. Each GitHub runner here has two vCPUs that behave like one core
+# (PR #476 measured two Vitest workers at half speed each), so more workers on
+# one runner do not help; more runners do. The suite now runs as two shards on
+# two runners, beside lint and typecheck on their own runners. And
+# .claude/hooks/verify.test.ts, which runs the real ESLint many times to test
+# the editing hook and was 3 to 4 minutes of every run, now runs in its own
+# job, only when something it tests changed (see Scope). The first complete
+# run of this layout took 3 min 55 s from start to verify (PR #479).
 #
 # The production build and type-safety are gated by Vercel, not here: Vercel
 # builds a preview for every pull request and builds production on deploy, so a
@@ -24,6 +24,13 @@ name: ci
 # Pull-request only: the required checks pass on the PR's merge commit before it
 # can merge, and Vercel rebuilds main on deploy, so re-running on push to main
 # would add minutes without adding a gate.
+#
+# Paused for minutes: once the account has used CI_PAUSE_AT_MINUTES of the
+# month's Actions minutes (scripts/actions-minutes.mjs), Scope says nothing is
+# in scope, so lint, typecheck, tests and checks skip and verify passes with a
+# warning, and pull requests stay mergeable by hand instead of waiting on a job
+# GitHub will not start. The unverified job then marks the head so auto-merge
+# does not merge it.
 
 on:
   pull_request:
@@ -51,6 +58,7 @@ jobs:
     outputs:
       code: ${{ steps.scope.outputs.code }}
       hooks: ${{ steps.scope.outputs.hooks }}
+      paused: ${{ steps.minutes.outputs.pause }}
 
     steps:
       # Full history for gitleaks, but without old file contents: those are
@@ -61,6 +69,17 @@ jobs:
         with:
           fetch-depth: 0
           filter: blob:none
+
+      # Plain node from the runner image: this runs before any install.
+      # Without the ACTIONS_BILLING_TOKEN secret it reads nothing and CI runs
+      # in full.
+      - name: Actions minutes
+        id: minutes
+        env:
+          BILLING_TOKEN: ${{ secrets.ACTIONS_BILLING_TOKEN }}
+          PAUSE_AT: ${{ vars.CI_PAUSE_AT_MINUTES }}
+          OWNER: ${{ github.repository_owner }}
+        run: node scripts/actions-minutes.mjs
 
       # A pull request that changes only Markdown nothing tests (PRDs, ADRs,
       # notes) skips install, lint, typecheck, tests and checks: about ten
@@ -73,9 +92,18 @@ jobs:
       # lint-baseline.mjs they copy and run, the checks runner the stop hook
       # calls, or the installed packages. scripts/ci-workflow.test.ts fails if
       # verify.test.ts reads a file from the checkout that this list misses.
+      #
+      # Paused for minutes, everything is out of scope.
       - name: Scope
         id: scope
+        env:
+          PAUSED: ${{ steps.minutes.outputs.pause }}
         run: |
+          if [ "$PAUSED" = true ]; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "hooks=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Anything unexpected (no diff, a failed git command) runs everything.
           if ! files="$(git diff --name-only HEAD^1 HEAD)" || [ -z "$files" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
@@ -138,6 +166,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Single-threaded on purpose: on this runner --concurrency=2 took 2:43
+      # against 2:12 (PR #476, November 2026). Most of the time is the React
+      # Compiler rules, which are worth keeping.
       - name: Lint
         run: pnpm lint
 
@@ -180,9 +211,8 @@ jobs:
       - name: Checks
         run: pnpm checks
 
-  # The suite in two halves on two runners, each using all its cores (see
-  # the top of this file). Each half pays its own install, about half a
-  # minute.
+  # The suite in two halves on two runners. Each half pays its own install,
+  # about half a minute.
   test:
     name: tests (${{ matrix.shard }}/2)
     needs: scope
@@ -214,6 +244,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # One worker, Vitest's default on two vCPUs, on purpose: with two the
+      # run's total test work doubled (import 149 s to 327 s, tests 386 s to
+      # 643 s), so each worker ran at half speed, the step saved 39 s, and
+      # two CPU-heavy email tests passed their 5 s limit (PR #476, November
+      # 2026). PR #479's shards with two workers showed the same: loading 411
+      # files took 152 s, about what one worker took for all 805.
+      #
       # --silent=passed-only keeps console output from failing tests only: a
       # passing run printed about 360 blocks of expected error logging, which
       # buried the one that mattered.
@@ -221,7 +258,6 @@ jobs:
         run: >-
           pnpm exec vitest run
           --shard=${{ matrix.shard }}/2
-          --maxWorkers=100%
           --exclude .claude/hooks/verify.test.ts
           --silent=passed-only
 
@@ -249,14 +285,49 @@ jobs:
       - name: Hook tests
         run: pnpm exec vitest run .claude/hooks/verify.test.ts --silent=passed-only
 
+  # Paused for minutes, verify succeeds without verifying anything. This puts
+  # an action_required check on the head, which says so on the pull request
+  # and which auto-merge refuses (scripts/pr-risk.mjs merges only when every
+  # check other than verify passed). Its own job so the write token never
+  # shares a runner with pull request code; it costs a minute only when paused.
+  unverified:
+    needs: scope
+    if: needs.scope.outputs.paused == 'true'
+    # One CPU at a third of the 2-core price, for a job that takes seconds.
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      checks: write
+
+    steps:
+      - name: Mark this head unverified
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/$GH_REPO/check-runs" --method POST \
+            -f name="CI paused: Actions minutes" \
+            -f head_sha="$HEAD_SHA" \
+            -f status=completed \
+            -f conclusion=action_required \
+            -f details_url="$RUN_URL" \
+            -f "output[title]=Lint, typecheck, tests and checks did not run" \
+            -f "output[summary]=This month's Actions minutes reached CI_PAUSE_AT_MINUTES, so CI skipped this head. Merge by hand only if you accept that; auto-merge will not merge it. Push again after the 1st (UTC), or raise CI_PAUSE_AT_MINUTES, to run CI in full." \
+            > /dev/null
+
   # The required check (REQUIRED_CHECKS in scripts/pr-risk.mjs, and branch
   # protection). It runs even when a part failed or the run was cancelled, so
   # that it fails then: a skipped required check counts as passed. Each part
-  # must have succeeded, except one Scope said was not needed.
+  # must have succeeded, except one Scope said was not needed. Paused for
+  # minutes, it passes only once the head is marked unverified, so auto-merge
+  # cannot take a head nothing checked.
   verify:
-    needs: [scope, lint, types, test, hooks]
+    needs: [scope, lint, types, test, hooks, unverified]
     if: always()
-    runs-on: ubuntu-latest
+    # One CPU at a third of the 2-core price: it only reads the results.
+    runs-on: ubuntu-slim
     timeout-minutes: 2
 
     steps:
@@ -265,10 +336,12 @@ jobs:
           SCOPE: ${{ needs.scope.result }}
           CODE: ${{ needs.scope.outputs.code }}
           HOOKS: ${{ needs.scope.outputs.hooks }}
+          PAUSED: ${{ needs.scope.outputs.paused }}
           LINT: ${{ needs.lint.result }}
           TYPES: ${{ needs.types.result }}
           TEST: ${{ needs.test.result }}
           HOOK_TESTS: ${{ needs.hooks.result }}
+          UNVERIFIED: ${{ needs.unverified.result }}
         run: |
           failed=0
           need() {
@@ -276,7 +349,10 @@ jobs:
             else echo "::error title=$1 did not pass::$1 ended ${2:-without a result}."; failed=1; fi
           }
           need "scope and secret scan" "$SCOPE"
-          if [ "$CODE" = true ]; then
+          if [ "$PAUSED" = true ]; then
+            echo "::warning title=CI paused for Actions minutes::Lint, typecheck, tests and checks did not run on this head."
+            need "the unverified mark" "$UNVERIFIED"
+          elif [ "$CODE" = true ]; then
             need "lint" "$LINT"
             need "types and checks" "$TYPES"
             need "tests" "$TEST"
