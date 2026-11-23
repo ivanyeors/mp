@@ -14,6 +14,7 @@ import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import {
   BATCH_SIZE,
   campaignButton,
+  campaignReadiness,
   campaignSlug,
   planWave,
   readSendingStatus,
@@ -243,6 +244,7 @@ describe("planWave", () => {
     expect(r.readiness.checks.map((c) => c.key)).toEqual([
       "transport",
       "from",
+      "domain",
       "reply_to",
       "site",
       "unsubscribe_route",
@@ -843,13 +845,44 @@ describe("the send limit (Resend's free plan: 100 a day, 3,000 a month, tests in
   });
 });
 
+describe("a sending domain Resend has not verified", () => {
+  const onSiteHost = () => {
+    const { transport, sent } = fakeTransport();
+    transport.sendingDomains = async () => [{ name: "hello.mpillow.com", status: "verified" }];
+    return { sent, s: setup({ transport, campaignFrom: "Mpillow <hello@custom.mpillow.com>", campaignDomain: "custom.mpillow.com" }).s };
+  };
+
+  it("fails the readiness list, though the address itself is well formed", async () => {
+    const r = await campaignReadiness(onSiteHost().s);
+    expect(r.ready).toBe(false);
+    expect(r.checks.filter((c) => !c.ok).map((c) => c.key)).toEqual(["domain"]);
+    expect(r.checks.find((c) => c.key === "from")).toMatchObject({ ok: true });
+  });
+
+  it("refuses a test with what to change, and hands Resend nothing", async () => {
+    const { s, sent } = onSiteHost();
+    const r = await sendCampaignTest(campaign(), { to: ["a@x.test"], firstName: null }, s);
+    expect(r).toEqual({ refused: expect.stringMatching(/^Resend has no domain custom\.mpillow\.com, .+ It has hello\.mpillow\.com \(verified\)\. Set CAMPAIGN_EMAIL_FROM/) });
+    expect(sent).toEqual([]);
+  });
+
+  it("shows on the Sending card", async () => {
+    const status = await readSendingStatus(onSiteHost().s);
+    expect(status.checks.find((c) => c.key === "domain")).toMatchObject({ ok: false });
+  });
+});
+
 describe("readSendingStatus", () => {
   it("says what is set up and what is left, and never carries the key", async () => {
     const key = "re_live_0123456789abcdef";
-    const status = await readSendingStatus(setup({ transport: new ResendTransport(key), reportsConfigured: true }).s);
+    const asked = vi.fn(async () => Response.json({ data: [{ name: "hello.mpillow.com", status: "verified" }] }));
+    vi.stubGlobal("fetch", asked);
+    const status = await readSendingStatus(setup({ transport: new ResendTransport(key), reportsConfigured: true }).s).finally(() => vi.unstubAllGlobals());
+    expect(asked).toHaveBeenCalledTimes(1);
     expect(status.checks.map((c) => [c.key, c.ok])).toEqual([
       ["transport", true],
       ["from", true],
+      ["domain", true],
       ["reply_to", true],
       ["site", true],
       ["reports", true],
@@ -868,6 +901,7 @@ describe("readSendingStatus", () => {
     expect(failing).toEqual({
       transport: "CAMPAIGN_RESEND_API_KEY is not set (owner decision 4)",
       from: "CAMPAIGN_EMAIL_FROM is not set",
+      domain: "not checked: Resend and the sending address are not both set up",
       reports: "CAMPAIGN_RESEND_WEBHOOK_SECRET is not set: bounces and spam reports are not recorded, and the pause rule cannot see them",
     });
     expect(fetchImpl).not.toHaveBeenCalled();

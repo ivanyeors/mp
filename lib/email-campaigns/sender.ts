@@ -8,8 +8,9 @@ import {
   type SendAllowance,
 } from "@/lib/customer-migration/campaign-ledger";
 import {
-  campaignConfigChecks,
   campaignDeliveryChecks,
+  campaignDomainCheck,
+  campaignSetupChecks,
   isSendQuotaError,
   MAX_CONSECUTIVE_FAILURES,
   THROTTLE_MS,
@@ -406,7 +407,7 @@ export interface SendingStatus {
 }
 
 export async function readSendingStatus(setup: CampaignSenderSetup): Promise<SendingStatus> {
-  const checks = campaignConfigChecks(setup);
+  const checks = await campaignSetupChecks(setup);
   checks.push({
     key: "reports",
     ok: Boolean(setup.reportsConfigured),
@@ -769,6 +770,8 @@ export async function sendCampaignTest(
   }
   const notReady = quickChecks(setup);
   if (notReady) return { refused: notReady };
+  const domain = await campaignDomainCheck(setup);
+  if (!domain.ok) return { refused: domain.detail };
   const room = await tryAllowance(setup);
   if (!room.allowance) return { refused: room.error ?? "the send limit could not be counted" };
   if (room.allowance.remaining < addresses.length) {

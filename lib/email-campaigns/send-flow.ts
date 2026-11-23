@@ -15,6 +15,7 @@ const plural = (count: number, one: string, many = `${one}s`) => `${n(count)} ${
 export const CHECK_LABEL: Record<string, string> = {
   transport: "Campaign email account (Resend)",
   from: "Sending address",
+  domain: "Sending domain in Resend",
   reply_to: "Where replies go",
   site: "Links point at the live site",
   unsubscribe_route: "One-click unsubscribe works",
@@ -229,7 +230,7 @@ export function sendSteps(p: {
         p.checks === null
           ? "Checking…"
           : blocking.length === 0
-            ? "Resend, the sending address, replies, unsubscribe and the pause rule are all fine."
+            ? "Resend, the sending address and its domain, replies, unsubscribe and the pause rule are all fine."
             : `${blocking.map((c) => CHECK_LABEL[c.key] ?? c.key).join(", ")}: see Ready to send? above.`,
     },
     {

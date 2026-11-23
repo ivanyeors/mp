@@ -1638,7 +1638,7 @@ export function CampaignEditor({
                         </p>
                     )}
                     {campaign ? (
-                        <div className={cn("grid gap-6 lg:grid-cols-2", locked && "max-md:order-2")}>
+                        <div className={cn("grid grid-cols-1 gap-6 lg:grid-cols-2", locked && "max-md:order-2")}>
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-base">Send a test</CardTitle>
@@ -1666,7 +1666,7 @@ export function CampaignEditor({
                                         Send test
                                     </Button>
                                     {testResult ? (
-                                        <p role="status" className={testResult.ok ? "text-sm text-emerald-700" : "text-sm text-destructive"}>
+                                        <p role="status" className={cn("break-words text-sm", testResult.ok ? "text-emerald-700" : "text-destructive")}>
                                             {testResult.text}
                                         </p>
                                     ) : null}

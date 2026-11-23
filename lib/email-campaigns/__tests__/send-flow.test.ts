@@ -67,6 +67,11 @@ describe("sendingRows", () => {
     expect(rows[0].detail).toBe("The key is kept in Vercel and is never shown here.");
   });
 
+  it("shows the sending domain's answer from Resend as it came", () => {
+    const refused = { key: "domain", ok: false, detail: "Resend has no domain custom.mpillow.com" };
+    expect(sendingRows([refused], sender)).toEqual([{ ...refused, title: "Sending domain in Resend", fix: null }]);
+  });
+
   it("says what to set in Vercel for each one that fails", () => {
     const bad = (key: string) => ({ key, ok: false, detail: `${key} is missing` });
     const rows = sendingRows(
