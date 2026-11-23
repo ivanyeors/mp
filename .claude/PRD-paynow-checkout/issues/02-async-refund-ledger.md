@@ -65,7 +65,7 @@ aspirational.
       reversal exactly once.
 - [ ] A `pending` refund appears on the order timeline.
 - [ ] An unmatched refund dead-letters rather than vanishing.
-- [ ] Webhook endpoint subscribed to `refund.updated` — **manual Dashboard step** on
+- [x] Webhook endpoint subscribed to `refund.updated` — **manual Dashboard step** on
       `we_1UEpVxCMlMx7bA76xFJYdCCj`, host `custom.mpillow.com`.
 
 ## Notes
@@ -95,6 +95,7 @@ Deliberately not built:
   would tell no one. The one real case, a Balance payment refunded before
   Accept, is in `docs/known-issues.md`.
 
-Still open: subscribing `we_1UEpVxCMlMx7bA76xFJYdCCj` to `refund.updated`
-(checked 2026-11-22: 10 events, `refund.updated` not among them). Until then
-Stripe never sends it and a PayNow refund still doesn't reach the Order.
+Live endpoint `we_1UEpVxCMlMx7bA76xFJYdCCj` subscribed to `refund.updated` on
+2026-11-23 (11 events). The sandbox account `acct_1UEocJFmfnDU9wZa` was not
+reachable from that session; subscribe its endpoint too before testing a pending
+refund in test mode.
