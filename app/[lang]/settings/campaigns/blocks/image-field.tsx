@@ -1,7 +1,7 @@
 "use client";
 
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { ImageIcon, Loader2, Upload } from "lucide-react";
 import { typingBurst } from "@/components/block-editor/use-editor-history";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,11 +9,14 @@ import type { AssetSelection } from "@/components/ui/image-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CONTENT_LIMITS, CONTENT_PLACEHOLDERS, type BlockImage } from "@/lib/email-campaigns/content";
+import { uploadImage } from "@/lib/media-assets/upload-image";
 import { cn } from "@/lib/utils";
 import { placeCampaignImage, type PlacedCampaignImage } from "../actions";
 import { Field } from "../field";
 
 const ImagePicker = lazy(() => import("@/components/ui/image-picker").then((m) => ({ default: m.ImagePicker })));
+
+const DROP_OR_CHOOSE = "Drop an image here, upload one, or choose one from the Media Library.";
 
 type Placed = { ok: true; image: PlacedCampaignImage } | { ok: false; error: string };
 
@@ -69,7 +72,11 @@ export function ImageField({
 }) {
     const shown = usePlaced(image.asset);
     const [placing, setPlacing] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [dropping, setDropping] = useState(false);
     const [pickError, setPickError] = useState<string | null>(null);
+    const fileInput = useRef<HTMLInputElement>(null);
+    const fixed = readOnly || layoutLocked;
     const altId = `${idPrefix}-alt`;
     const decorativeId = `${idPrefix}-decorative`;
     const decorative = allowDecorative && Boolean(image.decorative);
@@ -97,21 +104,48 @@ export function ImageField({
         const alt = now.alt !== altWhenChosen ? now.alt : selection.alt?.trim().slice(0, CONTENT_LIMITS.alt) || (now.asset ? "" : now.alt);
         change({ ...now, asset: selection.assetId, alt });
     };
+    const upload = async (file: File | undefined) => {
+        if (!file || fixed || uploading || placing) return;
+        setUploading(true);
+        setPickError(null);
+        const res = await uploadImage(file);
+        if (!live.current) return;
+        setUploading(false);
+        if (fileInput.current) fileInput.current.value = "";
+        if (!res.ok) return setPickError(res.error);
+        await pick({ assetId: res.asset.id, url: res.asset.hosted_url, alt: res.asset.alt_text ?? null });
+    };
+    const filesDragged = (e: React.DragEvent) => !fixed && e.dataTransfer.types.includes("Files");
+    const dropZone = {
+        onDragOver: (e: React.DragEvent) => {
+            if (!filesDragged(e)) return;
+            e.preventDefault();
+            setDropping(true);
+        },
+        onDragLeave: () => setDropping(false),
+        onDrop: (e: React.DragEvent) => {
+            if (!filesDragged(e)) return;
+            e.preventDefault();
+            setDropping(false);
+            void upload(e.dataTransfer.files[0]);
+        },
+    };
+    const busy = uploading || placing;
     const imageError = pickError ?? errors["image.asset"] ?? (shown && !shown.ok ? shown.error : null);
-    const chooseButton = (busy: boolean) => (
-        <Button type="button" variant="outline" size="sm" disabled={busy}>
+    const chooseButton = (disabled: boolean) => (
+        <Button type="button" variant="outline" size="sm" disabled={disabled}>
             {placing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-1 h-4 w-4" />}
-            {placing ? "Getting it ready for email…" : image.asset ? "Replace the image" : "Choose an image"}
+            {placing ? "Getting it ready for email…" : "Choose from library"}
         </Button>
     );
 
     return (
         <div className="space-y-3">
-            <div className={cn("mx-auto", inset ? "max-w-[81%]" : "w-full")}>
+            <div className={cn("mx-auto rounded-md", inset ? "max-w-[81%]" : "w-full", dropping && "ring-2 ring-primary")} {...dropZone}>
                 {!image.asset ? (
                     <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
                         <ImageIcon className="h-5 w-5" aria-hidden />
-                        {CONTENT_PLACEHOLDERS.image}
+                        {fixed ? CONTENT_PLACEHOLDERS.image : DROP_OR_CHOOSE}
                     </div>
                 ) : shown?.ok ? (
                     <img
@@ -127,10 +161,24 @@ export function ImageField({
                     </div>
                 )}
             </div>
-            {readOnly || layoutLocked ? null : (
-                <Suspense fallback={chooseButton(true)}>
-                    <ImagePicker onSelect={(s) => void pick(s)}>{chooseButton(placing)}</ImagePicker>
-                </Suspense>
+            {fixed ? null : (
+                <div className="flex flex-wrap gap-2">
+                    <input
+                        ref={fileInput}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        aria-label="Upload an image from this device"
+                        onChange={(e) => void upload(e.target.files?.[0])}
+                    />
+                    <Button type="button" size="sm" disabled={busy} onClick={() => fileInput.current?.click()}>
+                        {uploading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
+                        {uploading ? "Uploading…" : image.asset ? "Upload a new image" : "Upload an image"}
+                    </Button>
+                    <Suspense fallback={chooseButton(true)}>
+                        <ImagePicker onSelect={(s) => void pick(s)}>{chooseButton(busy)}</ImagePicker>
+                    </Suspense>
+                </div>
             )}
             {imageError ? <p className="text-xs text-destructive">{imageError}</p> : null}
             <Field label="Alt text" htmlFor={altId} error={errors["image.alt"]} hint={altHint}>

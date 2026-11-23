@@ -90,8 +90,19 @@ const button = (label: string) => [...document.querySelectorAll("button")].find(
 const card = (n: number) => document.querySelectorAll<HTMLElement>("li[data-block-id]")[n];
 const savedContent = () => actions.saveCampaign.mock.calls.at(-1)![1].content!;
 const addBlock = (label: string) => choose(button("Add block")!, label);
+const UPLOADED = "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f";
+const uploadsAnswer = (body: unknown) => {
+  const send = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => ({ status: 200, json: async () => body }) as Response);
+  vi.stubGlobal("fetch", send);
+  return send;
+};
+const chooseFile = async (input: HTMLInputElement, file: File) => {
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  await act(async () => void input.dispatchEvent(new Event("change", { bubbles: true })));
+  await settle();
+};
 const chooseImage = async () => {
-  const b = await until(() => (button("Choose an image")?.disabled === false ? button("Choose an image") : null));
+  const b = await until(() => (button("Choose from library")?.disabled === false ? button("Choose from library") : null));
   await click(b);
   await settle();
 };
@@ -106,6 +117,7 @@ afterEach(async () => {
   root = null;
   await settle(50);
   document.body.innerHTML = "";
+  vi.unstubAllGlobals();
 });
 
 describe("an image block", () => {
@@ -113,7 +125,7 @@ describe("an image block", () => {
     mount(draftWith(CONTENT));
     await addBlock("Image");
     const image = card(1);
-    expect(image.textContent).toContain("Choose an image from the Media Library.");
+    expect(image.textContent).toContain("Drop an image here, upload one, or choose one from the Media Library.");
 
     await chooseImage();
     expect(actions.placeCampaignImage).toHaveBeenCalledWith(PHOTO);
@@ -196,6 +208,51 @@ describe("an image block", () => {
     await settle();
     expect(said()).toEqual([]);
     expect(card(0).textContent).toContain("Write the heading.");
+  });
+
+  it("uploads a file from the device and attaches it in one step", async () => {
+    const send = uploadsAnswer({ ok: true, asset: { id: UPLOADED, name: "we-are-open.png", hosted_url: "https://mpillow.supabase.co/storage/v1/object/public/media/we-are-open.webp", alt_text: null, created_at: "2026-11-23T00:00:00Z" } });
+    mount(draftWith(CONTENT));
+    await addBlock("Image");
+    const image = card(1);
+    const file = new File(["x"], "we-are-open.png", { type: "image/png" });
+    await chooseFile(image.querySelector<HTMLInputElement>('input[type="file"]')!, file);
+
+    expect((send.mock.calls[0][1]!.body as FormData).get("file")).toMatchObject({ name: "we-are-open.png" });
+    expect(actions.placeCampaignImage).toHaveBeenCalledWith(UPLOADED);
+    expect((await until(() => image.querySelector<HTMLImageElement>("img"))).getAttribute("src")).toBe(RENDITION.url);
+    expect(button("Upload a new image")).not.toBeNull();
+    typeField(image.querySelector<HTMLInputElement>('input[id$="-alt"]')!, "We are open");
+    await settle();
+    await act(async () => button("Save changes")!.click());
+    await settle();
+    expect(savedContent().blocks[1]).toMatchObject({ type: "image", image: { asset: UPLOADED, alt: "We are open" } });
+  });
+
+  it("attaches a file dropped on the block", async () => {
+    const DROPPED = "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a";
+    uploadsAnswer({ ok: true, asset: { id: DROPPED, name: "poster.jpg", hosted_url: "https://mpillow.supabase.co/storage/v1/object/public/media/poster.webp", created_at: "2026-11-23T00:00:00Z" } });
+    mount(draftWith(CONTENT));
+    await addBlock("Image");
+    const image = card(1);
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    Object.assign(drop, { dataTransfer: { files: [new File(["x"], "poster.jpg", { type: "image/jpeg" })], types: ["Files"] } });
+    await act(async () => void image.querySelector(".border-dashed")!.dispatchEvent(drop));
+    await settle();
+    expect(actions.placeCampaignImage).toHaveBeenCalledWith(DROPPED);
+    await until(() => image.querySelector<HTMLImageElement>("img"));
+  });
+
+  it("says why an upload was refused, and attaches nothing", async () => {
+    uploadsAnswer({ error: "Input buffer contains unsupported image format" });
+    mount(draftWith(CONTENT));
+    await addBlock("Image");
+    const image = card(1);
+    await chooseFile(image.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["x"], "broken.png", { type: "image/png" }));
+    expect(image.textContent).toContain("Input buffer contains unsupported image format");
+    expect(actions.placeCampaignImage).not.toHaveBeenCalled();
+    expect(image.querySelector("img")).toBeNull();
+    expect(button("Upload an image")!.disabled).toBe(false);
   });
 
   it("keeps what Staff change while the image's email copy is being made", async () => {

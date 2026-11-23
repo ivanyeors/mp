@@ -110,14 +110,14 @@ describe("an image + text block", () => {
     mount(draftWith(CONTENT));
     await choose(button("Add block")!, "Image + text");
     const split = card(1);
-    expect(split.textContent).toContain("Choose an image from the Media Library.");
+    expect(split.textContent).toContain("Drop an image here, upload one, or choose one from the Media Library.");
     const heading = split.querySelector<HTMLElement>('[aria-label="Heading beside the image"]')!.id;
     expect(placeholderOf(heading)).toBe("e.g. Sleep cooler this December");
     expect(split.querySelector('[aria-label="Text beside the image"]')).not.toBeNull();
     expect(split.querySelector('input[aria-label="Button beside the image: label"]')).not.toBeNull();
     expect(split.querySelector('button[role="checkbox"]')).toBeNull();
 
-    await click(await until(() => (button("Choose an image")?.disabled === false ? button("Choose an image") : null)));
+    await click(await until(() => (button("Choose from library")?.disabled === false ? button("Choose from library") : null)));
     await settle();
     expect(actions.placeCampaignImage).toHaveBeenCalledWith(PHOTO);
     expect((await until(() => split.querySelector<HTMLImageElement>("img"))).getAttribute("src")).toBe(RENDITION.url);

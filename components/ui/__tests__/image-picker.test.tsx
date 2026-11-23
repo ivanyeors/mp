@@ -5,8 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The media picker loads the library each time it opens, starts each open
- * with no search or filters, and keeps a file dropped in before that load
- * lands.
+ * with no search or filters, and attaches an uploaded file straight away.
  */
 
 vi.mock("@/components/settings/select-from-drive-dialog", () => ({ SelectFromDriveDialog: () => null }));
@@ -22,7 +21,7 @@ globalThis.ResizeObserver ??= class {
 };
 
 const asset = (id: string) => ({ id, name: `${id}.png`, hosted_url: `https://cdn.test/${id}.png`, created_at: "2026-11-01T00:00:00Z" });
-const json = (body: unknown) => ({ ok: true, json: async () => body }) as Response;
+const json = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response;
 
 // Each library load waits until the test lets it land.
 let loads: Array<(ids: string[]) => Promise<void>> = [];
@@ -38,12 +37,13 @@ const fetchMock = vi.fn((url: string, init?: RequestInit) => {
   return Promise.resolve(json({ ok: true, folders: [] }));
 });
 
+const selected = vi.fn();
 let root: Root | null = null;
 function mount() {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
-  act(() => root!.render(<ImagePicker onSelect={() => undefined} />));
+  act(() => root!.render(<ImagePicker onSelect={selected} />));
 }
 const flush = () => act(async () => {
   for (let i = 0; i < 10; i++) await Promise.resolve();
@@ -68,6 +68,7 @@ beforeEach(() => {
   loads = [];
   uploads = [];
   fetchMock.mockClear();
+  selected.mockClear();
   vi.stubGlobal("fetch", fetchMock);
 });
 afterEach(() => {
@@ -106,19 +107,19 @@ describe("ImagePicker", () => {
     expect(names()).toEqual(["neck.png", "sleep.png"]);
   });
 
-  it("keeps a file dropped in before the library load lands", async () => {
+  it("attaches a dropped file as soon as it is uploaded, and closes", async () => {
     mount();
     await open();
     const drop = new Event("drop", { bubbles: true, cancelable: true });
     const file = new File(["x"], "fresh.png", { type: "image/png" });
     Object.assign(drop, { dataTransfer: { files: [file], types: ["Files"] } });
     await act(async () => void document.querySelector("[role=dialog]")!.dispatchEvent(drop));
+    await flush();
     await act(() => uploads.shift()!("fresh"));
     await flush();
 
-    // The grid shows once the load lands. The load was asked for before the upload existed, so it lacks it.
-    await land(["a"]);
-    expect(names()).toEqual(["fresh.png", "a.png"]);
+    expect(selected).toHaveBeenCalledWith({ assetId: "fresh", url: "https://cdn.test/fresh.png", alt: null });
+    expect(document.querySelector("[role=dialog]")).toBeNull();
   });
 
   it("shows the latest load when an older one lands after it", async () => {

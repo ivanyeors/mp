@@ -41,6 +41,7 @@ import {
     SheetTitle,
     SheetDescription,
 } from "@/components/ui/sheet";
+import { uploadImage } from "@/lib/media-assets/upload-image";
 import { toast } from "sonner";
 import { SelectFromDriveDialog } from "@/components/settings/select-from-drive-dialog";
 import { InfoTip } from "@/components/ui/info-tip";
@@ -339,24 +340,15 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
         const file = e.target.files?.[0];
         if (!file) return;
         setUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-            const res = await fetch("/api/media", { method: "POST", body: formData });
-            const data = await res.json();
-            if (data.ok) {
-                loadFiles();
-                toast.success("Image uploaded");
-            } else {
-                toast.error(getApiErrorMessage(data.error, "Couldn't upload."));
-            }
-        } catch (error) {
-            console.error("Upload error", error);
-            toast.error("Couldn't upload.");
-        } finally {
-            setUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
+        const res = await uploadImage(file);
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (!res.ok) {
+            toast.error(res.error);
+            return;
         }
+        loadFiles();
+        toast.success("Image uploaded");
     };
 
     const handleDrivePreview = async () => {
