@@ -53,7 +53,7 @@ export const guestText = {
       `Hi ${p.guestName}, your ${p.typeLabel} appointment on ${whenLabel(p.startsAt)} has been cancelled.`,
       `You can rebook here: ${p.bookingUrl}`,
       `If you have any questions, please ${TALK_TO_TEAM}.`,
-      ...(p.mentionRefundTime ? ["If your fee is refunded, please expect it to take 5–10 business days to be processed."] : []),
+      ...(p.mentionRefundTime ? ["Refunds take 5–10 business days to be processed."] : []),
     ].join("\n\n"),
   cancelFailed: () => `Sorry — we couldn't cancel that automatically. Please ${TALK_TO_TEAM}.`,
 };

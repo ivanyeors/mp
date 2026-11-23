@@ -125,7 +125,7 @@ describe("the cancel message", () => {
   it("adds how long a refund takes below the questions line, only when asked", () => {
     expect(guestText.cancelled({ ...p, mentionRefundTime: true }).split("\n\n").slice(-2)).toEqual([
       "If you have any questions, please message our team on WhatsApp at +65 8780 5311.",
-      "If your fee is refunded, please expect it to take 5–10 business days to be processed.",
+      "Refunds take 5–10 business days to be processed.",
     ]);
     expect(guestText.cancelled(p)).not.toContain("business days");
   });
