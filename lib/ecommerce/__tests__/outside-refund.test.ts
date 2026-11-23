@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
   cancelLabel: vi.fn(),
   decrement: vi.fn(async () => undefined),
   stats: vi.fn(async () => undefined),
+  clawback: vi.fn(async () => ({ taken: 0 })),
 }));
 
 vi.mock("@/lib/supabase/server", async () => {
@@ -16,6 +17,7 @@ vi.mock("@/lib/supabase/server", async () => {
 vi.mock("@/lib/shipping/schedule-labels", () => ({ scheduleLabelCancel: h.cancelLabel, scheduleAutoLabel: vi.fn() }));
 vi.mock("@/lib/ecommerce/discounts", () => ({ decrementCouponUsage: h.decrement }));
 vi.mock("@/lib/ecommerce/customers", () => ({ updateCustomerStats: h.stats }));
+vi.mock("@/lib/points/earn", () => ({ clawbackPointsForRefund: h.clawback }));
 vi.mock("@/lib/ecommerce/money-ledger", async (orig) => {
   const real = await orig<typeof import("@/lib/ecommerce/money-ledger")>();
   return {
@@ -28,7 +30,7 @@ vi.mock("@/lib/ecommerce/money-ledger", async (orig) => {
 });
 
 const { fakeSupabaseAdmin } = await import("@/lib/supabase/__tests__/fake-admin");
-const { recordOutsideRefund, RecordRefundSchema } = await import("@/lib/ecommerce/outside-refund");
+const { recordOutsideRefund, refundRecordedForReturn, RecordRefundSchema } = await import("@/lib/ecommerce/outside-refund");
 
 const NOW = new Date("2026-11-24T02:00:00Z");
 const STAFF = { email: "staff@mpillow.test" };
@@ -80,6 +82,13 @@ describe("recording a refund on an order paid outside Stripe", () => {
     expect(String(h.db.order_timeline[0].message)).toContain("No money moved through Stripe");
     expect(h.decrement).not.toHaveBeenCalled();
     expect(h.cancelLabel).not.toHaveBeenCalled();
+    expect(h.clawback).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ orderId: "o1", amount: 30 }));
+  });
+
+  it("carries the return it belongs to, so the same return is never recorded twice", async () => {
+    await recordOutsideRefund(admin(), "o1", { amount: 30, note: "Return r1" }, STAFF, NOW, "r1");
+    expect(await refundRecordedForReturn(admin(), "o1", "r1")).toBe(30);
+    expect(await refundRecordedForReturn(admin(), "o1", "r2")).toBeNull();
   });
 
   it("closes the order once everything is returned: its coupon use and label are given back", async () => {

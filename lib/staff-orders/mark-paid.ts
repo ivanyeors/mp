@@ -13,7 +13,7 @@ import { paymentIntentCapturedAt, stripeTime } from "@/lib/stripe/money-time";
 import { loadPayLinkRow } from "@/lib/staff-orders/link";
 import { OUTSIDE_STRIPE_METHOD_LABELS, OUTSIDE_STRIPE_SOURCE } from "@/lib/ecommerce/outside-stripe";
 import { PAYABLE_STATUSES, type PaidHow } from "@/lib/staff-orders/shared";
-import { claimedBy, unfitReason } from "@/lib/staff-orders/stripe-payments";
+import { ledgerOwners, takenElsewhere, unfitReason } from "@/lib/staff-orders/stripe-payments";
 
 export type MarkPaidActor = { userId: string; email: string };
 
@@ -87,9 +87,8 @@ async function stripePayment(
   }
   const unfit = unfitReason(intent, { amount: Number(order.total), currency: order.currency ?? "SGD", orderId: order.id });
   if (unfit) return refuse(409, unfit);
-  const claimedByOrder = (await claimedBy(admin, [intent.id])).get(intent.id);
-  if (claimedByOrder && claimedByOrder !== order.id) {
-    return refuse(409, "That Stripe payment is already recorded on another order.");
+  if ((await takenElsewhere(admin, [intent.id], order.id)).has(intent.id)) {
+    return refuse(409, "That Stripe payment already belongs to another order or customisation.");
   }
   const charge = typeof intent.latest_charge === "object" ? intent.latest_charge : null;
   const paidAt = (await paymentIntentCapturedAt(stripe, intent.id)) ?? stripeTime(charge?.created ?? intent.created);
@@ -240,8 +239,10 @@ export async function markStaffOrderPaid(
     return undo(500, `The payment could not be recorded, so the order was not marked paid: ${errorText(err)}`);
   }
   if (!recorded && payment.reference) {
-    const owner = (await claimedBy(admin, [payment.reference])).get(payment.reference);
-    if (owner !== orderId) return undo(409, "That Stripe payment is already recorded on another order.");
+    const owner = await ledgerOwners(admin, [payment.reference])
+      .then((owners) => owners.get(payment.reference!))
+      .catch(() => undefined);
+    if (owner !== orderId) return undo(409, "That Stripe payment already belongs to another order or customisation.");
   }
   await rollupOrderMoney(admin, orderId);
   await closeCheckoutOpenedMeanwhile(admin, orderId, closedSession, stripe);

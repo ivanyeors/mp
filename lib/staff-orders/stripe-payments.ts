@@ -61,18 +61,43 @@ export function toOption(intent: Stripe.PaymentIntent): StripePaymentOption {
   };
 }
 
-export async function claimedBy(admin: SupabaseClient, paymentIntentIds: string[]): Promise<Map<string, string>> {
-  const claimed = new Map<string, string>();
-  if (paymentIntentIds.length === 0) return claimed;
+export async function ledgerOwners(admin: SupabaseClient, paymentIntentIds: string[]): Promise<Map<string, string>> {
+  const owners = new Map<string, string>();
+  if (paymentIntentIds.length === 0) return owners;
   const { data, error } = await admin
     .from("order_payments")
     .select("stripe_object_id, order_id")
     .in("stripe_object_id", paymentIntentIds);
   if (error) throw new Error(`Couldn't read the payments already recorded: ${error.message}`);
   for (const row of (data ?? []) as Array<{ stripe_object_id: string; order_id: string }>) {
-    claimed.set(row.stripe_object_id, row.order_id);
+    owners.set(row.stripe_object_id, row.order_id);
   }
-  return claimed;
+  return owners;
+}
+
+export async function takenElsewhere(
+  admin: SupabaseClient,
+  paymentIntentIds: string[],
+  ownOrderId?: string,
+): Promise<Set<string>> {
+  const taken = new Set<string>();
+  if (paymentIntentIds.length === 0) return taken;
+  const [ledger, orders, topUps, holds] = await Promise.all([
+    ledgerOwners(admin, paymentIntentIds),
+    admin.from("orders").select("id, payment_reference").in("payment_reference", paymentIntentIds),
+    admin.from("mp_config_responses").select("topup_payment_intent_id").in("topup_payment_intent_id", paymentIntentIds),
+    admin.from("mp_config_responses").select("payment_intent_id").in("payment_intent_id", paymentIntentIds),
+  ]);
+  for (const res of [orders, topUps, holds]) {
+    if (res.error) throw new Error(`Couldn't read who holds those payments: ${res.error.message}`);
+  }
+  for (const [id, orderId] of ledger) if (orderId !== ownOrderId) taken.add(id);
+  for (const row of (orders.data ?? []) as Array<{ id: string; payment_reference: string }>) {
+    if (row.id !== ownOrderId) taken.add(row.payment_reference);
+  }
+  for (const row of (topUps.data ?? []) as Array<{ topup_payment_intent_id: string }>) taken.add(row.topup_payment_intent_id);
+  for (const row of (holds.data ?? []) as Array<{ payment_intent_id: string }>) taken.add(row.payment_intent_id);
+  return taken;
 }
 
 // ponytail: reads up to MAX_PAGES x PAGE_SIZE payments from the last week and filters here, because
@@ -99,12 +124,13 @@ export async function listMatchingStripePayments(
     if (!batch.has_more || batch.data.length === 0) break;
     startingAfter = batch.data[batch.data.length - 1].id;
   }
-  const claimed = await claimedBy(
+  const taken = await takenElsewhere(
     admin,
     fits.map((i) => i.id),
+    want.orderId,
   );
   return fits
-    .filter((i) => !claimed.has(i.id))
+    .filter((i) => !taken.has(i.id))
     .map(toOption)
     .sort((a, b) => b.paidAt.localeCompare(a.paidAt))
     .slice(0, MAX_OPTIONS);

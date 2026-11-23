@@ -10,12 +10,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_AMOUNT = 1_000_000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(req: Request) {
   const denied = await requireAdmin("orders");
   if (denied) return denied;
 
-  const amount = Number(new URL(req.url).searchParams.get("amount"));
+  const query = new URL(req.url).searchParams;
+  const amount = Number(query.get("amount"));
+  const orderId = query.get("order_id");
+  if (orderId !== null && !UUID.test(orderId)) {
+    return NextResponse.json({ error: "order_id is not an order" }, { status: 400 });
+  }
   if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) {
     return NextResponse.json({ error: "amount is required" }, { status: 400 });
   }
@@ -28,7 +34,11 @@ export async function GET(req: Request) {
   }
 
   try {
-    const payments = await listMatchingStripePayments(supabaseAdmin(), stripe, { amount, currency: "SGD" });
+    const payments = await listMatchingStripePayments(supabaseAdmin(), stripe, {
+      amount,
+      currency: "SGD",
+      ...(orderId ? { orderId } : {}),
+    });
     return NextResponse.json({ ok: true, payments });
   } catch (err) {
     return NextResponse.json(

@@ -259,6 +259,16 @@ describe("GET /api/staff-orders/stripe-payments", () => {
     expect(h.listPayments).toHaveBeenCalledWith(expect.anything(), expect.anything(), { amount: 39, currency: "SGD" });
   });
 
+  it("asks for the order's own payments too when it is named", async () => {
+    await call(`?amount=39&order_id=${CUSTOMER}`);
+    expect(h.listPayments).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+      amount: 39,
+      currency: "SGD",
+      orderId: CUSTOMER,
+    });
+    expect((await call("?amount=39&order_id=not-an-order")).status).toBe(400);
+  });
+
   it.each(["", "?amount=abc", "?amount=0", "?amount=-5"])("refuses %j", async (query) => {
     expect((await call(query)).status).toBe(400);
     expect(h.listPayments).not.toHaveBeenCalled();

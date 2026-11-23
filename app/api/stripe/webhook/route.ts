@@ -399,26 +399,18 @@ export async function POST(req: Request) {
         }
 
         if (order.paid_at && paymentIntent && order.payment_reference !== paymentIntent) {
-          const { recorded } = await recordLedgerEntry(admin, orderId, {
-            type: "charge",
+          const detail =
+            `Order ${order.order_number} was already paid when Stripe took ${(order.currency ?? "SGD").toUpperCase()} ` +
+            `${totals.amountTotal.toFixed(2)} more for it (payment ${paymentIntent}). That second payment is not ` +
+            `recorded on the order, and nothing more was sent or taken from stock. Refund it in Stripe.`;
+          await flagOrder(admin, orderId, "paid_twice", detail, {
+            stripe_session_id: session.id,
+            payment_intent: paymentIntent,
             amount: totals.amountTotal,
-            currency: order.currency ?? "SGD",
-            stripeObjectId: paymentIntent,
-            metadata: { stripe_session_id: session.id, paid_twice: true },
-            occurredAt: stripeEventTime(event),
           });
-          if (recorded) {
-            await rollupOrderMoney(admin, orderId);
-            const detail =
-              `Order ${order.order_number} was already paid when Stripe took ${(order.currency ?? "SGD").toUpperCase()} ` +
-              `${totals.amountTotal.toFixed(2)} more for it (payment ${paymentIntent}). Nothing more was sent or taken ` +
-              `from stock. Refund one of the two payments.`;
-            await flagOrder(admin, orderId, "paid_twice", detail, {
-              stripe_session_id: session.id,
-              payment_intent: paymentIntent,
-            });
-            await recordWebhookFailure(admin, event, detail);
-          }
+          const recorded = await recordWebhookFailure(admin, event, detail);
+          const told = (await sendTelegram(detail).catch(() => "failed")) === "sent";
+          if (!recorded && !told) console.error(`[stripe/webhook] paid_twice for ${orderId} reached nobody but the order's timeline.`);
           break;
         }
 

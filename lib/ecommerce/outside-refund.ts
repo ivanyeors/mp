@@ -6,6 +6,7 @@ import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import { decrementCouponUsage } from "@/lib/ecommerce/discounts";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
+import { clawbackPointsForRefund } from "@/lib/points/earn";
 import {
   OUTSIDE_STRIPE_METHOD_LABELS,
   OUTSIDE_STRIPE_SOURCE,
@@ -33,6 +34,7 @@ export async function recordOutsideRefund(
   input: RecordRefundInput,
   actor: { email: string },
   now: Date = new Date(),
+  rmaRequestId?: string,
 ): Promise<RecordRefundOutcome> {
   const { data: order, error } = await admin
     .from("orders")
@@ -69,7 +71,13 @@ export async function recordOutsideRefund(
       type: "refund",
       amount: -amount,
       currency,
-      metadata: { source: OUTSIDE_STRIPE_SOURCE, method, note: input.note, recorded_by: actor.email },
+      metadata: {
+        source: OUTSIDE_STRIPE_SOURCE,
+        method,
+        note: input.note,
+        recorded_by: actor.email,
+        ...(rmaRequestId ? { rma_request_id: rmaRequestId } : {}),
+      },
       occurredAt: now.toISOString(),
     });
   } catch (err) {
@@ -79,6 +87,13 @@ export async function recordOutsideRefund(
 
   const state = await rollupOrderMoney(admin, orderId);
   const fullyRefunded = state.status === "refunded";
+
+  const clawback = await clawbackPointsForRefund(admin, {
+    orderId,
+    refundId: `outside_${crypto.randomUUID()}`,
+    amount,
+  });
+  if ("error" in clawback) console.error(`[record-refund] Points not taken back on ${orderId}: ${clawback.error}`);
 
   await addOrderTimelineEvent(
     orderId,
@@ -103,4 +118,17 @@ export async function recordOutsideRefund(
   }
 
   return { ok: true, amount, fullyRefunded };
+}
+
+export async function refundRecordedForReturn(
+  admin: SupabaseClient,
+  orderId: string,
+  rmaRequestId: string,
+): Promise<number | null> {
+  const { data, error } = await admin.from("order_payments").select("amount, metadata").eq("order_id", orderId).eq("type", "refund");
+  if (error) throw new Error(`Couldn't read the order's refunds: ${error.message}`);
+  const row = ((data ?? []) as Array<{ amount: number | string; metadata: { rma_request_id?: string } | null }>).find(
+    (r) => r.metadata?.rma_request_id === rmaRequestId,
+  );
+  return row ? Math.abs(Number(row.amount)) : null;
 }

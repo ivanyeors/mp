@@ -279,8 +279,29 @@ describe("marking a Staff order paid by a Stripe payment", () => {
     h.emails.mockClear();
 
     const out = await markStaffOrderPaid(admin(), second, { kind: "stripe", payment_intent_id: "pi_once" }, ACTOR, NOW);
-    expect(out).toEqual({ ok: false, status: 409, error: "That Stripe payment is already recorded on another order." });
+    expect(out).toEqual({ ok: false, status: 409, error: "That Stripe payment already belongs to another order or customisation." });
     untouched(second);
+  });
+
+  it.each([
+    ["a customisation's balance payment waiting to be accepted", { topup_payment_intent_id: "pi_theirs" }],
+    ["a customisation's hold", { payment_intent_id: "pi_theirs" }],
+  ])("refuses %s, which carries no mark of its own in Stripe", async (_name, result) => {
+    const id = await made();
+    intent("pi_theirs");
+    h.db.mp_config_responses = [{ id: "result-1", ...result }];
+    const out = await markStaffOrderPaid(admin(), id, { kind: "stripe", payment_intent_id: "pi_theirs" }, ACTOR, NOW);
+    expect(out).toEqual({ ok: false, status: 409, error: "That Stripe payment already belongs to another order or customisation." });
+    untouched(id);
+  });
+
+  it("refuses the payment another order was paid with, even before its ledger row exists", async () => {
+    const id = await made();
+    intent("pi_theirs");
+    h.db.orders.push({ id: "other-order", status: "confirmed", paid_at: "2026-11-22T00:00:00Z", payment_reference: "pi_theirs" });
+    const out = await markStaffOrderPaid(admin(), id, { kind: "stripe", payment_intent_id: "pi_theirs" }, ACTOR, NOW);
+    expect(out).toMatchObject({ ok: false, status: 409 });
+    untouched(id);
   });
 
   it("puts the order back when another order claims the payment between the check and the record", async () => {
@@ -395,6 +416,22 @@ describe("the Stripe payments offered for an order", () => {
     }, NOW);
     expect(options.map((o) => o.id)).toEqual(["pi_new", "pi_old"]);
     expect(options[0]).toMatchObject({ amount: 108, currency: "SGD", method: "Visa •••• 4242", email: "ada@example.com" });
+  });
+
+  it("never offers a customisation's balance payment, and offers an order its own link payment only on its own page", async () => {
+    intent("pi_topup");
+    intent("pi_own", { metadata: { order_id: "order-9", purpose: "staff_order" } });
+    h.db.mp_config_responses = [{ id: "result-1", topup_payment_intent_id: "pi_topup" }];
+    const stripe = (await import("@/lib/stripe/client")).getStripe();
+
+    const atCreation = await listMatchingStripePayments(admin(), stripe, { amount: 108, currency: "SGD" }, NOW);
+    expect(atCreation.map((o) => o.id)).toEqual([]);
+
+    const onItsPage = await listMatchingStripePayments(admin(), stripe, { amount: 108, currency: "SGD", orderId: "order-9" }, NOW);
+    expect(onItsPage.map((o) => o.id)).toEqual(["pi_own"]);
+
+    const onAnotherPage = await listMatchingStripePayments(admin(), stripe, { amount: 108, currency: "SGD", orderId: "order-7" }, NOW);
+    expect(onAnotherPage.map((o) => o.id)).toEqual([]);
   });
 
   it("treats 108.00 and 108 as the same amount, and 107.99 as another", () => {

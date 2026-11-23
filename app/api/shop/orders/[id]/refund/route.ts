@@ -174,7 +174,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const isFullRefund = amountCents >= Math.round(remaining * 100);
 
   let parts: Array<{ paymentIntentId: string; cents?: number }>;
-  if (intents.length === 1 && !outsideStripe) {
+  if (intents.length === 1) {
     parts = [{ paymentIntentId: intents[0], ...(isFullRefund ? {} : { cents: amountCents }) }];
   } else {
     const split = splitRefundAcrossIntents(amountCents, await intentRefundableBalances(intents));

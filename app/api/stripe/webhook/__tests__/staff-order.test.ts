@@ -131,7 +131,7 @@ describe("Stripe webhook — a Staff order's Checkout", () => {
       total_details: { amount_tax: 0 },
     });
 
-  it("paid through the link after Staff marked it paid in cash: the second payment is recorded and flagged, nothing is sent twice", async () => {
+  it("paid through the link after Staff marked it paid in cash: the second payment is flagged to refund, not counted on the order or settled again", async () => {
     Object.assign(order(), {
       status: "confirmed",
       paid_at: "2026-11-23T04:00:00.000Z",
@@ -141,22 +141,21 @@ describe("Stripe webhook — a Staff order's Checkout", () => {
     });
     expect((await paidByLink("pi_link")).status).toBe(200);
 
-    expect(h.ledger).toHaveBeenCalledTimes(1);
-    expect(h.ledger.mock.calls[0][2]).toMatchObject({ type: "charge", amount: 69, stripeObjectId: "pi_link" });
-    expect(h.rollup).toHaveBeenCalledTimes(1);
-    expect(order()).toMatchObject({ needs_attention: true, payment_method: "cash", payment_reference: null });
+    expect(h.ledger).not.toHaveBeenCalled();
+    expect(h.rollup).not.toHaveBeenCalled();
+    expect(order()).toMatchObject({ needs_attention: true, status: "confirmed", payment_method: "cash", payment_reference: null });
     expect(h.timeline.mock.calls.map((c) => c[1])).toEqual(["paid_twice"]);
-    expect(h.timeline.mock.calls[0][2]).toContain("Refund one of the two payments");
+    expect(h.timeline.mock.calls[0][2]).toContain("Refund it in Stripe");
+    expect(h.timeline.mock.calls[0][2]).toContain("pi_link");
     expect(h.emails).not.toHaveBeenCalled();
     expect(h.deduct).not.toHaveBeenCalled();
   });
 
-  it("the same second payment delivered again is not flagged twice", async () => {
+  it("a second Stripe payment on an order already paid by another Stripe payment is flagged the same way", async () => {
     Object.assign(order(), { status: "confirmed", paid_at: "2026-11-23T04:00:00.000Z", payment_reference: "pi_counter" });
-    h.ledger.mockResolvedValue({ recorded: false });
     expect((await paidByLink("pi_link")).status).toBe(200);
-    expect(h.timeline).not.toHaveBeenCalled();
-    expect(order().needs_attention).toBeUndefined();
+    expect(h.ledger).not.toHaveBeenCalled();
+    expect(order().needs_attention).toBe(true);
     expect(h.emails).not.toHaveBeenCalled();
   });
 

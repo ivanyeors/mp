@@ -305,18 +305,4 @@ describe("staff refund — an order paid outside Stripe", () => {
     expect(h.timeline).not.toHaveBeenCalled();
     expect(h.audit).not.toHaveBeenCalled();
   });
-
-  it("can still send back a second payment Stripe took for it, and never more than Stripe holds", async () => {
-    h.charges = [{ stripe_object_id: "pi_link" }];
-    Object.assign(h.order, { amount_captured: 208 });
-    h.balances = [{ paymentIntentId: "pi_link", refundableCents: 10400 }];
-
-    const tooMuch = await refund({ mode: "full" });
-    expect(tooMuch.status).toBe(409);
-    expect(h.refundPayment).not.toHaveBeenCalled();
-
-    const res = await refund({ mode: "amount", amount: 104 });
-    expect(res.status).toBe(200);
-    expect(stripeCall()).toMatchObject({ paymentIntentId: "pi_link", amount: 104 });
-  });
 });

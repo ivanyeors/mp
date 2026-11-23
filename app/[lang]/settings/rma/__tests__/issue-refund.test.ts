@@ -9,6 +9,7 @@ const h = vi.hoisted(() => ({
   timeline: vi.fn(),
   audit: vi.fn(),
   recordOutside: vi.fn(),
+  alreadyRecorded: vi.fn(),
   transition: vi.fn(),
 }));
 
@@ -18,7 +19,10 @@ vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 vi.mock("@/lib/stripe/refunds", () => ({ refundPayment: h.refundPayment }));
 vi.mock("@/lib/ecommerce/orders", () => ({ addOrderTimelineEvent: h.timeline }));
 vi.mock("@/lib/rma/transition", () => ({ applyRmaTransition: h.transition }));
-vi.mock("@/lib/ecommerce/outside-refund", () => ({ recordOutsideRefund: h.recordOutside }));
+vi.mock("@/lib/ecommerce/outside-refund", () => ({
+  recordOutsideRefund: h.recordOutside,
+  refundRecordedForReturn: h.alreadyRecorded,
+}));
 vi.mock("@/lib/site-settings", () => ({ getSiteSettings: async () => ({}) }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
@@ -250,6 +254,7 @@ describe("issueRmaRefund — what Stripe is asked for", () => {
 describe("issueRmaRefund — an order paid outside Stripe", () => {
   beforeEach(() => {
     h.recordOutside.mockResolvedValue({ ok: true, amount: 80, fullyRefunded: false });
+    h.alreadyRecorded.mockResolvedValue(null);
   });
 
   it("records the refund by hand, asks Stripe for nothing and closes the return", async () => {
@@ -261,8 +266,21 @@ describe("issueRmaRefund — an order paid outside Stripe", () => {
       ORDER,
       expect.objectContaining({ amount: 80 }),
       { email: "staff@example.com" },
+      expect.any(Date),
+      RMA,
     );
     expect(h.transition).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ rmaId: RMA, to: "refunded" }));
+    expect(h.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "rma.refund_recorded", after: expect.objectContaining({ amount: 80 }) }),
+    );
+  });
+
+  it("pressed again after the return failed to close, it records nothing more and closes the return", async () => {
+    h.rma = returnOn({ payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z" }, ["line-a"]);
+    h.alreadyRecorded.mockResolvedValue(80);
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 80 });
+    expect(h.recordOutside).not.toHaveBeenCalled();
+    expect(h.transition).toHaveBeenCalledTimes(1);
   });
 
   it("leaves the return open when the refund could not be recorded", async () => {

@@ -239,8 +239,8 @@ stock exactly as a shop Order does, because it is settled the same way:
    `inventory_deducted_at` and calls `deductInventoryForOrder`, exactly as the
    webhook does. A failed deduction leaves the Order paid and flagged
    (`oversold`), to retry from the Order page. A link payment that lands on an
-   Order already marked paid is recorded and flagged `paid_twice`; it deducts
-   nothing.
+   Order already marked paid is flagged `paid_twice` and left off its ledger,
+   for Staff to refund in Stripe; it deducts nothing.
 
 `POST /api/shop/orders`, which wrote an Order already sold at prices from the
 request body, was retired with this change.

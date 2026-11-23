@@ -8,7 +8,7 @@ type Loaded = { amount: number; payments: StripePaymentOption[]; error: string |
 
 export type MatchingStripePayments = { payments: StripePaymentOption[]; error: string | null; loading: boolean };
 
-export function useMatchingStripePayments(amount: number | null): MatchingStripePayments {
+export function useMatchingStripePayments(amount: number | null, orderId?: string): MatchingStripePayments {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const wanted = amount != null && amount > 0 ? amount : null;
 
@@ -18,7 +18,8 @@ export function useMatchingStripePayments(amount: number | null): MatchingStripe
     (async () => {
       let answer: Loaded = { amount: wanted, payments: [], error: "Stripe's payments could not be read." };
       try {
-        const res = await fetch(`/api/staff-orders/stripe-payments?amount=${wanted.toFixed(2)}`);
+        const params = new URLSearchParams({ amount: wanted.toFixed(2), ...(orderId ? { order_id: orderId } : {}) });
+        const res = await fetch(`/api/staff-orders/stripe-payments?${params.toString()}`);
         const json = await res.json().catch(() => null);
         answer =
           res.ok && json?.ok
@@ -30,7 +31,7 @@ export function useMatchingStripePayments(amount: number | null): MatchingStripe
     return () => {
       cancelled = true;
     };
-  }, [wanted]);
+  }, [wanted, orderId]);
 
   const current = loaded && loaded.amount === wanted ? loaded : null;
   return { payments: current?.payments ?? [], error: current?.error ?? null, loading: wanted != null && !current };

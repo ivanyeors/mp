@@ -6,7 +6,7 @@ import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { refundPayment } from "@/lib/stripe/refunds";
 import { refundableAmount } from "@/lib/ecommerce/admin-refund";
-import { recordOutsideRefund } from "@/lib/ecommerce/outside-refund";
+import { recordOutsideRefund, refundRecordedForReturn } from "@/lib/ecommerce/outside-refund";
 import { paidOutsideStripe } from "@/lib/ecommerce/outside-stripe";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { applyRmaTransition } from "@/lib/rma/transition";
@@ -147,13 +147,27 @@ export async function issueRmaRefund(rmaId: string) {
   if (!(amount > 0)) throw new Error("Nothing left to refund on this order.");
 
   if (outsideStripe) {
-    const recorded = await recordOutsideRefund(
-      admin,
-      order.id,
-      { amount, note: `Return ${rmaId}: money returned the way it was paid.` },
-      { email: actor.email },
-    );
-    if (!recorded.ok) throw new Error(recorded.error);
+    let recordedAmount = await refundRecordedForReturn(admin, order.id, rmaId);
+    if (recordedAmount == null) {
+      const recorded = await recordOutsideRefund(
+        admin,
+        order.id,
+        { amount, note: `Return ${rmaId}: money returned the way it was paid.` },
+        { email: actor.email },
+        new Date(),
+        rmaId,
+      );
+      if (!recorded.ok) throw new Error(recorded.error);
+      recordedAmount = recorded.amount;
+      await recordAdminAction({
+        actor,
+        action: "rma.refund_recorded",
+        entityType: "rma_request",
+        entityId: rmaId,
+        before: { status: rma.status },
+        after: { amount: recordedAmount, outside_stripe: true, order_id: order.id },
+      });
+    }
     await applyRmaTransition(admin, {
       rmaId,
       to: "refunded",
@@ -162,7 +176,7 @@ export async function issueRmaRefund(rmaId: string) {
       emailMessage: "We have returned your payment the way you paid it.",
     });
     revalidatePath(`/settings/rma/${rmaId}`);
-    return { ok: true, amount };
+    return { ok: true, amount: recordedAmount };
   }
 
   const amountCents = Math.round(amount * 100);

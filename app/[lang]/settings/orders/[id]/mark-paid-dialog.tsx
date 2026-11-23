@@ -33,7 +33,7 @@ export function MarkPaidDialog({
     const [draft, setDraft] = useState<PaidHowDraft>(EMPTY_PAID_HOW);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const stripe = useMatchingStripePayments(open ? total : null);
+    const stripe = useMatchingStripePayments(open ? total : null, orderId);
     const how = paidHowFromDraft(draft, stripe.payments);
 
     const submit = async () => {

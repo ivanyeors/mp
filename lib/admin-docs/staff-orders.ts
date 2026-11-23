@@ -109,7 +109,7 @@ export function staffOrdersGuideSections(): DocSection[] {
           kind: "list",
           items: [
             "Marking it paid confirms the order, takes its stock out and emails the customer their confirmation. It cannot be undone, so check the money has arrived first.",
-            "The payment link stops working. If the customer still manages to pay through it, the order is flagged as paid twice: refund one of the two payments.",
+            "The payment link stops working. If the customer still manages to pay through it, the order is flagged as paid twice: refund that second payment in Stripe.",
             "Who marked it, how, and which Stripe payment are kept in the Audit Log and on the order's timeline.",
           ],
         },

@@ -95,7 +95,7 @@ describe("Mark as paid on the Order page", () => {
   it("asks Stripe for nothing until Staff open it, then for payments of exactly the order's total", async () => {
     expect(asked).toEqual([]);
     await open();
-    expect(asked).toEqual(["/api/staff-orders/stripe-payments?amount=108.00"]);
+    expect(asked).toEqual(["/api/staff-orders/stripe-payments?amount=108.00&order_id=o1"]);
     expect(options().join(" | ")).toContain("Visa •••• 4242");
     expect(options().join(" | ")).toContain("ada@example.com");
     expect(confirm().disabled).toBe(true);

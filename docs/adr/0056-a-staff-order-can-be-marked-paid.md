@@ -29,11 +29,13 @@ anyone with `orders`.
 ways. Either way it is settled once, by the same steps the webhook runs for a link payment.**
 
 - **By a Stripe payment.** Staff pick from the account's payments of the last 7 days that
-  succeeded for exactly the order's total in its currency, are not refunded or disputed, are not
-  already in the ledger, and were not made by this site for another Order or Result (no
-  `order_id`, `result_id` or `purpose` in their metadata; the order's own link payment is
-  allowed, for a webhook that never arrived). The server checks the same things again with Stripe
-  before it writes. The ledger `charge` carries the payment's id, so it can be claimed by one
+  succeeded for exactly the order's total in its currency, are not refunded or disputed, and
+  belong to nothing else here: not in the ledger, not another Order's `payment_reference`, not a
+  **Result**'s hold or Balance payment (`mp_config_responses`, whose Balance payment carries no
+  mark of its own in Stripe), and with no `order_id`, `result_id` or `purpose` in their metadata.
+  The order's own link payment is offered on its Order page, for a webhook that never arrived.
+  The server checks all of it again with Stripe before it writes, except the 7 days, which only
+  bounds the list. The ledger `charge` carries the payment's id, so it can be claimed by one
   Order only, and the **Sale** is dated by Stripe's time for the money. Everything after that is
   an ordinary Stripe-paid Order: refunds go back through Stripe.
 - **Outside Stripe.** Cash, PayNow or a bank transfer to the company account, or another way
@@ -50,14 +52,19 @@ ways. Either way it is settled once, by the same steps the webhook runs for a li
 - **The link and the mark cannot both settle it.** An open Checkout is expired before the Order is
   marked, and one the customer opened while it was being marked is expired straight after; one the
   customer has just completed refuses the mark. A link payment that still lands on
-  an Order already paid another way is recorded in the ledger and flagged (`paid_twice`,
-  `needs_attention`) for Staff to refund one, and nothing is sent or deducted a second time.
+  an Order already paid another way is **not** added to the Order's ledger: the Order is flagged
+  (`paid_twice`, `needs_attention`, with the payment's id on its timeline), the event is kept in
+  `stripe_webhook_failures`, Staff are told on Telegram, and nothing is sent or deducted a second
+  time. Staff refund that payment in Stripe. Keeping it off the ledger means the Order's revenue,
+  status, points and refundable amount stay those of the one payment that settled it.
 - **Refunds for money Stripe never held are recorded by hand.** Refund, Cancel and a return's
   refund never ask Stripe for it. Staff return the money the way it came, then **Record refund**
-  on the Order (or on the return): a ledger `refund` with no Stripe id, the same roll-up and
-  status, and no refund email, since that email promises a bank refund in 5 to 10 days.
-- **Permission: `orders`**, as for creating the order. Every mark and every recorded refund is in
-  the Audit Log with who, how, and which Stripe payment.
+  on the Order (or on the return, once per return): a ledger `refund` with no Stripe id, the same
+  roll-up and status, points taken back as for a Stripe refund, and no refund email, since that
+  email promises a bank refund in 5 to 10 days.
+- **Permission: `orders`**, as for creating the order; recording a return's refund needs
+  `returns`, as issuing one does. Every mark and every recorded refund is in the Audit Log with
+  who, how, and which Stripe payment.
 - **Still not possible:** typing an amount (ADR 0001: the total is the order's), marking a shop
   Order or a **Result** paid this way, or changing how a paid Order was paid.
 
@@ -76,6 +83,10 @@ ways. Either way it is settled once, by the same steps the webhook runs for a li
   payment just taken, which is exactly the payment Staff are looking for. The list is read and
   filtered here.
 
+- **Recording the second payment as a `charge` on the Order** (the first build). Rejected after
+  review: it doubled the Order's revenue in `order_margins` until refunded, and refunding it left
+  a fully paid Order `partially_refunded` with its points base reduced.
+
 ## Consequences
 
 - Analytics no longer shows only what Stripe took: revenue includes Sales Staff recorded as paid
@@ -87,4 +98,9 @@ ways. Either way it is settled once, by the same steps the webhook runs for a li
   Log is the control.
 - A Stripe payment taken in the Stripe app has no Order until Staff pick it; one nobody picks is
   only in Stripe.
+- A second payment on an Order is visible on its timeline, in `stripe_webhook_failures` and in
+  Stripe, not in our ledger; its refund is made in Stripe and is not recorded here either.
+- If the server stops between confirming the Order and writing its ledger row, the Order is left
+  paid with no charge, and nothing retries it (a webhook payment has Stripe's redelivery). The
+  Order page shows it paid with nothing captured.
 - No migration.
