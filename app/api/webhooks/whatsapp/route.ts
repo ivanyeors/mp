@@ -34,6 +34,7 @@ import {
   sendSlotList,
   type InboundWaAction,
   sendText,
+  sendVisitDayCancelQuestion,
   verifyWebhookChallenge,
   verifyWhatsAppSignature,
 } from "@/lib/appointments/whatsapp";
@@ -291,21 +292,30 @@ async function cancelByGuest(
   settings: AppointmentSettings,
   action: Extract<InboundWaAction, { kind: "cancel" | "reject_slots" }>,
 ): Promise<string> {
+  const anyway = action.kind === "cancel" && action.anyway;
+  if (action.kind === "cancel" && action.eventId && action.eventId !== row.calendar_event_id) {
+    await sendText(row.phone, guestText.stillOn(row.starts_at));
+    return "cancel anyway: tapped on another appointment's message";
+  }
   try {
     const now = new Date();
     const timing = await getEventTiming(row.calendar_event_id).catch(() => null);
     const startsAt = timing?.startsAt ?? row.starts_at;
-    if (!(action.kind === "cancel" && action.anyway)) {
-      const fee = await visitDayFeeByEvent(row.calendar_event_id, startsAt, now);
-      if (fee) {
-        await sendText(row.phone, guestText.visitDayCancelQuestion(startsAt, fee));
-        return "cancel: asked first (visit-day fee is refunded by hand only)";
-      }
+    const fee = await visitDayFeeByEvent(row.calendar_event_id, startsAt, now);
+    if (fee && !anyway) {
+      await sendVisitDayCancelQuestion(row.phone, row.calendar_event_id, startsAt, fee);
+      return "cancel: asked first (visit-day fee is refunded by hand only)";
     }
     if (action.kind === "cancel" && action.bare && (await askedAboutAftercare(row))) {
       return "cancel: asked first (aftercare since the reminder)";
     }
-    const outcome = await cancelAppointment(row, settings, { cause: "guest", within24h: true, now, startsAt });
+    const outcome = await cancelAppointment(row, settings, {
+      cause: "guest",
+      within24h: true,
+      now,
+      startsAt,
+      mentionRefundTime: fee != null,
+    });
     return outcome.kind === "cancelled" ? "cancelled" : `cancel: ${outcome.kind}`;
   } catch (e) {
     await sendText(row.phone, guestText.cancelFailed()).catch(() => {});

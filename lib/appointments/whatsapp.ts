@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { secretMatches } from "@/lib/auth/secret";
 import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
-import { guestText, whenLabel } from "./messages";
+import { CANCEL_ANYWAY_BUTTON, guestText, whenLabel } from "./messages";
 import { formatSlotLabelSgt, type SlotOffer } from "./slots";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -162,6 +162,7 @@ export type CancelParams = {
   typeLabel: string;
   startsAt: string;
   bookingUrl: string;
+  mentionRefundTime?: boolean;
 };
 
 export async function sendCancelMessage(
@@ -217,6 +218,30 @@ export async function sendSlotList(
   });
 }
 
+const CANCEL_ANYWAY_ID = "cancel_anyway:";
+
+export async function sendVisitDayCancelQuestion(
+  e164: string,
+  calendarEventId: string,
+  startsAt: string,
+  fee: { amount: number; currency: string },
+): Promise<string | null> {
+  return sendPayload({
+    messaging_product: "whatsapp",
+    to: toWa(e164),
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: guestText.visitDayCancelQuestion(startsAt, fee) },
+      action: {
+        buttons: [
+          { type: "reply", reply: { id: `${CANCEL_ANYWAY_ID}${calendarEventId}`, title: CANCEL_ANYWAY_BUTTON } },
+        ],
+      },
+    },
+  });
+}
+
 export async function sendText(
   e164: string,
   body: string,
@@ -261,7 +286,7 @@ export type InboundWaAction =
   | { kind: "reschedule"; fromE164: string; messageId: string }
   | { kind: "slot"; fromE164: string; messageId: string; slotId: string }
   | { kind: "reject_slots"; fromE164: string; messageId: string }
-  | { kind: "cancel"; fromE164: string; messageId: string; bare: boolean; anyway: boolean }
+  | { kind: "cancel"; fromE164: string; messageId: string; bare: boolean; anyway: boolean; eventId?: string }
   | { kind: "stop"; fromE164: string; messageId: string }
   | { kind: "unknown"; fromE164: string; messageId: string };
 
@@ -332,6 +357,12 @@ export function parseInboundActions(
         }
 
         if (msg.type === "interactive") {
+          const replyId = msg.interactive?.button_reply?.id ?? "";
+          if (replyId.startsWith(CANCEL_ANYWAY_ID)) {
+            const eventId = replyId.slice(CANCEL_ANYWAY_ID.length);
+            out.push({ kind: "cancel", fromE164, messageId, bare: false, anyway: true, eventId });
+            continue;
+          }
           const listId = msg.interactive?.list_reply?.id ?? "";
           const btnId = (
             msg.interactive?.button_reply?.id ??

@@ -3,6 +3,7 @@ import { guestText } from "@/lib/appointments/messages";
 
 const m = vi.hoisted(() => ({
   sendText: vi.fn(),
+  sendVisitDayCancelQuestion: vi.fn(),
   cancelAppointment: vi.fn(),
   getOpenReminderByPhone: vi.fn(),
   updateReminder: vi.fn(),
@@ -38,7 +39,12 @@ vi.mock("@/lib/appointments/reminders-db", () => ({
 }));
 vi.mock("@/lib/appointments/whatsapp", async (orig) => {
   const real = await orig<typeof import("@/lib/appointments/whatsapp")>();
-  return { ...real, sendText: m.sendText, sendSlotList: vi.fn() };
+  return {
+    ...real,
+    sendText: m.sendText,
+    sendSlotList: vi.fn(),
+    sendVisitDayCancelQuestion: m.sendVisitDayCancelQuestion,
+  };
 });
 vi.mock("@/lib/whatsapp/aftercare-notify", () => ({
   latestAftercareSentAt: m.latestAftercareSentAt,
@@ -61,13 +67,16 @@ const reminder = {
 };
 
 let seq = 0;
-const inbound = (body: string) =>
+const delivered = (message: Record<string, unknown>) =>
   new Request("https://x.test/api/webhooks/whatsapp", {
     method: "POST",
     body: JSON.stringify({
-      entry: [{ changes: [{ value: { messages: [{ id: `wamid.${++seq}`, from: "6591234567", type: "text", text: { body } }] } }] }],
+      entry: [{ changes: [{ value: { messages: [{ id: `wamid.${++seq}`, from: "6591234567", ...message }] } }] }],
     }),
   });
+const inbound = (body: string) => delivered({ type: "text", text: { body } });
+const tapped = (id: string) =>
+  delivered({ type: "interactive", interactive: { type: "button_reply", button_reply: { id, title: "Cancel anyway" } } });
 
 const outcomes = () => m.recordInboundOutcome.mock.calls.map((c) => c[1]);
 
@@ -79,6 +88,7 @@ beforeEach(() => {
   m.recordInboundOutcome.mockResolvedValue(undefined);
   m.claimAutoReply.mockResolvedValue(true);
   m.sendText.mockResolvedValue("wamid.out");
+  m.sendVisitDayCancelQuestion.mockResolvedValue("wamid.out");
   m.getOpenReminderByPhone.mockResolvedValue(reminder);
   m.cancelAppointment.mockResolvedValue({ kind: "cancelled" });
   m.latestAftercareSentAt.mockResolvedValue(null);
@@ -129,6 +139,7 @@ describe("a bare cancel", () => {
       within24h: true,
       now: expect.any(Date),
       startsAt: reminder.starts_at,
+      mentionRefundTime: false,
     });
     expect(outcomes()).toEqual(["cancelled"]);
   });
@@ -165,11 +176,12 @@ describe("a cancel on the visit day of a paid re-adjustment", () => {
   });
 
   it.each(["cancel", "cancel appointment", "cancel booking"])(
-    "%j warns that the fee is refunded by hand only, and cancels nothing",
+    "%j warns that the fee is refunded by hand only, with a Cancel anyway button for this visit, and cancels nothing",
     async (word) => {
       await POST(inbound(word));
       expect(m.cancelAppointment).not.toHaveBeenCalled();
-      expect(m.sendText.mock.calls).toEqual([[PHONE, guestText.visitDayCancelQuestion(LIVE_START, FEE)]]);
+      expect(m.sendVisitDayCancelQuestion.mock.calls).toEqual([[PHONE, reminder.calendar_event_id, LIVE_START, FEE]]);
+      expect(m.sendText).not.toHaveBeenCalled();
       expect(outcomes()).toEqual(["cancel: asked first (visit-day fee is refunded by hand only)"]);
     },
   );
@@ -182,27 +194,46 @@ describe("a cancel on the visit day of a paid re-adjustment", () => {
   it("warns once, not twice, right after an aftercare message", async () => {
     m.latestAftercareSentAt.mockResolvedValue("2026-11-03T01:00:00Z");
     await POST(inbound("cancel"));
-    expect(m.sendText).toHaveBeenCalledTimes(1);
-    expect(m.sendText).toHaveBeenCalledWith(PHONE, guestText.visitDayCancelQuestion(LIVE_START, FEE));
+    expect(m.sendText).not.toHaveBeenCalled();
+    expect(m.sendVisitDayCancelQuestion).toHaveBeenCalledTimes(1);
   });
 
   it('"none of these" to the new times warns too, since it cancels', async () => {
     m.getOpenReminderByPhone.mockResolvedValue({ ...reminder, status: "offering_slots" });
     await POST(inbound("none of these"));
     expect(m.cancelAppointment).not.toHaveBeenCalled();
-    expect(m.sendText).toHaveBeenCalledWith(PHONE, guestText.visitDayCancelQuestion(LIVE_START, FEE));
+    expect(m.sendVisitDayCancelQuestion).toHaveBeenCalledWith(PHONE, reminder.calendar_event_id, LIVE_START, FEE);
   });
 
-  it('"cancel anyway" cancels, at the same live time and clock the warning used', async () => {
-    await POST(inbound("cancel anyway"));
-    expect(m.visitDayFeeByEvent).not.toHaveBeenCalled();
+  it("tapping Cancel anyway cancels, at the live time, and says how long a refund takes", async () => {
+    await POST(tapped(`cancel_anyway:${reminder.calendar_event_id}`));
+    expect(m.sendVisitDayCancelQuestion).not.toHaveBeenCalled();
     expect(m.cancelAppointment).toHaveBeenCalledWith(reminder, expect.anything(), {
       cause: "guest",
       within24h: true,
       now: expect.any(Date),
       startsAt: LIVE_START,
+      mentionRefundTime: true,
     });
     expect(outcomes()).toEqual(["cancelled"]);
+  });
+
+  it('typing "cancel anyway" does the same', async () => {
+    await POST(inbound("cancel anyway"));
+    expect(m.cancelAppointment).toHaveBeenCalledWith(reminder, expect.anything(), expect.objectContaining({ mentionRefundTime: true }));
+  });
+
+  it("says nothing about refund time when no fee is held any more", async () => {
+    m.visitDayFeeByEvent.mockResolvedValue(null);
+    await POST(tapped(`cancel_anyway:${reminder.calendar_event_id}`));
+    expect(m.cancelAppointment).toHaveBeenCalledWith(reminder, expect.anything(), expect.objectContaining({ mentionRefundTime: false }));
+  });
+
+  it("a Cancel anyway tap on an older appointment's message cancels nothing and says the current one is still on", async () => {
+    await POST(tapped("cancel_anyway:evt-older"));
+    expect(m.cancelAppointment).not.toHaveBeenCalled();
+    expect(m.sendText.mock.calls).toEqual([[PHONE, guestText.stillOn(reminder.starts_at)]]);
+    expect(outcomes()).toEqual(["cancel anyway: tapped on another appointment's message"]);
   });
 
   it("cancels at once when no fee would be kept (free visit, day before, already refunded)", async () => {
@@ -226,7 +257,7 @@ describe("a cancel on the visit day of a paid re-adjustment", () => {
     expect(text).toContain("today at 16:00");
     expect(text).toContain("SGD 32.70");
     expect(text).toContain("refunded manually only");
-    expect(text).toContain('Reply "cancel anyway"');
+    expect(text).toContain('Tap "Cancel anyway"');
   });
 });
 

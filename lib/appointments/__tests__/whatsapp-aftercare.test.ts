@@ -3,7 +3,9 @@ import { guestText } from "@/lib/appointments/messages";
 import {
   askBeforeCancel,
   parseInboundActions,
+  sendCancelMessage,
   sendTemplateMessage,
+  sendVisitDayCancelQuestion,
   WhatsAppSendError,
 } from "@/lib/appointments/whatsapp";
 
@@ -41,6 +43,35 @@ describe("cancel words", () => {
 
   it.each(['"cancel appointment"', "Cancel booking.", "cancel."])("%j still reads as a cancel", (body) => {
     expect(parseInboundActions(text(body))).toMatchObject([{ kind: "cancel" }]);
+  });
+});
+
+describe("the Cancel anyway button", () => {
+  const tap = (id: string, title = "Cancel anyway") => ({
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              messages: [
+                { id: "wamid.1", from: "6591234567", type: "interactive", interactive: { type: "button_reply", button_reply: { id, title } } },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  it("is a cancel anyway for the appointment it was sent about, its id kept as sent", () => {
+    expect(parseInboundActions(tap("cancel_anyway:Ev7kQ2abc"))).toEqual([
+      { kind: "cancel", fromE164: "+6591234567", messageId: "wamid.1", bare: false, anyway: true, eventId: "Ev7kQ2abc" },
+    ]);
+  });
+
+  it("leaves the other cancel-like buttons as they were", () => {
+    expect(parseInboundActions(tap("none_of_these", "None of these"))).toMatchObject([{ kind: "reject_slots" }]);
+    expect(parseInboundActions(tap("cancel", "Cancel"))).toMatchObject([{ kind: "reject_slots" }]);
   });
 });
 
@@ -83,6 +114,23 @@ describe("the approved free-text replies, word for word", () => {
   });
 });
 
+describe("the cancel message", () => {
+  const p = {
+    guestName: "Ana",
+    typeLabel: "Re-adjustment",
+    startsAt: "2026-11-03T06:00:00Z",
+    bookingUrl: "https://example.com/book",
+  };
+
+  it("adds how long a refund takes below the questions line, only when asked", () => {
+    expect(guestText.cancelled({ ...p, mentionRefundTime: true }).split("\n\n").slice(-2)).toEqual([
+      "If you have any questions, please message our team on WhatsApp at +65 8780 5311.",
+      "If your fee is refunded, please expect it to take 5–10 business days to be processed.",
+    ]);
+    expect(guestText.cancelled(p)).not.toContain("business days");
+  });
+});
+
 describe("sendTemplateMessage", () => {
   const fetchMock = vi.fn();
 
@@ -122,6 +170,29 @@ describe("sendTemplateMessage", () => {
       { type: "body", parameters: [{ type: "text", text: "Ivan" }] },
       { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: "Zx81kQ" }] },
     ]);
+  });
+
+  it("asks about a visit-day cancel with one Cancel anyway reply button tied to the appointment", async () => {
+    const fee = { amount: 30, currency: "SGD" };
+    await sendVisitDayCancelQuestion("+6591234567", "evt-1", "2026-11-03T06:00:00Z", fee);
+    expect(sentBody()).toEqual({
+      messaging_product: "whatsapp",
+      to: "6591234567",
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: guestText.visitDayCancelQuestion("2026-11-03T06:00:00Z", fee) },
+        action: { buttons: [{ type: "reply", reply: { id: "cancel_anyway:evt-1", title: "Cancel anyway" } }] },
+      },
+    });
+    expect(sentBody().interactive.action.buttons[0].reply.title.length).toBeLessThanOrEqual(20);
+  });
+
+  it("sends the refund-time line in the free-text cancel message", async () => {
+    const p = { guestName: "Ana", typeLabel: "Re-adjustment", startsAt: "2026-11-03T06:00:00Z", bookingUrl: "https://example.com/book" };
+    await sendCancelMessage("+6591234567", { ...p, mentionRefundTime: true }, { within24h: true });
+    expect(sentBody().text.body).toBe(guestText.cancelled({ ...p, mentionRefundTime: true }));
+    expect(sentBody().text.body).toContain("5–10 business days");
   });
 
   it("throws a WhatsAppSendError carrying Meta's code", async () => {
