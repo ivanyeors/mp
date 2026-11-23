@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import * as SheetPrimitive from "@radix-ui/react-dialog"
+import { Dialog as SheetPrimitive } from "radix-ui"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss"
 import {
@@ -10,7 +10,7 @@ import {
   sheetContentTopInsetClassName,
   type SheetMobilePreset,
 } from "@/lib/sheet/safe-area"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 type SheetSide = "top" | "right" | "bottom" | "left"
 
