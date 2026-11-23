@@ -10,7 +10,7 @@ import { getAuthUser } from "@/lib/auth/user";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
 import { withLocale } from "@/lib/i18n/routing";
-import { loadServicePrices } from "@/lib/pricing/service-prices";
+import { loadServiceFees } from "@/lib/pricing/service-prices";
 import { loadReadjustmentContext } from "@/lib/readjustment/purchases";
 import { readBookingLocations } from "@/lib/locations";
 import { buildPageMetadata } from "@/lib/seo/metadata";
@@ -58,7 +58,7 @@ export default async function AppointmentsPage({
   const locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const t = getMessages(locale).slides.bookAppointment;
   const prices =
-    appt === "customisation" ? await loadServicePrices(supabaseAdmin()).catch(() => null) : null;
+    appt === "customisation" ? await loadServiceFees(supabaseAdmin()).catch(() => null) : null;
 
   let readjustment: ReadjustmentBooking | null = null;
   let signInHref: string | null = null;

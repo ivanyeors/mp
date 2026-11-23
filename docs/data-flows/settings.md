@@ -28,6 +28,28 @@ permission first, with `assertAdmin(<permission>)` or the route's own check,
 then write with the service-role client. Permissions are code; roles are data
 (ADR 0023).
 
+Cost price (`item_prices.cost_price`, and `product_variants.cost_price`, which
+Costings projects from it) is shown and written only for a role holding
+`costings` (owner, 2026-11-22). Inventory, Products, the product editor and
+Add from Inventory answer every other role with no cost, write no cost
+column for it (so a stored cost is kept), and refuse its request that sets
+one. MSRP is not gated.
+
+Cost captured at sale (`order_items.unit_cost` / `total_cost`) and margin
+(`order_margins`) follow the same permission. A Result order line's
+`customization_snapshot` no longer carries the build's `cogs` or a service
+`costPrice` (customers can read it; the trigger in
+`20261122130000_customers_never_see_costs` strips both on every write), and
+the order detail still drops those keys for a role without `costings`, for
+rows written before that migration is applied. Without `costings`, the order
+detail, Orders list and Orders dashboard (page and `/api/shop/orders*`) send
+no cost, COGS or margin and skip the `order_margins` read, and the Orders
+pages drop the Unit cost column, Realized margin card, Margin column and Gross
+margin tile. Analytics' Sales report sends only revenue, units, order and line
+counts and Sales over time, and the tab becomes "Sales" with no margin cards,
+Sales with no cost, or Margin by product / part. Prices paid, totals and
+refunds are unchanged.
+
 ## Pages that touch inventory, prices, products and orders
 
 | Page | Calls | Writes |
@@ -109,6 +131,24 @@ flowchart TD
   the arithmetic.
 - **Services**: upserts `service_prices` and writes the re-adjustment policy to
   `site_settings`. This skips the Variant/Stripe sync.
+- **A stale edit writes nothing**: every Item row, Composed sellable row,
+  Service and the re-adjustment policy the save sends carries its `base`, the
+  stored values the page loaded when editing began. Before any write or sync
+  the route compares each base with what is stored (Items: cost, MSRP and
+  compare-at; Composed sellables: MSRP and compare-at, found the way the page
+  finds them; Services: MSRP and cost) and, if any differ, answers 409 naming
+  the rows. A row whose stored values already equal what is being saved is not
+  a conflict: it is written and synced again, so a retry after a lost answer or
+  a failed reload works. The page keeps what was typed through every reload and
+  refreshes the rest. It holds two values per field: the latest stored price
+  (what an untouched field shows, and what decides whether a field is an edit)
+  and the base, the price editing started from. Only the user's Refresh moves a
+  typed field's base; an automatic reload (`inventory:changed`) keeps it and
+  says the stored price changed, so Save stays refused until Refresh. When a
+  save answers, the base of each saved row becomes what was saved, before the
+  page reloads. Check-then-write:
+  a save landing between the route's read and its writes still wins
+  (`ponytail:` in the route).
 - **Variant mirror**: every `products.is_auto_generated` product resolves each
   Variant's price through `price_key`, `pillow_product_id`, bolster `option1`
   or `item_id`. It writes `price`, `compare_at_price` and BOM `cost_price`,

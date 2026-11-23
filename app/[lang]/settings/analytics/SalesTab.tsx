@@ -44,7 +44,17 @@ function Kpi({ label, value, note, loading }: { label: string; value: string; no
   );
 }
 
-export function SalesTab({ from, to, dateRange }: { from: string; to: string; dateRange: { from: Date; to: Date } }) {
+export function SalesTab({
+  from,
+  to,
+  dateRange,
+  canSeeCost,
+}: {
+  from: string;
+  to: string;
+  dateRange: { from: Date; to: Date };
+  canSeeCost: boolean;
+}) {
   const [report, setReport] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +89,9 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
   }, [report, timelineView]);
 
   const s = report?.summary;
-  const gaps = report?.gaps ?? [];
+  const costed = report?.canSeeCost ? report : null;
+  const cs = costed?.summary;
+  const gaps = costed?.gaps ?? [];
   const shownGaps = showAllGaps ? gaps : gaps.slice(0, 8);
 
   return (
@@ -124,30 +136,34 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
               : "No orders paid through Stripe in this period yet."
           }
         />
-        <Kpi
-          label="Gross margin"
-          loading={loading}
-          value={currency.format(s?.grossMargin ?? 0)}
-          note={`Costed revenue ${currency.format(s?.costedRevenue ?? 0)} minus COGS ${currency.format(s?.cogs ?? 0)}, both frozen at sale.`}
-        />
-        <Kpi
-          label="Margin %"
-          loading={loading}
-          value={pct(s?.marginPct ?? null)}
-          note="Gross margin as a share of costed revenue. Sales with no cost are left out, not counted as free."
-        />
-        <Kpi
-          label="Cost coverage"
-          loading={loading}
-          value={pct(s?.coveragePct ?? null)}
-          note={
-            s && s.uncostedRevenue > 0
-              ? `${currency.format(s.uncostedRevenue)} of revenue on ${integer.format(s.uncostedLineCount)} lines has no cost. See below.`
-              : s && s.orderCount > 0
-                ? "Every sale in the period has a cost."
-                : "Nothing sold in this period to cost."
-          }
-        />
+        {canSeeCost && (
+          <>
+            <Kpi
+              label="Gross margin"
+              loading={loading}
+              value={currency.format(cs?.grossMargin ?? 0)}
+              note={`Costed revenue ${currency.format(cs?.costedRevenue ?? 0)} minus COGS ${currency.format(cs?.cogs ?? 0)}, both frozen at sale.`}
+            />
+            <Kpi
+              label="Margin %"
+              loading={loading}
+              value={pct(cs?.marginPct ?? null)}
+              note="Gross margin as a share of costed revenue. Sales with no cost are left out, not counted as free."
+            />
+            <Kpi
+              label="Cost coverage"
+              loading={loading}
+              value={pct(cs?.coveragePct ?? null)}
+              note={
+                cs && cs.uncostedRevenue > 0
+                  ? `${currency.format(cs.uncostedRevenue)} of revenue on ${integer.format(cs.uncostedLineCount)} lines has no cost. See below.`
+                  : cs && cs.orderCount > 0
+                    ? "Every sale in the period has a cost."
+                    : "Nothing sold in this period to cost."
+              }
+            />
+          </>
+        )}
       </div>
 
       {!loading && gaps.length > 0 && (
@@ -161,7 +177,7 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
               </InfoTip>
             </div>
             <CardDescription>
-              {currency.format(s?.uncostedRevenue ?? 0)} of revenue is left out of the margin until these have a cost.
+              {currency.format(cs?.uncostedRevenue ?? 0)} of revenue is left out of the margin until these have a cost.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
@@ -196,46 +212,48 @@ export function SalesTab({ from, to, dateRange }: { from: string; to: string; da
         </Card>
       )}
 
-      <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
-        <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-          <div className="flex items-center gap-1.5">
-            <CardTitle>Margin by {breakdownView === "products" ? "product" : "part"}</CardTitle>
-            <InfoTip label="About margin breakdown">
-              Revenue each line earned against the cost of what it shipped. Products are pillows and bolsters by size or
-              length; parts are Items sold on their own, by category, and services.
-            </InfoTip>
-          </div>
-          <CardAction>
-            <Tabs value={breakdownView} onValueChange={(v) => setBreakdownView(v as "products" | "parts")}>
-              <TabsList>
-                <TabsTrigger value="products">Products</TabsTrigger>
-                <TabsTrigger value="parts">Parts</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="px-4 sm:px-6">
-          {loading ? (
-            <Skeleton className="h-[320px] w-full rounded-xl" />
-          ) : (
-            <MarginBreakdownVisx
-              key={breakdownView}
-              rows={(breakdownView === "products" ? report?.products : report?.parts) ?? []}
-              emptyText={
-                breakdownView === "products" ? "No pillows or bolsters sold in this period." : "No parts or services sold in this period."
-              }
-              drillHint={
-                breakdownView === "products"
-                  ? "Click a product to see each size or length."
-                  : "Click a category to see its Items."
-              }
-              drillTitle={(key) =>
-                key.startsWith("pillow:") ? "by size" : key === "bolster" ? "by length" : key === "unmapped" ? "by line" : "by item"
-              }
-            />
-          )}
-        </CardContent>
-      </Card>
+      {canSeeCost && (
+        <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
+          <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
+            <div className="flex items-center gap-1.5">
+              <CardTitle>Margin by {breakdownView === "products" ? "product" : "part"}</CardTitle>
+              <InfoTip label="About margin breakdown">
+                Revenue each line earned against the cost of what it shipped. Products are pillows and bolsters by size or
+                length; parts are Items sold on their own, by category, and services.
+              </InfoTip>
+            </div>
+            <CardAction>
+              <Tabs value={breakdownView} onValueChange={(v) => setBreakdownView(v as "products" | "parts")}>
+                <TabsList>
+                  <TabsTrigger value="products">Products</TabsTrigger>
+                  <TabsTrigger value="parts">Parts</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6">
+            {loading ? (
+              <Skeleton className="h-[320px] w-full rounded-xl" />
+            ) : (
+              <MarginBreakdownVisx
+                key={breakdownView}
+                rows={(breakdownView === "products" ? costed?.products : costed?.parts) ?? []}
+                emptyText={
+                  breakdownView === "products" ? "No pillows or bolsters sold in this period." : "No parts or services sold in this period."
+                }
+                drillHint={
+                  breakdownView === "products"
+                    ? "Click a product to see each size or length."
+                    : "Click a category to see its Items."
+                }
+                drillTitle={(key) =>
+                  key.startsWith("pillow:") ? "by size" : key === "bolster" ? "by length" : key === "unmapped" ? "by line" : "by item"
+                }
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="min-w-0 gap-4 py-4 sm:gap-6 sm:py-6">
         <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">

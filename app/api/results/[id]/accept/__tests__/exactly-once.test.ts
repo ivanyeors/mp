@@ -364,8 +364,13 @@ describe("POST /api/results/[id]/accept — Service fee lines (ADR 0024)", () =>
       fillingPlacements: [],
     });
     await accept();
-    const snap = h.db.order_items[0].customization_snapshot as { service_lines: Array<{ costPrice: unknown }> };
-    expect(snap.service_lines[0].costPrice).toBeNull();
+    const build = h.db.order_items[0];
+    expect(build.customization_snapshot).not.toHaveProperty("cogs");
+    expect(build.customization_snapshot).toMatchObject({
+      service_lines: [{ key: "measurement_premium", label: "Measurement service (Premium)", msrp: 50 }],
+    });
+    expect(JSON.stringify(build.customization_snapshot)).not.toMatch(/cost|cogs/i);
+    expect(build).toMatchObject({ unit_cost: 30, total_cost: 30 });
   });
 
   it("writes exactly one line for a self-measured build, as before", async () => {

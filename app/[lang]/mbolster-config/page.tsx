@@ -10,7 +10,7 @@ import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
 import { getPartnerByCode } from "@/lib/referrals";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
-import { loadServicePrices } from "@/lib/pricing/service-prices";
+import { loadServiceFees } from "@/lib/pricing/service-prices";
 import { actingProfile } from "@/lib/staff/working-as";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { MbolsterConfigClient } from "./mbolster-config-client";
@@ -47,7 +47,7 @@ export default async function MbolsterConfigPage({ params, searchParams }: Props
   ]);
 
   const [servicePrices, measuringProfile] = await Promise.all([
-    loadServicePrices(supabaseAdmin()).catch(() => null),
+    loadServiceFees(supabaseAdmin()).catch(() => null),
     staffCtx ? actingProfile(staffCtx.memberId) : Promise.resolve(null),
   ]);
 

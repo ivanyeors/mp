@@ -340,9 +340,10 @@ export function AppDock() {
                       <button
                         type="button"
                         onClick={action.onClick}
+                        disabled={action.disabled}
                         aria-label={action.title}
                         aria-pressed={action.active}
-                        className={`relative border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
+                        className={`relative border-none bg-transparent p-0 disabled:opacity-40 ${dockTouchWrapClassName}`}
                       >
                         <DockItem
                           className="aspect-square rounded-full bg-neutral-800/50 backdrop-blur-sm"

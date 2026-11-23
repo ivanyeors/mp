@@ -73,6 +73,8 @@ const paid = (extra: Row = {}): Row => ({
   product_label: "Basic Mpillow · Size S",
   calendar_event_id: "ev-1",
   order_item_id: null,
+  email: "ada@example.com",
+  location_name: "Mpillow Studio",
   ...extra,
 });
 
@@ -95,7 +97,13 @@ describe("Staff cancel of a paid re-adjustment", () => {
     expect(res.status).toBe(200);
     expect(h.refund).toHaveBeenCalledTimes(1);
     const [, booking, from, by] = h.refund.mock.calls[0] as unknown as [unknown, Row, string, string];
-    expect(booking).toMatchObject({ id: ID, complimentary: false, start_at: "2026-11-25T02:00:00.000Z" });
+    expect(booking).toMatchObject({
+      id: ID,
+      complimentary: false,
+      start_at: "2026-11-25T02:00:00.000Z",
+      email: "ada@example.com",
+      location_name: "Mpillow Studio",
+    });
     expect(from).toBe("needs_reschedule");
     expect(by).toBe("staff");
   });

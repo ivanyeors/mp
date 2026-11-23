@@ -326,6 +326,7 @@ export async function GET(
     if (partner) {
       const partnerPublic: Record<string, unknown> = { ...partner };
       delete partnerPublic.shipping_address;
+      delete partnerPublic.shipping_rate;
       delete partnerPublic.measured_by_type;
       delete partnerPublic.coupon_terms;
       paired = {
@@ -340,6 +341,7 @@ export async function GET(
   delete (publicRow as { access_token?: string }).access_token;
   delete (publicRow as { customer_id?: string }).customer_id;
   delete (publicRow as { shipping_address?: unknown }).shipping_address;
+  delete (publicRow as { shipping_rate?: unknown }).shipping_rate;
   delete (publicRow as { source?: string | null }).source;
   delete (publicRow as { measured_by_type?: string | null }).measured_by_type;
   delete (publicRow as { coupon_terms?: unknown }).coupon_terms;

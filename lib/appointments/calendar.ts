@@ -483,6 +483,99 @@ export async function getEventTiming(eventId: string): Promise<EventTiming | nul
   return { startsAt: ev.start?.dateTime ?? null, updatedAt: ev.updated ?? null };
 }
 
+export type GuestBooking = {
+  id: string;
+  summary: string;
+  startsAt: string;
+  endsAt: string;
+  state: EventState;
+  guestEmail: string | null;
+  location: string | null;
+  locationId: string | null;
+  readjustmentBookingId: string | null;
+  privateProps: Record<string, string>;
+};
+
+export function toGuestBooking(ev: GCalEvent): GuestBooking | null {
+  if (!ev.id || !ev.start?.dateTime || !ev.end?.dateTime) return null;
+  const priv = ev.extendedProperties?.private ?? {};
+  return {
+    id: ev.id,
+    summary: ev.summary ?? "",
+    startsAt: ev.start.dateTime,
+    endsAt: ev.end.dateTime,
+    state: eventStateOf(ev),
+    guestEmail: extractGuestEmail(ev),
+    location: ev.location?.trim() || null,
+    locationId: priv[LOCATION_ID_PROP] ?? null,
+    readjustmentBookingId: priv[READJUSTMENT_BOOKING_PROP] ?? null,
+    privateProps: priv,
+  };
+}
+
+export async function getGuestBooking(eventId: string): Promise<GuestBooking | null> {
+  const id = encodeURIComponent(calendarId());
+  const eid = encodeURIComponent(eventId);
+  const res = await calFetch(`/calendars/${id}/events/${eid}`);
+  if (res.status === 404 || res.status === 410) return null;
+  if (!res.ok) {
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
+  }
+  return toGuestBooking((await res.json()) as GCalEvent);
+}
+
+export async function listGuestBookings(
+  email: string,
+  timeMinIso: string,
+  timeMaxIso: string,
+): Promise<GuestBooking[]> {
+  const want = email.trim().toLowerCase();
+  if (!want) return [];
+  const id = encodeURIComponent(calendarId());
+  const qs = new URLSearchParams({
+    q: want,
+    timeMin: toGCalRfc3339(timeMinIso),
+    timeMax: toGCalRfc3339(timeMaxIso),
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "50",
+  });
+  const res = await calFetch(`/calendars/${id}/events?${qs}`);
+  if (!res.ok) {
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
+  }
+  const json = (await res.json()) as { items?: GCalEvent[] };
+  const out: GuestBooking[] = [];
+  for (const ev of json.items ?? []) {
+    const b = toGuestBooking(ev);
+    if (b && b.guestEmail === want) out.push(b);
+  }
+  return out;
+}
+
+export async function moveEvent(
+  eventId: string,
+  startIso: string,
+  endIso: string,
+  location: { id: string; address: string },
+  privateProps: Record<string, string>,
+): Promise<void> {
+  const id = encodeURIComponent(calendarId());
+  const eid = encodeURIComponent(eventId);
+  const res = await calFetch(`/calendars/${id}/events/${eid}?sendUpdates=all`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      start: { dateTime: startIso, timeZone: "Asia/Singapore" },
+      end: { dateTime: endIso, timeZone: "Asia/Singapore" },
+      location: location.address,
+      extendedProperties: { private: { ...privateProps, [LOCATION_ID_PROP]: location.id } },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`events.patch failed (${res.status}): ${await res.text()}`);
+  }
+}
+
 export async function listChangedEventStates(
   updatedMinIso: string,
 ): Promise<Array<{ id: string; state: EventState }>> {

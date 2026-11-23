@@ -55,6 +55,8 @@ export function ReviewSlaSection() {
   const [reminders, setReminders] = useState<PaymentReminderForm>(REMINDER_DEFAULTS);
   const [draftReminders, setDraftReminders] = useState(true);
   const [slaLoading, setSlaLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [slaSaving, setSlaSaving] = useState(false);
 
   useEffect(() => {
@@ -84,8 +86,11 @@ export function ReviewSlaSection() {
           maxReminders: r.maxReminders ?? REMINDER_DEFAULTS.maxReminders,
         });
         setDraftReminders(payload.draftReminders?.enabled ?? true);
+        setLoadFailed(false);
       } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Couldn't load SLA settings.");
+        if (cancelled) return;
+        setLoadFailed(true);
+        toast.error(e instanceof Error ? e.message : "Couldn't load SLA settings.");
       } finally {
         if (!cancelled) setSlaLoading(false);
       }
@@ -93,7 +98,7 @@ export function ReviewSlaSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadAttempt]);
 
   const saveSla = useCallback(async () => {
     setSlaSaving(true);
@@ -159,6 +164,15 @@ export function ReviewSlaSection() {
       <CollapsibleContent className="pt-4 max-md:px-4 max-md:pb-4 max-md:pt-0">
         {slaLoading ? (
           <p className="text-xs text-muted-foreground">Loading SLA settings…</p>
+        ) : loadFailed ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p role="alert" className="text-sm text-destructive">
+              Couldn&apos;t read the Review SLA settings, so they can&apos;t be saved.
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+              Retry
+            </Button>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="grid gap-1.5">

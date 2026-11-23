@@ -406,8 +406,17 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
             <div className="space-y-3">
               <h3 className="text-base font-semibold">Cancelling a paid visit</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Cancel a paid visit before the day of your appointment and we&apos;ll issue a full refund
-                of the fee the same day.
+                Cancel a paid visit before the day of your appointment and we&apos;ll refund the fee in
+                full the same day. Refunds usually reach your account within{" "}
+                <strong className="text-foreground">5 to 10 business days</strong>, depending on your bank.
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Cancellations on the day of the visit are subject to manual refunds only: our team reviews
+                each one.
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Fees paid by PayNow are refunded by our team only, either manually or as points of the same
+                value added to your Mpillow account.
               </p>
             </div>
           </div>

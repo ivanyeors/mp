@@ -218,7 +218,7 @@ export const ORDER_EMAIL_COPY = {
       preheader: { label: "Inbox preview line", default: "A refund for order {order_number} is on its way back to you." },
       heading: { label: "Heading", default: "Refund issued" },
       intro: { label: "Message", default: "Hi {customer_name}, we've issued a refund for order {order_number}." },
-      note: { label: "Under the amount", default: "It may take a few business days to appear on your statement." },
+      note: { label: "Under the amount", default: "Refunds usually reach your account within 5–10 business days, depending on your bank." },
       button: { label: "Button", default: "View your order" },
     },
   }),

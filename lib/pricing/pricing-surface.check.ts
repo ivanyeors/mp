@@ -28,6 +28,8 @@ const PRICE_TABLE_READERS: Record<string, string> = {
   "lib/results/__tests__/composed-sellable.test.ts": "tests the loader",
   "app/[lang]/settings/costings/save/__tests__/stripe-warnings.test.ts":
     "fails the read to prove a failed Costings read writes no Variant price",
+  "app/[lang]/settings/costings/save/__tests__/price-conflicts.test.ts":
+    "fixture rows for the save route's check that a row's base is still what is stored",
   "app/[lang]/settings/inventory/actions.ts": "inventory templates and sale lines; reporting",
   "lib/shopify/pricing.ts":
     "pushes prices to the Shopify mirror. It still derives the premium family by " +
@@ -66,7 +68,7 @@ assert.deepEqual(
   unexpectedServiceReaders,
   [],
   `New reader(s) of service_prices: ${unexpectedServiceReaders.join(", ")}.\n` +
-    "Read service fees through loadServicePrices() in lib/pricing/service-prices.ts.",
+    "Read service fees through lib/pricing/service-prices.ts: loadServiceFees() for anything a customer sees (it never selects cost_price), loadServicePrices() only for staff and server-side pricing.",
 );
 const vanishedServiceReaders = Object.keys(SERVICE_TABLE_READERS).filter(
   (f) => !serviceReaders.includes(f),

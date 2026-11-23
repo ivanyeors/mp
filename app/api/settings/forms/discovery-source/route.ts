@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { saveDiscoverySourceCatalog } from "@/lib/discovery-source";
-import { readDiscoverySourceCatalog } from "@/lib/discovery-source/cached";
+import {
+  DISCOVERY_SOURCE_READ_FAILED,
+  getDiscoverySourceCatalogOrThrow,
+  saveDiscoverySourceCatalog,
+} from "@/lib/discovery-source";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,8 +33,13 @@ export async function GET() {
   const denied = await requireAdmin("forms");
   if (denied) return denied;
 
-  const catalog = await readDiscoverySourceCatalog();
-  return NextResponse.json({ ok: true, catalog });
+  try {
+    const catalog = await getDiscoverySourceCatalogOrThrow();
+    return NextResponse.json({ ok: true, catalog });
+  } catch (err) {
+    console.error("[forms] discovery source read failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: DISCOVERY_SOURCE_READ_FAILED }, { status: 500 });
+  }
 }
 
 export async function PUT(req: Request) {

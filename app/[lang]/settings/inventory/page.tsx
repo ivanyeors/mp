@@ -47,6 +47,7 @@ import {
   familyKey,
   needsCosting,
   unsyncedSizes,
+  waitingOnCostings,
   type CostingPrices,
   type InventoryFamily,
 } from "@/lib/ecommerce/inventory-families";
@@ -126,7 +127,7 @@ type AddInventoryEntry = {
   msrp: string;
 };
 type Group = { key: string; title: string; items: Item[] };
-type CostingState = { prices: Record<number, CostingPrices>; families: InventoryFamily[] };
+type CostingState = { canSeeCost: boolean; prices: Record<number, CostingPrices>; families: InventoryFamily[] };
 const NO_PRICES: CostingPrices = { costCents: null, msrpCents: null };
 
 const createDefaultEntry = (): AddInventoryEntry => ({
@@ -459,6 +460,8 @@ export default function InventoryPage() {
     }
   };
 
+  const canSeeCost = costing?.canSeeCost === true;
+
   const handleItemsCreated = (created: Array<{ id: number; draft: AddInventoryDraft }>) => {
     const unpriced = created.filter(({ draft }) =>
       needsCosting(draft.category, {
@@ -469,6 +472,12 @@ export default function InventoryPage() {
     const added = created.length === 1 ? "Inventory item added" : `${created.length} inventory items added`;
     if (unpriced.length === 0) {
       toast.success(added);
+      return;
+    }
+    if (!canSeeCost) {
+      toast.success(added, {
+        description: "Products can't sell it until someone with Costings access adds its cost and MSRP.",
+      });
       return;
     }
     toast.success(added, {
@@ -1187,6 +1196,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         onCreate={handleCreateItem}
         onCreated={handleItemsCreated}
         items={items}
+        canSeeCost={canSeeCost}
       />
 
       <PushToProductsDialog
@@ -1194,6 +1204,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         open={pushFamily !== null}
         onOpenChange={(open) => { if (!open) setPushFamily(null); }}
         onPushed={() => { void getInventoryCostingState().then(setCosting).catch(() => {}); }}
+        canSeeCost={canSeeCost}
       />
 
       <PartDrawer
@@ -1250,12 +1261,13 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
   );
 }
 
-function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: {
+function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items, canSeeCost }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreate: (draft: AddInventoryDraft) => Promise<number>;
   onCreated: (created: Array<{ id: number; draft: AddInventoryDraft }>) => void;
   items: Item[];
+  canSeeCost: boolean;
 }) {
   const [entries, setEntries] = useState<AddInventoryEntry[]>([createDefaultEntry()]);
   const [saving, setSaving] = useState(false);
@@ -1462,7 +1474,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: 
         if (entry.alterationName.trim()) payload.alterationName = entry.alterationName.trim();
       }
 
-      if (parsedCost !== undefined) {
+      if (canSeeCost && parsedCost !== undefined) {
         payload.costPrice = parsedCost;
       }
 
@@ -1885,35 +1897,37 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, onCreated, items }: 
                         autoComplete="off"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium" htmlFor={`add-item-cost-${index}`}>
-                        Cost price <span className="text-xs text-muted-foreground">(USD)</span>
-                      </label>
-                      <Input
-                        id={`add-item-cost-${index}`}
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        inputMode="decimal"
-                        value={entry.costPrice}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setEntries((prev) =>
-                            prev.map((item, idx) =>
-                              idx === index
-                                ? {
-                                    ...item,
-                                    costPrice: value,
-                                  }
-                                : item,
-                            ),
-                          );
-                          setErrorMessage(null);
-                        }}
-                        placeholder="0.00"
-                        autoComplete="off"
-                      />
-                    </div>
+                    {canSeeCost ? (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor={`add-item-cost-${index}`}>
+                          Cost price <span className="text-xs text-muted-foreground">(USD)</span>
+                        </label>
+                        <Input
+                          id={`add-item-cost-${index}`}
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          inputMode="decimal"
+                          value={entry.costPrice}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setEntries((prev) =>
+                              prev.map((item, idx) =>
+                                idx === index
+                                  ? {
+                                      ...item,
+                                      costPrice: value,
+                                    }
+                                  : item,
+                              ),
+                            );
+                            setErrorMessage(null);
+                          }}
+                          placeholder="0.00"
+                          autoComplete="off"
+                        />
+                      </div>
+                    ) : null}
                     <div className="space-y-1">
                       <label className="text-sm font-medium" htmlFor={`add-item-msrp-${index}`}>
                         MSRP <span className="text-xs text-muted-foreground">(optional)</span>
@@ -2147,15 +2161,16 @@ const productStateLabel: Record<string, string> = {
   archived: "archived in Products",
 };
 
-function FamilyPipelineActions({ name, variants, prices, family, to }: {
+function FamilyPipelineActions({ name, variants, prices, canSeeCost, family, to }: {
   name: string;
   variants: Item[];
   prices: Record<number, CostingPrices> | null;
+  canSeeCost: boolean;
   family: InventoryFamily | null;
   to: (href: string) => string;
 }) {
   if (!prices) return null;
-  const unpriced = variants.filter((v) => needsCosting(v.category, prices[v.id] ?? NO_PRICES));
+  const unpriced = canSeeCost ? variants.filter((v) => needsCosting(v.category, prices[v.id] ?? NO_PRICES)) : [];
   const iconButton =
     "flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded hover:bg-muted/40 active:bg-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
   return (
@@ -2192,28 +2207,44 @@ function FamilyPipelineActions({ name, variants, prices, family, to }: {
   );
 }
 
-function FamilyPushBar({ name, family, onPush }: {
+function FamilyPushBar({ name, family, canSeeCost, onPush }: {
   name: string;
   family: InventoryFamily | null;
+  canSeeCost: boolean;
   onPush: (family: InventoryFamily) => void;
 }) {
   if (!family || family.push === "pushed") return null;
-  if (unsyncedSizes(family.category, family.sizes).length > 0) return null;
+  const unsynced = unsyncedSizes(family.category, family.sizes);
+  if (unsynced.length > 0 && canSeeCost) return null;
+  const waiting = unsynced.length > 0;
   const partial = family.push === "partial";
   const newSizes = family.sizes.filter((s) => s.productId == null).length;
   return (
     <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-3 py-2">
-      <p className="text-xs text-muted-foreground">
-        {partial
-          ? `${newSizes} new size${newSizes === 1 ? " isn't" : "s aren't"} in Products yet.`
-          : "Priced in Costings. Ready for Products."}
-      </p>
+      {waiting ? (
+        <div className="min-w-0 space-y-1">
+          <Badge
+            variant="outline"
+            className="border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300"
+          >
+            Waiting on Costings
+          </Badge>
+          <p className="text-xs text-muted-foreground">{waitingOnCostings(family.category, unsynced)}</p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {partial
+            ? `${newSizes} new size${newSizes === 1 ? " isn't" : "s aren't"} in Products yet.`
+            : "Priced in Costings. Ready for Products."}
+        </p>
+      )}
       <Button
         type="button"
         size="sm"
         variant="outline"
         className="h-8 shrink-0 gap-1.5 px-2.5"
         aria-label={partial ? `Add new sizes of ${name} to Products` : `Push ${name} to Products`}
+        disabled={waiting}
         onClick={() => onPush(family)}
       >
         <PackagePlus className="h-4 w-4" />
@@ -2447,6 +2478,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                   name={name}
                   variants={variants}
                   prices={costing?.prices ?? null}
+                  canSeeCost={costing?.canSeeCost === true}
                   family={familyOf(variants)}
                   to={to}
                 />
@@ -2466,7 +2498,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                   </button>
                 </CollapsibleTrigger>
                 </div>
-                <FamilyPushBar name={name} family={familyOf(variants)} onPush={onPush} />
+                <FamilyPushBar name={name} family={familyOf(variants)} canSeeCost={costing?.canSeeCost === true} onPush={onPush} />
                 <CollapsibleContent>
                   <div className="space-y-3 border-t p-3">
                     {variants.map((variant) => {

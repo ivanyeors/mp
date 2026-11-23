@@ -213,6 +213,47 @@ describe("MbolsterConfigClient preview shipping", () => {
     expect(selectedShipping()).toContain("Malaysia post");
   });
 
+  it("shows none of the old country's methods, and selects none, while the new country's load", async () => {
+    restoreToPreview("SG");
+    await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);
+    await until(() => shippingNames().length > 0);
+    expect(selectedShipping()).toContain("Singapore courier");
+
+    holdShipping = true;
+    await chooseCountry("MY");
+    const my = await until(() => held.find((h) => h.url.endsWith("country=MY")));
+
+    expect(shippingNames()).toEqual([]);
+    expect(selectedShipping()).toBeNull();
+    expect(host.querySelector('[role="status"]')?.textContent).toBe("Loading shipping methods…");
+
+    await my.answer({ rows: SHIPPING.MY });
+    await settle();
+    expect(shippingNames()).toEqual(["Malaysia post"]);
+    expect(selectedShipping()).toContain("Malaysia post");
+  });
+
+  it("keeps the picked method when the new country offers it too, but not while that country's list loads", async () => {
+    const intl = shippingMethod("intl", "International courier");
+    restoreToPreview("SG");
+    holdShipping = true;
+    await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);
+    await until(() => held.length > 0 && held.every((h) => h.url.endsWith("country=SG")));
+    for (const h of held) await h.answer({ rows: [...SHIPPING.SG, intl] });
+    await until(() => shippingNames().length === 2);
+    await click(shippingButtons().find((b) => b.textContent?.includes("International courier"))!);
+    expect(selectedShipping()).toContain("International courier");
+
+    await chooseCountry("MY");
+    const my = await until(() => held.find((h) => h.url.endsWith("country=MY")));
+    expect(selectedShipping()).toBeNull();
+
+    await my.answer({ rows: [...SHIPPING.MY, intl] });
+    await settle();
+    expect(shippingNames()).toEqual(["Malaysia post", "International courier"]);
+    expect(selectedShipping()).toContain("International courier");
+  });
+
   it("lists the restored country's methods when nothing races", async () => {
     restoreToPreview("MY");
     await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);

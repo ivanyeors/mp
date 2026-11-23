@@ -82,9 +82,11 @@ fi
 
 # .githooks/pre-push is the backstop for anything that commits without this
 # script having run — another tool, another machine, a clone made before this
-# landed. Only claim core.hooksPath if nothing else has: a contributor who has
-# pointed it somewhere deliberately keeps their hooks, and the pre-push guard
-# is a convenience, not the mechanism.
+# landed. .githooks/pre-commit commits a pruned lint baseline. The path is
+# relative, so each worktree runs its own checkout's hooks. Only claim
+# core.hooksPath if nothing else has: a contributor who has pointed it
+# somewhere deliberately keeps their hooks, and both hooks are conveniences
+# (CI is the backstop), not the mechanism.
 current_hooks_path="$(git config --get core.hooksPath || true)"
 if [ -z "$current_hooks_path" ] || [ "$current_hooks_path" = ".githooks" ]; then
   git config core.hooksPath .githooks || true

@@ -64,6 +64,16 @@ export type SalesReport = {
   gaps: CostGap[];
 };
 
+export type SalesReportWithoutCost = {
+  summary: Pick<SalesSummary, "revenue" | "units" | "orderCount" | "lineCount" | "currency">;
+  timeline: SalesReport["timeline"];
+};
+
+export function salesReportWithoutCost(report: SalesReport): SalesReportWithoutCost {
+  const { revenue, units, orderCount, lineCount, currency } = report.summary;
+  return { summary: { revenue, units, orderCount, lineCount, currency }, timeline: report.timeline };
+}
+
 type AllocatedLine = SoldLine & { revenue: number; month: MonthKey };
 
 function round2(n: number): number {

@@ -74,8 +74,8 @@ export type OrdersInitialData = {
             total_revenue: number;
             average_order_value: number;
             pending_orders: number;
-            total_gross_margin: number;
-            avg_margin_pct: number | null;
+            total_gross_margin?: number;
+            avg_margin_pct?: number | null;
         };
     } | null;
     list: {
@@ -165,8 +165,10 @@ function toDashboardStats(s: {
 
 export default function SettingsOrdersPage({
     initialData,
+    canSeeCost,
 }: {
     initialData?: OrdersInitialData;
+    canSeeCost: boolean;
 }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -308,7 +310,7 @@ export default function SettingsOrdersPage({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 xl:grid-cols-5">
+            <div className={`grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 ${canSeeCost ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
                 <StatTile
                     icon={ShoppingCart}
                     label="Total orders"
@@ -327,7 +329,7 @@ export default function SettingsOrdersPage({
                     value={summaryStats ? formatSGD(summaryStats.avg_order_value) : "—"}
                     loading={summaryStatsLoading}
                 />
-                {!summaryStatsLoading && summaryStats && (
+                {canSeeCost && !summaryStatsLoading && summaryStats && (
                     <StatTile
                         icon={TrendingUp}
                         label="Gross margin"
@@ -472,7 +474,9 @@ export default function SettingsOrdersPage({
                                 <TableHead className="px-4 hidden md:table-cell">Customer</TableHead>
                                 <TableHead className="px-4">Status</TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell text-right">Items</TableHead>
-                                <TableHead className="px-4 hidden xl:table-cell text-right">Margin</TableHead>
+                                {canSeeCost && (
+                                    <TableHead className="px-4 hidden xl:table-cell text-right">Margin</TableHead>
+                                )}
                                 <TableHead className="px-4 text-right">Total</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -523,20 +527,22 @@ export default function SettingsOrdersPage({
                                         <TableCell className="px-4 hidden lg:table-cell text-right text-sm text-muted-foreground">
                                             {itemCount}
                                         </TableCell>
-                                        <TableCell className="px-4 hidden xl:table-cell text-right text-sm text-muted-foreground">
-                                            {order.margin?.gross_margin != null ? (
-                                                <span>
-                                                    {formatSGD(order.margin.gross_margin)}
-                                                    {order.margin.margin_pct != null && (
-                                                        <span className="block text-xs">
-                                                            {formatMarginPct(order.margin.margin_pct)}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            ) : (
-                                                "—"
-                                            )}
-                                        </TableCell>
+                                        {canSeeCost && (
+                                            <TableCell className="px-4 hidden xl:table-cell text-right text-sm text-muted-foreground">
+                                                {order.margin?.gross_margin != null ? (
+                                                    <span>
+                                                        {formatSGD(order.margin.gross_margin)}
+                                                        {order.margin.margin_pct != null && (
+                                                            <span className="block text-xs">
+                                                                {formatMarginPct(order.margin.margin_pct)}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                ) : (
+                                                    "—"
+                                                )}
+                                            </TableCell>
+                                        )}
                                         <TableCell className="px-4 text-right text-sm font-medium">
                                             {formatSGD(order.total)}
                                         </TableCell>
