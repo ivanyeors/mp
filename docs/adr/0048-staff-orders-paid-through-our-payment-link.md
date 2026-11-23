@@ -58,7 +58,9 @@ of the Stripe webhook, unchanged.**
   a delivered order: all of it already there. The one change: a `staff_order` session that expires
   unpaid does not cancel its Order, because the link is still good. The daily job cancels a Staff
   order whose link has expired unpaid.
-- **Permission: `orders`.** The button sits on the Customer page (`customers`), and creating,
+- **Permission: `orders`.** The button sits on the Customer page (`customers`) and, since
+  2026-11-23, on Orders, where Staff first pick the Customer or add one by email (`customers` to
+  search, `customers-edit` to add; one email, one Customer). Creating,
   sending and cancelling are Order actions, each written to the Audit Log.
 - **`POST /api/shop/orders` is retired.** It wrote an Order at prices from the request body, and
   nothing called it. `GET` (the orders list) stays.

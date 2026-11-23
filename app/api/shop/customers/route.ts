@@ -2,18 +2,26 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { listAdminCustomers } from "@/lib/ecommerce/admin/customers";
-import { requireAdmin } from "@/lib/auth/admin";
+import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
+import { normalizePhone } from "@/lib/appointments/phone";
+import { findCustomerByEmail } from "@/lib/ecommerce/customers";
 
 export const runtime = "nodejs";
 
 const CreateCustomerSchema = z.object({
-  email: z.string().trim().email(),
-  first_name: z.string().trim().min(1).optional(),
-  last_name: z.string().trim().min(1).optional(),
-  phone: z.string().trim().optional(),
+  email: z.string().trim().toLowerCase().email().max(254),
+  first_name: z.string().trim().min(1).max(120).optional(),
+  last_name: z.string().trim().min(1).max(120).optional(),
+  phone: z.string().trim().max(40).optional(),
   locale: z.string().optional().default("en-US"),
   tags: z.array(z.string()).optional().default([]),
 });
+
+const FIELD_ERRORS: Record<string, string> = {
+  email: "An email is needed to create a customer.",
+  phone: "That mobile number doesn't look right.",
+};
 
 export async function GET(req: Request) {
   const denied = await requireAdmin("customers");
@@ -34,18 +42,41 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = CreateCustomerSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const admin = supabaseAdmin();
-
-  const { data, error } = await admin.from("customers").insert(parsed.data).select("*").single();
-  if (error) {
-    const isDup = /duplicate key|unique/i.test(error.message);
+    const field = String(parsed.error.issues[0]?.path[0] ?? "");
     return NextResponse.json(
-      { error: isDup ? "A customer with this email already exists" : error.message },
-      { status: isDup ? 409 : 500 }
+      { error: FIELD_ERRORS[field] ?? parsed.error.issues[0]?.message ?? "Invalid input", field },
+      { status: 400 },
     );
   }
-  return NextResponse.json({ ok: true, row: data });
+
+  const { phone: typedPhone, ...fields } = parsed.data;
+  const phone = typedPhone ? normalizePhone(typedPhone) : null;
+  if (typedPhone && !phone) {
+    return NextResponse.json({ error: FIELD_ERRORS.phone, field: "phone" }, { status: 400 });
+  }
+
+  const existing = await findCustomerByEmail(fields.email);
+  if (existing) return NextResponse.json({ ok: true, row: existing, created: false });
+
+  const { data, error } = await supabaseAdmin()
+    .from("customers")
+    .insert({ ...fields, ...(phone ? { phone } : {}) })
+    .select("*")
+    .single();
+  if (error) {
+    const raced = await findCustomerByEmail(fields.email);
+    if (raced) return NextResponse.json({ ok: true, row: raced, created: false });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  await recordAdminAction({
+    actor: await getAdminContext(),
+    action: "customer.create",
+    entityType: "customer",
+    entityId: data.id,
+    before: null,
+    after: { ...fields, phone },
+  });
+
+  return NextResponse.json({ ok: true, row: data, created: true });
 }

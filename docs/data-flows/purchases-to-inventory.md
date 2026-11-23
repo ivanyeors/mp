@@ -23,7 +23,7 @@ flowchart TD
     accept --> dos["deductOrderStockOrFlag()<br/>3 attempts"]
   end
   subgraph staffo["Staff orders (ADR 0048)"]
-    so["POST /api/staff-orders<br/>Customer page → Create order<br/>pending, no stock read-out"] --> pl["/pay/[token] → POST /api/pay/[token]/checkout<br/>stock re-checked, Stripe Checkout"]
+    so["POST /api/staff-orders<br/>Customer page or Orders → Create order<br/>pending, no stock read-out"] --> pl["/pay/[token] → POST /api/pay/[token]/checkout<br/>stock re-checked, Stripe Checkout"]
     pl --> wh
   end
   subgraph staff["Staff status changes"]
@@ -208,8 +208,9 @@ successful capture, never at hold.
 
 ## Staff orders (ADR 0048)
 
-A **Staff order** is made on a Customer's page (**Create order**, permission
-`orders`) and paid by the customer through its **Payment link**. It takes
+A **Staff order** is made on a Customer's page, or from **Orders** after
+picking the Customer or adding a new one (**Create order**, permission
+`orders`), and paid by the customer through its **Payment link**. It takes
 stock exactly as a shop Order does, because it is settled the same way:
 
 1. **`POST /api/staff-orders`** prices the draft with `quoteStaffOrder`

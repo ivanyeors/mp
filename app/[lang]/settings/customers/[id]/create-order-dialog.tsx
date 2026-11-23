@@ -80,6 +80,7 @@ export function CreateOrderDialog({
     customerEmail,
     ordersHref,
     onCreated,
+    onChangeCustomer,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -88,6 +89,7 @@ export function CreateOrderDialog({
     customerEmail: string;
     ordersHref: (orderId: string) => string;
     onCreated: () => void;
+    onChangeCustomer?: () => void;
 }) {
     const [options, setOptions] = useState<StaffOrderOptions | null>(null);
     const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -348,6 +350,16 @@ export function CreateOrderDialog({
                                 Products at their shop price, services at their Costings price. {customerName} pays
                                 through a link, on their own phone.
                             </DialogDescription>
+                            {onChangeCustomer ? (
+                                <Button
+                                    type="button"
+                                    variant="link"
+                                    className="h-auto self-center p-0 sm:self-start"
+                                    onClick={onChangeCustomer}
+                                >
+                                    Change customer
+                                </Button>
+                            ) : null}
                         </DialogHeader>
 
                         {optionsError ? (
