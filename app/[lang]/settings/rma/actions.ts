@@ -141,13 +141,15 @@ export async function issueRmaRefund(rmaId: string) {
   const outsideStripe = Boolean(order) && paidOutsideStripe(order!) && !order!.payment_reference;
   if (!order || (!order.payment_reference && !outsideStripe)) throw new Error("Order has no payment to refund.");
 
+  const alreadyRecorded = outsideStripe ? await refundRecordedForReturn(admin, order.id, rmaId) : null;
+
   const remaining = refundableAmount(order);
   const requested = rmaRefundAmount(order, order.order_items ?? [], rma.rma_request_items);
   const amount = Math.min(requested, remaining);
-  if (!(amount > 0)) throw new Error("Nothing left to refund on this order.");
+  if (alreadyRecorded == null && !(amount > 0)) throw new Error("Nothing left to refund on this order.");
 
   if (outsideStripe) {
-    let recordedAmount = await refundRecordedForReturn(admin, order.id, rmaId);
+    let recordedAmount = alreadyRecorded;
     if (recordedAmount == null) {
       const recorded = await recordOutsideRefund(
         admin,

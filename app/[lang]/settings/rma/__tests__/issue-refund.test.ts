@@ -283,6 +283,26 @@ describe("issueRmaRefund — an order paid outside Stripe", () => {
     expect(h.transition).toHaveBeenCalledTimes(1);
   });
 
+  it("closes a return whose refund used up everything left on the order, when pressed again", async () => {
+    h.rma = returnOn(
+      { payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z", amount_refunded: 168 },
+      ["line-a", "line-b"],
+    );
+    h.alreadyRecorded.mockResolvedValue(168);
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 168 });
+    expect(h.recordOutside).not.toHaveBeenCalled();
+    expect(h.transition).toHaveBeenCalledTimes(1);
+  });
+
+  it("with nothing left and nothing recorded for this return, it is refused", async () => {
+    h.rma = returnOn(
+      { payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z", amount_refunded: 168 },
+      ["line-a"],
+    );
+    await expect(issueRmaRefund(RMA)).rejects.toThrow("Nothing left to refund on this order.");
+    expect(h.transition).not.toHaveBeenCalled();
+  });
+
   it("leaves the return open when the refund could not be recorded", async () => {
     h.rma = returnOn({ payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z" }, ["line-a"]);
     h.recordOutside.mockResolvedValue({ ok: false, status: 409, error: "Refresh the page." });
