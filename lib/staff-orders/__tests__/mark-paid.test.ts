@@ -324,6 +324,17 @@ describe("the payment link while Staff mark the order paid", () => {
     expect(h.expired).toEqual(["cs_open"]);
   });
 
+  it("closes a Checkout the customer opened while it was being marked paid", async () => {
+    const id = await made();
+    h.beforeLedger = () => {
+      h.beforeLedger = null;
+      order(id).stripe_session_id = "cs_late";
+      h.sessions.set("cs_late", { id: "cs_late", status: "open" });
+    };
+    expect(await markStaffOrderPaid(admin(), id, CASH, ACTOR, NOW)).toMatchObject({ ok: true });
+    expect(h.expired).toEqual(["cs_late"]);
+  });
+
   it("refuses when the customer has just paid through the link", async () => {
     const id = await made();
     order(id).stripe_session_id = "cs_done";

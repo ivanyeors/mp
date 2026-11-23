@@ -48,7 +48,8 @@ ways. Either way it is settled once, by the same steps the webhook runs for a li
   updates the Customer and sends the confirmation, as `checkout.session.completed` does. If the
   money cannot be recorded, the Order goes back to unpaid.
 - **The link and the mark cannot both settle it.** An open Checkout is expired before the Order is
-  marked; one the customer has just completed refuses the mark. A link payment that still lands on
+  marked, and one the customer opened while it was being marked is expired straight after; one the
+  customer has just completed refuses the mark. A link payment that still lands on
   an Order already paid another way is recorded in the ledger and flagged (`paid_twice`,
   `needs_attention`) for Staff to refund one, and nothing is sent or deducted a second time.
 - **Refunds for money Stripe never held are recorded by hand.** Refund, Cancel and a return's

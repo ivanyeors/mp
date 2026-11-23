@@ -139,6 +139,22 @@ async function closeOpenCheckout(
   }
 }
 
+async function closeCheckoutOpenedMeanwhile(
+  admin: SupabaseClient,
+  orderId: string,
+  alreadyClosed: string | null,
+  stripe: () => Stripe,
+): Promise<void> {
+  const { data } = await admin.from("orders").select("stripe_session_id").eq("id", orderId).maybeSingle();
+  const sessionId = (data?.stripe_session_id as string | null | undefined) ?? null;
+  if (!sessionId || sessionId === alreadyClosed) return;
+  try {
+    await stripe().checkout.sessions.expire(sessionId);
+  } catch (err) {
+    console.error(`[staff-order] Could not close the Checkout ${sessionId} opened while ${orderId} was marked paid:`, err);
+  }
+}
+
 export async function markStaffOrderPaid(
   admin: SupabaseClient,
   orderId: string,
@@ -179,6 +195,7 @@ export async function markStaffOrderPaid(
   const stillOpen = await closeOpenCheckout(order, how, stripe);
   if (stillOpen) return stillOpen;
 
+  const closedSession = order.stripe_session_id;
   const before = {
     status: order.status,
     payment_method: order.payment_method,
@@ -227,6 +244,7 @@ export async function markStaffOrderPaid(
     if (owner !== orderId) return undo(409, "That Stripe payment is already recorded on another order.");
   }
   await rollupOrderMoney(admin, orderId);
+  await closeCheckoutOpenedMeanwhile(admin, orderId, closedSession, stripe);
 
   const warnings: string[] = [];
 
