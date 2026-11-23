@@ -17,11 +17,7 @@ let root: Root;
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  fetchMock = vi.fn(async (url: string) => ({
-    ok: true,
-    status: 200,
-    json: async () => (String(url).startsWith("/api/discovery-source") ? { ok: true, options: SOURCES } : {}),
-  }));
+  fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
   vi.stubGlobal("fetch", fetchMock);
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -69,6 +65,6 @@ describe("PreviewContactFields discovery sources", () => {
   it("asks the server for nothing on mount: the page hands the sources in", async () => {
     await render(SOURCES);
     await settle(20);
-    expect(fetchMock.mock.calls.map((c) => String(c[0])).filter((u) => u.startsWith("/api/discovery-source"))).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
