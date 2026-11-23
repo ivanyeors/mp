@@ -13,8 +13,8 @@ describe("Staff orders guide", () => {
     .map((b) => ("text" in b ? b.text : "items" in b ? b.items.map((i) => (typeof i === "string" ? i : i.label)).join(" ") : "rows" in b ? b.rows.flat().join(" ") : ""))
     .join(" ");
 
-  it("runs what → make → send → pay → after, and is listed", () => {
-    expect(sections.map((s) => s.id)).toEqual(["what", "make", "send", "pay", "after"]);
+  it("runs what → make → send → paid → pay → after, and is listed", () => {
+    expect(sections.map((s) => s.id)).toEqual(["what", "make", "send", "paid", "pay", "after"]);
     expect(ADMIN_GUIDES.map((g) => g.slug)).toContain("staff-orders");
   });
 

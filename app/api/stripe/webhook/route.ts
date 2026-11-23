@@ -351,7 +351,7 @@ export async function POST(req: Request) {
         const { data: order, error: orderError } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, points_spent, total, status, paid_at, payment_reference, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
           )
           .eq("id", orderId)
           .maybeSingle();
@@ -395,6 +395,22 @@ export async function POST(req: Request) {
           const detail = `Order ${orderId} was paid while ${order.status}. Not fulfilled: refund or reinstate it.`;
           await flagOrder(admin, orderId, "paid_while_closed", detail, { stripe_session_id: session.id });
           await recordWebhookFailure(admin, event, detail);
+          break;
+        }
+
+        if (order.paid_at && paymentIntent && order.payment_reference !== paymentIntent) {
+          const detail =
+            `Order ${order.order_number} was already paid when Stripe took ${(order.currency ?? "SGD").toUpperCase()} ` +
+            `${totals.amountTotal.toFixed(2)} more for it (payment ${paymentIntent}). That second payment is not ` +
+            `recorded on the order, and nothing more was sent or taken from stock. Refund it in Stripe.`;
+          await flagOrder(admin, orderId, "paid_twice", detail, {
+            stripe_session_id: session.id,
+            payment_intent: paymentIntent,
+            amount: totals.amountTotal,
+          });
+          const recorded = await recordWebhookFailure(admin, event, detail);
+          const told = (await sendTelegram(detail).catch(() => "failed")) === "sent";
+          if (!recorded && !told) console.error(`[stripe/webhook] paid_twice for ${orderId} reached nobody but the order's timeline.`);
           break;
         }
 

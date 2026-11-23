@@ -27,6 +27,13 @@ export function staffOrderAdmin(db: FakeDb) {
           if (!out.created_at) out.created_at = new Date().toISOString();
           return out;
         };
+        if (!Array.isArray(row) && table === "order_payments" && row.stripe_object_id) {
+          const taken = (db[table] ?? []).some((r) => r.stripe_object_id === row.stripe_object_id);
+          if (taken) {
+            const refused = { data: null, error: { code: "23505", message: "duplicate key value" } };
+            return { then: (res: (v: unknown) => unknown) => Promise.resolve(refused).then(res) };
+          }
+        }
         if (!Array.isArray(row)) return insertOne(withDefaults(row));
         const list = (db[table] ??= []);
         for (const r of row) list.push({ id: `${table}-${list.length + 1}`, ...withDefaults(r) });
@@ -134,6 +141,7 @@ export function seedStaffOrderDb(): FakeDb {
     order_payment_links: [],
     order_shipments: [],
     order_timeline: [],
+    order_payments: [],
     email_template_copy: [],
   };
 }

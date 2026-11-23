@@ -8,14 +8,21 @@ const h = vi.hoisted(() => ({
   refundPayment: vi.fn(),
   timeline: vi.fn(),
   audit: vi.fn(),
+  recordOutside: vi.fn(),
+  alreadyRecorded: vi.fn(),
+  transition: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/auth/admin", () => ({ assertAdmin: async () => ({ userId: "staff-1" }) }));
+vi.mock("@/lib/auth/admin", () => ({ assertAdmin: async () => ({ userId: "staff-1", email: "staff@example.com" }) }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
 vi.mock("@/lib/stripe/refunds", () => ({ refundPayment: h.refundPayment }));
 vi.mock("@/lib/ecommerce/orders", () => ({ addOrderTimelineEvent: h.timeline }));
-vi.mock("@/lib/rma/transition", () => ({ applyRmaTransition: vi.fn() }));
+vi.mock("@/lib/rma/transition", () => ({ applyRmaTransition: h.transition }));
+vi.mock("@/lib/ecommerce/outside-refund", () => ({
+  recordOutsideRefund: h.recordOutside,
+  refundRecordedForReturn: h.alreadyRecorded,
+}));
 vi.mock("@/lib/site-settings", () => ({ getSiteSettings: async () => ({}) }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
@@ -241,5 +248,71 @@ describe("issueRmaRefund — what Stripe is asked for", () => {
     h.rma = { ...returnOn({}, ["line-a"]), status: "approved" };
     await expect(issueRmaRefund(RMA)).rejects.toThrow("Mark the return received");
     expect(h.refundPayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("issueRmaRefund — an order paid outside Stripe", () => {
+  beforeEach(() => {
+    h.recordOutside.mockResolvedValue({ ok: true, amount: 80, fullyRefunded: false });
+    h.alreadyRecorded.mockResolvedValue(null);
+  });
+
+  it("records the refund by hand, asks Stripe for nothing and closes the return", async () => {
+    h.rma = returnOn({ payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z" }, ["line-a"]);
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 80 });
+    expect(h.refundPayment).not.toHaveBeenCalled();
+    expect(h.recordOutside).toHaveBeenCalledWith(
+      expect.anything(),
+      ORDER,
+      expect.objectContaining({ amount: 80 }),
+      { email: "staff@example.com" },
+      expect.any(Date),
+      RMA,
+    );
+    expect(h.transition).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ rmaId: RMA, to: "refunded" }));
+    expect(h.audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "rma.refund_recorded", after: expect.objectContaining({ amount: 80 }) }),
+    );
+  });
+
+  it("pressed again after the return failed to close, it records nothing more and closes the return", async () => {
+    h.rma = returnOn({ payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z" }, ["line-a"]);
+    h.alreadyRecorded.mockResolvedValue(80);
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 80 });
+    expect(h.recordOutside).not.toHaveBeenCalled();
+    expect(h.transition).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes a return whose refund used up everything left on the order, when pressed again", async () => {
+    h.rma = returnOn(
+      { payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z", amount_refunded: 168 },
+      ["line-a", "line-b"],
+    );
+    h.alreadyRecorded.mockResolvedValue(168);
+    await expect(issueRmaRefund(RMA)).resolves.toEqual({ ok: true, amount: 168 });
+    expect(h.recordOutside).not.toHaveBeenCalled();
+    expect(h.transition).toHaveBeenCalledTimes(1);
+  });
+
+  it("with nothing left and nothing recorded for this return, it is refused", async () => {
+    h.rma = returnOn(
+      { payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z", amount_refunded: 168 },
+      ["line-a"],
+    );
+    await expect(issueRmaRefund(RMA)).rejects.toThrow("Nothing left to refund on this order.");
+    expect(h.transition).not.toHaveBeenCalled();
+  });
+
+  it("leaves the return open when the refund could not be recorded", async () => {
+    h.rma = returnOn({ payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z" }, ["line-a"]);
+    h.recordOutside.mockResolvedValue({ ok: false, status: 409, error: "Refresh the page." });
+    await expect(issueRmaRefund(RMA)).rejects.toThrow("Refresh the page.");
+    expect(h.transition).not.toHaveBeenCalled();
+  });
+
+  it("an unpaid order with no payment is still refused", async () => {
+    h.rma = returnOn({ payment_reference: null, payment_method: "stripe", paid_at: null }, ["line-a"]);
+    await expect(issueRmaRefund(RMA)).rejects.toThrow("Order has no payment to refund.");
+    expect(h.recordOutside).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 # Analytics tracks this site's sales as Stripe took them, and margin is over costed sales
 
-Status: Accepted (2026-10-28, revised 2026-10-29)
+Status: Accepted (2026-10-28, revised 2026-10-29). Amended 2026-11-23 by ADR 0056: a Staff order
+marked paid outside Stripe is also a Sale, dated by when Staff marked it.
 
 ## Context
 

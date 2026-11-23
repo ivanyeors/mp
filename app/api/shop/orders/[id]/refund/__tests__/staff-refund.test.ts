@@ -290,3 +290,19 @@ describe("staff refund — an order paid on two intents", () => {
     expect(h.timeline.mock.calls[0][3]).toMatchObject({ stripe_refund_ids: ["re_hold"], amount: 300 });
   });
 });
+
+describe("staff refund — an order paid outside Stripe", () => {
+  beforeEach(() => {
+    Object.assign(h.order, { payment_reference: null, payment_method: "cash", paid_at: "2026-11-23T04:00:00Z" });
+    h.charges = [];
+  });
+
+  it("asks Stripe for nothing and says to return the money the way it came", async () => {
+    const res = await refund({ mode: "full" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("paid outside Stripe");
+    expect(h.refundPayment).not.toHaveBeenCalled();
+    expect(h.timeline).not.toHaveBeenCalled();
+    expect(h.audit).not.toHaveBeenCalled();
+  });
+});

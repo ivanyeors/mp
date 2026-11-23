@@ -8,6 +8,7 @@ import {
   refundableAmount,
   refundIdempotencyKey,
 } from "@/lib/ecommerce/admin-refund";
+import { PAID_OUTSIDE_STRIPE_REFUND, paidOutsideStripe } from "@/lib/ecommerce/outside-stripe";
 import {
   operatorApproveDeniedReason,
   operatorRejectDeniedReason,
@@ -38,7 +39,7 @@ export async function POST(
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, order_number, payment_reference, total, amount_refunded, amount_captured, currency, status, shipped_at, delivered_at, refund_request_status, items:order_items(customization_snapshot)",
+      "id, order_number, payment_reference, paid_at, payment_method, total, amount_refunded, amount_captured, currency, status, shipped_at, delivered_at, refund_request_status, items:order_items(customization_snapshot)",
     )
     .eq("id", orderId)
     .single();
@@ -84,7 +85,10 @@ export async function POST(
   }
 
   if (!order.payment_reference) {
-    return NextResponse.json({ error: "Order has no payment to refund" }, { status: 400 });
+    return NextResponse.json(
+      { error: paidOutsideStripe(order) ? PAID_OUTSIDE_STRIPE_REFUND : "Order has no payment to refund" },
+      { status: 400 },
+    );
   }
 
   const remaining = refundableAmount(order);

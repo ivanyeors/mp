@@ -20,6 +20,9 @@ import { Label } from "@/components/ui/label";
 import { QrSvg } from "@/components/ui/qr-svg";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { EMPTY_PAID_HOW, PaidHowFields, paidHowFromDraft, type PaidHowDraft } from "@/components/settings/paid-how-fields";
+import { useMatchingStripePayments } from "@/hooks/use-matching-stripe-payments";
+import { paymentMethodLabel } from "@/lib/ecommerce/outside-stripe";
 import type { ServiceKey } from "@/lib/pricing/service-prices";
 import type {
     StaffOrderAddressOption,
@@ -53,6 +56,7 @@ type Created = {
     url: string;
     expiresAt: string;
     emailed: { ok: true; sentTo: string } | { ok: false; error: string } | null;
+    paid: { ok: true; method: string; warnings: string[] } | { ok: false; error: string } | null;
 };
 
 const NEW_ADDRESS = "new";
@@ -114,6 +118,8 @@ export function CreateOrderDialog({
     const [note, setNote] = useState("");
     const [internalNote, setInternalNote] = useState("");
     const [sendEmail, setSendEmail] = useState(true);
+    const [payBy, setPayBy] = useState<"link" | "paid">("link");
+    const [paidDraft, setPaidDraft] = useState<PaidHowDraft>(EMPTY_PAID_HOW);
 
     const [priced, setPriced] = useState<{ key: string; quote: StaffOrderQuoteView | null; error: string | null } | null>(
         null,
@@ -230,6 +236,9 @@ export function CreateOrderDialog({
     const shownQuote = priceKey ? (priced?.quote ?? null) : null;
     const quoting = Boolean(priceKey) && !current;
 
+    const stripePayments = useMatchingStripePayments(payBy === "paid" ? (quote?.total ?? null) : null);
+    const paidHow = payBy === "paid" ? paidHowFromDraft(paidDraft, stripePayments.payments) : null;
+
     const addLine = useCallback((line: Line) => {
         setLines((prev) => {
             const at = prev.findIndex((l) => l.kind === line.kind && l.id === line.id);
@@ -271,6 +280,8 @@ export function CreateOrderDialog({
         setNote("");
         setInternalNote("");
         setSendEmail(true);
+        setPayBy("link");
+        setPaidDraft(EMPTY_PAID_HOW);
         setPriced(null);
         setCreateError(null);
         setCreated(null);
@@ -288,13 +299,16 @@ export function CreateOrderDialog({
 
     const create = async () => {
         if (!draft || !quote) return;
+        if (payBy === "paid" && !paidHow) return;
         setCreating(true);
         setCreateError(null);
         try {
             const res = await fetch("/api/staff-orders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...draft, send_email: sendEmail }),
+                body: JSON.stringify(
+                    paidHow ? { ...draft, send_email: false, paid: paidHow } : { ...draft, send_email: sendEmail },
+                ),
             });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.ok) {
@@ -307,6 +321,7 @@ export function CreateOrderDialog({
                 url: json.link.url,
                 expiresAt: json.link.expires_at,
                 emailed: json.emailed ?? null,
+                paid: json.paid ?? null,
             });
             onCreated();
         } catch {
@@ -731,6 +746,50 @@ export function CreateOrderDialog({
                                     </div>
                                 </section>
 
+                                <section className="space-y-3" aria-labelledby="how-paid">
+                                    <p id="how-paid" className="text-sm font-medium">
+                                        Payment
+                                    </p>
+                                    <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Payment">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={payBy === "link" ? "secondary" : "ghost"}
+                                            aria-pressed={payBy === "link"}
+                                            onClick={() => setPayBy("link")}
+                                        >
+                                            Send a payment link
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={payBy === "paid" ? "secondary" : "ghost"}
+                                            aria-pressed={payBy === "paid"}
+                                            onClick={() => setPayBy("paid")}
+                                        >
+                                            Already paid
+                                        </Button>
+                                    </div>
+                                    {payBy === "link" ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            The order waits for {customerName} to pay through a link, on their own
+                                            phone.
+                                        </p>
+                                    ) : !quote ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Finish the order to say how it was paid.
+                                        </p>
+                                    ) : (
+                                        <PaidHowFields
+                                            id="staff-order-paid"
+                                            amountLabel={money(quote.total)}
+                                            stripe={stripePayments}
+                                            value={paidDraft}
+                                            onChange={setPaidDraft}
+                                        />
+                                    )}
+                                </section>
+
                                 <section
                                     className="space-y-1.5 rounded-md bg-muted/50 p-3 text-sm"
                                     aria-live="polite"
@@ -756,21 +815,30 @@ export function CreateOrderDialog({
                         )}
 
                         <DialogFooter className="items-center gap-3 sm:justify-between">
-                            <label className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                    checked={sendEmail}
-                                    onCheckedChange={(v) => setSendEmail(v === true)}
-                                    aria-label="Email the payment link"
-                                />
-                                <span className="min-w-0 break-all">Email the payment link to {customerEmail}</span>
-                            </label>
+                            {payBy === "link" ? (
+                                <label className="flex items-center gap-2 text-sm">
+                                    <Checkbox
+                                        checked={sendEmail}
+                                        onCheckedChange={(v) => setSendEmail(v === true)}
+                                        aria-label="Email the payment link"
+                                    />
+                                    <span className="min-w-0 break-all">Email the payment link to {customerEmail}</span>
+                                </label>
+                            ) : (
+                                <p className="min-w-0 break-all text-sm text-muted-foreground">
+                                    No payment link is sent. {customerEmail} gets the order confirmation.
+                                </p>
+                            )}
                             <Button
                                 type="button"
                                 onClick={() => void create()}
-                                disabled={!quote || quoting || creating || !!quoteError}
+                                disabled={
+                                    !quote || quoting || creating || !!quoteError || (payBy === "paid" && !paidHow)
+                                }
                             >
                                 {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                                {quote ? `Create order · ${money(quote.total)}` : "Create order"}
+                                {payBy === "paid" ? "Create paid order" : "Create order"}
+                                {quote ? ` · ${money(quote.total)}` : ""}
                             </Button>
                         </DialogFooter>
                     </>
@@ -828,6 +896,38 @@ function CreatedView({
         month: "short",
         year: "numeric",
     }).format(new Date(created.expiresAt));
+    if (created.paid?.ok) {
+        return (
+            <>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Check className="h-5 w-5 text-green-600" />
+                        Order #{created.orderNumber} created and paid
+                    </DialogTitle>
+                    <DialogDescription>
+                        Paid by {paymentMethodLabel(created.paid.method)}. It is confirmed, its stock is taken out and
+                        the customer has been sent the confirmation.
+                    </DialogDescription>
+                </DialogHeader>
+                {created.paid.warnings.length > 0 ? (
+                    <ul className="space-y-1 text-sm text-destructive" role="alert">
+                        {created.paid.warnings.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                        ))}
+                    </ul>
+                ) : null}
+                <DialogFooter>
+                    <Button asChild variant="outline">
+                        <Link href={orderHref}>View order</Link>
+                    </Button>
+                    <Button type="button" onClick={onDone}>
+                        Done
+                    </Button>
+                </DialogFooter>
+            </>
+        );
+    }
+
     return (
         <>
             <DialogHeader>
@@ -838,6 +938,12 @@ function CreatedView({
                 <DialogDescription>Awaiting payment. The link works until {expires}.</DialogDescription>
             </DialogHeader>
             <div className="min-w-0 space-y-4">
+                {created.paid ? (
+                    <p role="alert" className="text-sm text-destructive">
+                        The order was made, but it could not be marked paid: {created.paid.error} It is awaiting
+                        payment. Mark it paid from the order&apos;s page, or send its link.
+                    </p>
+                ) : null}
                 {created.emailed ? (
                     created.emailed.ok ? (
                         <Badge variant="secondary">Emailed to {created.emailed.sentTo}</Badge>

@@ -3,6 +3,8 @@
 Status: Accepted (PRD `staff-orders-payment-links`, 2026-11-07).
 Amended 2026-11-22: the rejection of Stripe Payment Links now covers products too. See
 **Product payment links retired** below.
+Amended 2026-11-23 by ADR 0056: Staff may also mark a Staff order paid, by a Stripe payment they
+pick or as paid outside Stripe, instead of sending its link.
 
 **Staff** at the counter or on the phone with a customer had no way to sell them anything that
 was not a customised build. An ear pad, a spare case, a re-adjustment or a measurement visit

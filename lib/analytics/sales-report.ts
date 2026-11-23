@@ -1,3 +1,4 @@
+import { isSaleCharge } from "@/lib/ecommerce/outside-stripe";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { selectAll, selectAllIn } from "@/lib/supabase/select-all";
 import { sgMonthRange, type SgMonthRange } from "./sg-calendar";
@@ -64,28 +65,34 @@ type VariantRow = {
   products: { product_type: string | null } | { product_type: string | null }[] | null;
 };
 
-type ChargeRow = { id: string; order_id: string; occurred_at: string };
+type ChargeRow = {
+  id: string;
+  order_id: string;
+  occurred_at: string;
+  stripe_object_id: string | null;
+  metadata: unknown;
+};
 
-const stripeCharges = (admin: AdminClient) =>
-  admin
-    .from("order_payments")
-    .select("id,order_id,occurred_at")
-    .eq("type", "charge")
-    .not("stripe_object_id", "is", null);
+const charges = (admin: AdminClient) =>
+  admin.from("order_payments").select("id,order_id,occurred_at,stripe_object_id,metadata").eq("type", "charge");
 
 async function loadSoldOrders(admin: AdminClient, range: SgMonthRange): Promise<SoldOrder[]> {
-  const inPeriod = (await selectAll(() =>
-    stripeCharges(admin)
-      .gte("occurred_at", range.from.toISOString())
-      .lt("occurred_at", range.toExclusive.toISOString())
-      .order("id"),
-  )) as ChargeRow[];
+  const inPeriod = (
+    (await selectAll(() =>
+      charges(admin)
+        .gte("occurred_at", range.from.toISOString())
+        .lt("occurred_at", range.toExclusive.toISOString())
+        .order("id"),
+    )) as ChargeRow[]
+  ).filter(isSaleCharge);
   if (!inPeriod.length) return [];
-  const charges = (await selectAllIn(
-    inPeriod.map((c) => String(c.order_id)),
-    (chunk) => stripeCharges(admin).in("order_id", chunk).order("id"),
-  )) as ChargeRow[];
-  const soldAtByOrder = latestChargeAt(charges.map((c) => ({ orderId: String(c.order_id), at: c.occurred_at })));
+  const saleCharges = (
+    (await selectAllIn(
+      inPeriod.map((c) => String(c.order_id)),
+      (chunk) => charges(admin).in("order_id", chunk).order("id"),
+    )) as ChargeRow[]
+  ).filter(isSaleCharge);
+  const soldAtByOrder = latestChargeAt(saleCharges.map((c) => ({ orderId: String(c.order_id), at: c.occurred_at })));
   const from = range.from.getTime();
   const to = range.toExclusive.getTime();
   const candidates = [...soldAtByOrder.entries()]

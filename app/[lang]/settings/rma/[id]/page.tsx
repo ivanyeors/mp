@@ -7,6 +7,7 @@ import { withLocale } from "@/lib/i18n/routing";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { hasPermission } from "@/lib/auth/permissions";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { paidOutsideStripe } from "@/lib/ecommerce/outside-stripe";
 import { humanizeToken } from "@/lib/rma/admin-view";
 import { nextStatuses, type RmaStatus } from "@/lib/rma/transitions";
 import { PageActions } from "@/components/ui/page-actions";
@@ -59,7 +60,13 @@ type RmaRow = {
   tracking_number: string | null;
   tracking_url: string | null;
   created_at: string;
-  orders: { order_number: number | string | null; id: string } | null;
+  orders: {
+    order_number: number | string | null;
+    id: string;
+    paid_at: string | null;
+    payment_method: string | null;
+    payment_reference: string | null;
+  } | null;
   customers: { id: string; email: string | null } | null;
 };
 
@@ -89,7 +96,7 @@ export default async function RmaDetailPage({
   const { data: rmaData } = await admin
     .from("rma_requests")
     .select(
-      "id, status, resolution, reason, customer_note, admin_note, photo_urls, tracking_number, tracking_url, created_at, orders(id, order_number), customers(id, email)",
+      "id, status, resolution, reason, customer_note, admin_note, photo_urls, tracking_number, tracking_url, created_at, orders(id, order_number, paid_at, payment_method, payment_reference), customers(id, email)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -114,6 +121,7 @@ export default async function RmaDetailPage({
   const photos = rma.photo_urls ?? [];
   const next = nextStatuses(rma.status as RmaStatus);
   const isRefund = rma.resolution === "refund";
+  const refundByHand = Boolean(rma.orders) && paidOutsideStripe(rma.orders!) && !rma.orders!.payment_reference;
   const hasActions = next.length > 0;
   const customerHref =
     rma.customers?.id && hasPermission(ctx, "customers") ? to(`/settings/customers/${rma.customers.id}`) : null;
@@ -268,11 +276,17 @@ export default async function RmaDetailPage({
             {next.includes("refunded") && isRefund ? (
               <form action={issueRmaRefundForm.bind(null, rma.id)} className="w-full md:w-auto">
                 <button type="submit" className={rmaPrimaryAction}>
-                  Issue refund
+                  {refundByHand ? "Record refund" : "Issue refund"}
                 </button>
               </form>
             ) : null}
           </PageActions>
+          {next.includes("refunded") && isRefund && refundByHand ? (
+            <p className="text-xs text-muted-foreground">
+              This order was paid outside Stripe, so no money is sent. Return it the way it came, then record the
+              refund here.
+            </p>
+          ) : null}
 
           {next.includes("completed") && !isRefund ? (
             <form action={completeReturnForm.bind(null, rma.id)} className="space-y-2">

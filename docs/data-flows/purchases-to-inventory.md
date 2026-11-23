@@ -45,6 +45,7 @@ flowchart TD
 | Shop | `POST /api/stripe/webhook` | After the webhook stamps `paid_at` | The Variant: its Composed sellable's build, its Item, or its own `stock_quantity` | Claim `orders.inventory_deducted_at` |
 | Result | `POST /api/results/[id]/accept` | After capture, once the Order exists | The build frozen on the Order line | Claim `orders.inventory_deducted_at` |
 | Staff order | `POST /api/stripe/webhook`, as Shop | After the webhook stamps `paid_at` | As Shop (Variants only; Service lines take nothing) | Claim `orders.inventory_deducted_at` |
+| Staff order, marked paid | `markStaffOrderPaid` (`POST /api/staff-orders`, `…/[id]/mark-paid`) | After it stamps `paid_at` | As Shop | The same claim |
 | Staff status change | `PATCH /api/shop/orders/[id]`, `markOrderShipped` | When the Order becomes sold | As Shop | Claim `orders.inventory_deducted_at` |
 | In-store | Inventory page cart | Immediately | Warehouse + Filling Template, or parts | Unique `sale_id` × `sale_line` × Item |
 
@@ -228,6 +229,18 @@ stock exactly as a shop Order does, because it is settled the same way:
    `deductInventoryForOrder`. A `staff_order` session that expires unpaid does
    not cancel the Order; the daily job (`expireStaffOrderLinks`) cancels it
    once the link itself has expired.
+
+4. **Marked paid** (ADR 0056), instead of step 2 and 3:
+   `POST /api/staff-orders` with `paid`, or `POST /api/staff-orders/[id]/mark-paid`
+   from the Order page, call `markStaffOrderPaid`
+   (`lib/staff-orders/mark-paid.ts`). It expires an open Checkout, confirms the
+   Order only if `paid_at` is still empty, writes the ledger `charge` (the
+   Stripe payment Staff picked, or one marked `outside_stripe`), then claims
+   `inventory_deducted_at` and calls `deductInventoryForOrder`, exactly as the
+   webhook does. A failed deduction leaves the Order paid and flagged
+   (`oversold`), to retry from the Order page. A link payment that lands on an
+   Order already marked paid is flagged `paid_twice` and left off its ledger,
+   for Staff to refund in Stripe; it deducts nothing.
 
 `POST /api/shop/orders`, which wrote an Order already sold at prices from the
 request body, was retired with this change.
