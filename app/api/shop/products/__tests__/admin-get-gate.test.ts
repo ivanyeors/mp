@@ -16,6 +16,7 @@ vi.mock("@/lib/auth/admin", () => ({
       ? null
       : NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }),
+  adminCanSeeCost: vi.fn(async () => (h.role ? roleHasPermission(h.role, "costings") : false)),
 }));
 vi.mock("@/lib/ecommerce/admin/products", () => ({
   listAdminProducts: h.listAdminProducts,

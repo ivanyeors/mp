@@ -153,6 +153,11 @@ export async function requireAnyAdmin(permissions: Permission[]): Promise<NextRe
   return null;
 }
 
+export async function adminCanSeeCost(): Promise<boolean> {
+  const ctx = await getAdminContext();
+  return ctx !== null && hasPermission(ctx, "costings");
+}
+
 export async function requireAdminContext(permission: Permission): Promise<AdminContext> {
   const ctx = await getAdminContext();
   if (!ctx) throw NextResponse.json({ error: "Unauthorized" }, { status: 401 });

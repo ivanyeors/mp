@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/ssr-server";
 import type { Order } from "@/lib/types/ecommerce";
+import { withoutCosts } from "@/lib/shop/without-costs";
 
 export const CUSTOMER_ORDER_COLUMNS = [
   "id", "order_number", "customer_id", "email", "phone", "status", "currency",
@@ -32,7 +33,7 @@ export async function getCustomerOrders(): Promise<CustomerOrder[]> {
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Failed to load orders: ${error.message}`);
-  return (data ?? []) as unknown as CustomerOrder[];
+  return withoutCosts((data ?? []) as unknown as CustomerOrder[]);
 }
 
 export async function getCustomerOrderByNumber(
@@ -46,5 +47,5 @@ export async function getCustomerOrderByNumber(
     .maybeSingle();
 
   if (error) throw new Error(`Failed to load order: ${error.message}`);
-  return (data as unknown as CustomerOrder) ?? null;
+  return withoutCosts((data as unknown as CustomerOrder) ?? null);
 }

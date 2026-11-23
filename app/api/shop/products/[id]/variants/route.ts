@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/admin";
+import { adminCanSeeCost, requireAdmin } from "@/lib/auth/admin";
+import { withoutCostPrice } from "@/lib/ecommerce/admin/products";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 import { stripePriceIdColumn } from "@/lib/stripe/mode";
 
 export const runtime = "nodejs";
+
+const COST_REFUSED = "Only staff with Costings access can set a cost price.";
 
 const CreateVariantSchema = z.object({
   sku: z.string().nullable().optional().default(null),
@@ -39,7 +42,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .order("position", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, rows: data ?? [] });
+  const rows = data ?? [];
+  return NextResponse.json({ ok: true, rows: (await adminCanSeeCost()) ? rows : rows.map(withoutCostPrice) });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -51,6 +55,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const parsed = CreateVariantSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const canSeeCost = await adminCanSeeCost();
+  if (!canSeeCost && parsed.data.cost_price != null) {
+    return NextResponse.json({ error: COST_REFUSED }, { status: 403 });
   }
 
   const admin = supabaseAdmin();
@@ -67,7 +76,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     variantData.compare_at_price = null;
   }
 
-  const row = { ...variantData, product_id: id, position: variantData.position || (count ?? 0) };
+  const row = {
+    ...(canSeeCost ? variantData : withoutCostPrice(variantData)),
+    product_id: id,
+    position: variantData.position || (count ?? 0),
+  };
 
   const { data, error } = await admin.from("product_variants").insert(row).select("*").single();
   if (error) {
@@ -89,7 +102,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   return NextResponse.json({
     ok: true,
-    row: responseRow,
+    row: canSeeCost ? responseRow : withoutCostPrice(responseRow),
     stripe: stripe && {
       synced: stripe.synced,
       error: stripe.error,

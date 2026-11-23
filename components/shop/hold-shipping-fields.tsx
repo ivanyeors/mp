@@ -32,6 +32,8 @@ export type HoldShippingMethod = {
   collect_location?: { id: string; name: string; address: string } | null;
 };
 
+export type HoldShippingMethods = { country: string; rows: HoldShippingMethod[] };
+
 export const HOLD_SHIPPING_METHODS_PATH = "/api/shop/shipping?collect=1";
 
 export function isSelfCollectMethod(method: HoldShippingMethod | undefined): boolean {
@@ -58,14 +60,16 @@ export function useHoldShippingQuote({
   selectedId,
   onSelect,
 }: {
-  methods: HoldShippingMethod[];
+  methods: HoldShippingMethods;
   address: HoldShippingAddress;
   parcelTypes: PackageType[];
   selectedId: string;
   onSelect: (id: string) => void;
-}): { options: HoldShippingOption[]; selected: HoldShippingOption | undefined } {
+}): { options: HoldShippingOption[]; selected: HoldShippingOption | undefined; loading: boolean } {
   const country = address.country || "SG";
-  const wantsLive = parcelTypes.length > 0 && methods.some(isLiveMethod);
+  const loading = methods.country !== country;
+  const rows = loading ? [] : methods.rows;
+  const wantsLive = parcelTypes.length > 0 && rows.some(isLiveMethod);
   const quote = useShippingQuote(
     wantsLive
       ?
@@ -75,7 +79,7 @@ export function useHoldShippingQuote({
   const postalReady = isPostalReady(address.postal_code, country);
   const quoted = new Map(quote.options.map((o) => [o.method_id, o]));
 
-  const options = methods.map((method): HoldShippingOption => {
+  const options = rows.map((method): HoldShippingOption => {
     const base = {
       method,
       currency: method.currency ?? "SGD",
@@ -106,7 +110,7 @@ export function useHoldShippingQuote({
     if (next && next.method.id !== selectedId) onSelect(next.method.id);
   }, [statusKey, selectedId, onSelect]);
 
-  return { options, selected: options.find((o) => o.method.id === selectedId) };
+  return { options, selected: options.find((o) => o.method.id === selectedId), loading };
 }
 
 export function holdShippingAmount(
@@ -181,6 +185,7 @@ export function HoldShippingTotalRow({
 
 export function HoldShippingFields({
   options,
+  loading = false,
   goodsSubtotal,
   selectedId,
   onSelect,
@@ -191,6 +196,7 @@ export function HoldShippingFields({
   recipientPlaceholder,
 }: {
   options: HoldShippingOption[];
+  loading?: boolean;
   goodsSubtotal: number | null;
   selectedId: string;
   onSelect: (id: string) => void;
@@ -228,7 +234,11 @@ export function HoldShippingFields({
       </div>
       <div className="space-y-2">
         <Label>Shipping method</Label>
-        {options.length === 0 ? (
+        {loading ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Loading shipping methods…
+          </p>
+        ) : options.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No shipping methods available for this country.
           </p>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Make the checks mandatory, not a request in a prompt.
 //
-//   verify.mjs edit   PostToolUse on Edit|Write: eslint on the file just written.
+//   verify.mjs edit   PostToolUse on Edit|Write: eslint on the file just written, no prune.
 //   verify.mjs task   TaskCompleted: eslint, then the tests and checks, for what changed.
 //   verify.mjs stop   Stop: the same, before the session may finish.
 //
@@ -23,11 +23,24 @@
 //
 // Lint runs against the baseline, eslint-suppressions.json (agent-rails PRD,
 // decision 2): ESLint's bulk suppressions, a count per file and rule of the
-// violations that existed when the rails went in. Every run prunes, so a
-// count that fell is lowered in the file without the agent hearing about it,
-// and a count that rose fails. ESLint then lists every occurrence of that
-// rule in the file, the old ones too, so the hook adds one line per rule
-// saying how many it allows and how many are there now.
+// violations that existed when the rails went in. task and stop prune, so a
+// count that fell is lowered in the file without the agent hearing about it.
+// In every mode a count that rose fails. ESLint then lists every occurrence
+// of that rule in the file, the old ones too, so the hook adds one line per
+// rule saying how many it allows and how many are there now.
+//
+// edit does not prune (owner, 2026-11-22): it lints with
+// --pass-on-unpruned-suppressions, so a count that fell neither fails nor is
+// written. An edit is often one step of several, and a step that parses with
+// a suppressed violation gone would lower the count, then fail the finished
+// file that still has it; only the owner can raise a count back. So a count
+// that fell goes down at two other points. A commit lowers the entries of the
+// code files it commits to what their staged content has, in the commit and
+// in the working file (.githooks/pre-commit, `scripts/lint-baseline.mjs
+// --prune-staged`), so no commit carries a count `pnpm lint` fails as unused,
+// a worker's in its own worktree included. task and stop prune every changed
+// file in the working file. In between, the working baseline can hold counts
+// above what the files have, and nothing fails on that.
 //
 // The baseline is keyed by path, and an entry can go missing: a move (git mv
 // or a plain mv), several moves in a row, a move back, a prune run between a
@@ -48,8 +61,9 @@
 // refused because its allowance is claimed). A file at HEAD under its
 // own name with nothing in HEAD's baseline gets nothing, unless some path
 // with an entry in HEAD's baseline is gone from disk (it may have been moved
-// over this one, `git mv -f q p`): then git's view decides. The same run's
-// prune lowers a restored entry to what the file has. This is the one write
+// over this one, `git mv -f q p`): then git's view decides. The prune of a
+// task or stop run lowers a restored entry to what the file has; one restored
+// by edit keeps HEAD's amount until then. This is the one write
 // to the file that is not ESLint's own, and existing working entries are
 // never touched by it.
 //
@@ -283,8 +297,9 @@ const waitFor = (ms) => Number(process.env.MP_VERIFY_LOCK_WAIT_MS) || ms;
 
 const BASELINE_NAME = "eslint-suppressions.json";
 const BASELINE = path.join(ROOT, BASELINE_NAME);
-// Every prune rewrites the baseline, and edits land in parallel: one writer
-// at a time, or two prunes lose each other's change. Separate from the
+// task and stop prune the baseline and edit restores entries to it, while
+// edits land in parallel: one writer at a time, or two lose each other's
+// change, and no reader of a half-written file. Separate from the
 // task/stop run lock below, which is held for the whole test run; an edit
 // waiting on that would outlast its 60-second hook timeout.
 const BASELINE_LOCK = stateFile && `${stateFile}.baseline.lock`;
@@ -434,11 +449,12 @@ function claimedMoves(gone, claims, candidates) {
  * most once per HEAD path. Writes the claims, then the baseline, before
  * eslint runs: a hook killed during eslint leaves both, and a kill between the
  * two writes leaves a claim with no entry, which ends itself. Returns the
- * files it wrote an entry for (they must be linted in the same run, so the
- * prune lowers them) and `restoreClaims`, which puts the claims file back as
- * it was, for a run whose eslint did not finish (the baseline goes back to
- * its snapshot then). Existing working entries are never touched, except
- * that an entry moving with its file leaves the old path.
+ * files it wrote an entry for (they must be linted in the same run, against
+ * that entry, and in task and stop pruned) and `restoreClaims`, which puts
+ * the claims file back as it was, for a run whose eslint did not finish (the
+ * baseline goes back to its snapshot then). Existing working entries are
+ * never touched, except that an entry moving with its file leaves the old
+ * path.
  */
 function restoreAllowances(files) {
   const none = { written: [], restoreClaims: () => {} };
@@ -560,21 +576,23 @@ function baselineConflict() {
 const relOf = (abs) => path.relative(ROOT, abs).split(path.sep).join("/");
 
 /**
- * eslint on `files` against the baseline, pruning it. Call with the baseline
- * lock held. `files` may name deleted files: they lint nothing, and the prune
- * drops their entries. `snapshot` is the baseline as it was before this run
- * touched it (before restoreAllowances): a file that does not parse keeps the
- * entry it had there, and if eslint did not finish, the whole snapshot is put
- * back, so no entry this run restored survives.
+ * eslint on `files` against the baseline. With `prune` (task, stop) a count
+ * that fell is lowered in the baseline; without (edit) it is left as it is
+ * and does not fail. Call with the baseline lock held. `files` may name
+ * deleted files: they lint nothing, and the prune drops their entries.
+ * `snapshot` is the baseline as it was before this run touched it (before
+ * restoreAllowances): a file that does not parse keeps the entry it had
+ * there, and if eslint did not finish, the whole snapshot is put back, so no
+ * entry this run restored survives.
  */
-function lint(files, timeout, snapshot) {
+function lint(files, timeout, snapshot, prune) {
   // With no files eslint lints the whole repository.
   if (files.length === 0) return { ok: true, finished: true };
   const before = readBaseline();
   const r = spawnSync(
     bin("eslint"),
     [
-      ...(before ? ["--prune-suppressions"] : []),
+      ...(before ? [prune ? "--prune-suppressions" : "--pass-on-unpruned-suppressions"] : []),
       "--max-warnings",
       "0",
       "--no-warn-ignored",
@@ -661,9 +679,9 @@ if (mode === "edit") {
   const conflict = baselineConflict();
   if (conflict) fail(conflict);
   const snapshot = readBaseline();
-  // A claimed file found again at a new path is linted too, so its moved entry is pruned now.
+  // A claimed file found again at a new path is linted too, against the entry it was just given.
   const { written: restored, restoreClaims } = restoreAllowances([rel]);
-  const r = lint([...new Set([rel, ...restored])], Math.max(5_000, 55_000 - (Date.now() - started)), snapshot);
+  const r = lint([...new Set([rel, ...restored])], Math.max(5_000, 55_000 - (Date.now() - started)), snapshot, false);
   if (!r.finished) restoreClaims();
   release?.();
   if (!r.ok) fail(`eslint found errors in ${rel}. Fix them before moving on:\n${r.report}`);
@@ -802,7 +820,7 @@ const conflict = baselineConflict();
 if (conflict) failAttempt(`${before}: ${conflict}`);
 const snapshot = readBaseline();
 const { written: restored, restoreClaims } = restoreAllowances([...new Set([...changed, ...missing])]);
-const lintRun = lint([...new Set([...changed, ...gone, ...restored, ...missing])], remaining(), snapshot);
+const lintRun = lint([...new Set([...changed, ...gone, ...restored, ...missing])], remaining(), snapshot, true);
 if (!lintRun.finished) restoreClaims();
 releaseBaseline?.();
 if (!lintRun.ok) failAttempt(`${before}: eslint fails on the files you changed. Fix it before anything else; the tests have not run yet.\n\n${lintRun.report}`);

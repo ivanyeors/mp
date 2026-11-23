@@ -504,13 +504,12 @@ export async function POST(
       fillingPlacements: m.build.fillingPlacements,
       buildLines: m.build.lines,
       nameByItem: m.build.nameByItem,
-      cogs: m.build.cogs,
       pricing: {
         ...m.build.pricing,
         services: memberSubtotal - m.build.pricing.goods,
         subtotal: memberSubtotal,
       },
-      serviceLines: m.serviceLines.map((l) => ({ ...l, costPrice: null })),
+      serviceLines: m.serviceLines,
     });
 
     const { data: orderItem, error: itemErr } = await admin

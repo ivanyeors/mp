@@ -11,6 +11,8 @@ export type DockAction = {
   active?: boolean;
   /** Small attention dot, e.g. an out-of-date result. */
   badge?: boolean;
+  /** Shown but not pressable, e.g. Refresh while a save is in flight. */
+  disabled?: boolean;
 };
 
 export type DockTools = {
