@@ -48,7 +48,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AI_WRITING_NO_CREDENTIALS, type AiWritingAvailability } from "@/lib/ai/availability";
 import { DRAFT_STAGE_TEXT, draftBlocker, draftTitle, withEditedBlocks } from "@/lib/email-campaigns/ai-drafted";
 import { REFINE_BUTTON_LABEL, REFINE_STAGE_TEXT, ideasBlocker } from "@/lib/email-campaigns/ai-refine-brief";
-import { errorsAfterBlockEdit } from "@/lib/email-campaigns/block-errors";
+import { errorsAfterBlockEdit, firstSaveProblem, saveRefusalText } from "@/lib/email-campaigns/block-errors";
 import {
     campaignWordsOf,
     clearAllBlocker,
@@ -156,6 +156,8 @@ async function slotInFront(id: string, slot: SlotBefore): Promise<void> {
 const NOTHING_FOUND: FoundSegments = {};
 
 const CLEAR_ALL_TOAST = "campaign-clear-all";
+const SAVE_TOAST = "campaign-save";
+const unreached = (err: unknown) => ({ ok: false as const, error: err instanceof Error ? err.message : String(err) });
 
 const PALETTE = [blockPaletteTab(CAMPAIGN_BLOCKS)];
 
@@ -353,17 +355,49 @@ export function CampaignEditor({
     });
     useEffect(() => () => void toast.dismiss(CLEAR_ALL_TOAST), []);
 
+    const [tab, setTab] = useState<"write" | "send" | "results">(initialTab === "results" && locked ? "results" : "write");
+    const [selected, setSelected] = useState<string | null>(null);
+    const [pane, setPane] = useState<"write" | "preview">("write");
+    const [addOpen, setAddOpen] = useState(false);
+    const editorArea = useRef<HTMLDivElement>(null);
+    const goToBlock = useCallback((id: string, language: Locale = DEFAULT_LOCALE) => {
+        setTab("write");
+        setPane("write");
+        setEmailLanguage(language);
+        setSelected(id);
+        requestAnimationFrame(() => {
+            const card = editorArea.current?.querySelector<HTMLElement>(`li[data-block-id="${id}"]`);
+            card?.scrollIntoView?.({ block: "center" });
+            card?.focus({ preventScroll: true });
+        });
+    }, []);
+    const tellRefused = useCallback(
+        (verb: string, res: { error: string; fieldErrors?: Record<string, string> }, shown: CampaignContent | null | undefined) => {
+            const problem = firstSaveProblem(res.fieldErrors ?? {}, shown ?? null);
+            const text = saveRefusalText(verb, res.error, problem);
+            toast.error(text, { id: SAVE_TOAST, duration: 15_000 });
+            if (problem?.blockId) goToBlock(problem.blockId, problem.chinese ? CHINESE : DEFAULT_LOCALE);
+            return text;
+        },
+        [goToBlock],
+    );
+
     const createdId = useRef<string | null>(null);
     const save = useCallback(async (): Promise<string | null> => {
         setSaving(true);
         setSaveError(null);
+        toast.dismiss(SAVE_TOAST);
         try {
-            const res = await saveCampaign(campaign?.id ?? createdId.current, input);
+            const res = await saveCampaign(campaign?.id ?? createdId.current, input).catch((err: unknown) => ({
+                ok: false as const,
+                error: `${unreached(err).error}. ${campaign?.lockedAt ? "Your change is still on this page: try Save again." : "Your changes are still here, and kept in this browser if you reload."}`,
+            }));
             if (!res.ok) {
-                setSaveError(res.error);
-                setFieldErrors(res.fieldErrors ?? {});
-                if (Object.keys(res.fieldErrors ?? {}).some((k) => k.startsWith("content.fallbacks."))) setPaletteTab("variables");
-                if (hasChineseErrors(res.fieldErrors ?? {})) setEmailLanguage(CHINESE);
+                const fieldErrors = "fieldErrors" in res ? (res.fieldErrors ?? {}) : {};
+                setFieldErrors(fieldErrors);
+                if (Object.keys(fieldErrors).some((k) => k.startsWith("content.fallbacks."))) setPaletteTab("variables");
+                if (hasChineseErrors(fieldErrors)) setEmailLanguage(CHINESE);
+                setSaveError(tellRefused("Not saved", { error: res.error, fieldErrors }, input.content));
                 return null;
             }
             setFieldErrors({});
@@ -382,24 +416,7 @@ export function CampaignEditor({
         } finally {
             setSaving(false);
         }
-    }, [campaign, input, locale, router, slotBefore]);
-
-    const [tab, setTab] = useState<"write" | "send" | "results">(initialTab === "results" && locked ? "results" : "write");
-    const [selected, setSelected] = useState<string | null>(null);
-    const [pane, setPane] = useState<"write" | "preview">("write");
-    const [addOpen, setAddOpen] = useState(false);
-    const editorArea = useRef<HTMLDivElement>(null);
-    const goToBlock = (id: string, language: Locale = DEFAULT_LOCALE) => {
-        setTab("write");
-        setPane("write");
-        setEmailLanguage(language);
-        setSelected(id);
-        requestAnimationFrame(() => {
-            const card = editorArea.current?.querySelector<HTMLElement>(`li[data-block-id="${id}"]`);
-            card?.scrollIntoView?.({ block: "center" });
-            card?.focus({ preventScroll: true });
-        });
-    };
+    }, [campaign, input, locale, router, slotBefore, tellRefused]);
 
     const variables = useMemo(() => campaignVariables({ pointsLive }), [pointsLive]);
     const lineVariables = content ? variables : NO_VARIABLES;
@@ -492,7 +509,7 @@ export function CampaignEditor({
         setTestResult(null);
         try {
             if (dirty && !locked && !(await save())) return;
-            const res = await sendCampaignTestAction(campaign.id, [testTo], ...(version && testLanguage === CHINESE ? [{ language: CHINESE }] : []));
+            const res = await sendCampaignTestAction(campaign.id, [testTo], ...(version && testLanguage === CHINESE ? [{ language: CHINESE }] : [])).catch(unreached);
             if (!res.ok) setTestResult({ ok: false, text: res.error });
             else if (res.failed.length) setTestResult({ ok: false, text: `Sent ${res.sent}. Couldn't send to ${res.failed.map((f) => `${f.to} (${f.error})`).join(", ")}.` });
             else setTestResult({ ok: true, text: `Test sent to ${res.sent} address${res.sent === 1 ? "" : "es"}. Check the inbox, and the spam folder.` });
@@ -525,7 +542,7 @@ export function CampaignEditor({
         setPlanning(true);
         setPlanError(null);
         try {
-            const res = await planCampaignWave(campaign.id, { size, retryFailed, resume }, false);
+            const res = await planCampaignWave(campaign.id, { size, retryFailed, resume }, false).catch(unreached);
             if (res.ok) {
                 setPlan(res);
                 setReadiness(res.readiness);
@@ -576,7 +593,7 @@ export function CampaignEditor({
         setPlanError(null);
         let started: Extract<WaveAnswer, { ok: true }>;
         try {
-            const res = await planCampaignWave(campaign.id, { size, retryFailed, resume }, true);
+            const res = await planCampaignWave(campaign.id, { size, retryFailed, resume }, true).catch(unreached);
             if (!res.ok) return setPlanError(res.error);
             if (!res.started) {
                 setPlan(res);
@@ -613,7 +630,7 @@ export function CampaignEditor({
                 customerIds: ids.slice(i, i + started.batchSize),
                 retryFailed,
                 failuresInARow,
-            }).catch((e: unknown) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+            }).catch(unreached);
             if (!res.ok) {
                 state = { ...state, stopped: res.error };
                 break;
@@ -643,18 +660,18 @@ export function CampaignEditor({
     const archive = async () => {
         if (!campaign || !window.confirm(`Archive "${campaign.name}"? It leaves the list; what was sent stays recorded.`)) return;
         setBusy(true);
-        const res = await archiveCampaignAction(campaign.id);
+        const res = await archiveCampaignAction(campaign.id).catch(unreached);
         setBusy(false);
         if (res.ok) router.push(to("/settings/campaigns"));
-        else setSaveError(res.error);
+        else setSaveError(tellRefused("Not archived", res, null));
     };
     const copyOf = async (id: string) => {
         if (!guard.confirmLeave()) return;
         setBusy(true);
-        const res = await duplicateCampaign(id);
+        const res = await duplicateCampaign(id).catch(unreached);
         setBusy(false);
         if (res.ok) router.push(to(`/settings/campaigns/${res.id}`));
-        else setSaveError(res.error);
+        else setSaveError(tellRefused("Not duplicated", res, campaign?.content));
     };
     const duplicate = () => (campaign ? copyOf(campaign.id) : undefined);
 
