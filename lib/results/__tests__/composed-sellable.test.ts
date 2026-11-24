@@ -175,6 +175,35 @@ describe("loadComposedSellable — one row per case fabric family", () => {
     if (res.ok) expect(res.sellable.msrp).toBe(460);
   });
 
+  it("offers only active covers and cases made for the size or for every size", async () => {
+    const asked: Array<[string, ...unknown[]]> = [];
+    const base = stub([{ key: "product:pillow:8", variant: null, msrp: 460 }]) as unknown as {
+      from: (t: string) => Record<string, (...args: unknown[]) => unknown>;
+    };
+    const recording = {
+      from(t: string) {
+        const q = base.from(t);
+        if (t !== "items") return q;
+        for (const op of ["in", "or", "eq"]) {
+          q[op] = (...args: unknown[]) => {
+            asked.push([op, ...args]);
+            return q;
+          };
+        }
+        return q;
+      },
+    } as never;
+    const res = await (await load())(recording, key);
+    expect(res.ok).toBe(true);
+    expect(asked).toContainEqual(["in", "category", ["pillow_case", "case", "cover"]]);
+    expect(asked).toContainEqual(["or", "size.eq.M,size.is.null"]);
+    expect(asked).toContainEqual(["eq", "is_active", true]);
+    if (res.ok) {
+      expect(res.sellable.coverOptions.map((c) => c.item_id)).toEqual([3]);
+      expect(res.sellable.caseOptions.map((c) => c.item_id)).toEqual([53, 44]);
+    }
+  });
+
   it("reports an unpriceable shelf build WITHOUT failing the loader", async () => {
     const res = await (await load())(
       stub([{ key: "product:pillow:8:linen", variant: "linen", msrp: 430 }]),

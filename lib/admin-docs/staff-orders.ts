@@ -29,7 +29,7 @@ export function staffOrdersGuideSections(): DocSection[] {
           kind: "list",
           items: [
             "Products are charged at their shop price, services at their price in Costings. You choose what and how many, never the price.",
-            "An Mpillow Basic, Mpillow Premium or Mbolster is built to order: you choose its fillings when you add it (see below). Its price comes from Costings and does not change with the fillings. Each Ear Comfort Pad you place inside is charged on top, at its own price.",
+            "An Mpillow Basic, Mpillow Premium or Mbolster is built to order: you choose its fillings, and its cover and case, when you add it (see below). Its price comes from Costings and does not change with the fillings. A different cover or case changes it only where Costings prices that one differently. Each Ear Comfort Pad you place inside is charged on top, at its own price.",
             "A customer who still needs measuring is a customisation (a Result), not an order here. Start one with your Assist link, then use Request payment on the Result.",
             "Points and partner referral codes do not apply. A discount code made in Discounts does, on the products only.",
           ],
@@ -51,7 +51,7 @@ export function staffOrdersGuideSections(): DocSection[] {
             "Open the customer under Customers and press Create order. Or press Create order on Orders, then search for the customer by name, email or mobile and pick them.",
             "Someone new? On Orders, choose New customer and type their name, email and mobile. An email is required, because the payment link goes there. If that email already belongs to a customer, the order goes under their record and nobody is created twice. Adding a customer needs the Customers: make changes permission.",
             "Search for products. Each row shows its price on the right; point at a row, or tap it, to add it. Add any service. Change quantities with − and +.",
-            "For a pillow or bolster, the row opens Choose fillings instead (see the next section).",
+            "For a pillow or bolster, the row opens Choose build instead (see the next section).",
             "Choose where it goes: At a studio (handed over or done there, no shipping charge, no courier label), or Deliver to an address, with one of their saved addresses or a new one and a delivery method.",
             "Type a discount code if they have one, and press Apply.",
             "Add a note for the customer if you like (it shows in the email and on the payment page), and an internal note for the team.",
@@ -72,7 +72,7 @@ export function staffOrdersGuideSections(): DocSection[] {
       blocks: [
         {
           kind: "p",
-          text: "Pillows and bolsters are at the top of the product list, marked Built to order. Picking one opens its fillings before it joins the order.",
+          text: "Pillows and bolsters are at the top of the product list, marked Built to order. Picking one opens its build (the fillings, and the cover and case) before it joins the order.",
         },
         {
           kind: "steps",
@@ -80,8 +80,9 @@ export function staffOrdersGuideSections(): DocSection[] {
             "Pick the size or length you are selling, for example Mpillow Premium · M.",
             "Choose a Filling Template. The list holds the templates made for that size; the size's default is chosen for you when it has one.",
             "Adjust it for this customer. On a pillow, click a section of the x-ray to add or swap pieces, and use the bin beside a filling under What goes in to take it out. On a bolster, add and remove pieces in the list. Once you change anything it reads Adjusted, and Back to the template undoes your changes.",
-            "Press Add to order. The line shows the template, or Adjusted from it, and how many pieces go in. Change fillings opens it again until the order is made.",
-            "Two pillows with the same fillings: raise the quantity. Different fillings: add the pillow again.",
+            "Choose the Cover and the Case for a pillow, or the Case for a bolster (a bolster has no cover). The ones the size comes with are chosen for you and marked standard. Each other one shows what it adds to or takes off the price, and how many are in stock.",
+            "Press Add to order. The line shows the template, or Adjusted from it, how many pieces go in, and the cover and case. Change build opens it again until the order is made.",
+            "Two pillows with the same fillings, cover and case: raise the quantity. Anything different: add the pillow again.",
           ],
         },
         {
@@ -89,7 +90,8 @@ export function staffOrdersGuideSections(): DocSection[] {
           items: [
             "A neck support or ear pad inside the pillow is for Premium only, so a Basic pillow and a bolster are offered fillings alone.",
             "An ear pad placed inside adds its own price to the pillow; the editor and the order line show how much. A neck support inside does not.",
-            "The cover and case are the ones the size comes with. A different case is added as its own product.",
+            "The cover and case you choose replace the ones the size comes with: they are what the workshop uses and what leaves stock. A spare case on top is added as its own product.",
+            "A cover or case with no price in Costings, or out of stock, cannot be chosen.",
             "If there is not enough stock to build it, the order says which filling or part is short. Stock leaves when the order is paid.",
             "The order's page shows the build under Build snapshot, section by section, for whoever makes it.",
             "A template you adjust here is changed for this order only. Templates themselves are made under Inventory → Configure.",

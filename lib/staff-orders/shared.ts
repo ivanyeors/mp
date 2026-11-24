@@ -58,6 +58,8 @@ const BuildSchema = z.object({
   variant_id: z.string().uuid("A pillow or bolster in this order can't be found. Remove it and try again."),
   quantity: z.number().int().min(1).max(MAX_GOODS_QUANTITY),
   filling_template_id: z.number().int().positive().nullable().default(null),
+  cover_item_id: z.number().int().positive().nullable().default(null),
+  case_item_id: z.number().int().positive().nullable().default(null),
   placements: z
     .array(BuildPlacementSchema)
     .min(1, "Put at least one filling in the build")
@@ -167,6 +169,8 @@ export type StaffOrderBuildSummary = {
   adjusted: boolean;
   pieces: number;
   placedExtras: number;
+  cover: string | null;
+  case: string | null;
 };
 
 export type StaffOrderLine =

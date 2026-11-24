@@ -1,5 +1,5 @@
 import type { BolsterPlacementRow, PillowPlacementRow } from "@/lib/spatial-fillings/core";
-import type { BolsterVariant, FillingLine } from "@/lib/types/customization";
+import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 
 export const STAFF_BUILD_SOURCE = "staff_order";
 
@@ -14,7 +14,7 @@ export type StaffBuildSnapshot = {
   filling_template_name: string | null;
   based_on_template: StaffBuildTemplate | null;
   filling_placements: Array<PillowPlacementRow | BolsterPlacementRow>;
-  config_lines: [];
+  config_lines: ConfigLine[];
   filling_lines: FillingLine[];
   total_addon_price: number;
   summary: string;
@@ -47,4 +47,10 @@ export function staffBuildFillingLabel(snapshot: StaffBuildSnapshot): string {
         : null,
     basedOn: snapshot.based_on_template,
   });
+}
+
+export function buildPartsLabel(parts: { cover: string | null; case: string | null }): string {
+  return [parts.cover ? `Cover: ${parts.cover}` : null, parts.case ? `Case: ${parts.case}` : null]
+    .filter(Boolean)
+    .join(" · ");
 }
