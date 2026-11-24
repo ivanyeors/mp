@@ -180,9 +180,11 @@ async function loadBuildParts(
   }
 
   if (key.productType === "pillow") {
-    const covers = recipe.cover ? sellable.coverOptions : [];
-    for (const c of covers) if (!offered.cover.has(c.item_id)) offered.cover.set(c.item_id, c);
-    for (const c of sellable.caseOptions) if (!offered.case.has(c.item_id)) offered.case.set(c.item_id, c);
+    const others = { cover: sellable.coverOptions, case: sellable.caseOptions };
+    for (const role of PART_ROLES) {
+      if (!recipe[role]) continue;
+      for (const c of others[role]) if (!offered[role].has(c.item_id)) offered[role].set(c.item_id, c);
+    }
   } else if (recipe.case) {
     const { data, error } = await admin
       .from("items")

@@ -29,6 +29,8 @@ const h = vi.hoisted(() => ({
   db: {} as Record<string, Array<Record<string, unknown>>>,
   msrp: 460 as number | null,
   tier: "premium",
+  rows: null as Record<string, number> | null,
+  families: {} as Record<number, string | null>,
   keys: [] as Array<Record<string, unknown>>,
   sessions: [] as Array<Record<string, unknown>>,
 }));
@@ -61,28 +63,37 @@ vi.mock("@/lib/results/composed-sellable", () => ({
       ...extra,
     });
     const inRecipe = (table: string, id: number) => h.db[table].some((l) => l.item_id === id);
-    const sellable =
-      key.productType === "pillow"
-        ? {
-            msrpByFamily: { "": h.msrp, fibrecool: h.msrp + COOL_FAMILY_MORE },
-            defaultCover: inRecipe("bom_lines", COVER) ? part(COVER, { quantity: 1 }) : null,
-            defaultCase: inRecipe("bom_lines", CASE) ? part(CASE, { family: null, quantity: 1 }) : null,
-            coverOptions: [part(COVER), part(COVER_SILK)],
-            caseOptions: [
-              part(CASE, { family: null }),
-              part(CASE_COOL, { family: "fibrecool" }),
-              part(CASE_COTTON, { family: null }),
-              part(CASE_UNPRICED, { family: null }),
-            ],
-          }
-        : {
-            msrpByFamily: { "": h.msrp },
-            defaultCover: part(BOLSTER_COVER, { quantity: 1 }),
-            defaultCase: inRecipe("bolster_bom_lines", BOLSTER_CASE) ? part(BOLSTER_CASE, { family: null, quantity: 1 }) : null,
-            coverOptions: [],
-            caseOptions: [],
-          };
-    return { ok: true, sellable: { msrp: h.msrp, priceFault: null, bomLines: [], currency: "SGD", ...sellable } };
+    const family = (id: number) => ({ family: h.families[id] ?? (id === CASE_COOL ? "fibrecool" : null) });
+    if (key.productType === "bolster") {
+      const sellable = {
+        msrp: h.msrp,
+        msrpByFamily: { "": h.msrp },
+        defaultCover: part(BOLSTER_COVER, { quantity: 1 }),
+        defaultCase: inRecipe("bolster_bom_lines", BOLSTER_CASE) ? part(BOLSTER_CASE, { family: null, quantity: 1 }) : null,
+        coverOptions: [],
+        caseOptions: [],
+      };
+      return { ok: true, sellable: { priceFault: null, bomLines: [], currency: "SGD", ...sellable } };
+    }
+    const pillow = {
+      msrpByFamily: h.rows ?? { "": h.msrp, fibrecool: h.msrp + COOL_FAMILY_MORE },
+      defaultCover: inRecipe("bom_lines", COVER) ? part(COVER, { quantity: 1 }) : null,
+      defaultCase: inRecipe("bom_lines", CASE) ? part(CASE, { ...family(CASE), quantity: 1 }) : null,
+      coverOptions: [part(COVER), part(COVER_SILK)],
+      caseOptions: [CASE, CASE_COOL, CASE_COTTON, CASE_UNPRICED].map((id) => part(id, family(id))),
+    };
+    const { priceComposedBuild } = await import("@/lib/pricing/composed-price");
+    const shelf = priceComposedBuild({ ...pillow, chosenCover: null, chosenCase: null, addonLines: [] } as never);
+    return {
+      ok: true,
+      sellable: {
+        msrp: shelf.ok ? shelf.subtotal : null,
+        priceFault: shelf.ok ? null : { code: shelf.code, error: shelf.error },
+        bomLines: [],
+        currency: "SGD",
+        ...pillow,
+      },
+    };
   },
   getDefaultFillingTemplateId: async () => SIDE_SLEEPER,
 }));
@@ -273,6 +284,8 @@ async function refusal(extra: Row) {
 beforeEach(() => {
   h.msrp = 460;
   h.tier = "premium";
+  h.rows = null;
+  h.families = {};
   h.keys = [];
   h.sessions = [];
   h.db = seed();
@@ -450,7 +463,28 @@ describe("a pillow or bolster on a Staff order", () => {
     );
   });
 
-  it("never adds a cover the recipe has none of, and prices a case the recipe lacks on its family's Costings row or not at all", async () => {
+  it("prices the rows Costings holds: a Premium pillow on its case's family row, a Basic one by the difference from its own case", async () => {
+    h.families = { [CASE]: "linen", [CASE_COTTON]: "linen", [CASE_COOL]: "fibrecool" };
+    h.db.inventory_balances.find((b) => b.item_id === CASE_COTTON)!.on_hand = 1;
+    const price = async (extra: Row = {}) => (await quoted({ builds: [build(extra)] })).lines[0].unitPrice;
+
+    h.rows = { linen: 430, fibrecool: 460 };
+    expect(await price()).toBe(430);
+    expect(await price({ case_item_id: CASE_COOL })).toBe(460);
+    expect(await price({ case_item_id: CASE_COTTON })).toBe(440);
+    expect(await price({ cover_item_id: COVER_SILK, case_item_id: CASE_COOL })).toBe(470);
+    h.families[CASE_COTTON] = null;
+    expect(await refusal({ builds: [build({ case_item_id: CASE_COTTON })] })).toMatch(
+      /has no price with that cover and case\. Set it in Costings first\. \(No Costings MSRP for this size\.\)/,
+    );
+
+    h.rows = { "": 220 };
+    expect(await price()).toBe(220);
+    expect(await price({ case_item_id: CASE_COOL })).toBe(240);
+    expect(await price({ cover_item_id: COVER_SILK })).toBe(230);
+  });
+
+  it("changes only a part the recipe has, so a cover or case is never added for nothing", async () => {
     h.db.bom_lines = h.db.bom_lines.filter((l) => l.item_id !== COVER);
     expect(await refusal({ builds: [build({ cover_item_id: COVER_SILK })] })).toBe(
       "Mpillow Premium · Size M: its recipe has no cover, so there is none to change.",
@@ -462,16 +496,12 @@ describe("a pillow or bolster on a Staff order", () => {
 
     h.db.bom_lines = [{ product_id: 3, item_id: COVER, quantity: 1 }];
     expect((await quoted({ builds: [build()] })).lines[0]).toMatchObject({ unitPrice: 460, build: { case: null } });
-    const cool = await quoted({ builds: [build({ case_item_id: CASE_COOL })] });
-    expect(cool.lines[0]).toMatchObject({ unitPrice: 460 + COOL_FAMILY_MORE, build: { case: "Fibrecool case" } });
-    expect(cool.builds[0].snapshot.config_lines).toMatchObject([
-      { item_id: COVER, category: "cover" },
-      { item_id: CASE_COOL, category: "case", quantity: 1 },
-    ]);
-    expect(await refusal({ builds: [build({ case_item_id: CASE_COTTON })] })).toMatch(
-      /has no price with that cover and case\. Set it in Costings first/,
+    expect(await refusal({ builds: [build({ case_item_id: CASE_COOL })] })).toBe(
+      "Mpillow Premium · Size M: its recipe has no case, so there is none to change.",
     );
-    expect(await refusal({ builds: [build({ case_item_id: 9999 })] })).toMatch(/that case isn't one for this size/);
+    h.rows = { linen: 430, fibrecool: 460 };
+    expect(await refusal({ builds: [build()] })).toMatch(/has no price\. Set it in Costings first/);
+    h.rows = null;
 
     h.msrp = 190;
     h.db.bolster_bom_lines = h.db.bolster_bom_lines.filter((l) => l.item_id !== BOLSTER_CASE);
@@ -781,16 +811,25 @@ describe("what the fillings editor is offered", () => {
     ]);
   });
 
-  it("offers no cover where the recipe has none, and a pillow with no case line only the cases its family rows price", async () => {
-    h.db.bom_lines = [];
-    const bare = await options(PILLOW);
-    expect(bare).toMatchObject({ covers: [], defaultCoverId: null, defaultCaseId: null });
-    expect(bare.cases.map((c) => [c.itemId, c.priceDelta])).toEqual([
-      [CASE_COTTON, null],
-      [CASE_COOL, COOL_FAMILY_MORE],
-      [CASE, null],
+  it("offers a Premium pillow priced on family rows what each case adds to its own case's row", async () => {
+    h.rows = { linen: 430, fibrecool: 460 };
+    h.families = { [CASE]: "linen", [CASE_COTTON]: "linen", [CASE_COOL]: "fibrecool" };
+    const o = await options(PILLOW);
+    expect(o.covers.map((c) => [c.itemId, c.priceDelta])).toEqual([
+      [COVER, 0],
+      [COVER_SILK, 10],
+    ]);
+    expect(o.cases.map((c) => [c.itemId, c.priceDelta])).toEqual([
+      [CASE, 0],
+      [CASE_COTTON, 10],
+      [CASE_COOL, 30],
       [CASE_UNPRICED, null],
     ]);
+  });
+
+  it("offers no other cover or case where the recipe has none to change", async () => {
+    h.db.bom_lines = [];
+    expect(await options(PILLOW)).toMatchObject({ covers: [], cases: [], defaultCoverId: null, defaultCaseId: null });
     h.msrp = 190;
     h.db.bolster_bom_lines = h.db.bolster_bom_lines.filter((l) => l.item_id !== BOLSTER_CASE);
     expect(await options(BOLSTER)).toMatchObject({ covers: [], cases: [], defaultCaseId: null });

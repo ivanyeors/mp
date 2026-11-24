@@ -25,12 +25,13 @@ from Costings and is what the workshop builds and what leaves stock.**
   covers and cases for its size, and the recipe's own. A bolster: the recipe's case and the
   active bolster cases made for its length, and no cover (`preferenceCategoryAllowed`). The
   server refuses anything else, by name of what is wrong.
-- **A cover is changed, never added.** A recipe with no cover line offers no cover:
-  `priceComposedBuild` charges nothing for a cover where the recipe has none to compare it
-  with, so offering one would give it away. A case has no such gap. A pillow whose recipe has
-  no case line (Costings prices each fabric family's case on its own row) may take a case whose
-  family has a Costings row, at that row's price; any other case is refused as unpriced. A
-  bolster whose recipe has no case line has nothing to price a case against and offers none.
+- **A choice changes a part the recipe has; it never adds one.** A recipe with no cover line
+  offers no cover, and one with no case line no case. `priceComposedBuild` charges nothing for
+  a cover where the recipe has none to compare it with, so offering one would give it away. A
+  case would be priced only where Costings holds both a plain row and a family row for the
+  size, which no pillow has: Premium holds family rows only, Basic the plain row only. A
+  Premium pillow whose recipe has no case line has no shelf MSRP and is refused, as under
+  ADR 0057. Every pillow recipe is expected to carry its case.
 - **Price: Costings, through `priceComposedBuild` (ADR 0001).** The recipe's cover and case cost
   the Composed sellable's shelf MSRP, as before. Another case is priced on its fabric family's
   Costings row, and another cover or case in the same family by the difference between its MSRP
