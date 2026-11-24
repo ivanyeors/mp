@@ -150,10 +150,9 @@ function priceWithParts(
 ): { ok: true; subtotal: number } | { ok: false; error: string } {
   const recipes = (part: PricedComponent | null, recipe: PricedComponent | null) =>
     part == null || part.item_id === recipe?.item_id;
+  if (sellable.msrp == null) return { ok: false, error: sellable.priceFault?.error ?? "No Costings MSRP for this size" };
   const recipeCover = recipes(chosen.cover, sellable.defaultCover);
-  if (sellable.msrp != null && recipeCover && recipes(chosen.case, sellable.defaultCase)) {
-    return { ok: true, subtotal: sellable.msrp };
-  }
+  if (recipeCover && recipes(chosen.case, sellable.defaultCase)) return { ok: true, subtotal: sellable.msrp };
   return priceComposedBuild({
     msrpByFamily: sellable.msrpByFamily,
     defaultCover: recipeCover ? null : sellable.defaultCover,
@@ -181,11 +180,9 @@ async function loadBuildParts(
   }
 
   if (key.productType === "pillow") {
-    const others = { cover: sellable.coverOptions, case: sellable.caseOptions };
-    for (const role of PART_ROLES) {
-      if (!recipe[role]) continue;
-      for (const c of others[role]) if (!offered[role].has(c.item_id)) offered[role].set(c.item_id, c);
-    }
+    const covers = recipe.cover ? sellable.coverOptions : [];
+    for (const c of covers) if (!offered.cover.has(c.item_id)) offered.cover.set(c.item_id, c);
+    for (const c of sellable.caseOptions) if (!offered.case.has(c.item_id)) offered.case.set(c.item_id, c);
   } else if (recipe.case) {
     const { data, error } = await admin
       .from("items")
@@ -268,7 +265,7 @@ function chooseParts(
     if (!part) {
       const error = !preferenceCategoryAllowed(key.productType, role)
         ? `a ${key.productType} has no ${role} to choose.`
-        : parts[role].defaultId == null
+        : parts[role].options.length === 0
           ? `its recipe has no ${role}, so there is none to change.`
           : `that ${role} isn't one for this ${key.productType === "pillow" ? "size" : "length"}. Pick another.`;
       return { ok: false, error };

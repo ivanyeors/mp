@@ -450,7 +450,7 @@ describe("a pillow or bolster on a Staff order", () => {
     );
   });
 
-  it("changes only a part the recipe has, so a cover or case is never added for nothing", async () => {
+  it("never adds a cover the recipe has none of, and prices a case the recipe lacks on its family's Costings row or not at all", async () => {
     h.db.bom_lines = h.db.bom_lines.filter((l) => l.item_id !== COVER);
     expect(await refusal({ builds: [build({ cover_item_id: COVER_SILK })] })).toBe(
       "Mpillow Premium · Size M: its recipe has no cover, so there is none to change.",
@@ -461,8 +461,17 @@ describe("a pillow or bolster on a Staff order", () => {
     expect(bare.builds[0].snapshot.config_lines).toMatchObject([{ item_id: CASE_COTTON, category: "case" }]);
 
     h.db.bom_lines = [{ product_id: 3, item_id: COVER, quantity: 1 }];
-    expect(await refusal({ builds: [build({ case_item_id: CASE_COOL })] })).toMatch(/its recipe has no case/);
     expect((await quoted({ builds: [build()] })).lines[0]).toMatchObject({ unitPrice: 460, build: { case: null } });
+    const cool = await quoted({ builds: [build({ case_item_id: CASE_COOL })] });
+    expect(cool.lines[0]).toMatchObject({ unitPrice: 460 + COOL_FAMILY_MORE, build: { case: "Fibrecool case" } });
+    expect(cool.builds[0].snapshot.config_lines).toMatchObject([
+      { item_id: COVER, category: "cover" },
+      { item_id: CASE_COOL, category: "case", quantity: 1 },
+    ]);
+    expect(await refusal({ builds: [build({ case_item_id: CASE_COTTON })] })).toMatch(
+      /has no price with that cover and case\. Set it in Costings first/,
+    );
+    expect(await refusal({ builds: [build({ case_item_id: 9999 })] })).toMatch(/that case isn't one for this size/);
 
     h.msrp = 190;
     h.db.bolster_bom_lines = h.db.bolster_bom_lines.filter((l) => l.item_id !== BOLSTER_CASE);
@@ -772,9 +781,16 @@ describe("what the fillings editor is offered", () => {
     ]);
   });
 
-  it("offers no other cover or case where the recipe has none to change", async () => {
+  it("offers no cover where the recipe has none, and a pillow with no case line only the cases its family rows price", async () => {
     h.db.bom_lines = [];
-    expect(await options(PILLOW)).toMatchObject({ covers: [], cases: [], defaultCoverId: null, defaultCaseId: null });
+    const bare = await options(PILLOW);
+    expect(bare).toMatchObject({ covers: [], defaultCoverId: null, defaultCaseId: null });
+    expect(bare.cases.map((c) => [c.itemId, c.priceDelta])).toEqual([
+      [CASE_COTTON, null],
+      [CASE_COOL, COOL_FAMILY_MORE],
+      [CASE, null],
+      [CASE_UNPRICED, null],
+    ]);
     h.msrp = 190;
     h.db.bolster_bom_lines = h.db.bolster_bom_lines.filter((l) => l.item_id !== BOLSTER_CASE);
     expect(await options(BOLSTER)).toMatchObject({ covers: [], cases: [], defaultCaseId: null });
