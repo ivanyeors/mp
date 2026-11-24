@@ -40,7 +40,7 @@ import { fillingLabel } from "@/lib/spatial-fillings/filling-groups";
 import { softBodyFromPayload } from "@/lib/spatial-fillings/soft-body-settings";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { fillingSourceLabel } from "@/lib/staff-orders/build-snapshot";
-import type { StaffOrderBuildOptions } from "@/lib/staff-orders/builds";
+import type { BuildPartOption, StaffOrderBuildOptions } from "@/lib/staff-orders/builds";
 import type { StaffOrderBuildPlacement } from "@/lib/staff-orders/shared";
 
 const XrayEditor = dynamic(() => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor), {
@@ -61,6 +61,10 @@ export type OrderBuild = {
     placements: StaffOrderBuildPlacement[];
     filling: string;
     pieces: number;
+    coverItemId: number | null;
+    caseItemId: number | null;
+    cover: string | null;
+    case: string | null;
 };
 
 type Template = StaffOrderBuildOptions["templates"][number];
@@ -68,6 +72,7 @@ type Template = StaffOrderBuildOptions["templates"][number];
 const NO_TEMPLATE = "none";
 
 const money = (n: number) => new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD" }).format(n);
+const signedMoney = (n: number) => `${n < 0 ? "−" : "+"}${money(Math.abs(n))}`;
 
 export function OrderBuildDialog({
     open,
@@ -85,7 +90,7 @@ export function OrderBuildDialog({
     onSave: (build: OrderBuild) => void;
 }) {
     const { options, error } = useStaffOrderBuildOptions(open ? variantId : null);
-    const saveLabel = initial ? "Save fillings" : "Add to order";
+    const saveLabel = initial ? "Save build" : "Add to order";
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,11 +102,11 @@ export function OrderBuildDialog({
                 }}
             >
                 <DialogHeader>
-                    <DialogTitle>Fillings for {title}</DialogTitle>
+                    <DialogTitle>Build for {title}</DialogTitle>
                     <DialogDescription>
-                        Start from a Filling Template, then change what this customer needs. Fillings do not change
-                        the price; each Ear Comfort Pad placed inside adds its own. Stock leaves when the order is
-                        paid.
+                        Start from a Filling Template and change what this customer needs. Fillings do not change the
+                        price. A different cover or case does where Costings prices it differently, and each Ear
+                        Comfort Pad placed inside adds its own. Stock leaves when the order is paid.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -236,6 +241,84 @@ function TemplatePicker({
     );
 }
 
+type PartRole = "cover" | "case";
+
+function startingPart(list: BuildPartOption[], wanted: number | null | undefined, defaultId: number | null): number | null {
+    if (wanted != null && list.some((o) => o.itemId === wanted)) return wanted;
+    return defaultId;
+}
+
+function useBuildParts(options: StaffOrderBuildOptions, initial: OrderBuild | null) {
+    const [ids, setIds] = useState<Record<PartRole, number | null>>(() => ({
+        cover: startingPart(options.covers, initial?.coverItemId, options.defaultCoverId),
+        case: startingPart(options.cases, initial?.caseItemId, options.defaultCaseId),
+    }));
+    const cover = options.covers.find((o) => o.itemId === ids.cover) ?? null;
+    const chosenCase = options.cases.find((o) => o.itemId === ids.case) ?? null;
+    return {
+        ids,
+        choose: (role: PartRole, value: string) => setIds((prev) => ({ ...prev, [role]: Number(value) })),
+        priceDelta: (cover?.priceDelta ?? 0) + (chosenCase?.priceDelta ?? 0),
+        saved: { coverItemId: ids.cover, caseItemId: ids.case, cover: cover?.name ?? null, case: chosenCase?.name ?? null },
+    };
+}
+
+function partNote(option: BuildPartOption, isDefault: boolean): string {
+    return [
+        isDefault ? "standard" : null,
+        option.priceDelta == null ? "no price in Costings" : option.priceDelta !== 0 ? signedMoney(option.priceDelta) : null,
+        option.onHand <= 0 ? "out of stock" : `${option.onHand} in stock`,
+    ]
+        .filter(Boolean)
+        .join(" · ");
+}
+
+function PartPickers({
+    options,
+    ids,
+    onChoose,
+}: {
+    options: StaffOrderBuildOptions;
+    ids: Record<PartRole, number | null>;
+    onChoose: (role: PartRole, value: string) => void;
+}) {
+    const pickers = [
+        { role: "cover" as const, label: "Cover", list: options.covers, defaultId: options.defaultCoverId },
+        { role: "case" as const, label: "Case", list: options.cases, defaultId: options.defaultCaseId },
+    ].filter((p) => p.list.length > 0);
+    if (pickers.length === 0) return null;
+    return (
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {pickers.map(({ role, label, list, defaultId }) => (
+                <div key={role} className="w-full space-y-1.5 sm:w-96">
+                    <Label htmlFor={`order-build-${role}`}>{label}</Label>
+                    <Select value={ids[role] == null ? "" : String(ids[role])} onValueChange={(value) => onChoose(role, value)}>
+                        <SelectTrigger id={`order-build-${role}`} className="w-full">
+                            <SelectValue placeholder={`Choose a ${role}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {list.map((o) => (
+                                <SelectItem
+                                    key={o.itemId}
+                                    value={String(o.itemId)}
+                                    disabled={o.itemId !== ids[role] && (o.priceDelta == null || o.onHand <= 0)}
+                                >
+                                    {o.name}
+                                    <span className="text-muted-foreground"> · {partNote(o, o.itemId === defaultId)}</span>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function partsPriceNote(delta: number): string {
+    return delta === 0 ? "" : ` · cover and case ${signedMoney(delta)}`;
+}
+
 function BuildFooter({
     children,
     saveLabel,
@@ -271,6 +354,7 @@ const toBolster = (rows: Template["placements"]) => rowsToBolsterPlacements(rows
 
 function PillowBuild({ options, initial, saveLabel, onCancel, onSave }: BuildProps) {
     const build = useBuildTemplate<PillowPlacement>(options, initial, toPillow);
+    const parts = useBuildParts(options, initial);
     const { placements, setPlacements } = build;
     const { items, colorOverrides, dimensionOverrides } = options;
 
@@ -301,6 +385,7 @@ function PillowBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPro
             placements: pillowPlacementsToRows(placements),
             filling: build.filling,
             pieces,
+            ...parts.saved,
         });
     };
 
@@ -314,6 +399,7 @@ function PillowBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPro
                 onChoose={build.choose}
                 onReset={build.reset}
             />
+            <PartPickers options={options} ids={parts.ids} onChoose={parts.choose} />
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="mx-auto w-full min-w-0 max-w-[52rem]">
                     <XrayEditor
@@ -369,6 +455,7 @@ function PillowBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPro
                 {extras.count > 0
                     ? ` · ${extras.count} Ear Comfort Pad${extras.count === 1 ? "" : "s"} add${extras.count === 1 ? "s" : ""} ${money(extras.amount)}`
                     : ""}
+                {partsPriceNote(parts.priceDelta)}
             </BuildFooter>
         </div>
     );
@@ -376,6 +463,7 @@ function PillowBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPro
 
 function BolsterBuild({ options, initial, saveLabel, onCancel, onSave }: BuildProps) {
     const build = useBuildTemplate<BolsterPlacement>(options, initial, toBolster);
+    const parts = useBuildParts(options, initial);
     const { placements, setPlacements } = build;
     const { items, colorOverrides, dimensionOverrides } = options;
     const length = (options.length ?? "medium") as BolsterLength;
@@ -390,6 +478,7 @@ function BolsterBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPr
             placements: bolsterPlacementsToRows(placements),
             filling: build.filling,
             pieces,
+            ...parts.saved,
         });
     };
 
@@ -403,6 +492,7 @@ function BolsterBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPr
                 onChoose={build.choose}
                 onReset={build.reset}
             />
+            <PartPickers options={options} ids={parts.ids} onChoose={parts.choose} />
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="mx-auto w-full min-w-0 max-w-[52rem]">
                     <XrayBolsterEditor
@@ -421,6 +511,7 @@ function BolsterBuild({ options, initial, saveLabel, onCancel, onSave }: BuildPr
             </div>
             <BuildFooter saveLabel={saveLabel} disabled={pieces === 0} onCancel={onCancel} onSave={save}>
                 {build.filling}
+                {partsPriceNote(parts.priceDelta)}
             </BuildFooter>
         </div>
     );
