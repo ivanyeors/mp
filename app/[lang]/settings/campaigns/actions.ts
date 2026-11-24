@@ -1,5 +1,6 @@
 "use server";
 
+import { isDeepStrictEqual } from "node:util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { assertAdmin } from "@/lib/auth/admin";
@@ -12,6 +13,7 @@ import { afterParam, findWanted, matchable, type WantedAddress } from "@/lib/ema
 import {
   CampaignDraftSchema,
   CampaignPreviewSchema,
+  campaignRowFromDraft,
   EMPTY_CAMPAIGN_DRAFT,
   MAX_TEST_RECIPIENTS,
   type Campaign,
@@ -97,6 +99,13 @@ const auditSnapshot = (
   blocks: c.content ? c.content.blocks.map((b) => b.type) : null,
 });
 
+const STARTED_SENDING =
+  "This campaign has started sending, so its email and audience are fixed and your changes to them were not saved. Duplicate it to send a changed one.";
+
+const fixedOnceSent = (c: CampaignDraft) => ({ ...campaignRowFromDraft(c), name: null });
+
+const emailOrAudienceChanged = (before: Campaign, draft: CampaignDraft) => !isDeepStrictEqual(fixedOnceSent(before), fixedOnceSent(draft));
+
 async function imageProblems(admin: ReturnType<typeof supabaseAdmin>, draft: CampaignDraft): Promise<Failure | null> {
   const fieldErrors = campaignImageFieldErrors(draft.content, await readCampaignImages(admin, draft.content));
   return Object.keys(fieldErrors).length ? { ok: false, error: "Check the highlighted fields.", fieldErrors } : null;
@@ -143,6 +152,7 @@ export async function saveCampaign(
     }
     const before = await loadCampaign(id);
     if (!before || before.archivedAt) return NOT_FOUND;
+    if (before.lockedAt && emailOrAudienceChanged(before, parsed.draft)) return { ok: false, error: STARTED_SENDING };
     const refused = await pointsBalanceRefusal(admin, parsed.draft, before);
     if (refused) return refused;
     if (!before.lockedAt) {
