@@ -165,7 +165,7 @@ Goes under "Needs a look" (to sg@mpillow.com only), never into the report: unpai
 
 ### Never include
 
-- Anything about the Midview property, 22 Sin Ming Lane #08-83 Midview City: its purchase, legal or conveyancing fees, MCST or condo fees and deposits, renovation, fit-out, broadband or utilities for it. Skip these entirely, not even under "Needs a look".
+- Anything about the Midview property, 18 Sin Ming Lane, #08-83: its purchase, legal or conveyancing fees, MCST or condo fees and deposits, renovation, fit-out, broadband or utilities for it. Skip these entirely, not even under "Needs a look".
 - Invoices, debit notes or statements issued by Stamford Tools (stamfordtools.com). An invoice from a supplier above that is billed to Mellow Life stays included even when a Stamford Tools address appears on it as a contact or recipient (42Metrics and Jun's invoices do).
 - Shopify order emails ("[Mpillow - Fully customisable pillow] Order #...", "... placed order #..."): the sender script adds the month's orders to the report itself. Leave them out of the table, the marker and "Needs a look".
 - Bank documents (OCBC, DBS); shipping notifications (J&T, trackmyshipment); Invoice Falcon notices; budget alerts; newsletters and promotions.

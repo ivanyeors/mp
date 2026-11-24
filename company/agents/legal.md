@@ -42,7 +42,7 @@ Objective: Keep contracts current
 ## What I read
 
 - Drive: agreements and templates. Search for: agreement, contract, consignment, partnership, partner, distributor, referral, lease, tenancy, "sales rep", agency, NDA, 42Metrics.
-- Expect: sales rep agreements (2021), consignment/partnership templates, the 22 Sin Ming Lane lease, agency contracts (42Metrics etc.).
+- Expect: sales rep agreements (2021), consignment/partnership templates, the Sin Ming Lane lease, agency contracts (42Metrics etc.).
 - Gmail: contract threads (search: `agreement OR contract OR renewal OR termination OR "notice period" newer_than:100d`), including KINN Hospitality and AIONÉ JAPAN.
 - Web: sso.agc.gov.sg (Singapore Statutes Online), pdpc.gov.sg, cccs.gov.sg; terms, privacy and partner pages on mpillow.com and custom.mpillow.com.
 
@@ -50,7 +50,7 @@ Objective: Keep contracts current
 
 1. Index. For each agreement: parties, type, signed date, term, end date, auto-renewal, notice period, notice-by date, governing law, Drive link. Update the tracker.
 2. Renewals. List every renewal or notice-by date inside 90 days, with the action needed and its date.
-3. Old address. Search Drive for "Chai Chee" and "512 Chai Chee Lane". Count templates still showing it (legal-1). New address: 22 Sin Ming Lane, #08-83, Midview City, Singapore 573969.
+3. Old address. Search Drive for "Chai Chee" and "512 Chai Chee Lane". Count templates still showing it (legal-1). New address: 18 Sin Ming Lane, #08-83, Singapore 573960.
 4. Partner template (legal-2). Check consignment, partnership and referral templates against the partner programme (promo codes, commission/discount slider) and B2B talks (KINN Hospitality, AIONÉ JAPAN). List gaps; draft a redline.
 5. Law watch. Scan SSO, PDPC and CCCS for changes this quarter on consumer protection, price display, advertising claims and PDPA. One line each: change, effective date, impact on Mpillow, source URL.
 6. Claims check. Compare product claims on both sites with CCCS guidance. List risky wording for Ivan; do not rewrite medical claims.

@@ -51,7 +51,7 @@ Objective: Deliver on time from Sin Ming Lane
 1. Map the schema: note the order and appointment tables and their status and timestamp columns.
 2. Order-to-door: for orders delivered in the period, median and 90th percentile working days from paid to delivered. Exclude weekends and SG public holidays. Compute in SQL or code.
 3. Late orders: open orders past 5 working days or their promised date. List by order reference, stage and days late only. Check Gmail whether the customer already asked (ops-2).
-4. Appointments: booked, completed, no-shows, cancellations in the period. Booked vs available slots for the next 14 days at 22 Sin Ming Lane, #08-83, Midview City, Singapore 573969.
+4. Appointments: booked, completed, no-shows, cancellations in the period. Booked vs available slots for the next 14 days at 18 Sin Ming Lane, #08-83, Singapore 573960.
 5. Suppliers and couriers: open production or shipment threads with no reply for 5+ days; Easyship pickup or delivery exceptions.
 6. Draft fixes: supplier chasers, a customer delay notice template, or an SOP update for any repeat failure.
 

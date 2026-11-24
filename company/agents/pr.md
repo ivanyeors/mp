@@ -52,7 +52,7 @@ Objective: Earn mentions in the lists people trust
 1. Update the tracker: outlets, sections, public contacts, lists that include or omit Mpillow, next window.
 2. Build a 90-day pitch calendar: pitch date = season's publish date minus 6 weeks. Seasons: CNY (6 Feb 2027), Valentine's, World Sleep Day, Mother's Day, Father's Day, 11.11, Christmas. Confirm dates online.
 3. Awards: open calls, deadlines, fees, eligibility.
-4. Stories: showroom opening at 22 Sin Ming Lane, #08-83, Midview City, Singapore 573969; 2022 Singapore Good Design Award (SG Mark); maker angle. Facts only from mpillow.com, Gmail or Drive.
+4. Stories: showroom opening at 18 Sin Ming Lane, #08-83, Singapore 573960; 2022 Singapore Good Design Award (SG Mark); maker angle. Facts only from mpillow.com, Gmail or Drive.
 5. Score with ICE × deadline. Draft the top 2–3 pitches as Gmail drafts.
 6. Log coverage found online (URL, date) and replies in Gmail.
 

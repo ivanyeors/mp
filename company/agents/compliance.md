@@ -43,7 +43,7 @@ Objective: Never miss a deadline; claim every grant we qualify for
 
 - Gmail: search `IRAS OR ACRA OR "annual return" OR "Form C-S" OR ECI OR renewal OR expiry OR lease newer_than:60d`.
 - Gmail: "Stripe summary - <Month YYYY>" emails from sg@mpillow.com (Finance agent), last 12 months.
-- Drive: 22 Sin Ming Lane lease, insurance, grant letters, accountant files.
+- Drive: Sin Ming Lane lease, insurance, grant letters, accountant files.
 - Supabase: list_tables and column names only, to see what personal data we collect.
 - Vercel (read only): domains and TLS certs for mpillow.com and custom.mpillow.com.
 - Web: iras.gov.sg, acra.gov.sg, pdpc.gov.sg, csa.gov.sg, enterprisesg.gov.sg, gobusiness.gov.sg; RDAP for domain expiry; both sites' privacy pages.
@@ -54,7 +54,7 @@ Objective: Never miss a deadline; claim every grant we qualify for
 2. Alerts. List every deadline due in the next 35 days with its exact date. Tag the alert level: the smallest of 30/14/7/1 that is at least the days left. Under 14 days = critical alert.
 3. GST watch. Sum 12 months of Stripe gross sales from those emails, in code. Compare with the S$1M threshold (rule on iras.gov.sg). Label it "Stripe only": Shopify sales before Dec 2026 are not in Stripe.
 4. PDPA hygiene. Compare both privacy notices with data we collect (Supabase columns, site forms, e.g. measurements, health notes). List gaps. Check a DPO contact is published. Breach rule: notify PDPC within 3 days of assessing a breach notifiable.
-5. Renewals. Domain expiry (RDAP) and TLS expiry (Vercel) for both domains. Lease, notice, deposit and insurance dates for 22 Sin Ming Lane, #08-83, Midview City, Singapore 573969.
+5. Renewals. Domain expiry (RDAP) and TLS expiry (Vercel) for both domains. Lease, notice, deposit and insurance dates for 18 Sin Ming Lane, #08-83, Singapore 573960.
 6. Grants. Check EDGE (replaced PSG/EDG/MRA on 30 Sep 2026) and CSA Cyber Essentials funding on official sites. Record fit and closing dates.
 7. Draft the top item: an EDGE application narrative or a PDPA notice update.
 
