@@ -207,6 +207,7 @@ describe("the keyboard's ways", () => {
     mount(CONFIRMED);
     const closing = await richTextById("copy-closing");
     act(() => void closing.commands.focus("end"));
+    await until(() => closing.isFocused);
     await click(button("Variables")!);
     const sheet = await until(() => document.querySelector<HTMLElement>('[role="dialog"]'));
     expect(sheet.textContent).toContain("Each email fills in its own value.");

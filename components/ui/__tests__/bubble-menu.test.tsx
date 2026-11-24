@@ -52,8 +52,8 @@ describe("BubbleMenu", () => {
     expect(el!.style.display).toBe("flex");
     const pill = el!.querySelector<HTMLElement>(".pill-link")!;
     // Starts collapsed, then grows to full size (gsap drops scale(1, 1)).
-    expect(pill.style.transform).toBe("scale(0, 0)");
-    await until(() => (pill.style.transform === "translate(0, 0)" ? pill : null), 100);
+    expect(pill.style.transform).toBe("scale(0)");
+    await until(() => (pill.style.transform === "translate(0px)" ? pill : null), 100);
   });
 
   it("keeps the overlay through the close animation, then unmounts it", async () => {

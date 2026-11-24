@@ -360,6 +360,7 @@ describe("the preview", () => {
     await settle(100);
     const doc = frame.contentDocument!;
     doc.body.innerHTML = new DOMParser().parseFromString(html, "text/html").body.innerHTML;
+    act(() => void frame.dispatchEvent(new Event("load")));
 
     expect(card(1).dataset.selected).toBeUndefined();
     await act(async () => doc.querySelector<HTMLElement>('[data-block-id="intro"] p')!.click());
