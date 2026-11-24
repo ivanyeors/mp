@@ -390,7 +390,7 @@ export function CampaignEditor({
         try {
             const res = await saveCampaign(campaign?.id ?? createdId.current, input).catch((err: unknown) => ({
                 ok: false as const,
-                error: `${unreached(err).error}. Your changes are still here, and kept in this browser if you reload.`,
+                error: `${unreached(err).error}. ${campaign?.lockedAt ? "Your change is still on this page: try Save again." : "Your changes are still here, and kept in this browser if you reload."}`,
             }));
             if (!res.ok) {
                 const fieldErrors = "fieldErrors" in res ? (res.fieldErrors ?? {}) : {};

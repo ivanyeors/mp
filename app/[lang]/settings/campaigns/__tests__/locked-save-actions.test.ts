@@ -57,16 +57,47 @@ const row = (lockedAt: string | null) => ({
 const asEditorSends = (c: Campaign): CampaignDraftInput => JSON.parse(JSON.stringify({
   name: c.name,
   subject: c.subject,
-  preheader: c.preheader,
-  body: "",
+  preheader: c.preheader ?? "",
+  body: c.content ? "" : c.body,
   content: c.content,
   greeting: c.greeting,
   audience: c.audience,
-  segmentId: c.segmentId,
+  segmentId: c.audience === "segment" ? c.segmentId || null : null,
   excludeSegmentIds: c.excludeSegmentIds,
   includeUnengaged: c.includeUnengaged,
-  button: null,
+  button: c.content || !c.button ? null : { target: c.button.target, label: c.button.label, url: c.button.target === "url" ? c.button.url : null },
 }));
+
+const legacy = (button: { target: "sign_in" | "url"; label: string; url: string | null }) => ({
+  ...row("2026-11-01T03:00:00Z"),
+  body: "We have a new website.\n\n## Points for signing in\nSign in within 3 months.",
+  content: null,
+  button_target: button.target,
+  button_label: button.label,
+  button_url: button.url,
+});
+
+const translated = () => {
+  const r = row("2026-11-24T03:00:00Z");
+  return {
+    ...r,
+    content: {
+      ...r.content,
+      translations: {
+        "zh-CN": {
+          from: "f1",
+          subject: "我们搬家了",
+          preheader: "",
+          fallbacks: {},
+          blocks: {
+            title: { from: "a1", type: "heading", text: "更好睡眠的新家！" },
+            door: { from: "a2", type: "image" },
+          },
+        },
+      },
+    },
+  };
+};
 
 const withAnotherImage = (input: CampaignDraftInput): CampaignDraftInput => ({
   ...input,
@@ -90,6 +121,27 @@ describe("saving a campaign that has started sending", () => {
     const res = await saveCampaign(ID, { ...asEditorSends(h.campaign), name: "We've Moved! (sent)" });
     expect(res).toEqual({ ok: true, id: ID });
     expect(h.updated).toEqual([{ name: "We've Moved! (sent)", locked: true }]);
+  });
+
+  it.each([
+    ["a plain-text campaign with a sign-in button", () => legacy({ target: "sign_in", label: "Sign in and collect your points", url: null })],
+    ["a plain-text campaign with a link button", () => legacy({ target: "url", label: "Book now", url: "https://www.mpillow.com/en-US/appointments" })],
+    ["a campaign with a Chinese version", translated],
+  ])("still saves a rename alone of %s", async (_what, stored) => {
+    h.campaign = campaignFromRow(stored())!;
+    expect(h.campaign).not.toBeNull();
+    const res = await saveCampaign(ID, { ...asEditorSends(h.campaign), name: "Renamed after sending" });
+    expect(res).toEqual({ ok: true, id: ID });
+    expect(h.updated).toEqual([{ name: "Renamed after sending", locked: true }]);
+  });
+
+  it("refuses a changed Chinese subject once sending started", async () => {
+    h.campaign = campaignFromRow(translated())!;
+    const sent = asEditorSends(h.campaign);
+    const zh = sent.content!.translations!["zh-CN"]!;
+    const res = await saveCampaign(ID, { ...sent, content: { ...sent.content!, translations: { "zh-CN": { ...zh, subject: "新地址" } } } });
+    expect(res).toMatchObject({ ok: false });
+    expect(h.updated).toEqual([]);
   });
 
   it("saves the added image of a draft as before", async () => {

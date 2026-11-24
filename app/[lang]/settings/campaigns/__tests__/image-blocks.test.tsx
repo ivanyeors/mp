@@ -72,14 +72,14 @@ const saved = (draft: CampaignDraft): Campaign => ({
 });
 
 let root: Root | null = null;
-function mount(draft: CampaignDraft) {
+function mount(draft: CampaignDraft, over: Partial<Campaign> = {}) {
   const host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);
   act(() =>
     root!.render(
       <>
-        <CampaignEditor campaign={saved(draft)} draft={draft} stats={null} segments={[]} staffEmail="owner@mpillow.com" />
+        <CampaignEditor campaign={{ ...saved(draft), ...over }} draft={draft} stats={null} segments={[]} staffEmail="owner@mpillow.com" />
         <Toaster />
       </>,
     ),
@@ -398,6 +398,27 @@ describe("a save refused for an image with no alt text (feedback, 24 Nov)", () =
     expect(added.textContent).not.toContain("Needed to save");
   });
 
+  it("asks an image beside text for alt text, since it can't be decorative", async () => {
+    uploadsAnswer({ ok: true, asset: { id: UPLOADED, name: "studio.png", hosted_url: "https://mpillow.supabase.co/storage/v1/object/public/media/studio.webp", alt_text: null, created_at: "2026-11-23T08:15:49Z" } });
+    mount(draftWith(MOVED));
+    await addBlock("Image + text");
+    const split = card(2);
+    await chooseFile(split.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["x"], "studio.png", { type: "image/png" }));
+    await until(() => split.querySelector("img"));
+    expect(split.textContent).toContain("Needed to save: describe the image for anyone who can't see it.");
+    expect(split.textContent).not.toContain("tick Decorative");
+  });
+
+  it.each([
+    ["a draft", null, true],
+    ["a campaign that has started sending, where nothing can change", "2026-11-24T03:00:00Z", false],
+  ])("says an image needs alt text, or not, on %s", async (_what, lockedAt, said) => {
+    const stored: CampaignContent = { ...CONTENT, blocks: [...CONTENT.blocks, { id: "logo", type: "image", image: { asset: PHOTO, alt: "" }, width: "full" }] };
+    mount(draftWith(stored), { lockedAt });
+    await settle();
+    expect(card(1).textContent?.includes("Needed to save")).toBe(said);
+  });
+
   it("says why in a toast naming the block, and goes to it, when the save is refused", async () => {
     const scrolled = vi.fn();
     Element.prototype.scrollIntoView = scrolled;
@@ -443,6 +464,16 @@ describe("when the server can't be reached", () => {
     await choose(button("More: duplicate or archive")!, "Duplicate");
     await settle(50);
     expect([...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.textContent).join()).toContain("Not duplicated. Load failed");
+    expect(button("More: duplicate or archive")!.disabled).toBe(false);
+  });
+
+  it("says an archive failed, and leaves the menu usable", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    actions.archiveCampaignAction.mockRejectedValueOnce(new TypeError("Load failed"));
+    mount(draftWith(CONTENT));
+    await choose(button("More: duplicate or archive")!, "Archive");
+    await settle(50);
+    expect([...document.querySelectorAll("[data-sonner-toast]")].map((t) => t.textContent).join()).toContain("Not archived. Load failed");
     expect(button("More: duplicate or archive")!.disabled).toBe(false);
   });
 
