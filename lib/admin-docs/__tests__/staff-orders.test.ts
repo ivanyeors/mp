@@ -22,6 +22,8 @@ describe("Staff orders guide", () => {
     expect(words).toContain(`works for ${PAY_LINK_LIFETIME_DAYS} days`);
     expect(words).toContain("never the price");
     expect(words).toContain("does not change with the fillings");
+    expect(words).toContain("A different cover or case changes it only where Costings prices that one differently");
+    expect(words).toContain("a bolster has no cover");
     expect(words).toContain("still needs measuring is a customisation (a Result), not an order here");
   });
 

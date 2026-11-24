@@ -29,6 +29,10 @@ const BUILT = {
   bolsterM: "00000000-0000-4000-8000-0000005fb004",
 };
 const BOLSTER_TEMPLATE = 601;
+// A second cover for size M and a second case for a medium bolster, so the build
+// dialog's Cover and Case pickers (ADR 0058) each have something to choose between.
+const STONE_COVER_M = 9201;
+const SLATE_BOLSTER_CASE_M = 9202;
 
 const ORDER = {
   built: "00000000-0000-4000-8000-0000005f0004",
@@ -159,13 +163,16 @@ export default function staffOrders({ now }) {
     filling_template_name: null,
     based_on_template: { id: 202, name: "Side sleeper" },
     filling_placements: builtPlacements,
-    config_lines: [],
+    config_lines: [
+      { item_id: 3, category: "cover", name: "Satin White", size: "M", quantity: 1, is_addon: false, price_delta: 46 },
+      { item_id: 44, category: "case", name: "Deep Blue Linen", size: "M", quantity: 1, is_addon: false, price_delta: 42 },
+    ],
     filling_lines: [
       { item_id: 67, subtype: "", name: "6D S", quantity: 2 },
       { item_id: 68, subtype: "", name: "6D M", quantity: 4 },
     ],
     total_addon_price: 0,
-    summary: "Fillings: Adjusted from Side sleeper · 6 pieces",
+    summary: "Fillings: Adjusted from Side sleeper · 6 pieces · Cover: Satin White · Case: Deep Blue Linen",
   };
 
   return {
@@ -187,7 +194,21 @@ export default function staffOrders({ now }) {
         { product_id: 9, item_id: 9, quantity: 1 },
       ],
       bolster_bom_lines: [{ variant: "medium", item_id: 85, quantity: 1 }],
+      items: [
+        { id: STONE_COVER_M, name: "Stone Grey", size: "M", category: "cover", subtype: null, price_family: null, is_active: true },
+        { id: SLATE_BOLSTER_CASE_M, name: "Slate", size: "M", category: "bolster_case", subtype: null, price_family: null, is_active: true },
+      ],
+      item_prices: [
+        { item_id: STONE_COVER_M, cost_price: 16, msrp: 58, currency: "SGD" },
+        { item_id: SLATE_BOLSTER_CASE_M, cost_price: 12, msrp: 40, currency: "SGD" },
+      ],
+      inventory_transactions: [
+        { id: 920100, item_id: STONE_COVER_M, quantity_signed: 14, reason: "receive", created_at: at(30) },
+        { id: 920200, item_id: SLATE_BOLSTER_CASE_M, quantity_signed: 6, reason: "receive", created_at: at(30) },
+      ],
       product_prices: [
+        // A Premium M in a Fibrecool case has its own Costings row, dearer than linen's.
+        { key: "product:pillow:8:fibrecool", kind: "pillow", product_id: 8, variant: "fibrecool", msrp: 345, currency: "SGD" },
         { key: "product:pillow:3", kind: "pillow", product_id: 3, variant: null, msrp: 220, currency: "SGD" },
         { key: "product:bolster:medium", kind: "bolster", product_id: null, variant: "medium", msrp: 190, currency: "SGD" },
       ],
@@ -219,8 +240,10 @@ export default function staffOrders({ now }) {
           bolster_variant: null,
           ecom_product_id: null,
           bom_template_id: null,
-          config_lines: [],
+          config_lines: builtSnapshot.config_lines,
           filling_lines: builtSnapshot.filling_lines,
+          cover_variant: "Satin White",
+          case_variant: "Deep Blue Linen",
           llm_metadata: { source: "staff_order" },
           summary: builtSnapshot.summary,
           total_addon_price: 0,

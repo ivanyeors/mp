@@ -1026,7 +1026,7 @@ export default function OrderDetailPage({
 
                                                 {snapshot?.config_lines && snapshot.config_lines.length > 0 && (
                                                     <div>
-                                                        <div className="text-xs font-medium text-muted-foreground mb-1">Components</div>
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">{staffBuild ? "Cover and case" : "Components"}</div>
                                                         <div className="space-y-1">
                                                             {snapshot.config_lines.map((cl, idx) => (
                                                                 <div key={idx} className="flex justify-between text-xs">

@@ -103,6 +103,7 @@ const MUST_PRICE_THROUGH = [
   "lib/results/assigned-build.ts",
   "app/[lang]/mp-config/mp-config-client.tsx",
   "lib/shop/customization-price.ts",
+  "lib/staff-orders/builds.ts",
 ];
 const callers = grepFiles("priceComposedBuild");
 for (const f of MUST_PRICE_THROUGH) {

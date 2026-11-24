@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
+import { preferenceCategoryAllowed, type PreferenceCategory } from "@/lib/configurator/preference-policy";
 import {
   composedBuildLines,
   isBolsterVariant,
@@ -9,12 +10,14 @@ import {
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
 import { templateIdsForKey } from "@/lib/filling-templates/membership";
 import { loadXrayOverrides, type FillingMixItem } from "@/lib/results/admin/filling-mix";
-import { placedChargeLines } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, type PricedComponent } from "@/lib/pricing/composed-price";
 import {
   getDefaultFillingTemplateId,
   loadComposedSellable,
+  type ComposedSellable,
   type ComposedSellableKey,
 } from "@/lib/results/composed-sellable";
+import { isBolsterCaseForLength } from "@/lib/shop/customization-inventory";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import {
   bolsterPlacementsToRows,
@@ -33,6 +36,7 @@ import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension
 import { PLACEABLE_ITEMS_OR, fillingLabel, isEarPadItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   STAFF_BUILD_SOURCE,
+  buildPartsLabel,
   fillingSourceLabel,
   isStaffBuildSnapshot,
   type StaffBuildSnapshot,
@@ -44,7 +48,7 @@ import {
   type StaffOrderBuildPlacement,
   type StaffOrderBuildSummary,
 } from "@/lib/staff-orders/shared";
-import type { BolsterVariant, FillingLine } from "@/lib/types/customization";
+import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 
 export const BUILT_TO_ORDER: ReadonlySet<string> = new Set(["pillow", "bolster"]);
 
@@ -65,6 +69,20 @@ type BuildSellable = {
 
 type PlacementRows = Array<PillowPlacementRow | BolsterPlacementRow>;
 
+export type BuildPartOption = { itemId: number; name: string; onHand: number; priceDelta: number | null };
+
+type BuildPart = BuildPartOption & {
+  role: PreferenceCategory;
+  component: PricedComponent;
+  quantity: number;
+  subtype: string | null;
+  size: string | null;
+};
+
+type BuildParts = Record<PreferenceCategory, { options: BuildPart[]; defaultId: number | null }>;
+
+const PART_ROLES: readonly PreferenceCategory[] = ["cover", "case"];
+
 export type StaffOrderBuildOptions = {
   variantId: string;
   productType: "pillow" | "bolster";
@@ -73,6 +91,10 @@ export type StaffOrderBuildOptions = {
   length: BolsterVariant | null;
   templates: Array<StaffBuildTemplate & { placements: PlacementRows }>;
   defaultTemplateId: number | null;
+  covers: BuildPartOption[];
+  cases: BuildPartOption[];
+  defaultCoverId: number | null;
+  defaultCaseId: number | null;
   items: Array<FillingMixItem & { msrp?: number | null }>;
   colorOverrides: ColorOverrideRow[];
   dimensionOverrides: DimensionOverridesPayload;
@@ -121,6 +143,143 @@ export async function resolveBuildSellable(admin: SupabaseClient, variant: Build
 }
 
 const sizeKeyOf = (key: ComposedSellableKey) => (key.productType === "pillow" ? key.size : key.length);
+
+function priceWithParts(
+  sellable: ComposedSellable,
+  chosen: { cover: PricedComponent | null; case: PricedComponent | null },
+): { ok: true; subtotal: number } | { ok: false; error: string } {
+  const recipes = (part: PricedComponent | null, recipe: PricedComponent | null) =>
+    part == null || part.item_id === recipe?.item_id;
+  if (sellable.msrp != null && recipes(chosen.cover, sellable.defaultCover) && recipes(chosen.case, sellable.defaultCase)) {
+    return { ok: true, subtotal: sellable.msrp };
+  }
+  return priceComposedBuild({
+    msrpByFamily: sellable.msrpByFamily,
+    defaultCover: sellable.defaultCover,
+    defaultCase: sellable.defaultCase,
+    caseOptions: sellable.caseOptions,
+    chosenCover: chosen.cover,
+    chosenCase: chosen.case,
+    addonLines: [],
+  });
+}
+
+async function loadBuildParts(
+  admin: SupabaseClient,
+  key: ComposedSellableKey,
+  sellable: ComposedSellable,
+): Promise<BuildParts> {
+  const offered: Record<PreferenceCategory, Map<number, PricedComponent>> = { cover: new Map(), case: new Map() };
+  const recipe: Record<PreferenceCategory, PricedComponent | null> = {
+    cover: preferenceCategoryAllowed(key.productType, "cover") ? sellable.defaultCover : null,
+    case: sellable.defaultCase,
+  };
+  for (const role of PART_ROLES) {
+    const part = recipe[role];
+    if (part) offered[role].set(part.item_id, part);
+  }
+
+  if (key.productType === "pillow") {
+    for (const c of sellable.coverOptions) if (!offered.cover.has(c.item_id)) offered.cover.set(c.item_id, c);
+    for (const c of sellable.caseOptions) if (!offered.case.has(c.item_id)) offered.case.set(c.item_id, c);
+  } else {
+    const { data, error } = await admin
+      .from("items")
+      .select("id, category, size, price_family")
+      .eq("category", "bolster_case")
+      .eq("is_active", true);
+    if (error) throw new Error(error.message);
+    type CaseRow = { id: number; category: string; size: string | null; price_family: string | null };
+    const forLength = ((data ?? []) as CaseRow[]).filter(
+      (i) => isBolsterCaseForLength(i, key.length) && !offered.case.has(Number(i.id)),
+    );
+    const msrps = await itemMsrps(
+      admin,
+      forLength.map((i) => Number(i.id)),
+    );
+    for (const i of forLength) {
+      offered.case.set(Number(i.id), {
+        item_id: Number(i.id),
+        msrp: msrps.get(Number(i.id)) ?? null,
+        family: i.price_family ?? null,
+      });
+    }
+  }
+
+  const ids = PART_ROLES.flatMap((role) => [...offered[role].keys()]);
+  type ItemRow = { id: number; name: string; subtype: string | null; size: string | null };
+  const named = new Map<number, ItemRow>();
+  const onHand = new Map<number, number>();
+  if (ids.length > 0) {
+    const [items, balances] = await Promise.all([
+      admin.from("items").select("id, name, subtype, size").in("id", ids),
+      admin.from("inventory_balances").select("item_id, on_hand").in("item_id", ids),
+    ]);
+    if (items.error) throw new Error(items.error.message);
+    if (balances.error) throw new Error(balances.error.message);
+    for (const i of (items.data ?? []) as ItemRow[]) named.set(Number(i.id), i);
+    for (const b of (balances.data ?? []) as Array<{ item_id: number; on_hand: number | null }>) {
+      onHand.set(Number(b.item_id), Number(b.on_hand ?? 0));
+    }
+  }
+
+  const partsFor = (role: PreferenceCategory) => {
+    const defaultId = recipe[role]?.item_id ?? null;
+    const options = [...offered[role].values()]
+      .map((component): BuildPart => {
+        const item = named.get(component.item_id);
+        const priced = priceWithParts(sellable, {
+          cover: role === "cover" ? component : null,
+          case: role === "case" ? component : null,
+        });
+        return {
+          itemId: component.item_id,
+          name: item ? (item.subtype ? `${item.name} (${item.subtype})` : item.name) : `Item #${component.item_id}`,
+          onHand: onHand.get(component.item_id) ?? 0,
+          priceDelta: priced.ok && sellable.msrp != null ? round2(priced.subtotal - sellable.msrp) : null,
+          role,
+          component,
+          quantity: recipe[role]?.quantity ?? 1,
+          subtype: item?.subtype ?? null,
+          size: item?.size ?? null,
+        };
+      })
+      .sort((a, b) => Number(b.itemId === defaultId) - Number(a.itemId === defaultId) || a.name.localeCompare(b.name));
+    return { options, defaultId };
+  };
+  return { cover: partsFor("cover"), case: partsFor("case") };
+}
+
+function chooseParts(
+  parts: BuildParts,
+  key: ComposedSellableKey,
+  draft: Pick<StaffOrderBuildDraft, "cover_item_id" | "case_item_id">,
+): { ok: true; cover: BuildPart | null; case: BuildPart | null } | { ok: false; error: string } {
+  const wanted: Record<PreferenceCategory, number | null> = { cover: draft.cover_item_id, case: draft.case_item_id };
+  const chosen: Record<PreferenceCategory, BuildPart | null> = { cover: null, case: null };
+  for (const role of PART_ROLES) {
+    const id = wanted[role] ?? parts[role].defaultId;
+    if (id == null) continue;
+    const part = parts[role].options.find((p) => p.itemId === id);
+    if (!part) {
+      return {
+        ok: false,
+        error: preferenceCategoryAllowed(key.productType, role)
+          ? `that ${role} isn't one for this ${key.productType === "pillow" ? "size" : "length"}. Pick another.`
+          : `a ${key.productType} has no ${role} to choose.`,
+      };
+    }
+    chosen[role] = part;
+  }
+  return { ok: true, ...chosen };
+}
+
+const toPartOption = ({ itemId, name, onHand, priceDelta }: BuildPart): BuildPartOption => ({
+  itemId,
+  name,
+  onHand,
+  priceDelta,
+});
 
 async function selectableTemplates(admin: SupabaseClient, key: ComposedSellableKey): Promise<StaffBuildTemplate[]> {
   const sizeKey = sizeKeyOf(key);
@@ -213,14 +372,16 @@ export async function loadBuildOptions(
   if (!sellable) return refuse("This product isn't a pillow or bolster built to order.");
 
   const { key } = sellable;
-  const [templates, defaultTemplateId, overrides, itemsRes] = await Promise.all([
+  const [templates, defaultTemplateId, overrides, itemsRes, composed] = await Promise.all([
     selectableTemplates(admin, key),
     getDefaultFillingTemplateId(admin, key),
     loadXrayOverrides(admin),
     admin.from("items").select("id, name, subtype, size, category").or(PLACEABLE_ITEMS_OR).eq("is_active", true).order("name"),
+    loadComposedSellable(admin, key),
   ]);
   if (!overrides.ok) throw new Error(overrides.error);
   if (itemsRes.error) throw new Error(itemsRes.error.message);
+  const parts = composed.ok ? await loadBuildParts(admin, key, composed.sellable) : null;
 
   const placements = await templatePlacements(
     admin,
@@ -271,6 +432,10 @@ export async function loadBuildOptions(
       length: sellable.length,
       templates: laidOut,
       defaultTemplateId: laidOut.some((t) => t.id === defaultTemplateId) ? defaultTemplateId : null,
+      covers: (parts?.cover.options ?? []).map(toPartOption),
+      cases: (parts?.case.options ?? []).map(toPartOption),
+      defaultCoverId: parts?.cover.defaultId ?? null,
+      defaultCaseId: parts?.case.defaultId ?? null,
       items,
       colorOverrides: overrides.colorOverrides,
       dimensionOverrides: overrides.dimensionOverrides,
@@ -381,14 +546,18 @@ async function fillingLinesFor(admin: SupabaseClient, placements: AnyPlacement[]
 
 export async function buildShortage(
   admin: SupabaseClient,
-  build: { ref: ComposedSellableRef; fillingLines: ReadonlyArray<{ item_id: number; quantity: number }>; quantity: number },
+  build: {
+    ref: ComposedSellableRef;
+    configLines: ReadonlyArray<{ item_id: number; quantity: number; category: string }>;
+    fillingLines: ReadonlyArray<{ item_id: number; quantity: number }>;
+    quantity: number;
+  },
   reserved: Map<number, number>,
 ): Promise<string | null> {
-  const lines = await composedBuildLines(
-    admin,
-    build.ref,
-    build.fillingLines.map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity), category: "filling" })),
-  );
+  const lines = await composedBuildLines(admin, build.ref, [
+    ...build.configLines.map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity), category: String(l.category) })),
+    ...build.fillingLines.map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity), category: "filling" })),
+  ]);
   const needed = new Map<number, number>();
   for (const l of lines) needed.set(l.item_id, (needed.get(l.item_id) ?? 0) + l.quantity * build.quantity);
   const ids = [...needed.keys()];
@@ -432,8 +601,8 @@ export async function quoteBuilds(
     const { key } = sellable;
 
     const composed = await loadComposedSellable(admin, key);
-    const msrp = composed.ok ? composed.sellable.msrp : null;
-    if (msrp == null || !Number.isFinite(msrp) || msrp < 0) {
+    const shelf = composed.ok ? composed.sellable.msrp : null;
+    if (!composed.ok || shelf == null || !Number.isFinite(shelf) || shelf < 0) {
       const why = composed.ok ? composed.sellable.priceFault?.error : composed.error;
       return refuse(`${name} has no price. Set it in Costings first.${why ? ` (${why}.)` : ""}`);
     }
@@ -447,24 +616,66 @@ export async function quoteBuilds(
     const extras = await placedExtras(admin, parsed.placements);
     if (!extras.ok) return refuse(`${name}: ${extras.error}`);
 
+    const chosen = chooseParts(await loadBuildParts(admin, key, composed.sellable), key, draft);
+    if (!chosen.ok) return refuse(`${name}: ${chosen.error}`);
+    const priced = priceWithParts(composed.sellable, {
+      cover: chosen.cover?.component ?? null,
+      case: chosen.case?.component ?? null,
+    });
+    if (!priced.ok) {
+      return refuse(`${name} has no price with that cover and case. Set it in Costings first. (${priced.error}.)`);
+    }
+    const configLines: ConfigLine[] = [chosen.cover, chosen.case].flatMap((part) =>
+      part
+        ? [
+            {
+              item_id: part.itemId,
+              category: part.role,
+              ...(part.subtype ? { subtype: part.subtype } : {}),
+              name: part.name,
+              ...(part.size ? { size: part.size } : {}),
+              quantity: part.quantity,
+              is_addon: false,
+              price_delta: part.component.msrp ?? 0,
+            },
+          ]
+        : [],
+    );
+
     const fillingLines = await fillingLinesFor(admin, parsed.placements);
-    const shortage = await buildShortage(admin, { ref: sellable.ref, fillingLines, quantity: draft.quantity }, reserved);
+    const shortage = await buildShortage(
+      admin,
+      { ref: sellable.ref, configLines, fillingLines, quantity: draft.quantity },
+      reserved,
+    );
     if (shortage) return refuse(`Not enough stock to build ${name}: ${shortage}.`);
 
     const filling = fillingSourceLabel(template);
     const pieces = parsed.placements.length;
-    const summary = `Fillings: ${filling} · ${pieces} piece${pieces === 1 ? "" : "s"}`;
+    const partNames = { cover: chosen.cover?.name ?? null, case: chosen.case?.name ?? null };
+    const summary = [`Fillings: ${filling}`, `${pieces} piece${pieces === 1 ? "" : "s"}`, buildPartsLabel(partNames)]
+      .filter(Boolean)
+      .join(" · ");
     builds.push({
-      unitPrice: round2(msrp + extras.amount),
-      summary: { productType: key.productType, filling, adjusted: !template.matched, pieces, placedExtras: extras.amount },
+      unitPrice: round2(priced.subtotal + extras.amount),
+      summary: {
+        productType: key.productType,
+        filling,
+        adjusted: !template.matched,
+        pieces,
+        placedExtras: extras.amount,
+        ...partNames,
+      },
       config: {
         product_type: key.productType,
         pillow_product_id: sellable.pillowProductId,
         bolster_variant: sellable.length,
         ecom_product_id: variant.product_id,
         bom_template_id: template.matched?.id ?? null,
-        config_lines: [],
+        config_lines: configLines,
         filling_lines: fillingLines,
+        cover_variant: partNames.cover,
+        case_variant: partNames.case,
         llm_metadata: { source: STAFF_BUILD_SOURCE },
         summary,
         total_addon_price: extras.amount,
@@ -478,7 +689,7 @@ export async function quoteBuilds(
         filling_template_name: template.matched?.name ?? null,
         based_on_template: template.basedOn,
         filling_placements: parsed.rows,
-        config_lines: [],
+        config_lines: configLines,
         filling_lines: fillingLines,
         total_addon_price: extras.amount,
         summary,
@@ -535,7 +746,16 @@ export async function savedBuildsShortage(
           ? { length: snapshot.bolster_variant }
           : null;
     if (!ref) continue;
-    const shortage = await buildShortage(admin, { ref, fillingLines: snapshot.filling_lines, quantity: item.quantity }, reserved);
+    const shortage = await buildShortage(
+      admin,
+      {
+        ref,
+        configLines: Array.isArray(snapshot.config_lines) ? snapshot.config_lines : [],
+        fillingLines: snapshot.filling_lines,
+        quantity: item.quantity,
+      },
+      reserved,
+    );
     if (shortage) {
       const name = [item.product_title, item.variant_title].filter(Boolean).join(" · ");
       return `Not enough stock to build ${name}: ${shortage}.`;
