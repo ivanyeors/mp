@@ -17,6 +17,9 @@ import { Field } from "../field";
 const ImagePicker = lazy(() => import("@/components/ui/image-picker").then((m) => ({ default: m.ImagePicker })));
 
 const DROP_OR_CHOOSE = "Drop an image here, upload one, or choose one from the Media Library.";
+const ALT_HINT = "What a screen reader says, and what shows when images are off.";
+const ALT_NEEDED = "Needed to save: describe the image, or tick Decorative below.";
+const ALT_NEEDED_NO_DECORATIVE = "Needed to save: describe the image for anyone who can't see it.";
 
 type Placed = { ok: true; image: PlacedCampaignImage } | { ok: false; error: string };
 
@@ -57,7 +60,7 @@ export function ImageField({
     idPrefix,
     inset = false,
     allowDecorative = true,
-    altHint = "What a screen reader says, and what shows when images are off.",
+    altHint,
     layoutLocked = false,
 }: {
     image: BlockImage;
@@ -131,6 +134,8 @@ export function ImageField({
         },
     };
     const busy = uploading || placing;
+    const altNeeded = !fixed && Boolean(image.asset) && !decorative && !image.alt.trim();
+    const hint = altHint ?? (altNeeded ? (allowDecorative ? ALT_NEEDED : ALT_NEEDED_NO_DECORATIVE) : ALT_HINT);
     const imageError = pickError ?? errors["image.asset"] ?? (shown && !shown.ok ? shown.error : null);
     const chooseButton = (disabled: boolean) => (
         <Button type="button" variant="outline" size="sm" disabled={disabled}>
@@ -181,7 +186,12 @@ export function ImageField({
                 </div>
             )}
             {imageError ? <p className="text-xs text-destructive">{imageError}</p> : null}
-            <Field label="Alt text" htmlFor={altId} error={errors["image.alt"]} hint={altHint}>
+            <Field
+                label="Alt text"
+                htmlFor={altId}
+                error={errors["image.alt"]}
+                hint={altNeeded ? <span className="text-amber-700 dark:text-amber-400">{hint}</span> : hint}
+            >
                 <Input
                     id={altId}
                     value={decorative ? "" : image.alt}
