@@ -69,7 +69,7 @@ export function AgentSheet({ title, description, children }: { title: string; de
   const pathname = usePathname();
   return (
     <Sheet open onOpenChange={(open) => (open ? null : router.push(pathname, { scroll: false }))}>
-      <SheetContent side="right" mobilePreset="full" className="dark bg-zinc-950 text-foreground w-full gap-0 p-0 sm:max-w-3xl">
+      <SheetContent side="right" mobilePreset="full" className="w-full gap-0 p-0 sm:max-w-3xl">
         <SheetTitle className="sr-only">{title}</SheetTitle>
         <SheetDescription className="sr-only">{description}</SheetDescription>
         {children}
@@ -82,7 +82,7 @@ export function Peek({ trigger, children, className }: { trigger: ReactNode; chi
   return (
     <Popover>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="start" className={cn("dark bg-zinc-950 text-foreground w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl p-0", className)}>
+      <PopoverContent align="start" className={cn("w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl p-0", className)}>
         {children}
       </PopoverContent>
     </Popover>
@@ -93,7 +93,7 @@ export function SidePanel({ trigger, title, description, children }: { trigger: 
   return (
     <Sheet>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent side="right" mobilePreset="full" className="dark bg-zinc-950 text-foreground w-full gap-0 p-0 sm:max-w-xl">
+      <SheetContent side="right" mobilePreset="full" className="w-full gap-0 p-0 sm:max-w-xl">
         <div className="border-b bg-gradient-to-br from-muted/70 to-background px-5 pb-4 pt-6">
           <SheetTitle className="pr-10 text-lg tracking-tight">{title}</SheetTitle>
           <SheetDescription className="mt-1 text-xs">{description}</SheetDescription>

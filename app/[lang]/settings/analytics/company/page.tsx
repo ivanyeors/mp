@@ -64,10 +64,10 @@ export default async function CompanyPage({
   const sync = drive ? { same: overview.copies.filter((c) => c.state === "same").length, total: overview.copies.length } : null;
 
   return (
-    <div className="dark w-full max-w-[1440px] pb-14">
-      <div className="relative isolate overflow-hidden rounded-[28px] border border-white/10 bg-[#0a0a0a] p-4 text-zinc-100 shadow-2xl sm:p-6 md:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-40 -z-10 h-[28rem] w-[28rem] rounded-full bg-white/[0.05] blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-[0.05] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:28px_28px] [mask-image:linear-gradient(to_bottom,#000,transparent)]" />
+    <div className="w-full max-w-[1440px] pb-14">
+      <div className="relative isolate overflow-hidden rounded-[28px] border border-border bg-muted/40 p-4 text-foreground sm:p-6 md:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-40 -z-10 h-[28rem] w-[28rem] rounded-full bg-foreground/[0.04] blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-[0.05] [background-image:linear-gradient(to_right,var(--foreground)_1px,transparent_1px),linear-gradient(to_bottom,var(--foreground)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:linear-gradient(to_bottom,#000,transparent)]" />
         <div className="space-y-10">
           <div className="space-y-3">
             <Hero overview={overview} outputs={outputs} teams={teams.length} attention={flags.attention.size} sync={sync} />
@@ -91,7 +91,7 @@ export default async function CompanyPage({
       </div>
       {selected ? (
         <AgentSheet title={selected.agent.name} description={selected.agent.mission ?? "Agent details and its newest report"}>
-          <AgentDetail view={selected} chain={chain.length ? chain : ["Ivan"]} shown={shown} content={content} okrs={company.okrs} values={overview.okrValues} />
+          <AgentDetail view={selected} chain={chain.length ? chain : ["Founder"]} shown={shown} content={content} okrs={company.okrs} values={overview.okrValues} />
         </AgentSheet>
       ) : null}
     </div>

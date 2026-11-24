@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowUpRight, Crown, FileStack, FolderGit2 } from "lucide-react";
+import { ArrowUpRight, FileStack, FolderGit2 } from "lucide-react";
 import { AGENTS_FOLDER_URL } from "@/lib/company/drive";
 import type { AgentView, CopyState } from "@/lib/company/overview";
 import type { AgentNode } from "@/lib/company/roster";
 import { cn } from "@/lib/utils";
 import { Heartbeat, LABEL } from "./bits";
-import { AgentFace } from "./faces";
+import { AgentFace, BrandMark } from "./faces";
 import { HEALTH, agentHref, fmtDay, fmtWhen } from "./format";
 import { OrgFocus, Spotlight } from "./interactive";
 
@@ -144,9 +144,8 @@ export function OrgChart({
 
           <div className="relative flex flex-col items-start lg:items-center">
             <div className="flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-sm shadow-sm">
-              <Crown className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-              <span className="font-medium">Ivan</span>
-              <span className="text-xs text-muted-foreground">Founder</span>
+              <BrandMark className="h-4 w-4" />
+              <span className="font-medium">Founder</span>
             </div>
             <span aria-hidden="true" className="ml-6 h-5 w-px bg-border lg:ml-0" />
 

@@ -17,7 +17,7 @@ export function RefreshButton() {
       size="sm"
       variant="outline"
       disabled={pending}
-      className="border-white/15 bg-white/5 text-zinc-100 hover:bg-white/10 hover:text-white"
+      className="h-8 rounded-full bg-card px-3 text-xs shadow-sm"
       onClick={() =>
         start(async () => {
           try {

@@ -62,7 +62,7 @@ export function Activity({ feed, names, charts }: { feed: Overview["feed"]; name
             </div>
           </div>
           <div className={cn(CARD, "flex flex-1 flex-col p-2 md:p-2")}>
-            <p className="px-2.5 pb-1 pt-2 text-[15px] font-medium tracking-tight text-zinc-100">Latest reports</p>
+            <p className="px-2.5 pb-1 pt-2 text-[15px] font-medium tracking-tight text-foreground">Latest reports</p>
             {feed.length === 0 ? (
               <Empty>No reports in Drive yet.</Empty>
             ) : (
@@ -77,7 +77,7 @@ export function Activity({ feed, names, charts }: { feed: Overview["feed"]; name
                     title="Latest reports"
                     description="Newest first, across every agent. Open one to read it."
                     trigger={
-                      <button type="button" className="m-1 inline-flex items-center gap-1 self-start rounded-md px-2 py-1 text-xs font-medium text-zinc-200 transition hover:bg-white/5">
+                      <button type="button" className="m-1 inline-flex items-center gap-1 self-start rounded-md px-2 py-1 text-xs font-medium text-foreground transition hover:bg-muted">
                         See all {feed.length} <ArrowRight className="h-3 w-3" aria-hidden="true" />
                       </button>
                     }
