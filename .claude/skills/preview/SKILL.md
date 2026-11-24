@@ -43,6 +43,7 @@ per screenshot, `ok` or `PROBLEM` with what went wrong.
 | Option | Does |
 |---|---|
 | `--desktop` / `--phone` | Only one width |
+| `--width <px>` | Desktop width instead of 1440, e.g. `--width 2560` for a wide monitor |
 | `--as <email>` | Sign in as another fixture user. `staff@preview.local` has no permissions |
 | `--signed-out` | No session, as a visitor sees it |
 | `--scenario <name>` | Load a fixture scenario for this run, e.g. `empty-sales` (no orders) |

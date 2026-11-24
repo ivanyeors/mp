@@ -66,7 +66,7 @@ export function Okrs({ branches, values }: { branches: OkrBranch[]; values: Reco
   return (
     <section aria-labelledby="okrs-title" className="space-y-4">
       <SectionHead id="okrs-title" eyebrow="2027 OKRs" title="Where the company is heading" />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 @[120rem]:grid-cols-6">
         {branches.map((branch) => {
           const { okr, krs } = branch;
           const onTrack = krs.filter((k) => /on track/i.test(values[k.id]?.status ?? "")).length;

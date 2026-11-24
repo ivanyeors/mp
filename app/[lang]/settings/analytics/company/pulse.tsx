@@ -51,7 +51,7 @@ export function Pulse({ net, views, reports, hot, ratios }: { net: { nodes: NetN
         <div className="my-5 h-px bg-border" />
         <HatchedBars ratios={ratios} />
         {next ? (
-          <p className="mt-auto border-t border-border pt-4 text-center text-[11px] text-muted-foreground">
+          <p className="mt-5 border-t border-border pt-4 text-center text-[11px] text-muted-foreground">
             Next run · <span className="text-foreground/80">{next.agent.name}</span> · {fmtWhen(next.nextRun!)}
           </p>
         ) : null}

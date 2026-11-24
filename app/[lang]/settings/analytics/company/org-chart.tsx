@@ -46,7 +46,7 @@ function AgentRow({ view, selected, flags, lead = false }: { view: AgentView; se
         <span className={cn("block truncate text-[13px] leading-5", lead ? "font-semibold" : "font-medium")}>{view.agent.name}</span>
         <span className={cn("block truncate text-[11px] leading-4", HEALTH[view.health].text)}>{meta(view)}</span>
       </span>
-      <Heartbeat beats={view.beats.slice(-8)} className="hidden shrink-0 opacity-80 group-hover/row:opacity-100 sm:inline-flex 2xl:hidden" />
+      <Heartbeat beats={view.beats.slice(-8)} className="hidden shrink-0 opacity-80 group-hover/row:opacity-100 sm:inline-flex 2xl:hidden @[120rem]:inline-flex" />
     </Link>
   );
 }

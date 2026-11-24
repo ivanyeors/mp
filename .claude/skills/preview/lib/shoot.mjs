@@ -43,6 +43,13 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--signed-out") opt.signedOut = true;
   else if (a === "--desktop") opt.phone = false;
   else if (a === "--phone") opt.desktop = false;
+  else if (a === "--width") {
+    opt.width = Number(next());
+    if (!Number.isInteger(opt.width) || opt.width < 320) {
+      console.error("--width takes a desktop width in pixels, e.g. --width 2560");
+      process.exit(2);
+    }
+  }
   else if (a === "--wait-for") opt.waitFor = next();
   else if (a === "--click") opt.clicks.push(next());
   else if (a === "--element") opt.element = next();
@@ -191,7 +198,7 @@ async function overlayError(page) {
 const { chromium } = loadPlaywright();
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const viewports = [
-  ...(opt.desktop ? [["desktop", { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 }]] : []),
+  ...(opt.desktop ? [[opt.width ? `desktop-${opt.width}` : "desktop", { viewport: { width: opt.width ?? 1440, height: 900 }, deviceScaleFactor: 1 }]] : []),
   ...(opt.phone ? [["phone", { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }]] : []),
 ];
 const cookies = await sessionCookies();
