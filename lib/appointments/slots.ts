@@ -156,6 +156,27 @@ export function suggestNextDays(
   return roomy.length ? roomy : any;
 }
 
+export type SgtMonth = { y: number; m: number };
+
+export function monthOpenDays(
+  busy: BusyInterval[],
+  settings: AppointmentSettings,
+  month: SgtMonth,
+  now: Date = new Date(),
+): DaySuggestion[] {
+  const daysInMonth = new Date(Date.UTC(month.y, month.m, 0)).getUTCDate();
+  const latestMs = now.getTime() + MAX_BOOKING_AHEAD_MS;
+  const out: DaySuggestion[] = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const day = { y: month.y, m: month.m, d };
+    const count = listDaySlots(busy, settings, day, now).filter(
+      (s) => Date.parse(s.startIso) <= latestMs,
+    ).length;
+    if (count) out.push({ date: formatSgtDay(day), count });
+  }
+  return out;
+}
+
 export function offerSlots(
   busy: BusyInterval[],
   settings: AppointmentSettings,

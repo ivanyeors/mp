@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRouter } from "next/navigation";
 
 import { useI18n } from "@/lib/i18n/use-i18n";
+import { monthKey, useOpenBookingDays } from "@/hooks/use-open-booking-days";
 import { type ApptType } from "@/lib/appointments/appt-type";
 import { LANGUAGE_PREFERENCES, type LanguagePreference } from "@/lib/appointments/language";
 import { isFreeVisit } from "@/lib/readjustment/eligibility";
@@ -132,6 +133,8 @@ export function BookingFlow({
   const [locationId, setLocationId] = React.useState<string>("");
   const [date, setDate] = React.useState<string>("");
   const [dateOpen, setDateOpen] = React.useState(false);
+  const [shownMonth, setShownMonth] = React.useState(() => parseYmdLocal(sgtToday()));
+  const openDays = useOpenBookingDays();
   const [slots, setSlots] = React.useState<Slot[]>([]);
   const [suggestions, setSuggestions] = React.useState<DaySuggestion[]>([]);
   const [refreshKey, setRefreshKey] = React.useState(0);
@@ -185,6 +188,20 @@ export function BookingFlow({
     purchaseReady &&
     !submitting;
 
+  async function openDatePicker(open: boolean) {
+    setDateOpen(open);
+    if (!open) return;
+    const shown = date ? parseYmdLocal(date) : shownMonth;
+    setShownMonth(shown);
+    const days = await openDays.load(shown);
+    const today = parseYmdLocal(sgtToday());
+    if (date || days?.size !== 0 || monthKey(shown) !== monthKey(today)) return;
+    // ponytail: skips ahead one month at most; loop up to the booking limit if whole months fill up.
+    const next = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    setShownMonth((current) => (monthKey(current) === monthKey(shown) ? next : current));
+    void openDays.load(next);
+  }
+
   async function submitReadjustment() {
     if (!readjustment || !slot || !location || !quote) return;
     const purchase =
@@ -231,6 +248,7 @@ export function BookingFlow({
       setError(t.errorSlotTaken);
       setSlot(null);
       setRefreshKey((k) => k + 1);
+      openDays.forget();
       return;
     }
     setError(body?.error ?? t.errorGeneric);
@@ -281,6 +299,7 @@ export function BookingFlow({
         setError(t.errorSlotTaken);
         setSlot(null);
         setRefreshKey((k) => k + 1);
+        openDays.forget();
       } else {
         const body = await res.json().catch(() => null);
         setError(body?.error ?? t.errorGeneric);
@@ -329,6 +348,7 @@ export function BookingFlow({
             setSlots([]);
             setSuggestions([]);
             setDate("");
+            openDays.forget();
             setName(readjustment?.prefill.name ?? "");
             setPhone(readjustment?.prefill.phone ?? "");
             setEmail(readjustment?.prefill.email ?? "");
@@ -361,7 +381,13 @@ export function BookingFlow({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-location">{t.locationLabel}</Label>
-        <Select value={locationId} onValueChange={setLocationId}>
+        <Select
+          value={locationId}
+          onValueChange={(id) => {
+            setLocationId(id);
+            void openDays.load(shownMonth);
+          }}
+        >
           <SelectTrigger id="booking-location" className="w-full">
             <SelectValue placeholder={t.locationPlaceholder} />
           </SelectTrigger>
@@ -382,7 +408,7 @@ export function BookingFlow({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-date">{t.dateLabel}</Label>
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+        <Popover open={dateOpen} onOpenChange={(open) => void openDatePicker(open)}>
           <PopoverTrigger asChild>
             <Button
               id="booking-date"
@@ -399,12 +425,17 @@ export function BookingFlow({
               mode="single"
               captionLayout="dropdown"
               selected={date ? parseYmdLocal(date) : undefined}
-              defaultMonth={date ? parseYmdLocal(date) : parseYmdLocal(sgtToday())}
+              showOutsideDays={false}
+              month={shownMonth}
+              onMonthChange={(m) => {
+                setShownMonth(m);
+                void openDays.load(m);
+              }}
               onSelect={(d) => {
                 if (d) setDate(formatYmdLocal(d));
                 setDateOpen(false);
               }}
-              disabled={{ before: parseYmdLocal(sgtToday()) }}
+              disabled={[{ before: parseYmdLocal(sgtToday()) }, openDays.noOpenTime]}
             />
           </PopoverContent>
         </Popover>
