@@ -64,30 +64,28 @@ export default async function CompanyPage({
   const sync = drive ? { same: overview.copies.filter((c) => c.state === "same").length, total: overview.copies.length } : null;
 
   return (
-    <div className="w-full max-w-[1440px] pb-14">
-      <div className="relative isolate overflow-hidden rounded-[28px] border border-border bg-muted/40 p-4 text-foreground sm:p-6 md:p-8">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-40 -z-10 h-[28rem] w-[28rem] rounded-full bg-foreground/[0.04] blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-[0.05] [background-image:linear-gradient(to_right,var(--foreground)_1px,transparent_1px),linear-gradient(to_bottom,var(--foreground)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:linear-gradient(to_bottom,#000,transparent)]" />
-        <div className="space-y-10">
-          <div className="space-y-3">
-            <Hero overview={overview} outputs={outputs} teams={teams.length} attention={flags.attention.size} sync={sync} />
-            {outputs.state !== "ok" ? <SetupNotice outputs={outputs} /> : null}
-            {drive ? <HarnessCopy copies={overview.copies} outputs={outputs} /> : null}
-          </div>
-          {ok ? (
-            <Pulse
-              net={networkLayout(root)}
-              views={overview.agents}
-              reports={reportCounts}
-              hot={flags.attention}
-              ratios={fleetRatios(overview.agents, drive ? overview.copies : null, company.okrs, overview.okrValues)}
-            />
-          ) : null}
-          <OrgChart root={root} views={views} selected={selected?.agent.id ?? null} flags={flags} outputCount={outputCount} copies={overview.copies} driveOk={drive} />
-          <NeedsYou decisions={overview.decisions} alerts={overview.alerts} drafts={overview.drafts} who={{ names, health: new Map(overview.agents.map((v) => [v.agent.id, v.health])) }} />
-          <Activity feed={overview.feed} names={names} charts={{ days, teams, lanes: runLanes(overview.agents, teamOf, now), outcomes: outcomeCounts(overview.agents, now), now }} />
-          <Okrs branches={okrTree(company.okrs)} values={overview.okrValues} />
+    <div className="@container relative isolate w-full pb-14 text-foreground">
+      <div aria-hidden="true" className="pointer-events-none absolute -top-40 right-0 -z-10 h-[28rem] w-[28rem] rounded-full bg-foreground/[0.04] blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-10 -z-10 h-[28rem] opacity-[0.06] [background-image:linear-gradient(to_right,var(--foreground)_1px,transparent_1px),linear-gradient(to_bottom,var(--foreground)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_top,#000_20%,transparent_70%)]" />
+      <div className="space-y-10">
+        <div className="space-y-3">
+          <Hero overview={overview} outputs={outputs} teams={teams.length} attention={flags.attention.size} sync={sync} />
+          {outputs.state !== "ok" ? <SetupNotice outputs={outputs} /> : null}
+          {drive ? <HarnessCopy copies={overview.copies} outputs={outputs} /> : null}
         </div>
+        {ok ? (
+          <Pulse
+            net={networkLayout(root)}
+            views={overview.agents}
+            reports={reportCounts}
+            hot={flags.attention}
+            ratios={fleetRatios(overview.agents, drive ? overview.copies : null, company.okrs, overview.okrValues)}
+          />
+        ) : null}
+        <OrgChart root={root} views={views} selected={selected?.agent.id ?? null} flags={flags} outputCount={outputCount} copies={overview.copies} driveOk={drive} />
+        <NeedsYou decisions={overview.decisions} alerts={overview.alerts} drafts={overview.drafts} who={{ names, health: new Map(overview.agents.map((v) => [v.agent.id, v.health])) }} />
+        <Activity feed={overview.feed} names={names} charts={{ days, teams, lanes: runLanes(overview.agents, teamOf, now), outcomes: outcomeCounts(overview.agents, now), now }} />
+        <Okrs branches={okrTree(company.okrs)} values={overview.okrValues} />
       </div>
       {selected ? (
         <AgentSheet title={selected.agent.name} description={selected.agent.mission ?? "Agent details and its newest report"}>

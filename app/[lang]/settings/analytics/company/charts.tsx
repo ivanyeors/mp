@@ -41,7 +41,7 @@ export function NetworkGraph({ nodes, edges, views, reports, hot }: { nodes: Net
   const at = new Map(nodes.map((n) => [n.id, n]));
   const peak = Math.max(1, ...reports.values());
   return (
-    <div className="group/net relative mx-auto aspect-square w-full max-w-[460px]">
+    <div className="group/net relative mx-auto aspect-square w-full max-w-[clamp(460px,30cqi,620px)]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-[18%] rounded-full bg-[radial-gradient(circle,color-mix(in_oklch,var(--foreground)_8%,transparent),transparent_70%)]" />
       <div className={cn("absolute inset-0", SPIN)}>
         <svg viewBox="-1.08 -1.08 2.16 2.16" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
@@ -99,7 +99,7 @@ export function NetworkGraph({ nodes, edges, views, reports, hot }: { nodes: Net
 
 export function HatchedBars({ ratios }: { ratios: Ratio[] }) {
   return (
-    <ul className="space-y-4">
+    <ul className="flex flex-1 flex-col justify-evenly gap-4">
       {ratios.map((r, i) => {
         const share = r.of ? r.done / r.of : 0;
         return (
@@ -156,7 +156,7 @@ export function StackedBars({ days, teams }: { days: TeamDay[]; teams: Team[] })
           return (
             <li key={d.date} className="group/day relative flex h-full min-w-0 flex-1 flex-col items-center justify-end">
               <span className="sr-only">{fmtDay(d.date)}: {d.total} reports</span>
-              <div className="flex h-[calc(100%-1.25rem)] w-full flex-col-reverse items-stretch justify-start gap-[2px]" aria-hidden="true">
+              <div className="flex h-[calc(100%-1.25rem)] w-full max-w-7 flex-col-reverse items-stretch justify-start gap-[2px]" aria-hidden="true">
                 {d.total === 0 ? (
                   <span className="mx-auto block h-1.5 w-1.5 rounded-full bg-muted-foreground/25" />
                 ) : (
@@ -197,38 +197,40 @@ export function Donut({ parts, center, sub }: { parts: Part[]; center: string; s
   const gap = parts.filter((p) => p.value > 0).length > 1 ? 2.2 : 0;
   let offset = 0;
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row lg:flex-col">
-      <div className="relative h-36 w-36 shrink-0">
-        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
-          <circle cx="50" cy="50" r={r} fill="none" strokeWidth="9" className="stroke-muted" />
-          {total > 0
-            ? parts.map((p) => {
-                if (!p.value) return null;
-                const len = (p.value / total) * c;
-                const seg = <circle key={p.key} cx="50" cy="50" r={r} fill="none" strokeWidth="9" strokeDasharray={`${Math.max(0.5, len - gap)} ${c}`} strokeDashoffset={-offset} className={p.stroke} />;
-                offset += len;
-                return seg;
-              })
-            : null}
-        </svg>
-        <div className="absolute inset-0 grid place-items-center text-center">
-          <span>
-            <span className="block text-2xl font-medium tabular-nums text-foreground">{center}</span>
-            <span className="block text-[10px] text-muted-foreground">{sub}</span>
-          </span>
+    <div className="@container">
+      <div className="flex flex-col items-center gap-5 @sm:flex-row @sm:gap-8">
+        <div className="relative h-36 w-36 shrink-0">
+          <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
+            <circle cx="50" cy="50" r={r} fill="none" strokeWidth="9" className="stroke-muted" />
+            {total > 0
+              ? parts.map((p) => {
+                  if (!p.value) return null;
+                  const len = (p.value / total) * c;
+                  const seg = <circle key={p.key} cx="50" cy="50" r={r} fill="none" strokeWidth="9" strokeDasharray={`${Math.max(0.5, len - gap)} ${c}`} strokeDashoffset={-offset} className={p.stroke} />;
+                  offset += len;
+                  return seg;
+                })
+              : null}
+          </svg>
+          <div className="absolute inset-0 grid place-items-center text-center">
+            <span>
+              <span className="block text-2xl font-medium tabular-nums text-foreground">{center}</span>
+              <span className="block text-[10px] text-muted-foreground">{sub}</span>
+            </span>
+          </div>
         </div>
+        <table className="w-full text-[12px]">
+          <tbody>
+            {parts.map((p) => (
+              <tr key={p.key} className="text-muted-foreground">
+                <td className="py-[3px] pr-2"><span className={cn("mr-2 inline-block h-2 w-2 rounded-[3px] align-middle", p.swatch)} aria-hidden="true" />{p.label}</td>
+                <td className="py-[3px] text-right tabular-nums text-foreground/80">{p.value}</td>
+                <td className="w-12 py-[3px] text-right tabular-nums text-foreground">{total ? `${((p.value / total) * 100).toFixed(0)}%` : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <table className="w-full text-[12px]">
-        <tbody>
-          {parts.map((p) => (
-            <tr key={p.key} className="text-muted-foreground">
-              <td className="py-[3px] pr-2"><span className={cn("mr-2 inline-block h-2 w-2 rounded-[3px] align-middle", p.swatch)} aria-hidden="true" />{p.label}</td>
-              <td className="py-[3px] text-right tabular-nums text-foreground/80">{p.value}</td>
-              <td className="w-12 py-[3px] text-right tabular-nums text-foreground">{total ? `${((p.value / total) * 100).toFixed(0)}%` : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
