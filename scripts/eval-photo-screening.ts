@@ -27,10 +27,18 @@
  *   pnpm ai:eval-photos -- --fake=oracle         # check the harness itself on the photos; no calls
  *
  * Options: --dir=.scratch/photo-eval (photos in <dir>/photos), --reps=3,
- * --concurrency=4, --only=<text in the photo's path>.
+ * --concurrency=4, --only=<text in the photo's path>,
+ * --drive=<Google Drive folder link or id>.
  *
- * Photos of people never go in git: the default folder is under `.scratch/`,
- * which git ignores, and `--dir` can point anywhere private. A run writes
+ * The photos can live in Google Drive instead: give the folder's link with
+ * `--drive`, or once as PHOTO_EVAL_DRIVE_FOLDER in .env.local. The Drive
+ * folder holds the same folders (`front/`, `back/` …) and is read through the
+ * Media library's Drive sign-in, which is read-only: share the folder with
+ * that account (`lib/ai/photo-screening-eval-drive.ts`). Photos are downloaded
+ * into memory each run and never saved here; the results link to them in Drive.
+ *
+ * Photos of people never go in git: they live in Drive, or in the default
+ * local folder under `.scratch/`, which git ignores. A run writes
  * `<dir>/<variant>/` in the layout the claude-api skill's eval report reads
  * (`results.jsonl`, `errors.jsonl`, `traces/`), plus `summary.md`. A stopped
  * run picks up where it left off. `baseline` is always production's request;
@@ -52,6 +60,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { claudeCallError, claudeClient } from "@/lib/ai/claude";
@@ -76,12 +85,13 @@ import {
   type PhotoFolderName,
   type PhotoRun,
 } from "@/lib/ai/photo-screening-eval";
+import { drivePhotoFiles, driveProblem, type EvalPhotoFile } from "@/lib/ai/photo-screening-eval-drive";
 import { sizingPhotoAsWebp } from "@/lib/results/sizing-photo-webp";
 
 const FAKES = ["oracle", "reject-all", "always-front", "refuse", "error"] as const;
 type Fake = (typeof FAKES)[number];
 
-const KNOWN = ["init", "dry-run", "report", "fake", "dir", "variant", "model", "effort", "reps", "concurrency", "only"];
+const KNOWN = ["init", "dry-run", "report", "fake", "dir", "drive", "variant", "model", "effort", "reps", "concurrency", "only"];
 const args = process.argv.slice(2).filter((a) => a !== "--");
 for (const a of args) {
   const name = /^--([a-z-]+)/.exec(a)?.[1];
@@ -107,6 +117,8 @@ const intOpt = (name: string, fallback: number) => {
 const dirArg = opt("dir") || ".scratch/photo-eval";
 const DIR = resolve(dirArg.startsWith("~") ? join(homedir(), dirArg.slice(1)) : dirArg);
 const PHOTOS = join(DIR, "photos");
+/** A Google Drive folder to read the photos from instead of PHOTOS. */
+const DRIVE = opt("drive") || process.env.PHOTO_EVAL_DRIVE_FOLDER?.trim() || undefined;
 const fake = opt("fake") as Fake | undefined;
 if (fake !== undefined && !FAKES.includes(fake)) {
   console.error(`--fake takes one of: ${FAKES.join(", ")}`);
@@ -125,6 +137,8 @@ interface VariantConfig extends PhotoEvalConfig {
   /** The request's prompt, schema and limits: a variant's runs all come from one request. */
   request_sha: string;
   started_at: string;
+  /** Where the photos were read from, as of the latest run. */
+  photos?: string;
 }
 
 // ── The photos ────────────────────────────────────────────────────────────
@@ -134,16 +148,36 @@ function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
 }
 
-function loadCases(): PhotoCase[] {
+/** Where the photos are, in words. */
+const PHOTOS_AT = DRIVE ? `the Google Drive folder ${DRIVE}` : PHOTOS;
+
+/** Every file in the photos folder: the Drive folder when there is one, else PHOTOS. */
+async function photoFiles(): Promise<EvalPhotoFile[]> {
+  if (DRIVE) {
+    try {
+      const { files, skipped } = await drivePhotoFiles(DRIVE);
+      for (const s of skipped) console.warn(`Skipped ${s}`);
+      return files;
+    } catch (e) {
+      console.error(`Can't read ${PHOTOS_AT}: ${driveProblem(e)}`);
+      process.exit(1);
+    }
+  }
   if (!existsSync(PHOTOS)) {
-    console.error(`No photos at ${PHOTOS}. Run with --init to make the folders and their shot list.`);
+    console.error(`No photos at ${PHOTOS}. Run with --init to make the folders and their shot list, or give a Drive folder with --drive.`);
     process.exit(1);
   }
-  const cases: PhotoCase[] = [];
+  return walk(PHOTOS).map((file) => ({ path: relative(PHOTOS, file), read: () => readFile(file), link: null }));
+}
+
+type Entry = { c: PhotoCase; file: EvalPhotoFile };
+
+async function loadCases(): Promise<Entry[]> {
+  const entries: Entry[] = [];
   const skipped: string[] = [];
   const ids = new Map<string, string>();
-  for (const file of walk(PHOTOS)) {
-    const c = photoCase(relative(PHOTOS, file));
+  for (const file of await photoFiles()) {
+    const c = photoCase(file.path);
     if (!c) continue;
     if ("skipped" in c) {
       skipped.push(c.skipped);
@@ -155,24 +189,43 @@ function loadCases(): PhotoCase[] {
       process.exit(1);
     }
     ids.set(c.id, c.path);
-    cases.push(c);
+    entries.push({ c, file });
   }
   for (const s of skipped) console.warn(`Skipped ${s}`);
-  const only = opt("only");
-  return cases.filter((c) => !only || c.path.toLowerCase().includes(only.toLowerCase())).sort((a, b) => a.path.localeCompare(b.path));
+  const only = opt("only")?.toLowerCase();
+  return entries.filter((e) => !only || e.c.path.toLowerCase().includes(only)).sort((a, b) => a.c.path.localeCompare(b.c.path));
 }
 
-/** Each photo as the server keeps it: WebP, upright, at most 2,000 px. Null when sharp can't read it. */
-async function prepare(cases: PhotoCase[]): Promise<{ ready: { c: PhotoCase; image: ScreenableImage }[]; unreadable: string[] }> {
-  const ready: { c: PhotoCase; image: ScreenableImage }[] = [];
-  const unreadable: string[] = [];
-  for (const c of cases) {
-    // The type is only a label here: sharp reads whatever the bytes are.
-    const stored = await sizingPhotoAsWebp({ mediaType: "image/jpeg", base64: readFileSync(join(PHOTOS, c.path)).toString("base64") });
-    if (stored) ready.push({ c, image: stored.image });
-    else unreadable.push(/\.hei[cf]$/i.test(c.path) ? `${c.path}: HEIC; export it as JPEG` : `${c.path}: not a photo this can read`);
-  }
-  return { ready, unreadable };
+type Ready = { c: PhotoCase; image: ScreenableImage; link: string | null };
+
+/** Each photo as the server keeps it: WebP, upright, at most 2,000 px. A few at a time, since Drive's are downloaded. */
+async function prepare(entries: Entry[]): Promise<{ ready: Ready[]; unreadable: string[] }> {
+  if (DRIVE && entries.length) console.log(`Downloading ${entries.length} photos from Drive…`);
+  const out: (Ready | string)[] = new Array(entries.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(6, entries.length) }, async () => {
+      while (next < entries.length) {
+        const i = next++;
+        const { c, file } = entries[i];
+        let bytes: Buffer;
+        try {
+          bytes = await file.read();
+        } catch (e) {
+          out[i] = `${c.path}: couldn't download it (${driveProblem(e)})`;
+          continue;
+        }
+        // The type is only a label here: sharp reads whatever the bytes are.
+        const stored = await sizingPhotoAsWebp({ mediaType: "image/jpeg", base64: bytes.toString("base64") });
+        out[i] = stored
+          ? { c, image: stored.image, link: file.link }
+          : /\.hei[cf]$/i.test(c.path)
+            ? `${c.path}: HEIC; export it as JPEG`
+            : `${c.path}: not a photo this can read`;
+      }
+    }),
+  );
+  return { ready: out.filter((r): r is Ready => typeof r !== "string"), unreadable: out.filter((r): r is string => typeof r === "string") };
 }
 
 function shotList(): string {
@@ -198,8 +251,9 @@ allowed (a sports top, swimwear, a man's bare chest), which must never be
 flagged as explicit. A subfolder becomes a tag in the report, so you can see how
 each kind does: \`front/mirror-selfie/\`, \`side/sports-top/\`, \`back/long-hair/\`.
 
-- Only photograph people who have agreed, and keep this folder private. It is
-  never committed: the default place for it, \`.scratch/\`, is ignored by git.
+- Only photograph people who have agreed, and keep the photos private: in a
+  Google Drive folder shared with only those who need it (\`--drive\`), or in
+  the local folder under \`.scratch/\`, which git ignores. They are never committed.
 - JPEG or PNG. Export an iPhone's HEIC photos as JPEG first (or set Settings →
   Camera → Formats → Most Compatible before taking them).
 - No explicit photos. Claude refuses them, and a refusal is already a rejection.
@@ -224,10 +278,18 @@ const STATE = {
 };
 
 function init() {
+  mkdirSync(DIR, { recursive: true });
+  if (!existsSync(join(DIR, "_state.json"))) writeFileSync(join(DIR, "_state.json"), JSON.stringify(STATE, null, 2) + "\n", "utf8");
+  if (DRIVE) {
+    // The Drive sign-in is read-only: the folders are made by hand.
+    console.log(shotList());
+    console.log(`In ${PHOTOS_AT}, make one folder for each of: ${Object.keys(PHOTO_FOLDERS).join(", ")}.`);
+    console.log("The eval reads Drive read-only, so it can't make them itself. Then check them with --dry-run.");
+    return;
+  }
   for (const f of Object.keys(PHOTO_FOLDERS)) mkdirSync(join(PHOTOS, f), { recursive: true });
   const readme = join(PHOTOS, "README.md");
   if (!existsSync(readme)) writeFileSync(readme, shotList(), "utf8");
-  if (!existsSync(join(DIR, "_state.json"))) writeFileSync(join(DIR, "_state.json"), JSON.stringify(STATE, null, 2) + "\n", "utf8");
   console.log(`Folders ready in ${PHOTOS}. The shot list is in ${readme}.`);
 }
 
@@ -343,8 +405,8 @@ async function main() {
   if (opt("init") !== undefined) return init();
   if (opt("report") !== undefined) return report();
 
-  const cases = loadCases();
-  const { ready, unreadable } = await prepare(cases);
+  console.log(`Photos: ${PHOTOS_AT}`);
+  const { ready, unreadable } = await prepare(await loadCases());
   for (const u of unreadable) console.warn(`Can't read ${u}`);
   const reps = intOpt("reps", fake ? 1 : 3);
 
@@ -405,6 +467,7 @@ async function main() {
     reps: Math.max(reps, before?.config.reps ?? 0),
     request_sha: REQUEST_SHA,
     started_at: before?.config.started_at ?? new Date().toISOString(),
+    photos: PHOTOS_AT,
   };
   mkdirSync(join(vdir, "traces"), { recursive: true });
   writeFileSync(join(vdir, "config.json"), JSON.stringify(config, null, 2) + "\n", "utf8");
@@ -417,10 +480,11 @@ async function main() {
 
   let finished = 0;
   let failed = 0;
-  const runOne = async ({ c, image, rep }: (typeof jobs)[number]) => {
+  const runOne = async ({ c, image, link, rep }: (typeof jobs)[number]) => {
     const base = photoScreeningParams(image);
     const params: Anthropic.MessageCreateParamsNonStreaming = { ...base, model, output_config: { ...base.output_config, effort } };
-    const ref = { kind: "image", ref: `photos/${c.path}`, alt: c.path };
+    // A Drive photo is linked where it lives (it's never copied here); a local one by its path from DIR.
+    const ref = link ? { kind: "url", ref: link, alt: c.path } : { kind: "image", ref: `photos/${c.path}`, alt: c.path };
     try {
       const { response, latencyS, attempts } = await ask(client, params);
       if (response.model !== model && !response.model.startsWith(`${model}-`)) {

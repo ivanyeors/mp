@@ -18240,9 +18240,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0047-sizing-photos-screened-by-claude.md": {
-    "mtime": 1795345993.061586,
-    "seen": 1795346072.4303632,
-    "ast_hash": "679a23830a2942d3744da4daebefb8c0",
+    "mtime": 1795516556.4242344,
+    "seen": 1795516681.3043928,
+    "ast_hash": "33aee253c71395e3f299c81a51a7707d",
     "semantic_hash": ""
   },
   "app/api/shop/customers/[id]/pillow/readjust/route.ts": {
@@ -18900,9 +18900,21 @@
     "semantic_hash": ""
   },
   "scripts/eval-photo-screening.ts": {
-    "mtime": 1795345990.4935856,
-    "seen": 1795346072.4283864,
-    "ast_hash": "8b93d8f6ed8a83d73082f7654244e653",
+    "mtime": 1795516546.5842338,
+    "seen": 1795516681.3024452,
+    "ast_hash": "272936cce2031e6c5b26a7ad5e2e2368",
+    "semantic_hash": ""
+  },
+  "lib/ai/__tests__/photo-screening-eval-drive.test.ts": {
+    "mtime": 1795516493.8602307,
+    "seen": 1795516681.2999926,
+    "ast_hash": "3aa7538c7ea072e403b942e5720d8b72",
+    "semantic_hash": ""
+  },
+  "lib/ai/photo-screening-eval-drive.ts": {
+    "mtime": 1795516478.5682297,
+    "seen": 1795516681.3000226,
+    "ast_hash": "a8ccba92f8f0c64e00934aa7edb02923",
     "semantic_hash": ""
   }
 }

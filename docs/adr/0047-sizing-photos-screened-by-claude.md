@@ -59,7 +59,9 @@ what passes.**
   the customer a retake, not their order. How often it is wrong is measured by
   `pnpm ai:eval-photos` (`scripts/eval-photo-screening.ts`): photos sorted into folders by what
   they really show, each offered as both uploads and run three times, reporting good photos turned
-  down and bad photos kept. The photos are of people, so they stay outside git; the shot list is in
+  down and bad photos kept. The photos are of people, so they stay outside git: in a Google Drive
+  folder the eval reads through the Media library's read-only Drive sign-in
+  (`PHOTO_EVAL_DRIVE_FOLDER`), or in a local folder git ignores. The shot list is in
   `lib/ai/photo-screening-eval.ts`. Run it before changing the model, the effort or the prompt.
 - An unchecked photo that is still unchecked at submit reaches no one; there is no Staff view of
   Sizing photos outside Telegram. If outages make that common, the next step is showing unchecked
