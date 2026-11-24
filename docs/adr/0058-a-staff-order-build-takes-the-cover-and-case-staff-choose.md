@@ -25,10 +25,15 @@ from Costings and is what the workshop builds and what leaves stock.**
   covers and cases for its size, and the recipe's own. A bolster: the recipe's case and the
   active bolster cases made for its length, and no cover (`preferenceCategoryAllowed`). The
   server refuses anything else, by name of what is wrong.
+- **A choice changes a part the recipe has; it never adds one.** A recipe with no cover line
+  offers no cover, and one with no case line no case. `priceComposedBuild` charges nothing for
+  a cover where the recipe has none to compare it with, so offering one would give it away.
 - **Price: Costings, through `priceComposedBuild` (ADR 0001).** The recipe's cover and case cost
   the Composed sellable's shelf MSRP, as before. Another case is priced on its fabric family's
   Costings row, and another cover or case in the same family by the difference between its MSRP
-  and the standard one's, exactly as a Result is. A choice Costings cannot price is refused. Each
+  and the standard one's, exactly as a Result is. A choice Costings cannot price is refused. A
+  cover left as the recipe's adds nothing and is not priced again, so a bolster whose recipe
+  cover has no MSRP of its own can still take another case. Each
   **Ear Comfort Pad** placed inside is still charged on top. Staff never type an amount; the
   dialog shows what each option adds, and the quote is what is charged.
 - **Where it is kept.** The line's `StaffBuildSnapshot.config_lines` (and the

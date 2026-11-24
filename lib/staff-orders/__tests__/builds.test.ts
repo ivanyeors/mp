@@ -15,6 +15,7 @@ const CASE_UNPRICED = 6;
 const BOLSTER_CASE = 10;
 const BOLSTER_CASE_GREY = 11;
 const BOLSTER_CASE_LONG = 12;
+const BOLSTER_CASE_RETIRED = 13;
 const COOL_FAMILY_MORE = 40;
 const FILL_S = 67;
 const FILL_M = 68;
@@ -150,6 +151,7 @@ function seed(): FakeDb {
     item(BOLSTER_CASE, "bolster_case", "Camel bolster case", "M"),
     item(BOLSTER_CASE_GREY, "bolster_case", "Grey bolster case", "M"),
     item(BOLSTER_CASE_LONG, "bolster_case", "Camel bolster case", "L"),
+    { ...item(BOLSTER_CASE_RETIRED, "bolster_case", "Retired bolster case", "M"), is_active: false },
   ];
   db.item_prices = [
     { item_id: COVER, cost_price: 12, msrp: 20 },
@@ -161,6 +163,7 @@ function seed(): FakeDb {
     { item_id: BOLSTER_CASE, cost_price: 6, msrp: 30 },
     { item_id: BOLSTER_CASE_GREY, cost_price: 7, msrp: 42 },
     { item_id: BOLSTER_CASE_LONG, cost_price: 7, msrp: 36 },
+    { item_id: BOLSTER_CASE_RETIRED, cost_price: 7, msrp: 36 },
     { item_id: FILL_S, cost_price: 3 },
     { item_id: FILL_M, cost_price: 4 },
     { item_id: EAR, cost_price: 15, msrp: 39 },
@@ -180,6 +183,7 @@ function seed(): FakeDb {
     { item_id: BOLSTER_CASE, on_hand: 3 },
     { item_id: BOLSTER_CASE_GREY, on_hand: 2 },
     { item_id: BOLSTER_CASE_LONG, on_hand: 2 },
+    { item_id: BOLSTER_CASE_RETIRED, on_hand: 2 },
   ];
   db.pillow_products = [{ id: 3, size: "M", kind: h.tier, is_active: true, default_filling_template_id: SIDE_SLEEPER }];
   db.bom_lines = [
@@ -433,18 +437,42 @@ describe("a pillow or bolster on a Staff order", () => {
     expect(standard.lines[0]).toMatchObject({ unitPrice: 190, build: { cover: null, case: "Camel bolster case" } });
     expect(standard.builds[0].snapshot.config_lines).toMatchObject([{ item_id: BOLSTER_CASE, category: "case", quantity: 1 }]);
 
-    expect(await refusal({ builds: [bolster({ case_item_id: BOLSTER_CASE_GREY })] })).toMatch(
-      /has no price with that cover and case\. Set it in Costings first/,
-    );
-    h.db.item_prices.find((p) => p.item_id === BOLSTER_COVER)!.msrp = 15;
     const grey = await quoted({ builds: [bolster({ case_item_id: BOLSTER_CASE_GREY })] });
     expect(grey.lines[0]).toMatchObject({ unitPrice: 202, build: { case: "Grey bolster case" } });
 
     expect(await refusal({ builds: [bolster({ case_item_id: BOLSTER_CASE_LONG })] })).toMatch(/that case isn't one for this length/);
+    expect(await refusal({ builds: [bolster({ case_item_id: BOLSTER_CASE_RETIRED })] })).toMatch(
+      /that case isn't one for this length/,
+    );
     expect(await refusal({ builds: [bolster({ case_item_id: CASE })] })).toMatch(/that case isn't one for this length/);
     expect(await refusal({ builds: [bolster({ cover_item_id: BOLSTER_COVER })] })).toBe(
       "Mbolster · Medium: a bolster has no cover to choose.",
     );
+  });
+
+  it("changes only a part the recipe has, so a cover or case is never added for nothing", async () => {
+    h.db.bom_lines = h.db.bom_lines.filter((l) => l.item_id !== COVER);
+    expect(await refusal({ builds: [build({ cover_item_id: COVER_SILK })] })).toBe(
+      "Mpillow Premium · Size M: its recipe has no cover, so there is none to change.",
+    );
+    h.db.inventory_balances.find((b) => b.item_id === CASE_COTTON)!.on_hand = 1;
+    const bare = await quoted({ builds: [build({ case_item_id: CASE_COTTON })] });
+    expect(bare.lines[0]).toMatchObject({ unitPrice: 470, build: { cover: null, case: "Cotton case" } });
+    expect(bare.builds[0].snapshot.config_lines).toMatchObject([{ item_id: CASE_COTTON, category: "case" }]);
+
+    h.db.bom_lines = [{ product_id: 3, item_id: COVER, quantity: 1 }];
+    expect(await refusal({ builds: [build({ case_item_id: CASE_COOL })] })).toMatch(/its recipe has no case/);
+    expect((await quoted({ builds: [build()] })).lines[0]).toMatchObject({ unitPrice: 460, build: { case: null } });
+
+    h.msrp = 190;
+    h.db.bolster_bom_lines = h.db.bolster_bom_lines.filter((l) => l.item_id !== BOLSTER_CASE);
+    const bolster = build({
+      variant_id: BOLSTER,
+      filling_template_id: BOLSTER_MIX,
+      placements: [{ slot: 1, item_id: FILL_S }],
+      case_item_id: BOLSTER_CASE_GREY,
+    });
+    expect(await refusal({ builds: [bolster] })).toBe("Mbolster · Medium: its recipe has no case, so there is none to change.");
   });
 
   it("still refuses a pillow added without its fillings, and a build of something that has none", async () => {
@@ -536,6 +564,21 @@ describe("the order a build becomes", () => {
     await deductInventoryForOrder(created.orderId, [pillow] as never, admin());
     const taken = Object.fromEntries(h.db.inventory_transactions.map((t) => [Number(t.item_id), Number(t.quantity_signed)]));
     expect(taken).toEqual({ [COVER_SILK]: -1, [CASE_COOL]: -1, [FILL_S]: -2, [FILL_M]: -1 });
+  });
+
+  it("keeps the recipe's cover and case for a build saved before Staff could choose them", async () => {
+    const { pillow, items } = await made();
+    (pillow.customization_snapshot as { config_lines: unknown[] }).config_lines = [];
+    const variant = h.db.product_variants.find((v) => v.id === PILLOW) as never;
+    const lines = await stockLinesForOrderItem(admin(), variant, pillow as never);
+    expect([...(lines ?? [])].sort((a, b) => a.item_id - b.item_id)).toEqual([
+      { item_id: COVER, quantity: 1 },
+      { item_id: CASE, quantity: 1 },
+      { item_id: FILL_S, quantity: 2 },
+      { item_id: FILL_M, quantity: 1 },
+    ]);
+    h.db.inventory_balances.find((b) => b.item_id === CASE)!.on_hand = 0;
+    expect(await savedBuildsShortage(admin(), items as never)).toMatch(/Linen case M \(need 1, have 0\)/);
   });
 
   it("keeps each build on its own line when an order holds several, with a product and a service", async () => {
@@ -721,13 +764,20 @@ describe("what the fillings editor is offered", () => {
 
   it("offers a bolster the cases made for its length and no cover", async () => {
     h.msrp = 190;
-    h.db.item_prices.find((p) => p.item_id === BOLSTER_COVER)!.msrp = 15;
     const o = await options(BOLSTER);
     expect(o).toMatchObject({ covers: [], defaultCoverId: null, defaultCaseId: BOLSTER_CASE });
     expect(o.cases).toEqual([
       { itemId: BOLSTER_CASE, name: "Camel bolster case", onHand: 3, priceDelta: 0 },
       { itemId: BOLSTER_CASE_GREY, name: "Grey bolster case", onHand: 2, priceDelta: 12 },
     ]);
+  });
+
+  it("offers no other cover or case where the recipe has none to change", async () => {
+    h.db.bom_lines = [];
+    expect(await options(PILLOW)).toMatchObject({ covers: [], cases: [], defaultCoverId: null, defaultCaseId: null });
+    h.msrp = 190;
+    h.db.bolster_bom_lines = h.db.bolster_bom_lines.filter((l) => l.item_id !== BOLSTER_CASE);
+    expect(await options(BOLSTER)).toMatchObject({ covers: [], cases: [], defaultCaseId: null });
   });
 
   it("offers no cover or case when Costings has no price for the build", async () => {

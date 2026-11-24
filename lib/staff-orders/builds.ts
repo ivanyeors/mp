@@ -150,15 +150,16 @@ function priceWithParts(
 ): { ok: true; subtotal: number } | { ok: false; error: string } {
   const recipes = (part: PricedComponent | null, recipe: PricedComponent | null) =>
     part == null || part.item_id === recipe?.item_id;
-  if (sellable.msrp != null && recipes(chosen.cover, sellable.defaultCover) && recipes(chosen.case, sellable.defaultCase)) {
+  const recipeCover = recipes(chosen.cover, sellable.defaultCover);
+  if (sellable.msrp != null && recipeCover && recipes(chosen.case, sellable.defaultCase)) {
     return { ok: true, subtotal: sellable.msrp };
   }
   return priceComposedBuild({
     msrpByFamily: sellable.msrpByFamily,
-    defaultCover: sellable.defaultCover,
+    defaultCover: recipeCover ? null : sellable.defaultCover,
     defaultCase: sellable.defaultCase,
     caseOptions: sellable.caseOptions,
-    chosenCover: chosen.cover,
+    chosenCover: recipeCover ? null : chosen.cover,
     chosenCase: chosen.case,
     addonLines: [],
   });
@@ -180,9 +181,12 @@ async function loadBuildParts(
   }
 
   if (key.productType === "pillow") {
-    for (const c of sellable.coverOptions) if (!offered.cover.has(c.item_id)) offered.cover.set(c.item_id, c);
-    for (const c of sellable.caseOptions) if (!offered.case.has(c.item_id)) offered.case.set(c.item_id, c);
-  } else {
+    const others = { cover: sellable.coverOptions, case: sellable.caseOptions };
+    for (const role of PART_ROLES) {
+      if (!recipe[role]) continue;
+      for (const c of others[role]) if (!offered[role].has(c.item_id)) offered[role].set(c.item_id, c);
+    }
+  } else if (recipe.case) {
     const { data, error } = await admin
       .from("items")
       .select("id, category, size, price_family")
@@ -262,12 +266,12 @@ function chooseParts(
     if (id == null) continue;
     const part = parts[role].options.find((p) => p.itemId === id);
     if (!part) {
-      return {
-        ok: false,
-        error: preferenceCategoryAllowed(key.productType, role)
-          ? `that ${role} isn't one for this ${key.productType === "pillow" ? "size" : "length"}. Pick another.`
-          : `a ${key.productType} has no ${role} to choose.`,
-      };
+      const error = !preferenceCategoryAllowed(key.productType, role)
+        ? `a ${key.productType} has no ${role} to choose.`
+        : parts[role].defaultId == null
+          ? `its recipe has no ${role}, so there is none to change.`
+          : `that ${role} isn't one for this ${key.productType === "pillow" ? "size" : "length"}. Pick another.`;
+      return { ok: false, error };
     }
     chosen[role] = part;
   }
