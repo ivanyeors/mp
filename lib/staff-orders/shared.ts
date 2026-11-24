@@ -3,6 +3,13 @@ import { z } from "zod";
 import { usesPostalCode } from "@/lib/shipping/countries";
 import { SERVICE_KEYS, type ServiceKey } from "@/lib/pricing/service-prices";
 import { OUTSIDE_STRIPE_METHODS, OUTSIDE_STRIPE_METHOD_LABELS } from "@/lib/ecommerce/outside-stripe";
+import {
+  MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
+  MAX_PIECES_PER_CELL,
+  SECTIONS,
+  SUB_SECTIONS,
+} from "@/lib/spatial-fillings/core";
 
 export const PAY_LINK_LIFETIME_DAYS = 7;
 
@@ -12,6 +19,8 @@ export const MIN_CHARGE = 0.5;
 
 export const MAX_GOODS_QUANTITY = 99;
 export const MAX_SERVICE_QUANTITY = 20;
+export const MAX_BUILDS = 20;
+export const MAX_BUILD_PIECES = SECTIONS.length * SUB_SECTIONS.length * MAX_PIECES_PER_CELL;
 export const NOTE_MAX = 500;
 export const INTERNAL_NOTE_MAX = 1000;
 
@@ -33,6 +42,29 @@ const AddressSchema = z
 
 export type StaffOrderAddress = z.infer<typeof AddressSchema>;
 
+const BuildPlacementSchema = z.object({
+  section: z.string().max(16).optional(),
+  sub_section: z.string().max(16).optional(),
+  slot: z.number().int().min(1),
+  item_id: z.number().int().positive(),
+  row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
+  insert_order: z.number().int().min(1).nullable().optional(),
+  offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+  offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+});
+export type StaffOrderBuildPlacement = z.infer<typeof BuildPlacementSchema>;
+
+const BuildSchema = z.object({
+  variant_id: z.string().uuid("A pillow or bolster in this order can't be found. Remove it and try again."),
+  quantity: z.number().int().min(1).max(MAX_GOODS_QUANTITY),
+  filling_template_id: z.number().int().positive().nullable().default(null),
+  placements: z
+    .array(BuildPlacementSchema)
+    .min(1, "Put at least one filling in the build")
+    .max(MAX_BUILD_PIECES, `A build holds at most ${MAX_BUILD_PIECES} filling pieces`),
+});
+export type StaffOrderBuildDraft = z.infer<typeof BuildSchema>;
+
 const DraftFields = z.object({
   customer_id: z.string().uuid("Customer not found"),
   goods: z
@@ -44,6 +76,7 @@ const DraftFields = z.object({
     )
     .max(50)
     .default([]),
+  builds: z.array(BuildSchema).max(MAX_BUILDS).default([]),
   services: z
     .array(
       z.object({
@@ -98,7 +131,8 @@ export function paidHowLabel(how: PaidHow): string {
   return how.kind === "stripe" ? `Stripe payment ${how.payment_intent_id}` : OUTSIDE_STRIPE_METHOD_LABELS[how.method];
 }
 
-const hasALine = (d: { goods: unknown[]; services: unknown[] }) => d.goods.length + d.services.length > 0;
+const hasALine = (d: { goods: unknown[]; builds: unknown[]; services: unknown[] }) =>
+  d.goods.length + d.builds.length + d.services.length > 0;
 const NO_LINES = { message: "Add at least one product or service", path: ["goods"] };
 
 export const StaffOrderDraftSchema = DraftFields.refine(hasALine, NO_LINES);
@@ -127,6 +161,14 @@ export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+export type StaffOrderBuildSummary = {
+  productType: "pillow" | "bolster";
+  filling: string;
+  adjusted: boolean;
+  pieces: number;
+  placedExtras: number;
+};
+
 export type StaffOrderLine =
   | {
       kind: "goods";
@@ -140,6 +182,7 @@ export type StaffOrderLine =
       unitPrice: number;
       quantity: number;
       stockAvailable: number;
+      build?: StaffOrderBuildSummary;
     }
   | {
       kind: "service";

@@ -5,6 +5,9 @@ Amended 2026-11-22: the rejection of Stripe Payment Links now covers products to
 **Product payment links retired** below.
 Amended 2026-11-23 by ADR 0056: Staff may also mark a Staff order paid, by a Stripe payment they
 pick or as paid outside Stripe, instead of sending its link.
+Amended 2026-11-23 by ADR 0057: a Staff order may hold a pillow or bolster, added with the
+fillings Staff choose. *Which goods* below and the rejected option *Making every Staff sale a
+Result* are read with it: a pillow is still not a Result here, and is no longer refused.
 
 **Staff** at the counter or on the phone with a customer had no way to sell them anything that
 was not a customised build. An ear pad, a spare case, a re-adjustment or a measurement visit

@@ -18,7 +18,6 @@ import {
     Clock,
     Loader2,
     ChevronLeft,
-    ChevronDown,
     ClipboardList,
     Link2,
     Unlink,
@@ -67,8 +66,8 @@ import {
     groupBuildLinesByRole,
     isResultOrderBuildSnapshot,
 } from "@/lib/results/order-build-snapshot";
-import { CELLS } from "@/lib/spatial-fillings/cells";
-import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
+import { isStaffBuildSnapshot, staffBuildFillingLabel } from "@/lib/staff-orders/build-snapshot";
+import { PlacementBreakdown } from "./placement-breakdown";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 import { orderEarnLine, splitOrderDiscount, type OrderEarn } from "@/lib/points/order-lines";
 import { collectLocationOf } from "@/lib/shipping/self-collect";
@@ -899,15 +898,6 @@ export default function OrderDetailPage({
                                             const nameByItem = new Map(
                                                 resultSnap.build_lines.map((l) => [l.item_id, l.name]),
                                             );
-                                            const isBolsterSnap = resultSnap.product_type === "bolster";
-                                            const placements = (resultSnap.filling_placements ?? []).filter(
-                                                (p): p is PillowPlacementRow => !isBolsterSnap && "section" in p,
-                                            );
-                                            const bolsterPieces = isBolsterSnap
-                                                ? [...(resultSnap.filling_placements ?? [])]
-                                                      .sort((a, b) => a.slot - b.slot)
-                                                      .map((p) => nameByItem.get(p.item_id) ?? `Item #${p.item_id}`)
-                                                : [];
 
                                             return (
                                                 <div key={item.id} className="rounded-lg border p-4 space-y-3 max-md:rounded-none max-md:border-0 max-md:p-0">
@@ -935,68 +925,13 @@ export default function OrderDetailPage({
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    {placements.length > 0 && (
-                                                        <div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowPlacements((v) => !v)}
-                                                                aria-expanded={showPlacements}
-                                                                className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-2 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors active:bg-press md:hidden"
-                                                            >
-                                                                Placement breakdown
-                                                                <ChevronDown
-                                                                    className={cn(
-                                                                        "size-4 transition-transform",
-                                                                        showPlacements && "rotate-180",
-                                                                    )}
-                                                                    aria-hidden
-                                                                />
-                                                            </button>
-                                                            <div className="text-xs font-medium text-muted-foreground mb-1 max-md:hidden">
-                                                                Placement breakdown
-                                                            </div>
-                                                            <div className={cn("space-y-1", !showPlacements && "max-md:hidden")}>
-                                                                {CELLS.map(({ section, subSection }) => {
-                                                                    const pieces = placements
-                                                                        .filter(
-                                                                            (p) =>
-                                                                                p.section === section &&
-                                                                                p.sub_section === subSection,
-                                                                        )
-                                                                        .sort((a, b) => a.slot - b.slot)
-                                                                        .map(
-                                                                            (p) =>
-                                                                                nameByItem.get(p.item_id) ??
-                                                                                `Item #${p.item_id}`,
-                                                                        );
-                                                                    return (
-                                                                        <div
-                                                                            key={`${section}-${subSection}`}
-                                                                            className="flex justify-between text-xs gap-2"
-                                                                        >
-                                                                            <span className="capitalize text-muted-foreground">
-                                                                                {section}, {subSection}
-                                                                            </span>
-                                                                            <span className="text-right">
-                                                                                {pieces.length ? pieces.join(", ") : "—"}
-                                                                            </span>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {bolsterPieces.length > 0 && (
-                                                        <div>
-                                                            <div className="text-xs font-medium text-muted-foreground mb-1">
-                                                                Placement breakdown
-                                                            </div>
-                                                            <div className="flex justify-between text-xs gap-2">
-                                                                <span className="text-muted-foreground">Compartment</span>
-                                                                <span className="text-right">{bolsterPieces.join(", ")}</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    <PlacementBreakdown
+                                                        placements={resultSnap.filling_placements ?? []}
+                                                        bolster={resultSnap.product_type === "bolster"}
+                                                        nameOf={(id) => nameByItem.get(id) ?? `Item #${id}`}
+                                                        open={showPlacements}
+                                                        onToggle={() => setShowPlacements((v) => !v)}
+                                                    />
                                                     {groups.map((group) => (
                                                         <div key={group.role}>
                                                             <div className="text-xs font-medium text-muted-foreground mb-1">
@@ -1038,19 +973,42 @@ export default function OrderDetailPage({
                                             );
                                         }
 
+                                        const staffBuild = isStaffBuildSnapshot(snapshot) ? snapshot : null;
+                                        const fillingNames = new Map(
+                                            (staffBuild?.filling_lines ?? []).map((fl) => [fl.item_id, fl.name]),
+                                        );
+
                                         return (
                                             <div key={item.id} className="rounded-lg border p-4 space-y-3 max-md:rounded-none max-md:border-0 max-md:p-0">
-                                                <div className="flex items-center justify-between">
+                                                <div className="flex items-center justify-between gap-2">
                                                     <div className="font-medium text-sm">
                                                         {item.product_title} ({item.variant_title})
+                                                        {staffBuild && item.quantity > 1 ? ` × ${item.quantity}` : ""}
                                                     </div>
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        Customised
+                                                    <Badge variant="secondary" className="text-xs shrink-0">
+                                                        {staffBuild ? "Built to order" : "Customised"}
                                                     </Badge>
                                                 </div>
 
-                                                {snapshot?.summary && (
-                                                    <p className="text-sm text-muted-foreground">{snapshot.summary}</p>
+                                                {staffBuild ? (
+                                                    <div className="text-xs">
+                                                        <span className="text-muted-foreground">Filling template</span>
+                                                        <div className="font-medium">{staffBuildFillingLabel(staffBuild)}</div>
+                                                    </div>
+                                                ) : (
+                                                    snapshot?.summary && (
+                                                        <p className="text-sm text-muted-foreground">{snapshot.summary}</p>
+                                                    )
+                                                )}
+
+                                                {staffBuild && (
+                                                    <PlacementBreakdown
+                                                        placements={staffBuild.filling_placements}
+                                                        bolster={staffBuild.product_type === "bolster"}
+                                                        nameOf={(id) => fillingNames.get(id) ?? `Item #${id}`}
+                                                        open={showPlacements}
+                                                        onToggle={() => setShowPlacements((v) => !v)}
+                                                    />
                                                 )}
 
                                                 {snapshot?.filling_lines && snapshot.filling_lines.length > 0 && (
@@ -1059,7 +1017,7 @@ export default function OrderDetailPage({
                                                         <div className="flex flex-wrap gap-1">
                                                             {snapshot.filling_lines.map((fl, idx) => (
                                                                 <span key={idx} className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs">
-                                                                    {fl.quantity}x {fl.subtype || fl.name}
+                                                                    {fl.quantity}x {staffBuild ? fl.name : fl.subtype || fl.name}
                                                                 </span>
                                                             ))}
                                                         </div>

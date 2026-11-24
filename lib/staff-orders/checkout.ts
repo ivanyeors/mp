@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
 import { SHOP_CHECKOUT_LIFETIME_MS } from "@/lib/stripe/checkout-lifetime";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
+import { isStaffBuildSnapshot } from "@/lib/staff-orders/build-snapshot";
+import { savedBuildsShortage } from "@/lib/staff-orders/builds";
 import { checkGoodsStock } from "@/lib/staff-orders/quote";
 import { loadPayLinkByToken, payLinkUrl, type LoadedPayLink } from "@/lib/staff-orders/link";
 import { STAFF_ORDER_PURPOSE, mergeQuantities, payLinkState, round2, type PayLinkState } from "@/lib/staff-orders/shared";
@@ -67,11 +69,11 @@ export async function openStaffOrderCheckout(
 
   const goods = mergeQuantities(
     items
-      .filter((i) => i.variant_id && i.kind !== "service")
+      .filter((i) => i.variant_id && i.kind !== "service" && !isStaffBuildSnapshot(i.customization_snapshot))
       .map((i) => ({ variantId: i.variant_id!, quantity: i.quantity, title: i.product_title, variantTitle: i.variant_title })),
     "variantId",
   );
-  const shortage = await checkGoodsStock(admin, goods);
+  const shortage = (await checkGoodsStock(admin, goods)) ?? (await savedBuildsShortage(admin, items));
   if (shortage) {
     return {
       ok: false,

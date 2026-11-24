@@ -1,4 +1,5 @@
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
+import { isStaffBuildSnapshot } from "@/lib/staff-orders/build-snapshot";
 import { pillowSizeKey, type PillowSizeKey } from "./match";
 
 export type PillowPurchaseLine = {
@@ -56,12 +57,13 @@ export function placementRows(value: unknown): PillowPlacementRow[] {
 
 export function snapshotPillowBuild(
   snapshot: unknown,
-): { resultId: string; templateId: number | null; templateName: string | null; placements: PillowPlacementRow[] } | null {
+): { resultId: string | null; templateId: number | null; templateName: string | null; placements: PillowPlacementRow[] } | null {
   if (!snapshot || typeof snapshot !== "object") return null;
   const s = snapshot as Record<string, unknown>;
-  if (s.product_type !== "pillow" || typeof s.result_id !== "string") return null;
+  const staffBuild = isStaffBuildSnapshot(snapshot);
+  if (s.product_type !== "pillow" || (typeof s.result_id !== "string" && !staffBuild)) return null;
   return {
-    resultId: s.result_id,
+    resultId: typeof s.result_id === "string" ? s.result_id : null,
     templateId: num(s.filling_template_id),
     templateName: typeof s.filling_template_name === "string" && s.filling_template_name.trim() ? s.filling_template_name : null,
     placements: placementRows(s.filling_placements),

@@ -4,6 +4,7 @@ import { resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { getLocations } from "@/lib/locations";
 import { SERVICE_KEYS, SERVICE_LABELS, loadServicePrices, type ServiceKey } from "@/lib/pricing/service-prices";
 import { isSelfCollect } from "@/lib/shipping/self-collect";
+import { BUILT_TO_ORDER } from "@/lib/staff-orders/builds";
 import { productTitle } from "@/lib/staff-orders/quote";
 import type { CustomerAddress, Product, ShippingMethod } from "@/lib/types/ecommerce";
 
@@ -16,6 +17,7 @@ export type StaffOrderProductOption = {
   stockAvailable: number;
   imageUrl: string | null;
   unlisted: boolean;
+  builtToOrder: boolean;
 };
 
 export type StaffOrderServiceOption = { key: ServiceKey; label: string; price: number };
@@ -45,6 +47,14 @@ export type StaffOrderOptions = {
   addresses: StaffOrderAddressOption[];
 };
 
+const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "SHORT", "MEDIUM", "LONG"];
+
+function variantRank(title: string | null): number {
+  const words = (title ?? "").toUpperCase().split(/[^A-Z]+/);
+  const at = SIZE_ORDER.findIndex((size) => words.includes(size));
+  return at === -1 ? SIZE_ORDER.length : at;
+}
+
 type VariantRow = {
   id: string;
   sku: string | null;
@@ -61,8 +71,7 @@ export async function loadStaffOrderOptions(admin: SupabaseClient, customerId: s
       .from("product_variants")
       .select("id, sku, title, price, currency, image_url, products!inner(slug, content, product_type, status)")
       .eq("is_active", true)
-      .neq("products.status", "archived")
-      .not("products.product_type", "in", "(pillow,bolster)"),
+      .neq("products.status", "archived"),
     admin.from("shipping_methods").select("*").eq("is_active", true).order("position"),
     admin
       .from("customer_addresses")
@@ -106,9 +115,16 @@ export async function loadStaffOrderOptions(admin: SupabaseClient, customerId: s
         stockAvailable: stock.get(v.id) ?? 0,
         imageUrl: v.image_url ?? null,
         unlisted: v.products?.status !== "active",
+        builtToOrder: BUILT_TO_ORDER.has(v.products?.product_type ?? ""),
       }),
     )
-    .sort((a, b) => a.title.localeCompare(b.title) || (a.variantTitle ?? "").localeCompare(b.variantTitle ?? ""));
+    .sort(
+      (a, b) =>
+        Number(b.builtToOrder) - Number(a.builtToOrder) ||
+        a.title.localeCompare(b.title) ||
+        variantRank(a.variantTitle) - variantRank(b.variantTitle) ||
+        (a.variantTitle ?? "").localeCompare(b.variantTitle ?? ""),
+    );
 
   const methods = ((methodsRes.data ?? []) as ShippingMethod[])
     .filter((m) => !isSelfCollect(m))

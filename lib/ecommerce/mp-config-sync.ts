@@ -1,3 +1,4 @@
+import { isStaffBuildSnapshot } from "@/lib/staff-orders/build-snapshot";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 interface OrderItemForSync {
@@ -141,7 +142,9 @@ export async function createMpConfigFromCustomization(
 ): Promise<void> {
   const admin = supabaseAdmin();
 
-  const customizedItems = orderItems.filter((item) => item.customization_id);
+  const customizedItems = orderItems.filter(
+    (item) => item.customization_id && !isStaffBuildSnapshot(item.customization_snapshot),
+  );
   if (customizedItems.length === 0) return;
 
   const { data: existing } = await admin

@@ -169,10 +169,10 @@ describe("quoteStaffOrder — every amount from the database", () => {
     expect(out).toMatchObject({ ok: false, status: 400 });
   });
 
-  it("refuses a pillow: a customised build is a Result", async () => {
+  it("refuses a pillow added as a plain product: it has to come with its fillings", async () => {
     const out = await quoteStaffOrder(admin(), draft({ goods: [{ variant_id: PILLOW, quantity: 1 }] }));
     expect(out.ok).toBe(false);
-    expect(!out.ok && out.error).toMatch(/customised build/);
+    expect(!out.ok && out.error).toMatch(/built to order/);
   });
 
   it("refuses more than is in stock, counting a Variant added twice once", async () => {

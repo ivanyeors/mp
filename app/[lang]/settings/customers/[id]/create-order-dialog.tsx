@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Loader2, Minus, Plus, Search, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Minus, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import type {
     StaffOrderAddressOption,
     StaffOrderOptions,
 } from "@/lib/staff-orders/options";
+import { OrderBuildDialog, type OrderBuild } from "./order-build-dialog";
 import {
     MAX_GOODS_QUANTITY,
     MAX_SERVICE_QUANTITY,
@@ -38,7 +39,12 @@ import {
 
 type Line =
     | { kind: "goods"; id: string; quantity: number }
+    | { kind: "build"; id: string; key: number; quantity: number; build: OrderBuild }
     | { kind: "service"; id: ServiceKey; quantity: number };
+
+type BuildTarget = { variantId: string; editing: number | null };
+
+const lineKey = (line: Line) => (line.kind === "build" ? `build-${line.key}` : `${line.kind}-${line.id}`);
 
 type AddressForm = {
     recipient: string;
@@ -99,6 +105,8 @@ export function CreateOrderDialog({
     const [optionsError, setOptionsError] = useState<string | null>(null);
 
     const [lines, setLines] = useState<Line[]>([]);
+    const [buildTarget, setBuildTarget] = useState<BuildTarget | null>(null);
+    const buildSeq = useRef(0);
     const [search, setSearch] = useState("");
     const [deliveryKind, setDeliveryKind] = useState<"studio" | "ship">("studio");
     const [studioId, setStudioId] = useState("");
@@ -163,12 +171,24 @@ export function CreateOrderDialog({
         [options],
     );
 
-    const hasGoods = lines.some((l) => l.kind === "goods");
+    const hasGoods = lines.some((l) => l.kind !== "service");
     const effectiveDelivery = hasGoods ? deliveryKind : "studio";
 
     const draft: StaffOrderDraft | null = useMemo(() => {
         if (lines.length === 0) return null;
         const goods = lines.flatMap((l) => (l.kind === "goods" ? [{ variant_id: l.id, quantity: l.quantity }] : []));
+        const builds = lines.flatMap((l) =>
+            l.kind === "build"
+                ? [
+                      {
+                          variant_id: l.id,
+                          quantity: l.quantity,
+                          filling_template_id: l.build.templateId,
+                          placements: l.build.placements,
+                      },
+                  ]
+                : [],
+        );
         const services = lines.flatMap((l) => (l.kind === "service" ? [{ key: l.id, quantity: l.quantity }] : []));
         let delivery: StaffOrderDraft["delivery"];
         if (effectiveDelivery === "studio") {
@@ -193,6 +213,7 @@ export function CreateOrderDialog({
         return {
             customer_id: customerId,
             goods,
+            builds,
             services,
             delivery,
             code: code || undefined,
@@ -239,7 +260,7 @@ export function CreateOrderDialog({
     const stripePayments = useMatchingStripePayments(payBy === "paid" ? (quote?.total ?? null) : null);
     const paidHow = payBy === "paid" ? paidHowFromDraft(paidDraft, stripePayments.payments) : null;
 
-    const addLine = useCallback((line: Line) => {
+    const addLine = useCallback((line: Exclude<Line, { kind: "build" }>) => {
         setLines((prev) => {
             const at = prev.findIndex((l) => l.kind === line.kind && l.id === line.id);
             if (at === -1) return [...prev, line];
@@ -252,7 +273,7 @@ export function CreateOrderDialog({
     const setQuantity = (index: number, quantity: number) => {
         setLines((prev) => {
             const line = prev[index];
-            const max = line.kind === "goods" ? MAX_GOODS_QUANTITY : MAX_SERVICE_QUANTITY;
+            const max = line.kind === "service" ? MAX_SERVICE_QUANTITY : MAX_GOODS_QUANTITY;
             const q = Math.max(1, Math.min(max, quantity));
             const next = [...prev];
             next[index] = { ...line, quantity: q } as Line;
@@ -261,6 +282,25 @@ export function CreateOrderDialog({
     };
 
     const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
+
+    const saveBuild = (build: OrderBuild) => {
+        if (!buildTarget) return;
+        const { variantId, editing } = buildTarget;
+        const key = editing ?? ++buildSeq.current;
+        setLines((prev) =>
+            editing === null
+                ? [...prev, { kind: "build", id: variantId, key, quantity: 1, build }]
+                : prev.map((l) => (l.kind === "build" && l.key === editing ? { ...l, build } : l)),
+        );
+        setBuildTarget(null);
+    };
+    const buildProduct = buildTarget ? productById.get(buildTarget.variantId) : null;
+    const editedBuild =
+        buildTarget?.editing != null
+            ? (lines.find((l) => l.kind === "build" && l.key === buildTarget.editing) as
+                  | Extract<Line, { kind: "build" }>
+                  | undefined)
+            : undefined;
 
     const filteredProducts = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -274,6 +314,7 @@ export function CreateOrderDialog({
 
     const reset = () => {
         setLines([]);
+        setBuildTarget(null);
         setSearch("");
         setCodeInput("");
         setCode("");
@@ -339,12 +380,19 @@ export function CreateOrderDialog({
         } catch {}
     };
 
-    const quotedLine = (line: Line) =>
-        shownQuote?.lines.find((q) =>
+    const quotedLine = (line: Line) => {
+        if (!shownQuote) return undefined;
+        if (line.kind === "build") {
+            const nth = lines.filter((l) => l.kind === "build").indexOf(line);
+            const priced = shownQuote.lines.filter((q) => q.kind === "goods" && q.build)[nth];
+            return priced?.kind === "goods" && priced.variantId === line.id ? priced : undefined;
+        }
+        return shownQuote.lines.find((q) =>
             line.kind === "goods"
-                ? q.kind === "goods" && q.variantId === line.id
+                ? q.kind === "goods" && !q.build && q.variantId === line.id
                 : q.kind === "service" && q.serviceKey === line.id,
         );
+    };
 
     return (
         <Dialog open={open} onOpenChange={close}>
@@ -362,8 +410,10 @@ export function CreateOrderDialog({
                         <DialogHeader>
                             <DialogTitle>New order for {customerName}</DialogTitle>
                             <DialogDescription>
-                                Products at their shop price, services at their Costings price. {customerName} pays
-                                through a link, on their own phone.
+                                Pillows and bolsters are built with the fillings you choose, at their Costings price
+                                (an Ear Comfort Pad placed inside adds its own).
+                                Other products are at their shop price, services at their Costings price.{" "}
+                                {customerName} pays through a link, on their own phone.
                             </DialogDescription>
                             {onChangeCustomer ? (
                                 <Button
@@ -399,28 +449,35 @@ export function CreateOrderDialog({
                                             className="pl-9"
                                         />
                                     </div>
-                                    <ul className="max-h-52 divide-y overflow-y-auto rounded-md border">
+                                    <ul className="max-h-64 divide-y overflow-y-auto rounded-md border">
                                         {filteredProducts.length === 0 ? (
                                             <li className="px-3 py-4 text-center text-sm text-muted-foreground">
                                                 No products match.
                                             </li>
                                         ) : (
                                             filteredProducts.map((p) => {
-                                                const inOrder =
-                                                    lines.find((l) => l.kind === "goods" && l.id === p.variantId)
-                                                        ?.quantity ?? 0;
+                                                const inOrder = lines.reduce(
+                                                    (sum, l) => (l.kind !== "service" && l.id === p.variantId ? sum + l.quantity : sum),
+                                                    0,
+                                                );
                                                 const left = p.stockAvailable - inOrder;
                                                 const name = `${p.title}${p.variantTitle ? ` ${p.variantTitle}` : ""}`;
                                                 return (
                                                     <li key={p.variantId}>
                                                         <button
                                                             type="button"
-                                                            className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                                            className="group flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                                             disabled={left <= 0}
                                                             onClick={() =>
-                                                                addLine({ kind: "goods", id: p.variantId, quantity: 1 })
+                                                                p.builtToOrder
+                                                                    ? setBuildTarget({ variantId: p.variantId, editing: null })
+                                                                    : addLine({ kind: "goods", id: p.variantId, quantity: 1 })
                                                             }
-                                                            aria-label={`Add ${name}`}
+                                                            aria-label={
+                                                                p.builtToOrder
+                                                                    ? `Choose fillings for ${name}, ${money(p.price)}`
+                                                                    : `Add ${name}, ${money(p.price)}`
+                                                            }
                                                         >
                                                             <span className="min-w-0 flex-1">
                                                                 <span className="block truncate text-sm font-medium">
@@ -432,20 +489,37 @@ export function CreateOrderDialog({
                                                                         </span>
                                                                     ) : null}
                                                                 </span>
-                                                                <span className="block text-xs text-muted-foreground">
-                                                                    {money(p.price)} ·{" "}
+                                                                <span className="block truncate text-xs text-muted-foreground">
+                                                                    {p.builtToOrder ? "Built to order · " : ""}
                                                                     {p.stockAvailable > 0
-                                                                        ? `${p.stockAvailable} in stock`
+                                                                        ? `${p.stockAvailable} ${p.builtToOrder ? "can be built" : "in stock"}`
                                                                         : "Out of stock"}
                                                                     {p.unlisted ? " · not listed online" : ""}
                                                                 </span>
                                                             </span>
                                                             <span
                                                                 aria-hidden="true"
-                                                                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium"
+                                                                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 group-disabled:hidden [@media(hover:none)]:hidden"
                                                             >
-                                                                <Plus className="h-3.5 w-3.5" />
-                                                                Add
+                                                                {p.builtToOrder ? (
+                                                                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                                                                ) : (
+                                                                    <Plus className="h-3.5 w-3.5" />
+                                                                )}
+                                                                {p.builtToOrder ? "Choose fillings" : "Add"}
+                                                            </span>
+                                                            <span
+                                                                aria-hidden="true"
+                                                                className="hidden shrink-0 text-muted-foreground group-disabled:hidden [@media(hover:none)]:inline-flex"
+                                                            >
+                                                                {p.builtToOrder ? (
+                                                                    <SlidersHorizontal className="h-4 w-4" />
+                                                                ) : (
+                                                                    <Plus className="h-4 w-4" />
+                                                                )}
+                                                            </span>
+                                                            <span className="shrink-0 text-right text-lg font-semibold leading-none tabular-nums">
+                                                                {money(p.price)}
                                                             </span>
                                                         </button>
                                                     </li>
@@ -492,7 +566,7 @@ export function CreateOrderDialog({
                                     ) : (
                                         <ul className="divide-y rounded-md border">
                                             {lines.map((line, i) => {
-                                                const product = line.kind === "goods" ? productById.get(line.id) : null;
+                                                const product = line.kind === "service" ? null : productById.get(line.id);
                                                 const service =
                                                     line.kind === "service" ? serviceByKey.get(line.id) : null;
                                                 const pricedLine = quotedLine(line);
@@ -500,9 +574,10 @@ export function CreateOrderDialog({
                                                     ? `${product.title}${product.variantTitle ? ` · ${product.variantTitle}` : ""}`
                                                     : (service?.label ?? line.id);
                                                 const unit = pricedLine?.unitPrice ?? product?.price ?? service?.price ?? 0;
+                                                const quotedBuild = pricedLine?.kind === "goods" ? pricedLine.build : undefined;
                                                 return (
                                                     <li
-                                                        key={`${line.kind}-${line.id}`}
+                                                        key={lineKey(line)}
                                                         className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2"
                                                     >
                                                         <div className="min-w-0 flex-1 basis-40">
@@ -511,6 +586,29 @@ export function CreateOrderDialog({
                                                                 {line.kind === "service" ? "Service · " : ""}
                                                                 {money(unit)} each
                                                             </p>
+                                                            {line.kind === "build" ? (
+                                                                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                                                                    <span>
+                                                                        {quotedBuild?.filling ?? line.build.filling} ·{" "}
+                                                                        {line.build.pieces} piece
+                                                                        {line.build.pieces === 1 ? "" : "s"}
+                                                                        {quotedBuild && quotedBuild.placedExtras > 0
+                                                                            ? ` · includes ${money(quotedBuild.placedExtras)} for Ear Comfort Pads`
+                                                                            : ""}
+                                                                    </span>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="link"
+                                                                        className="h-auto p-0 text-xs"
+                                                                        onClick={() =>
+                                                                            setBuildTarget({ variantId: line.id, editing: line.key })
+                                                                        }
+                                                                        aria-label={`Change the fillings of ${name}`}
+                                                                    >
+                                                                        Change fillings
+                                                                    </Button>
+                                                                </p>
+                                                            ) : null}
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <Button
@@ -541,7 +639,7 @@ export function CreateOrderDialog({
                                                                 <Plus className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </div>
-                                                        <span className="w-24 text-right text-sm font-medium tabular-nums">
+                                                        <span className="w-24 text-right text-base font-semibold tabular-nums">
                                                             {money(unit * line.quantity)}
                                                         </span>
                                                         <Button
@@ -844,6 +942,21 @@ export function CreateOrderDialog({
                     </>
                 )}
             </DialogContent>
+            <OrderBuildDialog
+                key={buildTarget ? `${buildTarget.variantId}-${buildTarget.editing ?? "new"}` : "closed"}
+                open={buildTarget !== null}
+                onOpenChange={(next) => {
+                    if (!next) setBuildTarget(null);
+                }}
+                variantId={buildTarget?.variantId ?? null}
+                title={
+                    buildProduct
+                        ? `${buildProduct.title}${buildProduct.variantTitle ? ` · ${buildProduct.variantTitle}` : ""}`
+                        : "this build"
+                }
+                initial={editedBuild?.build ?? null}
+                onSave={saveBuild}
+            />
         </Dialog>
     );
 }

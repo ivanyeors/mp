@@ -98,7 +98,7 @@ labels, refunds, RMA and Analytics are reused as they are.
 
 ## Non-goals
 
-- **Customised pillows and bolsters on a Staff order.** They are **Results**; Staff use the Assist link or in-store customisation, then *Request payment*. A Staff order refuses them.
+- **Customised pillows and bolsters on a Staff order.** They are **Results**; Staff use the Assist link or in-store customisation, then *Request payment*. A Staff order refuses them. *(Lifted 2026-11-23, ADR 0057: Staff add a pillow or bolster with the fillings they choose from a Filling Template and adjust. It is still not a Result, and one added with no fillings is still refused.)*
 - **Typing a price, a custom line or a manual discount.** ADR 0001. A discount is a code made in Discounts.
 - **Points or partner referral on a Staff order.** Points are spent by the customer at their own checkout (ADR 0030); Staff orders attribute to no partner.
 - **Paying at the counter on a card reader.** PRD `in-store-counter-payments` (Stripe Terminal).

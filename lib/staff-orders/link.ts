@@ -49,6 +49,7 @@ export type PayLinkItem = {
   quantity: number;
   unit_price: number;
   total_price: number;
+  customization_snapshot?: unknown;
 };
 
 export type LoadedPayLink = { link: PayLinkRow; order: PayLinkOrder; items: PayLinkItem[] };
@@ -58,7 +59,7 @@ const LINK_COLUMNS =
 const ORDER_COLUMNS =
   "id, order_number, customer_id, email, status, paid_at, currency, subtotal, shipping_amount, discount_amount, coupon_code, tax_amount, total, shipping_address, shipping_courier, notes, locale, stripe_session_id, created_at";
 const ITEM_COLUMNS =
-  "id, variant_id, kind, service_key, sku, product_title, variant_title, image_url, quantity, unit_price, total_price";
+  "id, variant_id, kind, service_key, sku, product_title, variant_title, image_url, quantity, unit_price, total_price, customization_snapshot";
 
 const num = (v: unknown) => Number(v ?? 0);
 

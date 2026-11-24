@@ -13,15 +13,16 @@ describe("Staff orders guide", () => {
     .map((b) => ("text" in b ? b.text : "items" in b ? b.items.map((i) => (typeof i === "string" ? i : i.label)).join(" ") : "rows" in b ? b.rows.flat().join(" ") : ""))
     .join(" ");
 
-  it("runs what → make → send → paid → pay → after, and is listed", () => {
-    expect(sections.map((s) => s.id)).toEqual(["what", "make", "send", "paid", "pay", "after"]);
+  it("runs what → make → fillings → send → paid → pay → after, and is listed", () => {
+    expect(sections.map((s) => s.id)).toEqual(["what", "make", "fillings", "send", "paid", "pay", "after"]);
     expect(ADMIN_GUIDES.map((g) => g.slug)).toContain("staff-orders");
   });
 
   it("reads the link's lifetime from the code, and says Staff never set a price", () => {
     expect(words).toContain(`works for ${PAY_LINK_LIFETIME_DAYS} days`);
     expect(words).toContain("never the price");
-    expect(words).toContain("customised pillow or bolster is not sold here");
+    expect(words).toContain("does not change with the fillings");
+    expect(words).toContain("still needs measuring is a customisation (a Result), not an order here");
   });
 
   it("links to Customers with the locale", () => {

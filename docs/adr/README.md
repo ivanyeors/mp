@@ -62,3 +62,4 @@ one is amended to point at it.
 | [0054](0054-email-funnel-reads-what-is-set-up.md) | The Email funnel is a reading of what is set up, on the Lifecycle stages, and sends nothing: a step is an automatic email or a campaign kept sending |
 | [0055](0055-view-and-edit-keys-per-page.md) | Every Admin Panel page has a View key and an Edit key, and a tab that is a different job gets its own; refunding is a separate key |
 | [0056](0056-a-staff-order-can-be-marked-paid.md) | A Staff order can be marked paid, by a Stripe payment Staff pick or as paid outside Stripe; a Sale paid outside Stripe counts, and its refund is recorded by hand |
+| [0057](0057-a-staff-order-can-carry-a-pillow-or-bolster-build.md) | A Staff order can carry a pillow or bolster, built with the fillings Staff choose from a Filling Template and adjust; priced from Costings, with no Result |
