@@ -4,17 +4,7 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useCountUp } from "@/hooks/use-count-up";
 import { cn } from "@/lib/utils";
-
-export function CountUp({ value, className }: { value: number; className?: string }) {
-  const shown = useCountUp(value);
-  return (
-    <span className={cn("tabular-nums", className)} aria-label={String(value)}>
-      {shown}
-    </span>
-  );
-}
 
 export function Spotlight({ className, children, ...rest }: ComponentProps<"div">) {
   return (

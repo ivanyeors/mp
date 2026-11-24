@@ -5,7 +5,6 @@ import type { Outputs } from "@/lib/company/load";
 import type { AgentView, Overview } from "@/lib/company/overview";
 import { cn } from "@/lib/utils";
 import { HEALTH, agentHref, fmtTime } from "./format";
-import { CountUp } from "./interactive";
 import { RefreshButton } from "./refresh-button";
 
 function SourcePill({ outputs }: { outputs: Outputs }) {
@@ -32,7 +31,7 @@ function Tile({ label, value, sub, tone, ok }: { label: string; value: number; s
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-400">{label}</dt>
       <dd>
         <span className={cn("block text-4xl font-semibold leading-none tracking-tight", tone === "bad" ? "text-red-300" : tone === "warn" ? "text-amber-200" : "text-white")}>
-          {ok ? <CountUp value={value} /> : "—"}
+          {ok ? <span className="tabular-nums animate-in fade-in slide-in-from-bottom-1 duration-500 motion-reduce:animate-none">{value}</span> : "—"}
         </span>
         <span className="mt-1.5 block text-[11px] text-zinc-400">{sub}</span>
       </dd>
