@@ -29,18 +29,23 @@ Drive folders (owner sg@mpillow.com):
 3. For each of `manual.md`, `okrs.md` and `agents/*.md`, compare with Drive.
    Upload by file reference, never by retyping the text: compute
    `sha256sum <file>`, then pass `base64Content` = `sha256:<hex>:<absolute path>`.
-   - File exists in Drive: `update_file` on its id (the id stays, and the
-     loaders pin it), `contentMimeType` `text/markdown`.
-   - New file: `create_file` in the right folder with `contentMimeType`
-     `text/markdown` and `disableConversionToGoogleType` true. Note its id.
+   The Drive connector cannot replace a file's content (`update_file` changes
+   only its name and settings), so a changed file is a new copy:
+   - `create_file` in the right folder, same title, `contentMimeType`
+     `text/markdown`, `disableConversionToGoogleType` true.
+   - Then `trash_file` the old copy. The loaders find files by title and skip
+     trashed ones, so no scheduled task changes.
    - A file in Drive with no file in `company/`: leave it and tell the user.
 4. Scheduled tasks (`list_triggers`): for every task in an agent's frontmatter
    `tasks` with `loader: drive`, its prompt must be the loader in
-   `company/README.md` with that agent's name, id and the two file ids. Fix any
+   `company/README.md` with that agent's name and id. Fix any
    that differ with `update_trigger` (prompt only). For `loader: inline`
    (Finance's invoice report, which has only the Gmail connector), the prompt
    is that task's section of `agents/fin.md`: paste it with `update_trigger`.
    A new agent with no scheduled task yet: ask the user before creating one.
+   A task the user created in the claude.ai app (not by an agent) refuses
+   `update_trigger`: give the user the loader text to paste into it there.
+   Today that is SEO (`trig_0143EmTAMiseqotPitwFLe2p`).
 5. Check: re-list both Drive folders and confirm every size matches
    `wc -c`; read one changed file back with `read_file_content`. The Company
    page (Analytics → Company) shows "Drive copy matches the code" once Drive
