@@ -121,7 +121,7 @@ describe("EmailPreview", () => {
     expect(frame().style.height).toBe("1360px");
 
     act(() => root!.render(preview("mobile")));
-    expect(frame().style.transform).toBe(`scale(${320 / 375})`);
+    expect(frame().style.transform).toBe("scale(0.853333)");
     boxWatcher().report(575);
     expect(frame().style.transform).toBe("scale(1)");
     expect(frame().style.marginLeft).toBe("100px");
