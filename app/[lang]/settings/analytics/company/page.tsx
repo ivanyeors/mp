@@ -1,5 +1,6 @@
 import { requireAdminPage } from "@/lib/auth/admin";
 import { loadOutputs, readOutput } from "@/lib/company/load";
+import { fleetRatios, networkLayout, outcomeCounts, reportsByTeam, runLanes, teamsOf } from "@/lib/company/insights";
 import { buildOverview, okrTree, type Output } from "@/lib/company/overview";
 import type { Report } from "@/lib/company/report";
 import { agentTree, readCompany } from "@/lib/company/roster";
@@ -12,6 +13,7 @@ import { NeedsYou } from "./inbox";
 import { AgentSheet } from "./interactive";
 import { Okrs } from "./okrs";
 import { OrgChart, type Flags } from "./org-chart";
+import { Pulse } from "./pulse";
 
 export const runtime = "nodejs";
 
@@ -36,7 +38,8 @@ export default async function CompanyPage({
   const outputs = await loadOutputs();
   const ok = outputs.state === "ok";
   const drive = ok && outputs.source === "drive";
-  const overview = buildOverview(company, ok ? outputs.files : [], ok ? outputs.reports : new Map<string, Report>(), new Date());
+  const now = new Date();
+  const overview = buildOverview(company, ok ? outputs.files : [], ok ? outputs.reports : new Map<string, Report>(), now);
   const views = new Map(overview.agents.map((v) => [v.agent.id, v]));
   const names = new Map(company.agents.map((a) => [a.id, a.name]));
 
@@ -54,15 +57,38 @@ export default async function CompanyPage({
   for (let id = selected?.agent.parent ?? null; id; id = views.get(id)?.agent.parent ?? null) chain.unshift(names.get(id) ?? id);
   const outputCount = ok ? outputs.files.filter((f) => !f.folder.startsWith("_company")).length : 0;
 
+  const { teams, teamOf } = teamsOf(root);
+  const days = reportsByTeam(overview.agents, teamOf, now);
+  const since = days[0].date;
+  const reportCounts = new Map(overview.agents.map((v) => [v.agent.id, v.outputs.filter((o) => o.name.kind !== "draft" && o.name.kind !== "file" && o.name.date >= since).length]));
+  const sync = drive ? { same: overview.copies.filter((c) => c.state === "same").length, total: overview.copies.length } : null;
+
   return (
-    <div className="w-full max-w-[1440px] space-y-10 pb-14">
-      <Hero overview={overview} outputs={outputs} teams={root.children.length} />
-      {outputs.state !== "ok" ? <SetupNotice outputs={outputs} /> : null}
-      {drive ? <HarnessCopy copies={overview.copies} outputs={outputs} /> : null}
-      <OrgChart root={root} views={views} selected={selected?.agent.id ?? null} flags={flags} outputCount={outputCount} copies={overview.copies} driveOk={drive} />
-      <NeedsYou decisions={overview.decisions} alerts={overview.alerts} drafts={overview.drafts} who={{ names, health: new Map(overview.agents.map((v) => [v.agent.id, v.health])) }} />
-      <Activity feed={overview.feed} days={overview.activity} names={names} />
-      <Okrs branches={okrTree(company.okrs)} values={overview.okrValues} />
+    <div className="dark w-full max-w-[1440px] pb-14">
+      <div className="relative isolate overflow-hidden rounded-[28px] border border-white/10 bg-[#0a0a0a] p-4 text-zinc-100 shadow-2xl sm:p-6 md:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-40 -z-10 h-[28rem] w-[28rem] rounded-full bg-white/[0.05] blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 opacity-[0.05] [background-image:linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] [background-size:28px_28px] [mask-image:linear-gradient(to_bottom,#000,transparent)]" />
+        <div className="space-y-10">
+          <div className="space-y-3">
+            <Hero overview={overview} outputs={outputs} teams={teams.length} attention={flags.attention.size} sync={sync} />
+            {outputs.state !== "ok" ? <SetupNotice outputs={outputs} /> : null}
+            {drive ? <HarnessCopy copies={overview.copies} outputs={outputs} /> : null}
+          </div>
+          {ok ? (
+            <Pulse
+              net={networkLayout(root)}
+              views={overview.agents}
+              reports={reportCounts}
+              hot={flags.attention}
+              ratios={fleetRatios(overview.agents, drive ? overview.copies : null, company.okrs, overview.okrValues)}
+            />
+          ) : null}
+          <OrgChart root={root} views={views} selected={selected?.agent.id ?? null} flags={flags} outputCount={outputCount} copies={overview.copies} driveOk={drive} />
+          <NeedsYou decisions={overview.decisions} alerts={overview.alerts} drafts={overview.drafts} who={{ names, health: new Map(overview.agents.map((v) => [v.agent.id, v.health])) }} />
+          <Activity feed={overview.feed} names={names} charts={{ days, teams, lanes: runLanes(overview.agents, teamOf, now), outcomes: outcomeCounts(overview.agents, now), now }} />
+          <Okrs branches={okrTree(company.okrs)} values={overview.okrValues} />
+        </div>
+      </div>
       {selected ? (
         <AgentSheet title={selected.agent.name} description={selected.agent.mission ?? "Agent details and its newest report"}>
           <AgentDetail view={selected} chain={chain.length ? chain : ["Ivan"]} shown={shown} content={content} okrs={company.okrs} values={overview.okrValues} />

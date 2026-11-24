@@ -1,10 +1,12 @@
 import { unstable_cache } from "next/cache";
 import { DriveError } from "@/lib/media-assets/drive";
 import { outputSource, type OutputFile } from "./drive";
-import { latestReports, outputsOf } from "./overview";
-import { parseReport, type Report } from "./report";
+import { latestReports, outputsOf, sgDate } from "./overview";
+import { REPORT_KINDS, parseReport, type Report } from "./report";
 
 export const COMPANY_OUTPUTS_TAG = "company-outputs";
+const RUN_WINDOW_DAYS = 56;
+const MAX_READS = 200;
 
 export type Outputs =
   | { state: "ok"; source: "drive" | "local"; files: OutputFile[]; reports: Map<string, Report>; listedAt: string }
@@ -57,7 +59,11 @@ export async function loadOutputs(feedSize = 20): Promise<Outputs> {
   const outputs = outputsOf(listed.files);
   const wanted = new Map<string, OutputFile>();
   for (const o of latestReports(outputs).values()) wanted.set(o.file.id, o.file);
-  for (const o of outputs.filter((x) => x.name.kind !== "draft" && x.name.kind !== "file").slice(0, feedSize)) wanted.set(o.file.id, o.file);
+  const since = sgDate(new Date(Date.now() - RUN_WINDOW_DAYS * 86_400_000));
+  const reportsOnly = outputs.filter((x) => (REPORT_KINDS as readonly string[]).includes(x.name.kind));
+  for (const o of reportsOnly.slice(0, feedSize)) wanted.set(o.file.id, o.file);
+  // ponytail: reads at most MAX_READS reports from the last 8 weeks per uncached load (each read is cached a day); older or extra runs show as "filed, not read". Raise the cap or store tones if the fleet outgrows it.
+  for (const o of reportsOnly.filter((x) => x.name.date >= since).slice(0, MAX_READS)) wanted.set(o.file.id, o.file);
 
   const reports = new Map<string, Report>();
   await Promise.all(

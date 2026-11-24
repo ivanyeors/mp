@@ -5,7 +5,6 @@ import { nextRun, previousRun } from "./schedule";
 
 export type Output = { file: OutputFile; name: OutputName };
 export type Beat = { due: string; state: "filed" | "missed" | "before"; tone: ReportTone | null };
-export type ActivityDay = { date: string; reports: number };
 export type Health = "ok" | "unchanged" | "degraded" | "failed" | "missed" | "none" | "paused" | "group";
 
 export type AgentView = {
@@ -31,7 +30,6 @@ export type Overview = {
   drafts: DraftView[];
   okrValues: Record<string, OkrValue>;
   feed: (Output & { report: Report | null })[];
-  activity: ActivityDay[];
   copies: CopyState[];
   stats: { live: number; total: number; reportsThisWeek: number; decisions: number; overdue: number; urgentAlerts: number; drafts: number };
 };
@@ -89,15 +87,6 @@ export function beatsOf(schedule: string | null, reports: Output[], toneOf: (o: 
     const pending = i === dues.length - 1 && now.getTime() - due.getTime() <= RUN_GRACE_MS;
     if (!first || from < first || pending) return { due: due.toISOString(), state: "before", tone: null };
     return { due: due.toISOString(), state: "missed", tone: null };
-  });
-}
-
-export function activityDays(outputs: Output[], now: Date, days = 14): ActivityDay[] {
-  const counts = new Map<string, number>();
-  for (const o of outputs) if (isReport(o)) counts.set(o.name.date, (counts.get(o.name.date) ?? 0) + 1);
-  return Array.from({ length: days }, (_, i) => {
-    const date = sgDate(new Date(now.getTime() - (days - 1 - i) * 86_400_000));
-    return { date, reports: counts.get(date) ?? 0 };
   });
 }
 
@@ -177,7 +166,6 @@ export function buildOverview(company: Company, files: OutputFile[], reports: Ma
     drafts,
     okrValues,
     feed,
-    activity: activityDays(outputs, now),
     copies: copyStates(company.files, files),
     stats: {
       live: runners.filter((a) => a.agent.status === "Live").length,

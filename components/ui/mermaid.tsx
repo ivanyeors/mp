@@ -17,7 +17,8 @@ export function Mermaid({ chart, className }: { chart: string; className?: strin
     let cancelled = false;
     import("mermaid")
       .then(async ({ default: mermaid }) => {
-        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme, fontFamily: "inherit" });
+        const drawIn = box.current?.closest(".dark") ? "dark" : theme;
+        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: drawIn, fontFamily: "inherit" });
         const { svg } = await mermaid.render(id, chart);
         if (!cancelled) setDrawn({ chart, theme, svg });
       })

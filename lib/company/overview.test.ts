@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OutputFile } from "./drive";
-import { activityDays, beatsOf, buildOverview, copyStates, okrTree, outputsOf } from "./overview";
+import { beatsOf, buildOverview, copyStates, okrTree, outputsOf } from "./overview";
 import { parseReport } from "./report";
 import type { Agent, Company } from "./roster";
 
@@ -111,16 +111,6 @@ describe("beatsOf", () => {
   it("does not call a run missed while it may still be running", () => {
     const justDue = new Date("2026-11-24T01:00:00Z");
     expect(beatsOf(weekly, [out("2026-11-17")], () => "ok", justDue, 2).map((b) => b.state)).toEqual(["filed", "before"]);
-  });
-});
-
-describe("activityDays", () => {
-  it("counts reports per Singapore day for the last two weeks, oldest first", () => {
-    const days = activityDays(outputsOf([file("2026-11-24_crm_weekly.md"), file("2026-11-24_ops_weekly.md"), file("2026-11-24_crm_draft_x.md"), file("2026-11-01_bd_weekly.md")]), now);
-    expect(days).toHaveLength(14);
-    expect(days[0].date).toBe("2026-11-11");
-    expect(days.at(-1)).toEqual({ date: "2026-11-24", reports: 2 });
-    expect(days.reduce((s, d) => s + d.reports, 0)).toBe(2);
   });
 });
 
