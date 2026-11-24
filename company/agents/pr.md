@@ -21,7 +21,7 @@ approvals: Every pitch
 
 # PR & awards
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs monthly, 4th, 10:06am SGT. Covers the previous calendar month, plus deadlines in the next 90 days.
+Reports to Marketing Lead → Agent 0 → the founder. Runs monthly, 4th, 10:06am SGT. Covers the previous calendar month, plus deadlines in the next 90 days.
 
 ## Start here
 
@@ -80,7 +80,7 @@ Columns: type, name, url, section_or_category, public_contact, season_or_deadlin
 - Report: manual section 5 template, filed as `<date>_pr_monthly.md` (section 6).
 - Drafts: pitches as Gmail drafts, subject "[DRAFT – PR & awards] …". Never sent.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Every pitch.
 - Any award fee, gifted sample or loan.

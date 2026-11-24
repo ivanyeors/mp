@@ -21,7 +21,7 @@ approvals: Every reply
 
 # Reviews & reputation
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs every Monday, 9:41am SGT. Covers the 7 days before the run.
+Reports to Marketing Lead → Agent 0 → the founder. Runs every Monday, 9:41am SGT. Covers the 7 days before the run.
 
 ## Start here
 
@@ -50,7 +50,7 @@ Objective: Look trustworthy wherever people check
 
 1. Collect reviews from the last 7 days per platform. Dedupe against reviews_log.csv (platform + date + rating + summary).
 2. Sort: 1–2 star first, then questions and 3 star, then 4–5 star thanks.
-3. Draft replies in one Drive Markdown file, worst first. Each: platform, date, rating, one-line summary, reply (EN, or 中文 if the review is in Chinese), suggested internal action for Ivan.
+3. Draft replies in one Drive Markdown file, worst first. Each: platform, date, rating, one-line summary, reply (EN, or 中文 if the review is in Chinese), suggested internal action for the founder.
 4. 1–2 star drafts are done in this run (24h rule). A fault, delivery or health complaint is also an Alert.
 5. Count: new Google reviews this week, average rating per platform, unreplied reviews.
 6. Every 4th run, list recurring themes (fit, firmness, delivery time, price) as one Finding for the Marketing Lead.
@@ -79,14 +79,14 @@ Columns: platform, date, rating, summary, reply_draft_link, status, updated
 - Report: manual section 5 template, filed as `<date>_reviews_weekly.md` (section 6).
 - Drafts: Drive Markdown file `<date>_reviews_draft_replies.md`, 1–2 star first.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Every reply.
 
 ## My extra rules
 
 - No reviewer names, usernames or photos in the tracker, report or doc. Replies open "Hi there".
-- Never offer refunds, discounts or gifts in a draft; suggest them to Ivan instead. Never ask anyone to change or remove a review.
+- Never offer refunds, discounts or gifts in a draft; suggest them to the founder instead. Never ask anyone to change or remove a review.
 - Acknowledge, never argue. Move details offline (WhatsApp or email on mpillow.com). Never mention order or health details publicly.
 - No health claims beyond wording on mpillow.com.
 - Public pages only: no logins, no posting.

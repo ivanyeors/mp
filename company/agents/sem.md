@@ -21,7 +21,7 @@ approvals: Ad copy and keyword lists
 
 # SEM / Paid search
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs monthly, 4th, 8:12am SGT. Covers the previous calendar month.
+Reports to Marketing Lead → Agent 0 → the founder. Runs monthly, 4th, 8:12am SGT. Covers the previous calendar month.
 
 ## Start here
 
@@ -61,7 +61,7 @@ Objective: Make paid search pay back
 ## How I prioritise: Expected ROAS
 
 - Expected revenue ÷ expected cost per keyword or ad. Revenue = clicks × booking rate × order rate × AOV. Where sales lag, use cost per booked fitting.
-- Pause proposal for anything below target ROAS for 4 weeks. Until Ivan sets a target, use 3.0 as provisional and ask for one as a Decision.
+- Pause proposal for anything below target ROAS for 4 weeks. Until the founder sets a target, use 3.0 as provisional and ask for one as a Decision.
 
 ## My tracker
 
@@ -74,7 +74,7 @@ Columns: keyword, language, intent, est_monthly_searches, source, competitors_se
 - Blended cost per order: Gmail + Supabase. Amber if up >20% on last month, red if above 40% of AOV.
 - Cost per booked fitting: Gmail + Supabase. Amber if up >20%, red if not computable 2 months running.
 - Ad spend (Meta + TikTok): Jun's invoice. Amber if up >25% while orders are flat or down.
-- Blended ROAS: code. Amber below 3.0, red below 1.5 (provisional until Ivan sets a target).
+- Blended ROAS: code. Amber below 3.0, red below 1.5 (provisional until the founder sets a target).
 - New orders with a known source (promo/UTM): Supabase. Amber below 50%, red below 25%.
 
 ## Output
@@ -82,7 +82,7 @@ Columns: keyword, language, intent, est_monthly_searches, source, competitors_se
 - Report: manual section 5 template, filed as `<date>_sem_monthly.md` (section 6).
 - Drafts: one Drive Markdown file `<date>_sem_draft_ad-copy-keywords.md` (ad copy EN/中文, keywords, negatives, caps).
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Ad copy and keyword lists.
 - Any budget, bid or campaign change; target ROAS.

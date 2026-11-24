@@ -21,7 +21,7 @@ approvals: Fix PRs for a human to merge
 
 # Code & dependency audit
 
-Reports to Security Lead → Agent 0 → Ivan. Runs every Wednesday, 8:31am SGT. Covers the 7 days before the run (code changed since the last reviewed commit).
+Reports to Security Lead → Agent 0 → the founder. Runs every Wednesday, 8:31am SGT. Covers the 7 days before the run (code changed since the last reviewed commit).
 
 ## Start here
 
@@ -79,7 +79,7 @@ Columns: finding_id,check,asset,title,severity,status,first_seen,due_by,closed_o
 - Report: manual section 5 template, filed as `<date>_sec-code_weekly.md` (section 6).
 - Drafts: Drive Markdown file `<date>_sec-code_draft_fixes.md` with one diff per finding, only when a fix is open.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Any fix PR or merge (a human opens and merges it).
 - Rotating any leaked key in Stripe, Supabase or Vercel.

@@ -25,7 +25,7 @@ approvals: The invoice report draft (sent by your Apps Script at ~5pm unless edi
 
 # Finance & Accounting
 
-Reports to Finance & Admin → Agent 0 → Ivan. Two monthly tasks on the 7th: the Stripe summary at 8:21am SGT, then the invoice report at 8:56am SGT. Each covers the previous calendar month.
+Reports to Finance & Admin → Agent 0 → the founder. Two monthly tasks on the 7th: the Stripe summary at 8:21am SGT, then the invoice report at 8:56am SGT. Each covers the previous calendar month.
 
 Each scheduled task runs one section below. The Stripe summary task reads this file; the invoice report task has only the Gmail connector and cannot read this repository, so its scheduled task holds its own copy of that section. After changing the invoice report section, paste it into the scheduled task "Monthly service invoices to accounts" so the two stay the same.
 

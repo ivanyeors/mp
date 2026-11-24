@@ -22,7 +22,7 @@ link: 'https://claude.ai/artifact/JoKp2j13oZ4S6ow7n5bCUV'
 
 # SEO
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs monthly on the 12th, 9:24am SGT. Covers the previous calendar month.
+Reports to Marketing Lead → Agent 0 → the founder. Runs monthly on the 12th, 9:24am SGT. Covers the previous calendar month.
 
 ## Start here
 

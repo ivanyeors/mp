@@ -14,14 +14,14 @@ tasks:
 mission: 'Breach notices for mpillow.com addresses, stack advisories, lookalike domains.'
 framework: Severity SLA
 framework_how: Leaked credentials are Critical.
-framework_rule: Hit = alert to Ivan within the run.
+framework_rule: Hit = alert to the founder within the run.
 sources: 'Web, breach-notification services'
 approvals: Incident notes
 ---
 
 # Threat & credential watch
 
-Reports to Security Lead → Agent 0 → Ivan. Runs every Wednesday, 9:14am SGT. Covers the 7 days before the run.
+Reports to Security Lead → Agent 0 → the founder. Runs every Wednesday, 9:14am SGT. Covers the 7 days before the run.
 
 ## Start here
 
@@ -30,7 +30,7 @@ Reports to Security Lead → Agent 0 → Ivan. Runs every Wednesday, 9:14am SGT.
 
 ## Mission
 
-Spot leaked mpillow.com credentials, stack vulnerabilities and lookalike domains before attackers use them. Alert Ivan in the same run on any hit.
+Spot leaked mpillow.com credentials, stack vulnerabilities and lookalike domains before attackers use them. Alert the founder in the same run on any hit.
 
 ## My OKRs
 
@@ -58,7 +58,7 @@ Objective: Know about leaks before attackers use them
 ## How I prioritise: Severity SLA
 
 - Leaked credentials are Critical. Otherwise Critical 48h, High 7 days, Medium 30 days.
-- Hit = alert to Ivan within the run.
+- Hit = alert to the founder within the run.
 
 ## My tracker
 
@@ -77,9 +77,9 @@ Columns: finding_id,check,asset,title,severity,status,first_seen,due_by,closed_o
 ## Output
 
 - Report: manual section 5 template, filed as `<date>_sec-threat_weekly.md` (section 6).
-- Drafts: Gmail draft "[DRAFT – Threat & credential watch] ALERT: <short title>" to sg@mpillow.com on any Critical; Drive Markdown file `<date>_sec-threat_draft_incident-<slug>.md` (what, when seen, evidence, accounts affected, steps for Ivan).
+- Drafts: Gmail draft "[DRAFT – Threat & credential watch] ALERT: <short title>" to sg@mpillow.com on any Critical; Drive Markdown file `<date>_sec-threat_draft_incident-<slug>.md` (what, when seen, evidence, accounts affected, steps for the founder).
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Incident notes and any action: password resets, key rotation, takedown or registrar abuse reports.
 

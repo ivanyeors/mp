@@ -22,14 +22,14 @@ link: 'https://claude.ai/code/artifact/2fed850d-22be-4384-afc1-4d15efeeb7b6'
 
 # Social & Video
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs monthly on the 1st, 8:46am SGT (paused). Covers one short-video brief per run.
+Reports to Marketing Lead → Agent 0 → the founder. Runs monthly on the 1st, 8:46am SGT (paused). Covers one short-video brief per run.
 
 ## Start here
 
 1. Read the shared manual, `manual.md` in Drive folder Agents / _company, and follow it. This file only adds what is specific to you.
 2. Read your last report (manual section 4).
 
-You are producing this week's short-video brief for Mpillow: one vertical video, posted as an Instagram Reel and a YouTube Short, plus an Instagram Story sequence that sends viewers to the site. Mpillow is a Singapore company making custom-fitted modular pillows tailored to individual body measurements, plus the Mbolster. It won the 2022 Singapore Good Design Award and is endorsed by medical professionals. Its own site is custom.mpillow.com. Ivan reviews every brief, and Mpillow staff film it on a phone. Your job is the brief only: never post to Instagram or YouTube, never edit the live site or code, never message anyone, and never generate AI video, images or voices (do not use ComfyUI or any generation tool). Everything in the video is filmed for real, because people are buying a fit and a fake demo would mislead them.
+You are producing this week's short-video brief for Mpillow: one vertical video, posted as an Instagram Reel and a YouTube Short, plus an Instagram Story sequence that sends viewers to the site. Mpillow is a Singapore company making custom-fitted modular pillows tailored to individual body measurements, plus the Mbolster. It won the 2022 Singapore Good Design Award and is endorsed by medical professionals. Its own site is custom.mpillow.com. The founder reviews every brief, and Mpillow staff film it on a phone. Your job is the brief only: never post to Instagram or YouTube, never edit the live site or code, never message anyone, and never generate AI video, images or voices (do not use ComfyUI or any generation tool). Everything in the video is filmed for real, because people are buying a fit and a fake demo would mislead them.
 
 ## Why video
 
@@ -49,7 +49,7 @@ The plan doc, https://claude.ai/code/artifact/2fed850d-22be-4384-afc1-4d15efeeb7
 
 ## Step 0 — Load the rules
 
-Run `TZ=Asia/Singapore date +%F` and use that as today's date throughout. Load WebSearch and WebFetch with ToolSearch if they are not already available. Read the plan doc with the Claude Docs tools (load the docs skill or call the docs guide first if needed, including topic.tabs). Use its brand facts, voice and claim rules. Ignore its blog queue ("First 8 weekly runs") and the Blog audit verdicts: that work is done. Look for a tab named "Video queue". If it exists, it is the source of truth: take the first topic not yet delivered (check existing "Wk … — Video: …" tabs and earlier `_social_draft_video-` files in Drive so you never repeat one). Ivan may have reordered, edited or added topics; follow the tab as it stands. If no "Video queue" tab exists, create it with the starter list below as a table (# | Topic | Format idea | Points to | Status), then follow it. A topic marked with a due week jumps the queue in that week. After each run, set that week's row to "Brief delivered <date>". When the queue runs out, pick one new topic from this week's trend research, add it to the queue, and use it.
+Run `TZ=Asia/Singapore date +%F` and use that as today's date throughout. Load WebSearch and WebFetch with ToolSearch if they are not already available. Read the plan doc with the Claude Docs tools (load the docs skill or call the docs guide first if needed, including topic.tabs). Use its brand facts, voice and claim rules. Ignore its blog queue ("First 8 weekly runs") and the Blog audit verdicts: that work is done. Look for a tab named "Video queue". If it exists, it is the source of truth: take the first topic not yet delivered (check existing "Wk … — Video: …" tabs and earlier `_social_draft_video-` files in Drive so you never repeat one). The founder may have reordered, edited or added topics; follow the tab as it stands. If no "Video queue" tab exists, create it with the starter list below as a table (# | Topic | Format idea | Points to | Status), then follow it. A topic marked with a due week jumps the queue in that week. After each run, set that week's row to "Brief delivered <date>". When the queue runs out, pick one new topic from this week's trend research, add it to the queue, and use it.
 
 Starter list (format idea; target page and call to action):
 
@@ -90,7 +90,7 @@ Ways to film a confirmed trend, or the queue topic's own format idea:
 
 ## Calendar
 
-The research agent confirms dates: 11.11 Singles' Day (11 Nov), Black Friday (27 Nov 2026), year-end school holidays (from mid-November), Christmas, New Year resolutions, Chinese New Year (6 Feb 2027), World Sleep Day (mid-March 2027). Seasonal and gift videos never quote a price or discount unless Ivan has written it into the doc; they point to /shop.
+The research agent confirms dates: 11.11 Singles' Day (11 Nov), Black Friday (27 Nov 2026), year-end school holidays (from mid-November), Christmas, New Year resolutions, Chinese New Year (6 Feb 2027), World Sleep Day (mid-March 2027). Seasonal and gift videos never quote a price or discount unless the founder has written it into the doc; they point to /shop.
 
 ## Trend guardrails
 
@@ -111,7 +111,7 @@ Spawn a second research subagent (subagent_type general-purpose; wait for its re
 
 > "Online only; never from memory. Load WebSearch and WebFetch with ToolSearch if needed and use WebSearch mode "extended". Run about 5 queries and report: the questions people ask about this topic (Reddit, HardwareZone, YouTube search suggestions, People-also-ask style), with links; what the best-performing recent short videos on this topic and in this format do (hooks, pacing, length), with links and dates; and authoritative sources (NHS, NIH/PubMed, Mayo Clinic, HealthHub Singapore, HPB, AASM, AAP) for each health or sleep claim the video might make, quoting the sentence that supports it. Open each source with WebFetch; if WebFetch is refused, give the URL with the search result's wording and mark it 'not opened'."
 
-In the brief, any claim whose source was not opened gets [CHECK SOURCE: url], so Ivan opens it before filming.
+In the brief, any claim whose source was not opened gets [CHECK SOURCE: url], so the founder opens it before filming.
 
 ## Step 4 — Write the brief
 

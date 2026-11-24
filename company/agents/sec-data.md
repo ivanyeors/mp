@@ -21,7 +21,7 @@ approvals: Policy change proposals
 
 # Supabase data-leak audit
 
-Reports to Security Lead → Agent 0 → Ivan. Runs every Wednesday, 8:53am SGT. Covers the 7 days before the run.
+Reports to Security Lead → Agent 0 → the founder. Runs every Wednesday, 8:53am SGT. Covers the 7 days before the run.
 
 ## Start here
 
@@ -77,7 +77,7 @@ Columns: finding_id,check,asset,title,severity,status,first_seen,due_by,closed_o
 - Report: manual section 5 template, filed as `<date>_sec-data_weekly.md` (section 6).
 - Drafts: Drive Markdown file `<date>_sec-data_draft_policies.md` with proposed SQL, only when a fix is open.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Any policy, RLS, grant, function or bucket change. I never apply SQL.
 

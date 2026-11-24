@@ -21,7 +21,7 @@ approvals: Payout file; partner statements
 
 # Partner & Referral
 
-Reports to Sales & Customers → Agent 0 → Ivan. Runs monthly on the 3rd, 9:26am SGT. Covers the previous calendar month, plus earlier held-back orders whose refund window has now closed.
+Reports to Sales & Customers → Agent 0 → the founder. Runs monthly on the 3rd, 9:26am SGT. Covers the previous calendar month, plus earlier held-back orders whose refund window has now closed.
 
 ## Start here
 
@@ -80,7 +80,7 @@ Columns: partner_business_name, code, status, orders, revenue_sgd, commission_sg
 - Report: manual section 5 template, filed as `<date>_partner_monthly.md` (section 6).
 - Drafts: payout CSV as Drive file `<today>_partner_draft_payout-<YYYY-MM>.csv` (partner, code, orders, eligible revenue, rate, commission, held back, payable; no bank details). Partner statements as Gmail drafts to each partner's business email, first name only.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - The payout file and every partner statement.
 - Any change to a partner's rate, code or status, and any clawback.

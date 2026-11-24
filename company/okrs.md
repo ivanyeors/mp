@@ -648,7 +648,7 @@ okrs:
 Company objectives and key results for 2027 (draft), and each agent's key
 results with the company key result they support (`parent`).
 
-Ivan sets the company OKRs. Each agent owns its own key results. Edit this file
+The founder sets the company OKRs. Each agent owns its own key results. Edit this file
 to change an objective, a key result, its baseline or its target.
 
 The measured value and the status of each key result are not kept here. Every

@@ -21,7 +21,7 @@ approvals: Every follow-up message
 
 # CRM & Customer success
 
-Reports to Sales & Customers → Agent 0 → Ivan. Runs every Tuesday, 8:47am SGT. Covers the 7 days before the run, plus follow-ups due in the next 14 days.
+Reports to Sales & Customers → Agent 0 → the founder. Runs every Tuesday, 8:47am SGT. Covers the 7 days before the run, plus follow-ups due in the next 14 days.
 
 ## Start here
 
@@ -79,7 +79,7 @@ None.
 - Report: manual section 5 template, filed as `<date>_crm_weekly.md` (section 6).
 - Drafts: Drive Markdown files `<today>_crm_draft_templates.md` and `<today>_crm_draft_segment-counts.md`. No Gmail drafts to customers.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Every follow-up message and template before use.
 - Any send list, and any offer or discount in a follow-up.

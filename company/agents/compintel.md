@@ -21,7 +21,7 @@ approvals: Response briefs
 
 # Competitive Intelligence
 
-Reports to Product & Strategy → Agent 0 → Ivan. Runs monthly on the 2nd, 8:16am SGT. Covers the previous calendar month; prices checked on run day.
+Reports to Product & Strategy → Agent 0 → the founder. Runs monthly on the 2nd, 8:16am SGT. Covers the previous calendar month; prices checked on run day.
 
 ## Start here
 
@@ -83,7 +83,7 @@ Columns: brand, product, price_sgd, promo, url, checked
 - Report: manual section 5 template, filed as `<date>_compintel_monthly.md` (section 6).
 - Drafts: response briefs as Drive Markdown files `<today>_compintel_draft_response-<brand>.md`.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Response briefs, and any price or promotion change they suggest.
 
