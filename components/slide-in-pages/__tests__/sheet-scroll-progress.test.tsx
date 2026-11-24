@@ -88,7 +88,7 @@ describe.each(sheets)("%s sheet's reading progress", (_name, open) => {
     expect(barTransform()).toBe("translateX(-75%)");
 
     await scrollTo(el, 1000);
-    expect(barTransform()).toBe("translateX(-0%)");
+    expect(barTransform()).toBe("translateX(0%)");
 
     setGeometry(el, 2500, 500, 1000);
     await act(async () => window.dispatchEvent(new Event("resize")));

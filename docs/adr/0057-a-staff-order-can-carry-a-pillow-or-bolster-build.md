@@ -39,7 +39,7 @@ carries the build.**
   holding an ear pad with no MSRP, is refused. The dialog lists the Variant's mirrored price; the
   quote is what is charged.
 - **Cover and case are the recipe's.** Staff choose fillings only. A different case is sold as
-  its own line.
+  its own line. *Amended by ADR 0058 (2026-11-24): Staff choose the cover and case too.*
 - **What may go in.** Placements are validated as a Result's are: filling Items in the nine
   cells (a bolster's one compartment), and a neck support or ear pad in a Premium pillow only.
   A Basic pillow and a bolster are offered only templates and Items they can take. A Filling

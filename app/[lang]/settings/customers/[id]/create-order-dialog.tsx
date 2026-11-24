@@ -28,6 +28,7 @@ import type {
     StaffOrderAddressOption,
     StaffOrderOptions,
 } from "@/lib/staff-orders/options";
+import { buildPartsLabel } from "@/lib/staff-orders/build-snapshot";
 import { OrderBuildDialog, type OrderBuild } from "./order-build-dialog";
 import {
     MAX_GOODS_QUANTITY,
@@ -45,6 +46,11 @@ type Line =
 type BuildTarget = { variantId: string; editing: number | null };
 
 const lineKey = (line: Line) => (line.kind === "build" ? `build-${line.key}` : `${line.kind}-${line.id}`);
+
+function partsLabel(parts: { cover: string | null; case: string | null }): string {
+    const label = buildPartsLabel(parts);
+    return label ? ` · ${label}` : "";
+}
 
 type AddressForm = {
     recipient: string;
@@ -184,6 +190,8 @@ export function CreateOrderDialog({
                           variant_id: l.id,
                           quantity: l.quantity,
                           filling_template_id: l.build.templateId,
+                          cover_item_id: l.build.coverItemId,
+                          case_item_id: l.build.caseItemId,
                           placements: l.build.placements,
                       },
                   ]
@@ -410,8 +418,8 @@ export function CreateOrderDialog({
                         <DialogHeader>
                             <DialogTitle>New order for {customerName}</DialogTitle>
                             <DialogDescription>
-                                Pillows and bolsters are built with the fillings you choose, at their Costings price
-                                (an Ear Comfort Pad placed inside adds its own).
+                                Pillows and bolsters are built with the fillings, cover and case you choose, at
+                                their Costings price (an Ear Comfort Pad placed inside adds its own).
                                 Other products are at their shop price, services at their Costings price.{" "}
                                 {customerName} pays through a link, on their own phone.
                             </DialogDescription>
@@ -475,7 +483,7 @@ export function CreateOrderDialog({
                                                             }
                                                             aria-label={
                                                                 p.builtToOrder
-                                                                    ? `Choose fillings for ${name}, ${money(p.price)}`
+                                                                    ? `Choose the build for ${name}, ${money(p.price)}`
                                                                     : `Add ${name}, ${money(p.price)}`
                                                             }
                                                         >
@@ -506,7 +514,7 @@ export function CreateOrderDialog({
                                                                 ) : (
                                                                     <Plus className="h-3.5 w-3.5" />
                                                                 )}
-                                                                {p.builtToOrder ? "Choose fillings" : "Add"}
+                                                                {p.builtToOrder ? "Choose build" : "Add"}
                                                             </span>
                                                             <span
                                                                 aria-hidden="true"
@@ -595,6 +603,7 @@ export function CreateOrderDialog({
                                                                         {quotedBuild && quotedBuild.placedExtras > 0
                                                                             ? ` · includes ${money(quotedBuild.placedExtras)} for Ear Comfort Pads`
                                                                             : ""}
+                                                                        {partsLabel(quotedBuild ?? line.build)}
                                                                     </span>
                                                                     <Button
                                                                         type="button"
@@ -603,9 +612,9 @@ export function CreateOrderDialog({
                                                                         onClick={() =>
                                                                             setBuildTarget({ variantId: line.id, editing: line.key })
                                                                         }
-                                                                        aria-label={`Change the fillings of ${name}`}
+                                                                        aria-label={`Change the build of ${name}`}
                                                                     >
-                                                                        Change fillings
+                                                                        Change build
                                                                     </Button>
                                                                 </p>
                                                             ) : null}
