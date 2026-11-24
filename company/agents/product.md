@@ -21,7 +21,7 @@ approvals: Product briefs
 
 # Product Opportunities
 
-Reports to Product & Strategy → Agent 0 → Ivan. Runs monthly on the 6th, 8:22am SGT (after crm, csqa and compintel). Covers the previous calendar month; the Jan, Apr, Jul and Oct runs are quarterly deep dives.
+Reports to Product & Strategy → Agent 0 → the founder. Runs monthly on the 6th, 8:22am SGT (after crm, csqa and compintel). Covers the previous calendar month; the Jan, Apr, Jul and Oct runs are quarterly deep dives.
 
 ## Start here
 
@@ -54,7 +54,7 @@ Objective: Pick the next product bets with data
 3. Materials scan: max 5 items from the last month, each with a source URL and date.
 4. Update the idea list. RICE in code: Reach = customers a quarter (from Supabase/Stripe counts); Impact 0.25–3; Confidence 50/80/100%; Effort in person-weeks.
 5. Keep the top 5 active; mark the rest "Waiting" until next quarter.
-6. Refill module pilot spec (product-1): keep one draft current. Target segment size, modules, pricing options for Ivan, pilot size, success metrics, contact plan via crm, timeline.
+6. Refill module pilot spec (product-1): keep one draft current. Target segment size, modules, pricing options for the founder, pilot size, success metrics, contact plan via crm, timeline.
 7. Write a one-page brief for each idea newly in the top 5: problem, evidence, customer, concept, RICE, risks, test plan.
 8. Quarterly deep dive: re-score every idea, including Waiting ones.
 
@@ -81,7 +81,7 @@ Columns: idea, kr_id, reach, impact, confidence, effort, rice, rank, status, evi
 - Report: manual section 5 template, filed as `<date>_product_monthly.md` (section 6).
 - Drafts: one-page product briefs as Drive Markdown files `<today>_product_draft_<slug>.md`; refill pilot spec as `<today>_product_draft_refill-pilot-spec.md`.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Product briefs and the refill pilot spec.
 - Any supplier contact, sample order or price.

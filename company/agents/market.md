@@ -22,7 +22,7 @@ link: 'https://claude.ai/artifact/6B35QLrMYbF2zEvc2Refdo'
 
 # Market Research
 
-Reports to Product & Strategy → Agent 0 → Ivan. Runs monthly on the 1st, 8:40am SGT. Covers the market as of the run month.
+Reports to Product & Strategy → Agent 0 → the founder. Runs monthly on the 1st, 8:40am SGT. Covers the market as of the run month.
 
 ## Start here
 

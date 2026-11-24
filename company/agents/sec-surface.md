@@ -21,7 +21,7 @@ approvals: Config change proposals
 
 # Surface & config scan
 
-Reports to Security Lead → Agent 0 → Ivan. Runs every Wednesday, 8:09am SGT. Covers the 7 days before the run.
+Reports to Security Lead → Agent 0 → the founder. Runs every Wednesday, 8:09am SGT. Covers the 7 days before the run.
 
 ## Start here
 
@@ -79,7 +79,7 @@ Columns: finding_id,check,asset,title,severity,status,first_seen,due_by,closed_o
 - Report: manual section 5 template, filed as `<date>_sec-surface_weekly.md` (section 6).
 - Drafts: Drive Markdown file `<date>_sec-surface_draft_config-fixes.md` with proposed header, DNS and Vercel values, only when a fix is open.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Any DNS, header, Vercel protection or env var change. I only propose.
 

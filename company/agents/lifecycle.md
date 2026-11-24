@@ -21,7 +21,7 @@ approvals: Every flow and message
 
 # Email & WhatsApp lifecycle
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs monthly, 4th, 8:44am SGT. Covers the previous calendar month.
+Reports to Marketing Lead → Agent 0 → the founder. Runs monthly, 4th, 8:44am SGT. Covers the previous calendar month.
 
 ## Start here
 
@@ -81,7 +81,7 @@ Columns: flow, channel, trigger, segment_rule, segment_size, languages, status, 
 - Report: manual section 5 template, filed as `<date>_lifecycle_monthly.md` (section 6).
 - Drafts: Drive Markdown file `<date>_lifecycle_draft_<flow-slug>.md` with flow spec and EN/中文 copy.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Every flow, segment rule and message.
 - Any discount, gift or offer.

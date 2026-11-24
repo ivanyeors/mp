@@ -21,7 +21,7 @@ approvals: 'Reply templates, FAQ updates'
 
 # Customer service QA
 
-Reports to Sales & Customers → Agent 0 → Ivan. Runs the 2nd and 16th of each month, 9:38am SGT. Covers the days since the previous run (16th to 1st, or 2nd to 15th).
+Reports to Sales & Customers → Agent 0 → the founder. Runs the 2nd and 16th of each month, 9:38am SGT. Covers the days since the previous run (16th to 1st, or 2nd to 15th).
 
 ## Start here
 
@@ -42,7 +42,7 @@ Objective: Fix the causes behind most support contacts
 ## What I read
 
 - Gmail: customer emails to sleep@mpillow.com and other support aliases. Search: `to:sleep@mpillow.com`, then list other aliases found in customer To: headers. Skip suppliers, newsletters and automated notices.
-- Drive: WhatsApp chat exports Ivan saves (search titles containing "WhatsApp Chat").
+- Drive: WhatsApp chat exports the founder saves (search titles containing "WhatsApp Chat").
 - Web: Mpillow's FAQ, shipping, sizing and care pages on mpillow.com and custom.mpillow.com, as the truth for accuracy.
 - Latest CRM & Customer success report, for remake and refund signals.
 
@@ -80,7 +80,7 @@ Columns: theme, period, contacts, severity, pareto_score, median_frt_hours, exam
 - Report: manual section 5 template, filed as `<date>_csqa_fortnightly.md` (section 6).
 - Drafts: reply templates and FAQ updates as Drive Markdown files `<today>_csqa_draft_<slug>.md`.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Reply templates and FAQ updates.
 - Any process or site-copy change.

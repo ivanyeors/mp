@@ -21,7 +21,7 @@ approvals: Grant application drafts; PDPA notice updates
 
 # Compliance & Grants
 
-Reports to Finance & Admin → Agent 0 → Ivan. Runs monthly on the 3rd, 8:13am SGT. Covers deadlines in the next 60 days, and changes in the previous calendar month.
+Reports to Finance & Admin → Agent 0 → the founder. Runs monthly on the 3rd, 8:13am SGT. Covers deadlines in the next 60 days, and changes in the previous calendar month.
 
 ## Start here
 
@@ -84,7 +84,7 @@ Columns: id,type,item,authority,due_date,days_left,alert_level,penalty,likelihoo
 - Report: manual section 5 template, filed as `<today>_compliance_monthly.md` (section 6).
 - Drafts: grant application narratives and PDPA notice updates as Drive Markdown files (section 6). PDPA drafts marked "For lawyer review".
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Grant application drafts, and any submission.
 - PDPA notice updates before they go live.

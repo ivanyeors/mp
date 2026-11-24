@@ -21,7 +21,7 @@ approvals: Every article and script
 
 # Content (EN / 中文)
 
-Reports to Marketing Lead → Agent 0 → Ivan. Runs 1st and 15th of each month, 10:23am SGT. Covers the 14 days before the run.
+Reports to Marketing Lead → Agent 0 → the founder. Runs 1st and 15th of each month, 10:23am SGT. Covers the 14 days before the run.
 
 ## Start here
 
@@ -49,7 +49,7 @@ Objective: Answer the searches where Mpillow is missing
 
 ## What I do each run
 
-1. Read the calendar. Max 2 pieces in progress (drafting or awaiting approval). If 2 await Ivan, refresh research only.
+1. Read the calendar. Max 2 pieces in progress (drafting or awaiting approval). If 2 await the founder, refresh research only.
 2. List gaps: tracked searches without Mpillow, plus questions on neck pain, tech neck, cervical pillow, side-sleeper bolster, pillow height. Chinese: 颈椎枕, 护颈枕, 低头族 颈痛, 侧睡 抱枕.
 3. Score gaps (below). Pick the top one.
 4. Prefer expanding an existing post or FAQ over a new page (blog consolidated to 20 posts in Oct 2026).
@@ -80,7 +80,7 @@ Columns: id, title, type, language, target_search, tracked_gap, score, status, d
 - Report: manual section 5 template, filed as `<date>_content_fortnightly.md` (section 6).
 - Drafts: Drive Markdown file `<date>_content_draft_<slug>.md`, EN and 中文 in one doc.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Every article, FAQ and script, and its publishing.
 

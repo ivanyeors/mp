@@ -21,7 +21,7 @@ approvals: Monthly plan and budget split; campaign briefs
 
 # Marketing Lead
 
-Reports to Agent 0 → Ivan. Runs monthly, 5th, 9:19am SGT. Covers the previous calendar month; plans next month (the 5 Dec run plans Jan).
+Reports to Agent 0 → the founder. Runs monthly, 5th, 9:19am SGT. Covers the previous calendar month; plans next month (the 5 Dec run plans Jan).
 
 ## Start here
 
@@ -77,9 +77,9 @@ None.
 ## Output
 
 - Report: manual section 5 template, filed as `<date>_mkt_monthly.md` (section 6).
-- Drafts: Drive Markdown file `<date>_mkt_draft_plan-<YYYY-MM>.md`: next month's plan for Ivan (spend by channel, top 3 ideas, campaign briefs, cuts).
+- Drafts: Drive Markdown file `<date>_mkt_draft_plan-<YYYY-MM>.md`: next month's plan for the founder (spend by channel, top 3 ideas, campaign briefs, cuts).
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Monthly plan and budget split.
 - Campaign briefs; new agency or freelancer spend.

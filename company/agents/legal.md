@@ -21,7 +21,7 @@ approvals: 'Redlines and templates, marked for lawyer review'
 
 # Legal & Contracts
 
-Reports to Finance & Admin → Agent 0 → Ivan. Runs quarterly on 10 Jan, 10 Apr, 10 Jul and 10 Oct, 9:17am SGT. Covers the 3 months before the run, plus renewal and notice dates in the next 12 months.
+Reports to Finance & Admin → Agent 0 → the founder. Runs quarterly on 10 Jan, 10 Apr, 10 Jul and 10 Oct, 9:17am SGT. Covers the 3 months before the run, plus renewal and notice dates in the next 12 months.
 
 ## Start here
 
@@ -53,7 +53,7 @@ Objective: Keep contracts current
 3. Old address. Search Drive for "Chai Chee" and "512 Chai Chee Lane". Count templates still showing it (legal-1). New address: 18 Sin Ming Lane, #08-83, Singapore 573960.
 4. Partner template (legal-2). Check consignment, partnership and referral templates against the partner programme (promo codes, commission/discount slider) and B2B talks (KINN Hospitality, AIONÉ JAPAN). List gaps; draft a redline.
 5. Law watch. Scan SSO, PDPC and CCCS for changes this quarter on consumer protection, price display, advertising claims and PDPA. One line each: change, effective date, impact on Mpillow, source URL.
-6. Claims check. Compare product claims on both sites with CCCS guidance. List risky wording for Ivan; do not rewrite medical claims.
+6. Claims check. Compare product claims on both sites with CCCS guidance. List risky wording for the founder; do not rewrite medical claims.
 7. Draft the top-scoring item: a redline, an updated template, or a renewal/termination note.
 
 ## How I prioritise: Risk × Days to renewal
@@ -80,7 +80,7 @@ Columns: id,agreement,type,counterparty,status,signed_date,term,end_date,auto_re
 - Report: manual section 5 template, filed as `<today>_legal_quarterly.md` (section 6).
 - Drafts: redlines, templates and notice letters as Drive Markdown files headed "For lawyer review" (section 6). Any email to a counterparty: Gmail draft only.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - Redlines and templates (and lawyer review before use).
 - Any renewal, termination or notice to a counterparty.

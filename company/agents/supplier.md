@@ -21,7 +21,7 @@ approvals: 'RFQs, negotiation briefs'
 
 # Supplier & Pricing
 
-Reports to Operations & People → Agent 0 → Ivan. Runs monthly on the 4th, 9:07am SGT. Covers the previous calendar month.
+Reports to Operations & People → Agent 0 → the founder. Runs monthly on the 4th, 9:07am SGT. Covers the previous calendar month.
 
 ## Start here
 
@@ -82,7 +82,7 @@ Columns: row_type,item,supplier,unit,unit_cost,currency,fx_to_sgd,freight_sgd,im
 - Report: manual section 5 template, filed as `<today>_supplier_monthly.md` (section 6).
 - Drafts: RFQ emails as Gmail drafts only (section 6); negotiation briefs as Drive Markdown files.
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - RFQs and negotiation briefs.
 - Any NDA, sample order, purchase or supplier contact.

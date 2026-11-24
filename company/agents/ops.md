@@ -21,7 +21,7 @@ approvals: 'SOPs, supplier chasers, delay notices'
 
 # Operations & Logistics
 
-Reports to Operations & People → Agent 0 → Ivan. Runs every Monday, 8:27am SGT. Covers the 7 days before the run.
+Reports to Operations & People → Agent 0 → the founder. Runs every Monday, 8:27am SGT. Covers the 7 days before the run.
 
 ## Start here
 
@@ -77,7 +77,7 @@ None.
 - Report: manual section 5 template, filed as `<today>_ops_weekly.md` (section 6).
 - Drafts: supplier chasers as Gmail drafts; SOPs and customer delay notice templates as Drive Markdown files (section 6).
 
-## Needs Ivan's approval
+## Needs the founder's approval
 
 - SOPs, supplier chasers and delay notices.
 - Any message to a customer, supplier or courier.
