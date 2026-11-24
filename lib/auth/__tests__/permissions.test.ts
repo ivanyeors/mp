@@ -78,6 +78,7 @@ describe("role → permission matrix", () => {
       "users",
       "audit-log",
       "api-configs",
+      "company",
       "telegram.google-review-reply",
       "telegram.shop-review-moderate",
       "telegram.shop-review-reply",
@@ -94,6 +95,12 @@ describe("role → permission matrix", () => {
       const held = permissionsForRole(role);
       expect([...applyRequires(held)].sort()).toEqual([...new Set(held)].sort());
     }
+  });
+
+  it("the Company page under Analytics has its own key, not the Analytics one", () => {
+    expect(permissionForHref("/settings/analytics/company")).toBe("company");
+    expect(permissionForHref("/settings/analytics")).toBe("analytics");
+    expect(roleHasPermission("viewer", "company")).toBe(false);
   });
 
   it("customers-edit is a Customers tab that requires customers", () => {

@@ -80,7 +80,9 @@ session's UI work.
   stand-in secret is `UNSUBSCRIBE_SECRET`, a made-up value, so an unsubscribe
   link signed with it opens the real unsubscribe page
   (`/unsubscribe?u=<customer id>&t=<token>`; the token is the base64url
-  HMAC-SHA256 of the lower-case id under that value). Storage
+  HMAC-SHA256 of the lower-case id under that value). The Company page
+  (Analytics → Company) reads agent reports from `company-outputs/` in this
+  skill instead of Google Drive (`COMPANY_OUTPUTS_DIR`). Storage
   images come back as grey squares. Realtime is off.
 
 ## When the fake database has nothing

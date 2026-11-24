@@ -33,6 +33,9 @@ const SECURITY_HEADERS = [
 const SITE_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") || "https://custom.mpillow.com";
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/[lang]/settings/analytics/company": ["./company/**/*.md"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

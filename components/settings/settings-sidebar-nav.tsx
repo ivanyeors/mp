@@ -8,7 +8,7 @@ import {
   Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Mail, MailCheck, Funnel, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
-  GitBranch, ClipboardCheck, Percent, Box, BookOpen, X,
+  GitBranch, ClipboardCheck, Percent, Box, BookOpen, Network, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -173,7 +173,15 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Insights",
     items: [
-      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
+      {
+        href: "/settings/analytics",
+        label: "Analytics",
+        tooltip: "Analytics",
+        Icon: TrendingUp,
+        items: [
+          { href: "/settings/analytics/company", label: "Company", tooltip: "Every agent top down, with its newest reports", Icon: Network },
+        ],
+      },
       { href: "/settings/audit-log", label: "Audit log", tooltip: "Who changed what", Icon: ScrollText },
     ],
   },

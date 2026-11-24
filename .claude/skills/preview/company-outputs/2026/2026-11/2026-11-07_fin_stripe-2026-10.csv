@@ -1,0 +1,4 @@
+id,created (SGT),type,currency,amount,fee,net,payout id,charge or refund id
+txn_sample_001,2026-10-03 14:12,charge,SGD,430.00,12.77,417.23,po_sample_01,ch_sample_001
+txn_sample_002,2026-10-09 10:40,charge,SGD,260.00,7.84,252.16,po_sample_01,ch_sample_002
+txn_sample_003,2026-10-21 19:05,refund,SGD,-170.00,0.00,-170.00,po_sample_02,re_sample_001

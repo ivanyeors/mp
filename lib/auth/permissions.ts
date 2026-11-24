@@ -55,6 +55,7 @@ export const PERMISSION_CATALOG = [
   { key: "media", label: "Media", group: "Landing site", href: "/settings/media", surface: "admin-panel" },
 
   { key: "analytics", label: "Analytics", group: "Insights", href: "/settings/analytics", surface: "admin-panel" },
+  { key: "company", label: "Company (agents and their reports)", group: "Insights", href: "/settings/analytics/company", surface: "admin-panel" },
   { key: "audit-log", label: "Audit log", group: "Insights", href: "/settings/audit-log", surface: "admin-panel" },
 
   { key: "showroom", label: "Showroom model", group: "Showroom", href: "/settings/showroom", surface: "admin-panel" },

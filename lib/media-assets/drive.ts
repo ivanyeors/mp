@@ -80,7 +80,7 @@ export async function getDriveAccessToken(): Promise<string> {
   return token.token;
 }
 
-function mapDriveHttpError(status: number, body: string): DriveError {
+export function mapDriveHttpError(status: number, body: string): DriveError {
   let message = body.slice(0, 400);
   try {
     const json = JSON.parse(body) as { error?: { message?: string } };
