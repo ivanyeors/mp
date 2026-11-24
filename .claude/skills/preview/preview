@@ -97,6 +97,7 @@ start_app() {
       SUPABASE_SERVICE_ROLE_KEY="preview-service" \
       NEXT_PUBLIC_SITE_URL="$app_url" \
       UNSUBSCRIBE_SECRET="preview-unsubscribe-made-up" \
+      COMPANY_OUTPUTS_DIR="$repo/.claude/skills/preview/company-outputs" \
       NEXT_TELEMETRY_DISABLED=1 \
       NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=4096}" \
       "$repo/node_modules/.bin/next" dev -p "$app_port" >"$state/next.log" 2>&1

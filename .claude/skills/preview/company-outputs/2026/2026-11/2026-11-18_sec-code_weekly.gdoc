@@ -1,0 +1,33 @@
+\# Code & dependency audit · Week to 18 Nov 2026
+
+Status: Degraded
+
+Headline: The code review could not run this week, so 14 merged changes are unreviewed.
+
+  
+
+\#\# Numbers (max 5)
+
+| KPI | Now | Before | Target | Status | Source |
+
+| Secrets found (open) | 0 in browser code | none | 0 | amber (partial coverage) | bundle scan |
+
+| Findings past SLA | 0 | none | 0 | green | sec-code\_findings.csv |
+
+\#\# Decisions for Ivan (max 3)
+
+\- sec-code-2026-11-1: Give this agent read access to the code? | Options: A / B | Recommend: A | Why: changes ship unreviewed | Impact: SGD 0 | Reversible: yes | Decide by: 20 Nov 2026 | Draft: none
+
+\#\# OKR progress
+
+| KR id | Key result | Current | Target | Status |
+
+| sec-code-1 | Secrets found in the repo | repo not scanned | 0 | Not measured |
+
+\#\# Alerts
+
+\- medium — 0 of 14 changes reviewed this week. — deadline: none
+
+\#\# Data gaps
+
+\- The code could not be read this run.

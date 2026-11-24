@@ -87,6 +87,7 @@
     "gsap": "^3.15.0",
     "lucide": "^0.542.0",
     "lucide-react": "^0.542.0",
+    "mermaid": "^12.3.0",
     "motion": "^12.23.12",
     "next": "^16.4.5",
     "next-mdx-remote": "^6.0.0",
