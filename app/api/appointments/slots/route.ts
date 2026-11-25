@@ -8,6 +8,7 @@ import {
 } from "@/lib/appointments/settings";
 import {
   addSgtDays,
+  daysThroughNextMonth,
   listDaySlots,
   monthOpenDays,
   sgtLocalToUtcMs,
@@ -31,7 +32,7 @@ async function busyFrom(from: SgtDay, days: number) {
 async function suggestions(settings: AppointmentSettings) {
   const now = new Date();
   const p = sgtParts(now.getTime());
-  const busy = await busyFrom({ y: p.y, m: p.m, d: p.d }, settings.slotLookaheadDays + 1);
+  const busy = await busyFrom({ y: p.y, m: p.m, d: p.d }, daysThroughNextMonth(now));
   return suggestNextDays(busy, settings, {}, now);
 }
 

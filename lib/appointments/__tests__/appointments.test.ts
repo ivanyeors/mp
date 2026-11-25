@@ -164,14 +164,33 @@ describe("appointment-slots", () => {
     for (const d of days) expect(d.count).toBe(2);
   });
 
-  it("never suggests past the booking horizon", () => {
-    const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
-    const settings = { ...DEFAULT_APPOINTMENT_SETTINGS, slotLookaheadDays: 2 };
+  it("suggests next month's earliest days when the rest of this month is full", () => {
+    const now = new Date(sgtLocalToUtcMs(2026, 11, 10, 9, 0));
     const busy: BusyInterval[] = [
-      { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 5, 0, 0) },
+      { startMs: sgtLocalToUtcMs(2026, 11, 10, 0, 0), endMs: sgtLocalToUtcMs(2026, 12, 1, 0, 0) },
     ];
-    const days = suggestNextDays(busy, settings, {}, now);
-    expect(days.map((d) => d.date)).toEqual(["2026-07-05"]);
+    const days = suggestNextDays(busy, DEFAULT_APPOINTMENT_SETTINGS, {}, now);
+    expect(days.map((d) => d.date)).toEqual(["2026-12-01", "2026-12-02", "2026-12-03"]);
+  });
+
+  it("looks through the last day of next month and no further", () => {
+    const now = new Date(sgtLocalToUtcMs(2026, 11, 10, 9, 0));
+    const fullUntil = (m: number, d: number): BusyInterval[] => [
+      { startMs: sgtLocalToUtcMs(2026, 11, 10, 0, 0), endMs: sgtLocalToUtcMs(2026, m, d, 0, 0) },
+    ];
+    expect(suggestNextDays(fullUntil(12, 31), DEFAULT_APPOINTMENT_SETTINGS, {}, now)).toEqual([
+      { date: "2026-12-31", count: 9 },
+    ]);
+    expect(suggestNextDays(fullUntil(13, 1), DEFAULT_APPOINTMENT_SETTINGS, {}, now)).toEqual([]);
+  });
+
+  it("crosses into January from December", () => {
+    const now = new Date(sgtLocalToUtcMs(2026, 12, 20, 9, 0));
+    const busy: BusyInterval[] = [
+      { startMs: sgtLocalToUtcMs(2026, 12, 20, 0, 0), endMs: sgtLocalToUtcMs(2027, 1, 31, 0, 0) },
+    ];
+    const days = suggestNextDays(busy, DEFAULT_APPOINTMENT_SETTINGS, {}, now);
+    expect(days.map((d) => d.date)).toEqual(["2027-01-31"]);
   });
 
   it("skips Monday when only Tue–Sun bookable", () => {

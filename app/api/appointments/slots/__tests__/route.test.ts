@@ -66,4 +66,18 @@ describe("GET /api/appointments/slots?date=", () => {
     expect(body.slots).toHaveLength(9);
     expect(body.suggestions).toEqual([]);
   });
+
+  it("suggests next month's earliest days when this month is full", async () => {
+    h.freeBusy.mockResolvedValue([
+      { startMs: sgtLocalToUtcMs(2026, 11, 24, 0, 0), endMs: sgtLocalToUtcMs(2026, 12, 1, 0, 0) },
+    ]);
+    const body = await (await get("date=2026-11-26")).json();
+    expect(body.slots).toEqual([]);
+    expect(body.suggestions.map((d: { date: string }) => d.date)).toEqual([
+      "2026-12-01",
+      "2026-12-02",
+      "2026-12-03",
+    ]);
+    expect(h.freeBusy).toHaveBeenLastCalledWith("2026-11-23T16:00:00.000Z", "2026-12-31T16:00:00.000Z");
+  });
 });

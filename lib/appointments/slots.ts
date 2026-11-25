@@ -136,6 +136,12 @@ export function formatSgtDay(day: SgtDay): string {
   return `${day.y}-${String(day.m).padStart(2, "0")}-${String(day.d).padStart(2, "0")}`;
 }
 
+// ponytail: stops at the end of next month; widen it if whole months fill up.
+export function daysThroughNextMonth(now: Date = new Date()): number {
+  const t = sgtParts(now.getTime());
+  return Math.round((Date.UTC(t.y, t.m + 1, 1) - Date.UTC(t.y, t.m - 1, t.d)) / 86_400_000);
+}
+
 export function suggestNextDays(
   busy: BusyInterval[],
   settings: AppointmentSettings,
@@ -143,9 +149,10 @@ export function suggestNextDays(
   now: Date = new Date(),
 ): DaySuggestion[] {
   const today = sgtParts(now.getTime());
+  const span = daysThroughNextMonth(now);
   const roomy: DaySuggestion[] = [];
   const any: DaySuggestion[] = [];
-  for (let i = 0; i <= settings.slotLookaheadDays && roomy.length < maxDays; i++) {
+  for (let i = 0; i < span && roomy.length < maxDays; i++) {
     const day = addSgtDays(today.y, today.m, today.d, i);
     const count = listDaySlots(busy, settings, day, now).length;
     if (!count) continue;
