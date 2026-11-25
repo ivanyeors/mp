@@ -8,7 +8,9 @@ import {
 } from "@/lib/appointments/settings";
 import {
   addSgtDays,
+  daysThroughNextMonth,
   listDaySlots,
+  monthOpenDays,
   sgtLocalToUtcMs,
   sgtParts,
   suggestNextDays,
@@ -30,18 +32,19 @@ async function busyFrom(from: SgtDay, days: number) {
 async function suggestions(settings: AppointmentSettings) {
   const now = new Date();
   const p = sgtParts(now.getTime());
-  const busy = await busyFrom({ y: p.y, m: p.m, d: p.d }, settings.slotLookaheadDays + 1);
+  const busy = await busyFrom({ y: p.y, m: p.m, d: p.d }, daysThroughNextMonth(now));
   return suggestNextDays(busy, settings, {}, now);
 }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
-  const m = date && /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!m) {
-    return NextResponse.json({ error: "date=YYYY-MM-DD required" }, { status: 400 });
+  const month = searchParams.get("month");
+  const dm = date && /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const mm = !dm && month && /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+  if (!dm && !mm) {
+    return NextResponse.json({ error: "date=YYYY-MM-DD or month=YYYY-MM required" }, { status: 400 });
   }
-  const day = { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 
   const admin = supabaseAdmin();
   const { data, error } = await admin
@@ -55,6 +58,13 @@ export async function GET(req: Request) {
   const settings = parseAppointmentSettings(stored);
 
   try {
+    if (mm) {
+      const m = { y: Number(mm[1]), m: Number(mm[2]) };
+      const daysInMonth = new Date(Date.UTC(m.y, m.m, 0)).getUTCDate();
+      const busy = await busyFrom({ ...m, d: 1 }, daysInMonth);
+      return NextResponse.json({ ok: true, days: monthOpenDays(busy, settings, m) });
+    }
+    const day = { y: Number(dm![1]), m: Number(dm![2]), d: Number(dm![3]) };
     const slots = listDaySlots(await busyFrom(day, 1), settings, day);
     return NextResponse.json({
       ok: true,

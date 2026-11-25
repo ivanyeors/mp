@@ -136,6 +136,12 @@ export function formatSgtDay(day: SgtDay): string {
   return `${day.y}-${String(day.m).padStart(2, "0")}-${String(day.d).padStart(2, "0")}`;
 }
 
+// ponytail: stops at the end of next month; widen it if whole months fill up.
+export function daysThroughNextMonth(now: Date = new Date()): number {
+  const t = sgtParts(now.getTime());
+  return Math.round((Date.UTC(t.y, t.m + 1, 1) - Date.UTC(t.y, t.m - 1, t.d)) / 86_400_000);
+}
+
 export function suggestNextDays(
   busy: BusyInterval[],
   settings: AppointmentSettings,
@@ -143,9 +149,10 @@ export function suggestNextDays(
   now: Date = new Date(),
 ): DaySuggestion[] {
   const today = sgtParts(now.getTime());
+  const span = daysThroughNextMonth(now);
   const roomy: DaySuggestion[] = [];
   const any: DaySuggestion[] = [];
-  for (let i = 0; i <= settings.slotLookaheadDays && roomy.length < maxDays; i++) {
+  for (let i = 0; i < span && roomy.length < maxDays; i++) {
     const day = addSgtDays(today.y, today.m, today.d, i);
     const count = listDaySlots(busy, settings, day, now).length;
     if (!count) continue;
@@ -154,6 +161,27 @@ export function suggestNextDays(
     if (count >= minSlots) roomy.push(hit);
   }
   return roomy.length ? roomy : any;
+}
+
+export type SgtMonth = { y: number; m: number };
+
+export function monthOpenDays(
+  busy: BusyInterval[],
+  settings: AppointmentSettings,
+  month: SgtMonth,
+  now: Date = new Date(),
+): DaySuggestion[] {
+  const daysInMonth = new Date(Date.UTC(month.y, month.m, 0)).getUTCDate();
+  const latestMs = now.getTime() + MAX_BOOKING_AHEAD_MS;
+  const out: DaySuggestion[] = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const day = { y: month.y, m: month.m, d };
+    const count = listDaySlots(busy, settings, day, now).filter(
+      (s) => Date.parse(s.startIso) <= latestMs,
+    ).length;
+    if (count) out.push({ date: formatSgtDay(day), count });
+  }
+  return out;
 }
 
 export function offerSlots(
