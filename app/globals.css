@@ -298,43 +298,28 @@ body.dock-hidden .app-dock {
     animation: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s) infinite;
   }
 
-  @keyframes grid-slow {
-    0% {
-      transform: translateY(-2%);
+  @keyframes retro-grid-row {
+    from {
+      transform: translateZ(var(--z0)) scale(var(--s0));
+      opacity: var(--o0);
     }
-    100% {
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes grid-fast {
-    0% {
-      transform: translateY(-5%);
-    }
-    100% {
-      transform: translateY(0);
+    to {
+      transform: translateZ(var(--z1)) scale(var(--s1));
+      opacity: var(--o1);
     }
   }
 
-  @keyframes grid-reverse {
-    0% {
-      transform: translateY(0);
+  .retro-grid-row {
+    transform: translateZ(var(--z0)) scale(var(--s0));
+    opacity: var(--o0);
+    animation: retro-grid-row var(--retro-grid-duration, 20s) linear infinite
+      var(--retro-grid-direction, normal);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .retro-grid-row {
+      animation: none;
     }
-    100% {
-      transform: translateY(5%);
-    }
-  }
-
-  .animate-grid-slow {
-    animation: grid-slow 20s linear infinite;
-  }
-
-  .animate-grid-fast {
-    animation: grid-fast 1s linear infinite;
-  }
-
-  .animate-grid-reverse {
-    animation: grid-reverse 1s linear infinite;
   }
 
   @keyframes mp-top-loading-shimmer {

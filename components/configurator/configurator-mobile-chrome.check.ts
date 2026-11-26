@@ -34,9 +34,11 @@ for (const src of [mp, bolster]) {
   assert.match(src, /id: ".*-config-exit"/);
 }
 
-assert.match(mp, /\(!isMobile \|\| currentStep === "welcome"\)/);
-assert.match(mp, /RetroGrid/);
-assert.match(mp, /Particles/);
+assert.match(mp, /\(!isMobile \|\| currentStep === "welcome"\) && <RetroGrid /);
+assert.match(bolster, /\(!isMobile \|\| state\.step === "welcome"\) && <RetroGrid /);
+for (const src of [mp, bolster]) {
+  assert.doesNotMatch(src, /<RetroGrid[^\n]*\n\s*<Particles/);
+}
 assert.match(mp, /currentStep !== "welcome" && !isMobile/);
 assert.match(mp, /ConfiguratorMobileCloseBar/);
 

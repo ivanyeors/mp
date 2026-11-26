@@ -26,6 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Particles } from "@/components/ui/particles";
+import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -1798,6 +1799,7 @@ export function MbolsterConfigClient({
         description="This will clear your session and return home."
         onConfirmExit={exitConfirmed}
       />
+      {(!isMobile || state.step === "welcome") && <RetroGrid className="z-0" />}
       {state.step !== "welcome" && isMobile && (
         <ConfiguratorMobileCloseBar onClose={requestExit} actionsRef={setMobileActionsSlot} />
       )}
