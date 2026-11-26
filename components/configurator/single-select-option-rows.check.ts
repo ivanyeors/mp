@@ -45,7 +45,7 @@ assert.match(mp, /usesBolster[\s\S]*?<Tabs[\s\S]*?TabsTrigger value="yes"/);
 
 assert.doesNotMatch(bolster, /gender|ageGroup|bloodPressure|bedFirmness|GENDER_OPTIONS/);
 assert.match(bolster, />Continue</);
-assert.doesNotMatch(bolster, /Generate Results|Customise(?! your Mbolster)/);
+assert.doesNotMatch(bolster, /Generate Results|Customise(?! <span className="text-primary">Mbolster<\/span>)/);
 
 assert.deepEqual(
   GENDER_OPTIONS.map((o) => o.value),
