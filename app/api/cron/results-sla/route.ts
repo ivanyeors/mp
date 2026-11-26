@@ -378,6 +378,13 @@ export async function GET(req: Request) {
     summary.reminded += 1;
   }
 
+  let sizingPhotos: Awaited<ReturnType<typeof runSizingPhotoMoves>> | { ok: false; error: string };
+  try {
+    sizingPhotos = await runSizingPhotoMoves(admin, now);
+  } catch (e) {
+    sizingPhotos = { ok: false, error: e instanceof Error ? e.message : "sizing photo moves failed" };
+  }
+
   let catchup: Awaited<ReturnType<typeof runShopifyOrderMirrorCatchup>> | { ok: false; error: string };
   try {
     catchup = await runShopifyOrderMirrorCatchup();
@@ -466,13 +473,6 @@ export async function GET(req: Request) {
     socialInbox = await runSocialInboxMaintenance();
   } catch (e) {
     socialInbox = { ok: false, error: e instanceof Error ? e.message : "social inbox maintenance failed" };
-  }
-
-  let sizingPhotos: Awaited<ReturnType<typeof runSizingPhotoMoves>> | { ok: false; error: string };
-  try {
-    sizingPhotos = await runSizingPhotoMoves(admin, now);
-  } catch (e) {
-    sizingPhotos = { ok: false, error: e instanceof Error ? e.message : "sizing photo moves failed" };
   }
 
   return NextResponse.json({

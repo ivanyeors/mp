@@ -7,6 +7,7 @@ import {
   photoDriveFromEnv,
   runSizingPhotoMoves,
   sizingPhotoFolder,
+  trashReleasedSizingPhotos,
   type PhotoDrive,
   type SizingPhotoUpload,
 } from "@/lib/results/sizing-photo-drive";
@@ -27,7 +28,7 @@ type Row = {
 };
 
 let tick = 0;
-const stamp = () => `2026-11-26T00:00:${String(tick++ % 60).padStart(2, "0")}.${String(tick).padStart(6, "0")}+00:00`;
+const stamp = () => new Date(Date.UTC(2026, 10, 26) + tick++ * 1000).toISOString();
 
 function row(patch: Partial<Row> = {}): Row {
   return {
@@ -43,38 +44,54 @@ function row(patch: Partial<Row> = {}): Row {
   };
 }
 
-function fakeDb(rows: Row[], fail: { update?: boolean; reread?: boolean } = {}) {
+type Released = { drive_file_id: string; released_at: string };
+
+function fakeDb(rows: Row[], fail: { update?: boolean; reread?: boolean } = {}, queue: Released[] = []) {
+  const tables: Record<string, Record<string, unknown>[]> = { mp_config_response_photos: rows, sizing_photo_drive_trash: queue };
   const admin = {
-    from: () => {
+    from: (name: string) => {
+      const list = tables[name];
       const s = {
-        op: "select" as "select" | "update",
-        patch: {} as Partial<Row>,
-        where: [] as ((r: Row) => boolean)[],
+        op: "select" as "select" | "update" | "delete",
+        patch: {} as Record<string, unknown>,
+        where: [] as ((r: Record<string, unknown>) => boolean)[],
         cols: "",
         count: false,
+        head: false,
+        orderBy: "",
+        descending: false,
         limit: Infinity,
       };
       const run = async () => {
-        const hit = rows.filter((r) => s.where.every((w) => w(r)));
+        const hit = list.filter((r) => s.where.every((w) => w(r)));
         if (s.op === "update") {
           if (fail.update) return { data: null, error: { message: "connection reset" } };
           for (const r of hit) Object.assign(r, s.patch, { updated_at: stamp() });
           return { data: hit.map((r) => ({ id: r.id })), error: null };
         }
+        if (s.op === "delete") {
+          for (const r of hit) list.splice(list.indexOf(r), 1);
+          return { data: null, error: null };
+        }
         if (fail.reread && s.cols === "drive_file_id") return { data: null, error: { message: "still down" } };
-        const sorted = [...hit].sort((a, b) => a.updated_at.localeCompare(b.updated_at)).slice(0, s.limit);
-        return { data: sorted.map((r) => ({ ...r })), error: null, count: s.count ? hit.length : null };
+        const key = s.orderBy;
+        const sorted = key ? [...hit].sort((a, b) => String(a[key]).localeCompare(String(b[key])) * (s.descending ? -1 : 1)) : hit;
+        const data = s.head ? null : sorted.slice(0, s.limit).map((r) => ({ ...r }));
+        return { data, error: null, count: s.count ? hit.length : null };
       };
       const b = {
-        select: (cols: string, opts?: { count?: string }) => {
+        select: (cols: string, opts?: { count?: string; head?: boolean }) => {
           if (s.op === "select") s.cols = cols;
           s.count = Boolean(opts?.count);
+          s.head = Boolean(opts?.head);
           return b;
         },
-        update: (patch: Partial<Row>) => ((s.op = "update"), (s.patch = patch), b),
-        not: (col: keyof Row) => (s.where.push((r) => r[col] !== null), b),
-        eq: (col: keyof Row, v: unknown) => (s.where.push((r) => r[col] === v), b),
-        order: () => b,
+        update: (patch: Record<string, unknown>) => ((s.op = "update"), (s.patch = patch), b),
+        delete: () => ((s.op = "delete"), b),
+        not: (col: string) => (s.where.push((r) => r[col] !== null), b),
+        eq: (col: string, v: unknown) => (s.where.push((r) => r[col] === v), b),
+        lt: (col: string, v: string) => (s.where.push((r) => String(r[col]) < v), b),
+        order: (col: string, opts?: { ascending?: boolean }) => ((s.orderBy = col), (s.descending = opts?.ascending === false), b),
         limit: (n: number) => ((s.limit = n), b),
         maybeSingle: async () => {
           const res = await run();
@@ -123,7 +140,7 @@ describe("moveSizingPhotosToDrive", () => {
   it("copies a waiting photo into its folder, then clears it from the database", async () => {
     const rows = [row({ screened_view: "back" })];
     const { drive, uploads, trashed } = fakeDrive();
-    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive })).toEqual({ configured: true, moved: 1, failed: 0 });
+    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive })).toMatchObject({ configured: true, moved: 1, failed: 0 });
     expect(uploads[0]).toMatchObject({ name: `${RESULT}-front.webp`, folder: "back", mimeType: "image/webp", responseId: RESULT, view: "front" });
     expect(uploads[0].bytes.toString()).toBe("photo-a");
     expect(rows[0]).toMatchObject({ drive_file_id: "file-1", data_url: null });
@@ -133,7 +150,7 @@ describe("moveSizingPhotosToDrive", () => {
   it("keeps the customer's new photo when they replace it during the copy, and trashes the stale copy", async () => {
     const rows = [row()];
     const { drive, trashed } = fakeDrive(() => Object.assign(rows[0], { data_url: WEBP_B, updated_at: stamp() }));
-    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive })).toEqual({ configured: true, moved: 0, failed: 0 });
+    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive })).toMatchObject({ configured: true, moved: 0, failed: 0 });
     expect(rows[0]).toMatchObject({ data_url: WEBP_B, drive_file_id: null });
     expect(trashed).toEqual(["file-1"]);
 
@@ -143,12 +160,33 @@ describe("moveSizingPhotosToDrive", () => {
     expect(rows[0]).toMatchObject({ data_url: null, drive_file_id: "file-1" });
   });
 
-  it("trashes the earlier Drive file once a replacement photo has moved", async () => {
+  it("points a replaced photo at its new file and leaves the old one to the database's release queue", async () => {
     const rows = [row({ data_url: WEBP_B, drive_file_id: "old-file" })];
     const { drive, trashed } = fakeDrive();
     await moveSizingPhotosToDrive(fakeDb(rows), { drive });
     expect(rows[0]).toMatchObject({ data_url: null, drive_file_id: "file-1" });
-    expect(trashed).toEqual(["old-file"]);
+    expect(trashed).toEqual([]);
+  });
+
+  it("moves newer photos even when older ones keep failing", async () => {
+    const broken = [1, 2].map((n) => row({ id: `broken-${n}`, data_url: "data:text/plain;base64,eA==" }));
+    const fresh = [1, 2].map((n) => row({ id: `fresh-${n}`, view: n === 1 ? "front" : "side" }));
+    const rows = [...broken, ...fresh];
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive: fakeDrive().drive, limit: 2 })).toMatchObject({ moved: 2, failed: 0 });
+    expect(rows.filter((r) => r.drive_file_id).map((r) => r.id).sort()).toEqual(["fresh-1", "fresh-2"]);
+  });
+
+  it("pages past failures with a cursor, so the script reaches every photo", async () => {
+    const rows = [row({ id: "old" }), row({ id: "broken", data_url: "data:text/plain;base64,eA==" }), row({ id: "new" })];
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const db = fakeDb(rows);
+    const { drive } = fakeDrive();
+    const first = await moveSizingPhotosToDrive(db, { drive, limit: 2 });
+    expect(first).toMatchObject({ moved: 1, failed: 1, lastSeen: rows[1].updated_at });
+    const second = await moveSizingPhotosToDrive(db, { drive, limit: 2, olderThan: first.lastSeen! });
+    expect(second).toMatchObject({ moved: 1, failed: 0 });
+    expect(rows.find((r) => r.id === "old")?.drive_file_id).toBe("file-2");
   });
 
   it("keeps the photo in the database when Drive refuses the upload", async () => {
@@ -157,7 +195,7 @@ describe("moveSizingPhotosToDrive", () => {
       throw new Error("token revoked");
     });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive })).toEqual({ configured: true, moved: 0, failed: 1 });
+    expect(await moveSizingPhotosToDrive(fakeDb(rows), { drive })).toMatchObject({ configured: true, moved: 0, failed: 1 });
     expect(rows[0]).toMatchObject({ data_url: WEBP_A, drive_file_id: null });
   });
 
@@ -214,10 +252,26 @@ describe("runSizingPhotoMoves (daily catch-up)", () => {
     expect(notify).not.toHaveBeenCalled();
   });
 
-  it("stays quiet when Drive is not set up, as before the move", async () => {
+  it("stays quiet when Drive is not set up and no photo has moved, as before the move", async () => {
     const notify = vi.fn(async () => "sent");
-    expect(await runSizingPhotoMoves(fakeDb([row()]), now, { drive: null, notify })).toEqual({ configured: false, moved: 0, failed: 0 });
+    expect(await runSizingPhotoMoves(fakeDb([row()]), now, { drive: null, notify })).toMatchObject({ configured: false, onDrive: 0, alerted: false });
     expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("alerts when the Drive connection goes missing while photos live on Drive", async () => {
+    const notify = vi.fn(async () => "sent");
+    const rows = [row({ data_url: null, drive_file_id: "f1" }), row({ id: "side", view: "side", data_url: null, drive_file_id: "f2" })];
+    expect(await runSizingPhotoMoves(fakeDb(rows), now, { drive: null, notify })).toMatchObject({ configured: false, onDrive: 2, alerted: true });
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining("connection for Sizing photos is missing, and 2 photo(s) live on Drive"));
+  });
+
+  it("trashes the files the database released", async () => {
+    const queue = [{ drive_file_id: "released", released_at: stamp() }];
+    const { drive, trashed } = fakeDrive();
+    const report = await runSizingPhotoMoves(fakeDb([], {}, queue), now, { drive, notify: vi.fn() });
+    expect(report.released).toEqual({ trashed: 1, failed: 0 });
+    expect(trashed).toEqual(["released"]);
+    expect(queue).toEqual([]);
   });
 });
 
@@ -225,13 +279,13 @@ describe("googlePhotoDrive", () => {
   const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
   const md5 = (s: string) => createHash("md5").update(Buffer.from(s)).digest("hex");
 
-  function fakeGoogle(md5Checksum: (sent: string) => string, existing: string[] = ["front", "back", "side", "unchecked"]) {
+  function fakeGoogle(md5Checksum: (sent: string) => string, existing: string[] = ["front", "back", "side", "unchecked"], uploaded: Record<string, unknown> = {}) {
     const calls: { method: string; url: string; body: string }[] = [];
     const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const u = String(url);
       const body = init?.body instanceof Uint8Array ? Buffer.from(init.body).toString("latin1") : String(init?.body ?? "");
       calls.push({ method: init?.method ?? "GET", url: u, body });
-      if (u.includes("/upload/")) return json({ id: "photo1", md5Checksum: md5Checksum(body) });
+      if (u.includes("/upload/")) return json({ id: "photo1", md5Checksum: md5Checksum(body), ...uploaded });
       if (init?.method === "PATCH") return json({ id: "photo1" });
       if (init?.method === "POST") return json({ id: `made-${JSON.parse(body).name}` });
       const name = /name = '([a-z]+)'/.exec(decodeURIComponent(u.replace(/\+/g, " ")))?.[1] ?? "";
@@ -283,6 +337,23 @@ describe("googlePhotoDrive", () => {
     expect(calls.some((c) => c.startsWith("PATCH"))).toBe(false);
   });
 
+  it("refuses a photo over Drive's 5 MB one-request upload before calling Drive", async () => {
+    const { fetchImpl, calls } = fakeGoogle(() => md5("photo-a"));
+    const drive = googlePhotoDrive("root-too-big", async () => "token", fetchImpl);
+    await expect(drive.upload({ ...photo(), bytes: Buffer.alloc(5 * 1024 * 1024 + 1) })).rejects.toThrow("over Drive's 5 MB");
+    expect(calls).toEqual([]);
+  });
+
+  it("fails, and looks the folders up again, when the upload landed in a trashed folder", async () => {
+    const { fetchImpl, calls } = fakeGoogle(() => md5("photo-a"), undefined, { trashed: true });
+    const drive = googlePhotoDrive("root-trashed", async () => "token", fetchImpl);
+    await expect(drive.upload(photo())).rejects.toThrow("the back folder is in Drive's trash");
+    const listings = () => calls.filter((c) => c.method === "GET").length;
+    const before = listings();
+    await drive.folders();
+    expect(listings()).toBe(before + 4);
+  });
+
   it("treats trashing a file that is already gone as done", async () => {
     const fetchImpl = (async () => new Response(JSON.stringify({ error: { message: "File not found" } }), { status: 404 })) as unknown as typeof fetch;
     await expect(googlePhotoDrive("root-gone", async () => "token", fetchImpl).trash("gone")).resolves.toBeUndefined();
@@ -301,5 +372,25 @@ describe("photoDriveFromEnv", () => {
     expect(photoDriveFromEnv(full)).not.toBeNull();
     expect(photoDriveFromEnv({ ...full, GOOGLE_DRIVE_PHOTOS_OAUTH_REFRESH_TOKEN: "" })).toBeNull();
     expect(photoDriveFromEnv({ ...full, PHOTO_EVAL_DRIVE_FOLDER: "" })).toBeNull();
+  });
+});
+
+describe("trashReleasedSizingPhotos", () => {
+  it("trashes only files no row points to, and keeps a file it couldn't trash queued", async () => {
+    const queue = [
+      { drive_file_id: "gone-row", released_at: stamp() },
+      { drive_file_id: "pointed-to-again", released_at: stamp() },
+      { drive_file_id: "drive-refuses", released_at: stamp() },
+    ];
+    const rows = [row({ data_url: null, drive_file_id: "pointed-to-again" })];
+    const { drive, trashed } = fakeDrive();
+    drive.trash = async (id) => {
+      if (id === "drive-refuses") throw new Error("rate limited");
+      trashed.push(id);
+    };
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await trashReleasedSizingPhotos(fakeDb(rows, {}, queue), drive)).toEqual({ trashed: 1, failed: 1 });
+    expect(trashed).toEqual(["gone-row"]);
+    expect(queue.map((q) => q.drive_file_id)).toEqual(["drive-refuses"]);
   });
 });

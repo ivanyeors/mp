@@ -4,7 +4,8 @@
  * cron catches up on any it missed; this does the photos from before, in one
  * sitting, through the same moveSizingPhotosToDrive the app uses: each photo is
  * copied, Drive's checksum compared, and only then cleared from the database.
- * Safe to stop and run again.
+ * Newest first, and past any photo that fails, so one bad row can't stop the
+ * rest. Safe to stop and run again.
  *
  *   npx tsx --env-file=.env.local scripts/sizing-photos-to-drive.ts --new-root  # make the app its own folder (drive.file token)
  *   npx tsx --env-file=.env.local scripts/sizing-photos-to-drive.ts --check     # reach the folder, make front/back/side/unchecked
@@ -72,6 +73,7 @@ async function dryRun() {
   let lastId = "00000000-0000-0000-0000-000000000000";
   let count = 0;
   let bytes = 0;
+  let tooBig = 0;
   for (;;) {
     const { data, error } = await admin
       .from("mp_config_response_photos")
@@ -86,9 +88,11 @@ async function dryRun() {
       lastId = row.id;
       count++;
       bytes += row.data_url.length;
+      if ((row.data_url.length * 3) / 4 > 5 * 1024 * 1024) tooBig++;
     }
   }
   console.log(`${count} photo(s) waiting in the database, ${mb(bytes)} of data URLs. Nothing changed.`);
+  if (tooBig) console.log(`${tooBig} of them are over Drive's 5 MB one-request upload and will stay in the database.`);
 }
 
 async function move() {
@@ -97,13 +101,15 @@ async function move() {
   const admin = supabaseAdmin();
   let moved = 0;
   let failed = 0;
+  let olderThan: string | undefined;
   for (;;) {
-    const report = await moveSizingPhotosToDrive(admin, { drive, limit: BATCH });
+    const report = await moveSizingPhotosToDrive(admin, { drive, limit: BATCH, olderThan });
     if (report.error) throw new Error(report.error);
     moved += report.moved;
     failed += report.failed;
     console.log(`moved ${moved} so far${failed ? `, ${failed} failed` : ""}`);
-    if (report.moved === 0) break;
+    if (!report.lastSeen) break;
+    olderThan = report.lastSeen;
   }
   const { count } = await admin.from("mp_config_response_photos").select("id", { count: "exact", head: true }).not("data_url", "is", null);
   console.log(`Moved ${moved} photo(s) to Drive. ${count ?? "?"} still in the database${count ? " (see the errors above; run again once fixed)" : ""}.`);

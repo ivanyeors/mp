@@ -8,7 +8,7 @@ const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeA
 const HEIC = `data:image/heic;base64,${Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypheic")]).toString("base64")}`;
 const ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-function fakeAdmin() {
+function fakeAdmin(rowAfterUpdate: { drive_file_id: string | null; data_url: string | null } = { drive_file_id: null, data_url: PNG }) {
   const writes: { op: "update" | "delete"; patch?: Record<string, unknown>; filters: [string, string][] }[] = [];
   const admin = {
     from: () => {
@@ -18,11 +18,12 @@ function fakeAdmin() {
         delete: () => ((write.op = "delete"), chain),
         eq: (col: string, val: string) => {
           write.filters.push([col, val]);
-          if (write.filters.length === 2) {
-            writes.push(write);
-            return Promise.resolve({ error: null });
-          }
-          return chain;
+          if (write.filters.length < 2) return chain;
+          writes.push(write);
+          return {
+            then: (ok: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(ok),
+            select: async () => ({ data: [rowAfterUpdate], error: null }),
+          };
         },
       };
       return chain;
@@ -125,7 +126,7 @@ describe("sizingPhotosForTelegram with photos on Google Drive", () => {
   });
 
   it("files an unchecked photo on Drive under the view Claude saw once it passes", async () => {
-    const { admin, writes } = fakeAdmin();
+    const { admin, writes } = fakeAdmin({ drive_file_id: "f", data_url: null });
     const drive = fakeDrive();
     const screen = screenWith({ status: "passed", model: "claude-haiku-5-5", view: "back" });
     await sizingPhotosForTelegram(admin, ID, [{ view: "front", data_url: null, drive_file_id: "f", screening_status: "unchecked" }], { screen, drive });
@@ -133,12 +134,28 @@ describe("sizingPhotosForTelegram with photos on Google Drive", () => {
     expect(drive.moveOutOf).toHaveBeenCalledWith("f", "unchecked", "back");
   });
 
-  it("deletes a photo the retry rejects from the database and trashes it on Drive", async () => {
+  it("files the Drive copy the row points to after the re-check, even one that moved while Claude was checking", async () => {
+    const { admin } = fakeAdmin({ drive_file_id: "moved-meanwhile", data_url: null });
+    const drive = fakeDrive();
+    const screen = screenWith({ status: "passed", model: "claude-haiku-5-5", view: "back" });
+    await sizingPhotosForTelegram(admin, ID, [{ view: "front", data_url: PNG, drive_file_id: null, screening_status: "unchecked" }], { screen, drive });
+    expect(drive.moveOutOf).toHaveBeenCalledWith("moved-meanwhile", "unchecked", "back");
+  });
+
+  it("leaves a passed photo still waiting to move for the move to file", async () => {
+    const { admin } = fakeAdmin({ drive_file_id: "older-file", data_url: PNG });
+    const drive = fakeDrive();
+    const screen = screenWith({ status: "passed", model: "claude-haiku-5-5", view: "front" });
+    await sizingPhotosForTelegram(admin, ID, [{ view: "front", data_url: PNG, drive_file_id: "older-file", screening_status: "unchecked" }], { screen, drive });
+    expect(drive.moveOutOf).not.toHaveBeenCalled();
+  });
+
+  it("deletes a photo the retry rejects, leaving its Drive file to the database's release queue", async () => {
     const { admin, writes } = fakeAdmin();
     const drive = fakeDrive();
     const screen = screenWith({ status: "rejected", reason: "no" });
     await sizingPhotosForTelegram(admin, ID, [{ view: "side", data_url: null, drive_file_id: "f", screening_status: "unchecked" }], { screen, drive });
     expect(writes).toEqual([{ op: "delete", filters: [["response_id", ID], ["view", "side"]] }]);
-    expect(drive.trash).toHaveBeenCalledWith("f");
+    expect(drive.trash).not.toHaveBeenCalled();
   });
 });

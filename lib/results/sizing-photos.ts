@@ -50,15 +50,17 @@ export async function sizingPhotosForTelegram(
 
       if (result?.status === "passed") {
         out[view] = dataUrl;
-        const { error } = await admin
+        const { data: marked, error } = await admin
           .from("mp_config_response_photos")
           .update({ screening_status: "passed", screening_model: result.model, screened_at: new Date().toISOString(), screened_view: result.view })
           .eq("response_id", responseId)
-          .eq("view", view);
+          .eq("view", view)
+          .select("drive_file_id,data_url");
         if (error) console.error(`[sizing-photo] ${responseId} ${view} passed but not marked:`, error.message);
-        if (!error && row.drive_file_id && !row.data_url && drive) {
+        const onDrive = (marked as { drive_file_id: string | null; data_url: string | null }[] | null)?.[0];
+        if (onDrive?.drive_file_id && !onDrive.data_url && drive) {
           const folder = sizingPhotoFolder({ view, screening_status: "passed", screened_view: result.view });
-          await drive.moveOutOf(row.drive_file_id, "unchecked", folder).catch((e) => {
+          await drive.moveOutOf(onDrive.drive_file_id, "unchecked", folder).catch((e) => {
             console.error(`[sizing-photo] ${responseId} ${view} passed but left in the unchecked folder:`, e instanceof Error ? e.message : e);
           });
         }
@@ -68,11 +70,6 @@ export async function sizingPhotosForTelegram(
         out.notes.push(`📷 ${LABEL[view]} photo removed: it didn't pass the photo check.`);
         const { error } = await admin.from("mp_config_response_photos").delete().eq("response_id", responseId).eq("view", view);
         if (error) console.error(`[sizing-photo] ${responseId} ${view} rejected but not deleted:`, error.message);
-        if (!error && row.drive_file_id && drive) {
-          await drive.trash(row.drive_file_id).catch((e) => {
-            console.error(`[sizing-photo] ${responseId} ${view} rejected but left on Drive (${row.drive_file_id}):`, e instanceof Error ? e.message : e);
-          });
-        }
         return;
       }
       out.notes.push(`📷 ${LABEL[view]} photo not attached: it couldn't be checked.`);

@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
@@ -16,7 +16,6 @@ import {
   toOwnerResultPayload,
 } from "@/lib/results/admin/response-detail";
 import { requireResultAccess } from "@/lib/results/access";
-import { sizingPhotoDriveIds, trashSizingPhotoFiles } from "@/lib/results/sizing-photo-drive";
 
 export const runtime = "nodejs";
 
@@ -77,13 +76,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     );
   }
 
-  let photoFiles: string[];
-  try {
-    photoFiles = await sizingPhotoDriveIds(admin, parsedParams.data.id);
-  } catch {
-    return NextResponse.json({ error: "Could not read this Result's photos. Try again." }, { status: 500 });
-  }
-
   if (row?.payment_intent_id && row.status !== "captured" && plan?.releaseHold) {
     try {
       await releaseHold(row.payment_intent_id);
@@ -101,7 +93,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
 
   const { error } = await admin.from("mp_config_responses").delete().eq("id", parsedParams.data.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  after(() => trashSizingPhotoFiles(photoFiles));
   if (plan) await cascadeEnding(admin, plan, "cancelled");
   if (plan && row) {
     await notifyCompanionRemoved(admin, { companion: row, partner: plan.partner, origin: getPublicOrigin(req) });

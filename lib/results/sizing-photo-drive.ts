@@ -6,11 +6,13 @@ import { DriveError, mapDriveHttpError, parseDriveFileId } from "@/lib/media-ass
 import { sendTelegram } from "@/lib/telegram/notify";
 
 const TABLE = "mp_config_response_photos";
+const TRASH_QUEUE = "sizing_photo_drive_trash";
 const FILES = "https://www.googleapis.com/drive/v3/files";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3/files";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_TIMEOUT_MS = 10_000;
 const WAITING_TOO_LONG_MS = 60 * 60_000;
+const ONE_REQUEST_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
 export const SIZING_PHOTO_FOLDERS = ["front", "back", "side", "unchecked"] as const;
 export type SizingPhotoFolder = (typeof SIZING_PHOTO_FOLDERS)[number];
@@ -50,7 +52,7 @@ export interface PhotoDrive {
 const DriveId = z.string().regex(/^[A-Za-z0-9_-]+$/);
 const Listed = z.object({ files: z.array(z.object({ id: DriveId })).default([]) });
 const Made = z.object({ id: DriveId });
-const Uploaded = z.object({ id: DriveId, md5Checksum: z.string().optional() });
+const Uploaded = z.object({ id: DriveId, md5Checksum: z.string().optional(), trashed: z.boolean().optional() });
 const Parents = z.object({ parents: z.array(DriveId).default([]) });
 
 const md5 = (bytes: Buffer) => createHash("md5").update(bytes).digest("hex");
@@ -120,6 +122,7 @@ export function googlePhotoDrive(root: string, token: () => Promise<string>, fet
     trash,
 
     async upload(photo) {
+      if (photo.bytes.length > ONE_REQUEST_UPLOAD_MAX_BYTES) throw new Error(`${photo.name} is over Drive's 5 MB one-request upload`);
       const parent = (await folders())[photo.folder];
       const boundary = `mpillow-${randomUUID()}`;
       const meta = {
@@ -134,12 +137,16 @@ export function googlePhotoDrive(root: string, token: () => Promise<string>, fet
         photo.bytes,
         Buffer.from(`\r\n--${boundary}--`),
       ]);
-      const res = await call(`${UPLOAD}?uploadType=multipart&supportsAllDrives=true&fields=id,md5Checksum`, {
+      const res = await call(`${UPLOAD}?uploadType=multipart&supportsAllDrives=true&fields=id,md5Checksum,trashed`, {
         method: "POST",
         headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
         body: new Uint8Array(body),
       });
       const made = Uploaded.parse(await res.json());
+      if (made.trashed) {
+        folderIdsByRoot.delete(root);
+        throw new Error(`the ${photo.folder} folder is in Drive's trash`);
+      }
       if (made.md5Checksum !== md5(photo.bytes)) {
         await trash(made.id).catch(() => undefined);
         throw new Error(`Drive did not keep the same bytes for ${photo.name}`);
@@ -202,20 +209,12 @@ interface WaitingPhoto extends SizingPhotoPlace {
   id: string;
   response_id: string;
   data_url: string;
-  drive_file_id: string | null;
   updated_at: string;
 }
 
-const WAITING_COLUMNS = "id,response_id,view,data_url,drive_file_id,screening_status,screened_view,updated_at";
+const WAITING_COLUMNS = "id,response_id,view,data_url,screening_status,screened_view,updated_at";
 
 const reason = (e: unknown) => (e instanceof Error ? e.message : String(e));
-
-async function trashReplaced(drive: PhotoDrive, row: WaitingPhoto, newFileId: string): Promise<void> {
-  if (!row.drive_file_id || row.drive_file_id === newFileId) return;
-  await drive.trash(row.drive_file_id).catch((e) => {
-    console.error(`[sizing-photo] ${row.response_id} ${row.view} replaced photo left on Drive (${row.drive_file_id}):`, reason(e));
-  });
-}
 
 async function moveOne(admin: SupabaseClient, drive: PhotoDrive, row: WaitingPhoto): Promise<boolean> {
   const photo = photoFromDataUrl(row.data_url);
@@ -234,17 +233,11 @@ async function moveOne(admin: SupabaseClient, drive: PhotoDrive, row: WaitingPho
     .eq("id", row.id)
     .eq("updated_at", row.updated_at)
     .select("id");
-  if (!error && data?.length) {
-    await trashReplaced(drive, row, fileId);
-    return true;
-  }
+  if (!error && data?.length) return true;
 
   const { data: now, error: readError } = await admin.from(TABLE).select("drive_file_id").eq("id", row.id).maybeSingle();
   if (readError) throw new Error(`could not tell whether ${fileId} was saved, so it stays on Drive: ${readError.message}`);
-  if (now?.drive_file_id === fileId) {
-    await trashReplaced(drive, row, fileId);
-    return true;
-  }
+  if (now?.drive_file_id === fileId) return true;
   await drive.trash(fileId);
   if (error) throw new Error(error.message);
   return false;
@@ -254,23 +247,31 @@ export interface MoveReport {
   configured: boolean;
   moved: number;
   failed: number;
+  lastSeen?: string | null;
   error?: string;
 }
 
 export async function moveSizingPhotosToDrive(
   admin: SupabaseClient,
-  { responseId, limit = 20, drive = photoDriveFromEnv() }: { responseId?: string; limit?: number; drive?: PhotoDrive | null } = {},
+  {
+    responseId,
+    limit = 20,
+    olderThan,
+    drive = photoDriveFromEnv(),
+  }: { responseId?: string; limit?: number; olderThan?: string; drive?: PhotoDrive | null } = {},
 ): Promise<MoveReport> {
   if (!drive) return { configured: false, moved: 0, failed: 0 };
 
   let query = admin.from(TABLE).select(WAITING_COLUMNS).not("data_url", "is", null);
   if (responseId) query = query.eq("response_id", responseId);
-  const { data, error } = await query.order("updated_at").limit(limit);
+  if (olderThan) query = query.lt("updated_at", olderThan);
+  const { data, error } = await query.order("updated_at", { ascending: false }).limit(limit);
   if (error) return { configured: true, moved: 0, failed: 0, error: error.message };
 
+  const rows = (data ?? []) as WaitingPhoto[];
   let moved = 0;
   let failed = 0;
-  for (const row of (data ?? []) as WaitingPhoto[]) {
+  for (const row of rows) {
     try {
       if (await moveOne(admin, drive, row)) moved++;
     } catch (e) {
@@ -278,27 +279,42 @@ export async function moveSizingPhotosToDrive(
       console.error(`[sizing-photo] ${row.response_id} ${row.view} not moved to Drive, kept in the database:`, reason(e));
     }
   }
-  return { configured: true, moved, failed };
+  return { configured: true, moved, failed, lastSeen: rows.at(-1)?.updated_at ?? null };
 }
 
-export async function sizingPhotoDriveIds(admin: SupabaseClient, responseId: string): Promise<string[]> {
-  const { data, error } = await admin.from(TABLE).select("drive_file_id").eq("response_id", responseId).not("drive_file_id", "is", null);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => r.drive_file_id as string);
+export interface TrashReport {
+  trashed: number;
+  failed: number;
+  error?: string;
 }
 
-export async function trashSizingPhotoFiles(fileIds: readonly string[], drive: PhotoDrive | null = photoDriveFromEnv()): Promise<void> {
-  if (!fileIds.length) return;
-  if (!drive) {
-    console.error(`[sizing-photo] Drive is not set up, so these photos stay on Drive: ${fileIds.join(", ")}`);
-    return;
+export async function trashReleasedSizingPhotos(admin: SupabaseClient, drive: PhotoDrive, limit = 50): Promise<TrashReport> {
+  const { data, error } = await admin.from(TRASH_QUEUE).select("drive_file_id").order("released_at").limit(limit);
+  if (error) return { trashed: 0, failed: 0, error: error.message };
+
+  let trashed = 0;
+  let failed = 0;
+  for (const { drive_file_id: fileId } of (data ?? []) as { drive_file_id: string }[]) {
+    try {
+      const { data: still, error: stillError } = await admin.from(TABLE).select("id").eq("drive_file_id", fileId).limit(1);
+      if (stillError) throw new Error(stillError.message);
+      if (!still?.length) {
+        await drive.trash(fileId);
+        trashed++;
+      }
+      const { error: doneError } = await admin.from(TRASH_QUEUE).delete().eq("drive_file_id", fileId);
+      if (doneError) throw new Error(doneError.message);
+    } catch (e) {
+      failed++;
+      console.error(`[sizing-photo] released photo ${fileId} not trashed yet:`, reason(e));
+    }
   }
-  for (const id of fileIds) {
-    await drive.trash(id).catch((e) => console.error(`[sizing-photo] photo ${id} left on Drive:`, reason(e)));
-  }
+  return { trashed, failed };
 }
 
 export interface DailyMoveReport extends MoveReport {
+  released?: TrashReport;
+  onDrive?: number;
   waiting?: number;
   oldestWaiting?: string | null;
   alerted?: boolean;
@@ -313,8 +329,21 @@ export async function runSizingPhotoMoves(
     limit = 50,
   }: { drive?: PhotoDrive | null; notify?: (text: string) => Promise<unknown>; limit?: number } = {},
 ): Promise<DailyMoveReport> {
+  if (!drive) {
+    const { count, error } = await admin.from(TABLE).select("id", { count: "exact", head: true }).not("drive_file_id", "is", null);
+    if (error) return { configured: false, moved: 0, failed: 0, error: error.message };
+    const alerted = (count ?? 0) > 0;
+    if (alerted) {
+      await notify(
+        `📷 The Google Drive connection for Sizing photos is missing, and ${count} photo(s) live on Drive: they can't be attached to Telegram, ` +
+          "and new photos stay in the database. Set GOOGLE_DRIVE_PHOTOS_OAUTH_REFRESH_TOKEN and PHOTO_EVAL_DRIVE_FOLDER on Vercel.",
+      );
+    }
+    return { configured: false, moved: 0, failed: 0, onDrive: count ?? 0, alerted };
+  }
+
   const report = await moveSizingPhotosToDrive(admin, { limit, drive });
-  if (!report.configured) return report;
+  const released = await trashReleasedSizingPhotos(admin, drive);
 
   const { data, count, error } = await admin
     .from(TABLE)
@@ -322,7 +351,7 @@ export async function runSizingPhotoMoves(
     .not("data_url", "is", null)
     .order("updated_at")
     .limit(1);
-  if (error) return { ...report, error: error.message };
+  if (error) return { ...report, released, error: error.message };
 
   const oldest = (data?.[0]?.updated_at as string | undefined) ?? null;
   const alerted = oldest !== null && now.getTime() - Date.parse(oldest) > WAITING_TOO_LONG_MS;
@@ -333,5 +362,5 @@ export async function runSizingPhotoMoves(
         "if these are photos from before the move, run scripts/sizing-photos-to-drive.ts.",
     );
   }
-  return { ...report, waiting: count ?? 0, oldestWaiting: oldest, alerted };
+  return { ...report, released, waiting: count ?? 0, oldestWaiting: oldest, alerted };
 }
