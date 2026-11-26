@@ -3688,8 +3688,8 @@ export function MpConfigClient({
                   src={LOGO_SRC}
                   unoptimized
                   alt="Mpillow Logo"
-                  width={200}
-                  height={200}
+                  width={140}
+                  height={140}
                   className="mx-auto mb-6"
                   priority
                 />

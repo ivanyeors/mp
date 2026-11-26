@@ -305,7 +305,7 @@ describe("MbolsterConfigClient staff assist mix", () => {
 describe("MbolsterConfigClient field errors", () => {
   const toHeightStep = async () => {
     await mount(<MbolsterConfigClient info={INFO} discoverySourceOptions={[]} />);
-    await click(byLabel("Get started")!);
+    await click(byLabel("Get Started")!);
     await until(() => heightInput());
   };
 
@@ -340,7 +340,7 @@ describe("MbolsterConfigClient field errors", () => {
     expect(heightError()).not.toBeNull();
 
     await click(byLabel("Back")!);
-    await click(byLabel("Get started")!);
+    await click(byLabel("Get Started")!);
     await until(() => heightInput());
     expect(heightInput().value).toBe("5");
     expect(heightError()).toBeNull();

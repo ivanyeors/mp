@@ -38,6 +38,8 @@ assert.match(mp, /\(!isMobile \|\| currentStep === "welcome"\) && <RetroGrid /);
 assert.match(bolster, /\(!isMobile \|\| state\.step === "welcome"\) && <RetroGrid /);
 for (const src of [mp, bolster]) {
   assert.doesNotMatch(src, /<RetroGrid[^\n]*\n\s*<Particles/);
+  assert.match(src, /src=\{LOGO_SRC\}[\s\S]{0,120}width=\{140\}\s+height=\{140\}/);
+  assert.match(src, /className="text-6xl font-bold tracking-tight leading-tight">\s+Customise/);
 }
 assert.match(mp, /currentStep !== "welcome" && !isMobile/);
 assert.match(mp, /ConfiguratorMobileCloseBar/);

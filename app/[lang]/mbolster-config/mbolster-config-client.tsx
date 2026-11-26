@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { ArrowLeft, ArrowRight, Info, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { getApiErrorMessage, cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Particles } from "@/components/ui/particles";
+import { LOGO_SRC } from "@/lib/brand-logo";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1826,7 +1828,7 @@ export function MbolsterConfigClient({
         ) : null}
 
         {state.step === "welcome" ? (
-          <div className="relative space-y-6 text-center">
+          <div className="relative mx-auto flex w-full max-w-2xl flex-col items-center space-y-8 text-center">
             <Dialog>
               <DialogTrigger asChild>
                 <Button
@@ -1873,20 +1875,29 @@ export function MbolsterConfigClient({
               </DialogContent>
             </Dialog>
 
-            <div className="space-y-2">
-              <div className="text-sm font-semibold text-muted-foreground">Mbolster</div>
-              <div role="heading" aria-level={2} className="text-4xl font-semibold tracking-tight leading-tight md:text-5xl">
-                Customise your Mbolster
+            <div className="space-y-4">
+              <Image
+                src={LOGO_SRC}
+                unoptimized
+                alt="Mpillow Logo"
+                width={140}
+                height={140}
+                className="mx-auto mb-6"
+                priority
+              />
+              <div role="heading" aria-level={2} className="text-6xl font-bold tracking-tight leading-tight">
+                Customise <span className="text-primary">Mbolster</span>
               </div>
-              <p className="mx-auto max-w-2xl text-muted-foreground">
+              <p className="text-xl text-muted-foreground">
                 Answer a few quick questions, choose a case preference, then authorize
                 payment for operator review. You are not charged until you accept the final build.
               </p>
             </div>
 
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button size="lg" onClick={goNext}>
-                Get started
+              <Button size="lg" onClick={goNext} className="group">
+                Get Started
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
               <MbolsterLearnMoreSlideIn
                 className="h-11 px-8 text-base"
