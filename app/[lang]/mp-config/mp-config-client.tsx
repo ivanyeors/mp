@@ -3635,19 +3635,7 @@ export function MpConfigClient({
         description="This will clear your saved session and return to the start."
         onConfirmExit={exitToStart}
       />
-      {(!isMobile || currentStep === "welcome") && (
-        <>
-          <RetroGrid className="z-0" opacity={0.3} speed={gridSpeed} />
-          <Particles
-            className="absolute inset-0 z-0"
-            quantity={100}
-            ease={80}
-            staticity={50}
-            color="#ffffff"
-            size={0.8}
-          />
-        </>
-      )}
+      {(!isMobile || currentStep === "welcome") && <RetroGrid className="z-0" speed={gridSpeed} />}
 
       {currentStep !== "welcome" && !isMobile && (
         <div
@@ -3700,8 +3688,8 @@ export function MpConfigClient({
                   src={LOGO_SRC}
                   unoptimized
                   alt="Mpillow Logo"
-                  width={200}
-                  height={200}
+                  width={140}
+                  height={140}
                   className="mx-auto mb-6"
                   priority
                 />

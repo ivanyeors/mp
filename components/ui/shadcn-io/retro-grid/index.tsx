@@ -1,97 +1,144 @@
-"use client";
+import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
 
-interface RetroGridProps extends React.HTMLAttributes<HTMLDivElement> {
-  /**
-   * Additional CSS classes to apply to the grid container
-   */
-  className?: string;
-  /**
-   * Rotation angle of the grid in degrees
-   * @default 65
-   */
-  angle?: number;
-  /**
-   * Grid cell size in pixels
-   * @default 60
-   */
-  cellSize?: number;
-  /**
-   * Grid opacity value between 0 and 1
-   * @default 0.5
-   */
-  opacity?: number;
-  /**
-   * Grid line color in light mode
-   * @default "gray"
-   */
-  lightLineColor?: string;
-  /**
-   * Grid line color in dark mode
-   * @default "gray"
-   */
-  darkLineColor?: string;
-  /**
-   * Animation speed: "slow" for subtle movement, "fast" for forward transitions, "reverse" for backward transitions
-   * @default "slow"
-   */
-  speed?: "slow" | "fast" | "reverse";
+const PERSPECTIVE = 200;
+const CELL = 80;
+const ROWS_PER_HALF = 10;
+const FAN_LINES_PER_SIDE = 40;
+const FAN_REACH = FAN_LINES_PER_SIDE * CELL;
+const GRADIENT_ID = "retro-grid-brand";
+
+type Rgb = [number, number, number];
+type BrandStop = { fromHorizon: number; rgb: Rgb; alpha: number };
+
+export const RETRO_GRID_BRAND_STOPS: BrandStop[] = [
+  { fromHorizon: 0.2, rgb: [0, 23, 54], alpha: 0 },
+  { fromHorizon: 0.45, rgb: [24, 71, 143], alpha: 0.3 },
+  { fromHorizon: 0.7, rgb: [43, 105, 188], alpha: 0.5 },
+  { fromHorizon: 1, rgb: [18, 152, 255], alpha: 0.65 },
+];
+
+function mix(from: number, to: number, share: number): number {
+  return from + (to - from) * share;
 }
 
-export function RetroGrid({
-  className,
-  angle = 80,
-  cellSize = 50,
-  opacity = 1,
-  lightLineColor = "gray",
-  darkLineColor = "gray",
-  speed = "slow",
-  ...props
-}: RetroGridProps) {
-  const gridStyles = {
-    "--grid-angle": `${angle}deg`,
-    "--cell-size": `${cellSize}px`,
-    "--opacity": opacity,
-    "--light-line": lightLineColor,
-    "--dark-line": darkLineColor,
-  } as React.CSSProperties;
+export function retroGridBrandAt(fromHorizon: number): { rgb: Rgb; alpha: number } {
+  const stops = RETRO_GRID_BRAND_STOPS;
+  if (fromHorizon <= stops[0].fromHorizon) return stops[0];
+  for (let i = 1; i < stops.length; i++) {
+    const far = stops[i - 1];
+    const near = stops[i];
+    if (fromHorizon <= near.fromHorizon) {
+      const share = (fromHorizon - far.fromHorizon) / (near.fromHorizon - far.fromHorizon);
+      return {
+        rgb: [
+          Math.round(mix(far.rgb[0], near.rgb[0], share)),
+          Math.round(mix(far.rgb[1], near.rgb[1], share)),
+          Math.round(mix(far.rgb[2], near.rgb[2], share)),
+        ],
+        alpha: mix(far.alpha, near.alpha, share),
+      };
+    }
+  }
+  return stops[stops.length - 1];
+}
 
+type RowEnd = { depth: number; scale: number; fromHorizon: number; alpha: number };
+export type RetroGridRow = { far: RowEnd; near: RowEnd; rgb: Rgb };
+
+function rowEndAt(depth: number): RowEnd {
+  const fromHorizon = PERSPECTIVE / (PERSPECTIVE + depth);
+  return { depth, scale: 1 / fromHorizon, fromHorizon, alpha: retroGridBrandAt(fromHorizon).alpha };
+}
+
+export const RETRO_GRID_ROWS: RetroGridRow[] = Array.from({ length: ROWS_PER_HALF }, (_, index) => {
+  const far = rowEndAt((index + 1) * CELL);
+  const near = rowEndAt(index * CELL);
+  return { far, near, rgb: retroGridBrandAt((far.fromHorizon + near.fromHorizon) / 2).rgb };
+});
+
+const FAN_PATH = Array.from({ length: FAN_LINES_PER_SIDE * 2 + 1 }, (_, index) => {
+  const x = (index - FAN_LINES_PER_SIDE) * CELL;
+  return `M${-x} -1L${x} 1`;
+}).join("");
+
+const FAN_STOPS = [
+  ...[...RETRO_GRID_BRAND_STOPS].reverse().map((stop) => ({ ...stop, offset: (1 - stop.fromHorizon) / 2 })),
+  ...RETRO_GRID_BRAND_STOPS.map((stop) => ({ ...stop, offset: (1 + stop.fromHorizon) / 2 })),
+];
+
+function rowStyle(row: RetroGridRow): CSSProperties {
+  return {
+    backgroundColor: `rgb(${row.rgb.join(" ")})`,
+    "--z0": `${-row.far.depth}px`,
+    "--s0": row.far.scale,
+    "--o0": row.far.alpha.toFixed(3),
+    "--z1": `${-row.near.depth}px`,
+    "--s1": row.near.scale,
+    "--o1": row.near.alpha.toFixed(3),
+  } as CSSProperties;
+}
+
+const SPEED_STYLE: Record<RetroGridSpeed, CSSProperties> = {
+  slow: {},
+  fast: { "--retro-grid-duration": "0.4s" } as CSSProperties,
+  reverse: { "--retro-grid-duration": "0.4s", "--retro-grid-direction": "reverse" } as CSSProperties,
+};
+
+export type RetroGridSpeed = "slow" | "fast" | "reverse";
+
+export interface RetroGridProps {
+  className?: string;
+  speed?: RetroGridSpeed;
+}
+
+export function RetroGrid({ className, speed = "slow" }: RetroGridProps) {
   return (
     <div
-      className={cn(
-        "pointer-events-none absolute size-full overflow-hidden [perspective:200px]",
-        `opacity-[var(--opacity)]`,
-        className,
-      )}
-      style={gridStyles}
-      {...props}
+      aria-hidden
+      data-retro-grid
+      className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
+      style={{ perspective: PERSPECTIVE, ...SPEED_STYLE[speed] }}
     >
-      {/* Bottom grid - tilts away toward bottom (bottom half only) */}
-      <div className="absolute left-0 right-0 top-1/2 bottom-0 [transform:rotateX(var(--grid-angle))]">
-        <div 
-          className={cn(
-            "[background-image:linear-gradient(to_right,var(--light-line)_1px,transparent_0),linear-gradient(to_bottom,var(--light-line)_1px,transparent_0)] [background-repeat:repeat] [background-size:var(--cell-size)_var(--cell-size)] [height:300vh] [inset:0%_0px] [margin-left:-200%] [transform-origin:100%_0_0] [width:600vw] dark:[background-image:linear-gradient(to_right,var(--dark-line)_1px,transparent_0),linear-gradient(to_bottom,var(--dark-line)_1px,transparent_0)]",
-            speed === "slow" ? "animate-grid-slow" : speed === "fast" ? "animate-grid-fast" : "animate-grid-reverse"
-          )}
+      <svg
+        className="absolute left-1/2 top-0 h-full"
+        style={{ width: FAN_REACH * 2, marginLeft: -FAN_REACH }}
+        viewBox={`${-FAN_REACH} -1 ${FAN_REACH * 2} 2`}
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id={GRADIENT_ID} gradientUnits="userSpaceOnUse" x1="0" y1="-1" x2="0" y2="1">
+            {FAN_STOPS.map((stop) => (
+              <stop
+                key={stop.offset}
+                offset={stop.offset}
+                stopColor={`rgb(${stop.rgb.join(" ")})`}
+                stopOpacity={stop.alpha}
+              />
+            ))}
+          </linearGradient>
+        </defs>
+        <path
+          d={FAN_PATH}
+          fill="none"
+          stroke={`url(#${GRADIENT_ID})`}
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
         />
-      </div>
-
-      {/* Top grid - mirrored, tilts away toward top (top half only) */}
-      <div className="absolute left-0 right-0 top-0 bottom-1/2 [transform:rotateX(calc(var(--grid-angle)*-1))]">
-        <div 
-          className={cn(
-            "[background-image:linear-gradient(to_right,var(--light-line)_1px,transparent_0),linear-gradient(to_bottom,var(--light-line)_1px,transparent_0)] [background-repeat:repeat] [background-size:var(--cell-size)_var(--cell-size)] [height:300vh] [inset:0%_0px] [margin-left:-200%] [transform-origin:100%_100%_0] [width:600vw] dark:[background-image:linear-gradient(to_right,var(--dark-line)_1px,transparent_0),linear-gradient(to_bottom,var(--dark-line)_1px,transparent_0)]",
-            speed === "slow" ? "animate-grid-slow" : speed === "fast" ? "animate-grid-fast" : "animate-grid-reverse"
-          )}
-        />
-      </div>
-
-      {/* Gradient fades from both top and bottom */}
-      <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent dark:from-black" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-transparent to-transparent dark:from-black" />
+      </svg>
+      {(["-top-px", "-bottom-px"] as const).map((edge) =>
+        RETRO_GRID_ROWS.map((row) => (
+          <div
+            key={`${edge}${row.far.depth}`}
+            className={cn(
+              "retro-grid-row absolute inset-x-0 h-[3px] border-y border-transparent bg-clip-padding",
+              edge,
+            )}
+            style={rowStyle(row)}
+          />
+        )),
+      )}
     </div>
   );
 }
-
-export type { RetroGridProps };
