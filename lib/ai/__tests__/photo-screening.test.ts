@@ -114,8 +114,13 @@ const image = { mediaType: "image/png" as const, base64: PNG };
 describe("screenSizingPhoto", () => {
   it("passes a good photo and names the model that served it", async () => {
     const { client, calls } = fakeClient({ text: JSON.stringify(good) });
-    expect(await screenSizingPhoto(image, "front", { client })).toEqual({ status: "passed", model: PHOTO_SCREENING_MODEL });
+    expect(await screenSizingPhoto(image, "front", { client })).toEqual({ status: "passed", model: PHOTO_SCREENING_MODEL, view: "front" });
     expect(calls[0].opts).toEqual({ timeout: 20_000, maxRetries: 1 });
+  });
+
+  it("says which view it saw on a front photo taken from behind, so it is filed as back", async () => {
+    const { client } = fakeClient({ text: JSON.stringify({ ...good, view: "back" }) });
+    expect(await screenSizingPhoto(image, "front", { client })).toMatchObject({ status: "passed", view: "back" });
   });
 
   it("rejects with the verdict's reason", async () => {

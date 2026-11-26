@@ -37,6 +37,7 @@ import { runPointsEarn, runPointsMilestones } from "@/lib/points/earn";
 import { releaseStalePointReservations } from "@/lib/points/spend";
 import { expireStaffOrderLinks } from "@/lib/staff-orders/expire";
 import { runSocialInboxMaintenance } from "@/lib/social-inbox/status";
+import { runSizingPhotoMoves } from "@/lib/results/sizing-photo-drive";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -467,6 +468,13 @@ export async function GET(req: Request) {
     socialInbox = { ok: false, error: e instanceof Error ? e.message : "social inbox maintenance failed" };
   }
 
+  let sizingPhotos: Awaited<ReturnType<typeof runSizingPhotoMoves>> | { ok: false; error: string };
+  try {
+    sizingPhotos = await runSizingPhotoMoves(admin, now);
+  } catch (e) {
+    sizingPhotos = { ok: false, error: e instanceof Error ? e.message : "sizing photo moves failed" };
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
@@ -486,6 +494,7 @@ export async function GET(req: Request) {
     staffOrderLinks,
     crmTelegram,
     socialInbox,
+    sizingPhotos,
   });
 }
 

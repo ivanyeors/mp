@@ -83,7 +83,7 @@ Staff-uploaded imagery attached to a **Customisation session** (`config_upload` 
 _Avoid_: **Sizing photo** (the customer's own front/side photos — a separate, untouched feature)
 
 **Sizing photo**:
-The customer's own front/side body photos captured in the configurator to size a build (`mp_config_response_photos`, WebP base64 data URLs, Telegram-only). Screened by Claude before it is kept (ADR 0047): a rejected photo is never stored, and only a photo whose `screening_status` is `passed` is attached on Telegram. Separate from **Reference photos**, which are not screened.
+The customer's own front/side body photos captured in the configurator to size a build. Screened by Claude before it is kept (ADR 0047): a rejected photo is never stored, and only a photo whose `screening_status` is `passed` is attached on Telegram. Saved first as a WebP data URL in `mp_config_response_photos`, then moved to Google Drive right after (ADR 0059): the row then keeps only the Drive file id, filed under `front`, `back`, `side` (passed, by the view Claude saw) or `unchecked`, and is read back through the server, never by a shared link. Separate from **Reference photos**, which are not screened.
 _Avoid_: **Reference photo** (staff-uploaded build references in `config_upload`)
 
 **Discovery source**:

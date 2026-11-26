@@ -22,6 +22,7 @@ vi.mock("@/lib/stripe/client", async () => {
   return { getStripe: () => f.fakeStripeClient };
 });
 vi.mock("@/lib/auth/user", () => ({ getAuthUser: async () => null }));
+vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: vi.fn() }));
 vi.mock("@/lib/auth/admin", () => {
   const denied = () => NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return {

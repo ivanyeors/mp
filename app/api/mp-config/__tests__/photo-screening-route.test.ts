@@ -6,7 +6,12 @@ const h = vi.hoisted(() => ({
   upsert: vi.fn(),
   screen: vi.fn(),
   limited: vi.fn(),
+  after: vi.fn(),
+  move: vi.fn(),
 }));
+
+vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: h.after }));
+vi.mock("@/lib/results/sizing-photo-drive", () => ({ moveSizingPhotosToDrive: h.move }));
 
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => {
@@ -50,11 +55,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   h.upsert.mockResolvedValue({ error: null });
   h.limited.mockResolvedValue(null);
+  h.move.mockResolvedValue({ configured: true, moved: 1, failed: 0 });
 });
 
 describe("POST /api/mp-config/photos screening", () => {
   it("keeps a photo that passed as WebP, marked with the model and when", async () => {
-    screenAs({ status: "passed", model: "claude-haiku-5-5" });
+    screenAs({ status: "passed", model: "claude-haiku-5-5", view: "side" });
     const res = await post();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, screening: "passed" });
@@ -68,9 +74,42 @@ describe("POST /api/mp-config/photos screening", () => {
         screening_status: "passed",
         screening_model: "claude-haiku-5-5",
         screened_at: expect.any(String),
+        screened_view: "side",
       }),
       { onConflict: "response_id,view" },
     );
+  });
+
+  it("files a front photo taken from behind under the view Claude saw", async () => {
+    screenAs({ status: "passed", model: "claude-haiku-5-5", view: "back" });
+    await post(PNG, "front");
+    expect(h.upsert).toHaveBeenCalledWith(expect.objectContaining({ view: "front", screened_view: "back" }), expect.anything());
+  });
+
+  it("moves the saved photo to Drive only after the customer has their answer", async () => {
+    screenAs({ status: "passed", model: "claude-haiku-5-5", view: "side" });
+    const res = await post();
+    expect(res.status).toBe(200);
+    expect(h.move).not.toHaveBeenCalled();
+    expect(h.after).toHaveBeenCalledTimes(1);
+    await h.after.mock.calls[0][0]();
+    expect(h.move).toHaveBeenCalledWith(expect.anything(), { responseId: ID });
+  });
+
+  it("a failed move to Drive is logged and never reaches the customer", async () => {
+    screenAs({ status: "passed", model: "claude-haiku-5-5", view: "side" });
+    h.move.mockRejectedValue(new Error("Drive down"));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect((await post()).status).toBe(200);
+    await expect(h.after.mock.calls[0][0]()).resolves.toBeUndefined();
+    expect(logged).toHaveBeenCalledWith(`[sizing-photo] ${ID} move to Drive failed:`, expect.any(Error));
+  });
+
+  it("schedules no move when the photo wasn't saved", async () => {
+    screenAs({ status: "passed", model: "claude-haiku-5-5", view: "side" });
+    h.upsert.mockResolvedValue({ error: { message: "db down" } });
+    expect((await post()).status).toBe(500);
+    expect(h.after).not.toHaveBeenCalled();
   });
 
   it("never stores a photo Claude rejected, and tells the customer why", async () => {
@@ -79,6 +118,7 @@ describe("POST /api/mp-config/photos screening", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({ error: "This doesn't look like a side view.", screening: "rejected" });
     expect(h.upsert).not.toHaveBeenCalled();
+    expect(h.after).not.toHaveBeenCalled();
   });
 
   it("keeps a photo Claude couldn't check, marked unchecked", async () => {
