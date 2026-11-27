@@ -64,3 +64,4 @@ one is amended to point at it.
 | [0056](0056-a-staff-order-can-be-marked-paid.md) | A Staff order can be marked paid, by a Stripe payment Staff pick or as paid outside Stripe; a Sale paid outside Stripe counts, and its refund is recorded by hand |
 | [0057](0057-a-staff-order-can-carry-a-pillow-or-bolster-build.md) | A Staff order can carry a pillow or bolster, built with the fillings Staff choose from a Filling Template and adjust; priced from Costings, with no Result |
 | [0058](0058-a-staff-order-build-takes-the-cover-and-case-staff-choose.md) | A Staff order's pillow or bolster takes the cover and case Staff choose (a bolster, its case), priced from Costings and used for stock |
+| [0059](0059-sizing-photos-live-on-google-drive.md) | Sizing photos live on Google Drive, sorted into folders by the photo check; the database holds one only until it has moved |

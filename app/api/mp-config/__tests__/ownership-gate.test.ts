@@ -14,6 +14,7 @@ vi.mock("@/lib/auth/admin", () => ({
   requireAdmin: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("@/lib/auth/user", () => ({ getAuthUser: h.getAuthUser }));
+vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => {
     const b = {

@@ -487,7 +487,7 @@ export async function POST(req: Request) {
       try {
         const { data: photos, error: pErr } = await admin
           .from("mp_config_response_photos")
-          .select("view,data_url,screening_status")
+          .select("view,data_url,drive_file_id,screening_status")
           .eq("response_id", id);
         if (pErr) console.error("Failed to load mp-config photos", pErr.message);
 

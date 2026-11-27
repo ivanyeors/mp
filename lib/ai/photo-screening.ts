@@ -15,7 +15,7 @@ export interface ScreenableImage {
 }
 
 export type PhotoScreening =
-  | { status: "passed"; model: string }
+  | { status: "passed"; model: string; view: PhotoScreeningAnswer["view"] }
   | { status: "rejected"; reason: string }
   | { status: "unchecked"; error: string };
 
@@ -140,5 +140,5 @@ export async function screenSizingPhoto(
   if (!answer.success) return { status: "rejected", reason: PHOTO_NOT_USABLE };
 
   const verdict = photoScreeningVerdict(answer.data, view);
-  return verdict.ok ? { status: "passed", model: response.model } : { status: "rejected", reason: verdict.reason };
+  return verdict.ok ? { status: "passed", model: response.model, view: answer.data.view } : { status: "rejected", reason: verdict.reason };
 }

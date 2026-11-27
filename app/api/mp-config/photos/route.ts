@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, tooManyRequests } from "@/lib/rate-limit";
 import { screenSizingPhoto, screenableImage } from "@/lib/ai/photo-screening";
 import { sizingPhotoAsWebp } from "@/lib/results/sizing-photo-webp";
+import { moveSizingPhotosToDrive } from "@/lib/results/sizing-photo-drive";
 
 export const runtime = "nodejs";
 
@@ -87,10 +88,12 @@ export async function POST(req: Request) {
         screening_status: screening.status,
         screening_model: passed ? screening.model : null,
         screened_at: passed ? new Date().toISOString() : null,
+        screened_view: passed ? screening.view : null,
       },
       { onConflict: "response_id,view" },
     );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  after(() => moveSizingPhotosToDrive(admin, { responseId }).catch((e) => console.error(`[sizing-photo] ${responseId} move to Drive failed:`, e)));
   return NextResponse.json({ ok: true, screening: screening.status });
 }

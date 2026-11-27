@@ -1,6 +1,7 @@
 # Sizing photos are screened by Claude before they are kept
 
-Status: Accepted (2026-11-05).
+Status: Accepted (2026-11-05). Amended by ADR 0059 (2026-11-26): a kept photo moves to Google Drive
+right after it is saved, and the database holds it only until then.
 
 A customer's front and side **Sizing photos** go to the build team in the Mpillow Telegram group.
 Anything could be uploaded: a photo of the wrong thing, the wrong view, or an explicit image that
