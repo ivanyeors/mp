@@ -9,13 +9,8 @@ import { nextStep } from "@/lib/crm/next-step";
 import { readNextStepFacts } from "@/lib/crm/next-step-server";
 import { readCustomerReviews } from "@/lib/crm/google-review-match-server";
 import { loadTimeline } from "@/lib/crm/timeline/load";
-import {
-  HISTORY_LINES,
-  MESSAGE_CHANNELS,
-  MESSAGE_INTENTS,
-  suggestMessage,
-  type SuggestMessageInput,
-} from "@/lib/crm/suggest-message";
+import { MESSAGE_CHANNELS, MESSAGE_INTENTS } from "@/lib/crm/message-intents";
+import { HISTORY_LINES, suggestMessage, type SuggestMessageInput } from "@/lib/crm/suggest-message";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

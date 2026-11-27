@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { addDays } from "@/lib/readjustment/eligibility";
 import { FOLLOW_UP_TITLE_MAX, type CustomerFollowUp, type CustomerFollowUpsData } from "@/lib/crm/followup-rules";
 import { NOTE_MAX_LENGTH, type CustomerNote } from "@/lib/crm/note-rules";
-import { MESSAGE_INTENTS, MESSAGE_INTENT_LABELS, type MessageChannel, type MessageIntent } from "@/lib/crm/suggest-message";
+import { MESSAGE_INTENTS, MESSAGE_INTENT_LABELS, type MessageChannel, type MessageIntent } from "@/lib/crm/message-intents";
 import { cn } from "@/lib/utils";
 import { announceFollowUpsChanged } from "../followup-parts";
 import { CopyButton, useShortcuts } from "./customer-shortcuts";

@@ -2,21 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { CLAUDE_NOT_CONFIGURED, SERVER_SIDE_FALLBACK_BETA, claudeCallError, claudeClient } from "@/lib/ai/claude";
 import type { AiModelId } from "@/lib/ai/models";
 import { MPILLOW_ABOUT, MPILLOW_FACT_LINES } from "@/lib/ai/mpillow-facts";
+import type { MessageChannel, MessageIntent } from "./message-intents";
 
 export const SUGGEST_MESSAGE_MODEL: AiModelId = "claude-opus-5-5";
-
-export const MESSAGE_CHANNELS = ["email", "whatsapp"] as const;
-export type MessageChannel = (typeof MESSAGE_CHANNELS)[number];
-
-export const MESSAGE_INTENTS = ["check_in", "review", "after_readjustment", "invite_readjustment"] as const;
-export type MessageIntent = (typeof MESSAGE_INTENTS)[number];
-
-export const MESSAGE_INTENT_LABELS: Record<MessageIntent, string> = {
-  check_in: "Check in",
-  review: "About their review",
-  after_readjustment: "After a re-adjustment",
-  invite_readjustment: "Invite to a re-adjustment",
-};
 
 const INTENT_BRIEF: Record<MessageIntent, string> = {
   check_in: "A friendly check-in: ask how they are getting on with their pillow and whether anything could be better.",
