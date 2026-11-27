@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ChevronDown, Coins } from "lucide-react";
+import { ArrowRight, ChevronDown, Coins } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PointsMilestone } from "@/lib/points/milestones";
@@ -41,9 +41,42 @@ function PointsFacts({ label, facts, termsHref }: { label: string; facts: string
 
 function PointsShell({ children }: { children: ReactNode }) {
   return (
-    <section aria-labelledby="points-title" className="divide-y overflow-hidden rounded-lg border" data-section="points" data-typography-scope="app">
+    <section
+      aria-labelledby="points-title"
+      className="divide-y overflow-hidden rounded-lg border"
+      data-section="points"
+      data-typography-scope="app"
+    >
       {children}
     </section>
+  );
+}
+
+const HERO_BLUE = "linear-gradient(135deg, rgb(0, 23, 54) 0%, rgb(7, 55, 120) 55%, rgb(43, 105, 188) 100%)";
+const HERO_SHEEN = "inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5), inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.25)";
+
+function PointsHero({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative isolate overflow-hidden p-5 text-white sm:p-6" style={{ backgroundImage: HERO_BLUE }} data-section="points-hero">
+      <span aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10" style={{ boxShadow: HERO_SHEEN }} />
+      <span aria-hidden="true" className="mp-chat-aurora-a pointer-events-none absolute -right-10 -top-16 -z-10 size-48 rounded-full bg-blue-400/40 blur-3xl" />
+      <span aria-hidden="true" className="mp-chat-aurora-b pointer-events-none absolute -bottom-20 right-16 -z-10 size-40 rounded-full bg-sky-300/25 blur-3xl" />
+      <span aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-16 -z-10 size-56 rounded-full border border-white/10" />
+      <span aria-hidden="true" className="pointer-events-none absolute -bottom-14 -right-6 -z-10 size-36 rounded-full border border-white/10" />
+      <span aria-hidden="true" className="pointer-events-none absolute -bottom-4 right-4 -z-10 size-16 rounded-full border border-white/15" />
+      {children}
+    </div>
+  );
+}
+
+function HeroTitle({ children }: { children: ReactNode }) {
+  return (
+    <h2 id="points-title" className="flex items-center gap-2 text-sm font-medium leading-snug text-blue-100">
+      <span className="flex size-7 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+        <Coins className="size-3.5" aria-hidden="true" />
+      </span>
+      {children}
+    </h2>
   );
 }
 
@@ -63,31 +96,37 @@ export function PointsCard({
   const hasMilestones = Boolean(milestones?.ladder.length);
   return (
     <PointsShell>
-      <div className="flex items-start justify-between gap-3 p-5 sm:p-6">
-        <div className="min-w-0">
-          <h2 id="points-title" className="flex items-center gap-2 text-base font-medium leading-snug">
-            <Coins className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Points
-          </h2>
-          <p className="mt-3 text-4xl font-semibold leading-none tracking-tight tabular-nums">
-            {count(balance.available)}
-            <span className="sr-only"> points</span>
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {balance.available > 0 ? `Worth ${formatDollars(pointsToDollars(balance.available))} off shop orders` : "Money off shop orders"}
-          </p>
+      <PointsHero>
+        <div className="flex items-start justify-between gap-3">
+          <HeroTitle>Points</HeroTitle>
+          <Button asChild size="sm" className="shrink-0 rounded-full bg-white text-blue-950 shadow-none hover:bg-white/90 active:bg-white/80">
+            <Link href={shopHref}>
+              Shop
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          </Button>
         </div>
-        <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link href={shopHref}>Shop</Link>
-        </Button>
-      </div>
+        <p className="mt-4 text-5xl font-semibold leading-none tracking-tight tabular-nums">
+          {count(balance.available)}
+          <span className="sr-only"> points</span>
+        </p>
+        <p className="mt-2 text-sm text-blue-100">
+          {balance.available > 0 ? (
+            <>
+              Worth <span className="font-medium text-white">{formatDollars(pointsToDollars(balance.available))}</span> off shop orders
+            </>
+          ) : (
+            "Money off shop orders"
+          )}
+        </p>
+      </PointsHero>
 
       {milestones && hasMilestones ? <MilestoneBar ladder={milestones.ladder} earned={milestones.earned} pending={balance.pending} /> : null}
 
       {pending.length ? (
         <div className="space-y-3 p-5 sm:p-6" data-section="points-pending">
           <p className="flex items-center gap-2 text-sm font-medium">
-            {hasMilestones ? <span aria-hidden="true" className="size-2 rounded-full bg-primary/30" /> : null}
+            {hasMilestones ? <span aria-hidden="true" className="size-2 rounded-full bg-blue-400/50" /> : null}
             On their way
           </p>
           <ul className="space-y-3">
@@ -99,7 +138,7 @@ export function PointsCard({
                     {p.releaseAt ? `Usable from ${sgDate(p.releaseAt)}` : "Usable 30 days after delivery"}
                   </span>
                 </span>
-                <span className="shrink-0 font-medium tabular-nums">
+                <span className="shrink-0 font-medium tabular-nums text-blue-600 dark:text-blue-400">
                   +{count(p.points)}
                   <span className="sr-only"> points</span>
                 </span>
@@ -136,20 +175,19 @@ export function PointsComingSoonCard({
 }) {
   return (
     <PointsShell>
-      <div className="space-y-2 p-5 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 id="points-title" className="flex items-center gap-2 text-base font-medium leading-snug">
-            <Coins className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Mpillow Points
-          </h2>
-          <Badge variant="outline">Coming soon</Badge>
+      <PointsHero>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <HeroTitle>Mpillow Points</HeroTitle>
+          <Badge variant="outline" className="border-white/25 bg-white/10 text-white">
+            Coming soon
+          </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-4 max-w-sm text-base leading-snug text-blue-50">
           {earnPerDollar > 0
             ? `You'll earn ${formatEarnRate(earnPerDollar)} for every S$1 you pay for products, before GST.`
             : "Money off shop orders."}
         </p>
-      </div>
+      </PointsHero>
 
       {milestones.length ? <MilestoneBar ladder={milestones} preview /> : null}
 

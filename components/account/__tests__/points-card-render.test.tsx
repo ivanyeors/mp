@@ -22,7 +22,7 @@ describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
   );
 
   it("leads with the balance as one number and what it is worth, with the way to the shop", () => {
-    expect(text(html)).toContain("Points2,130 pointsWorth S$21.30 off shop orders");
+    expect(text(layer(html, "points-hero"))).toMatch(/^[^P]*PointsShop2,130 pointsWorth S\$21\.30 off shop orders/);
     expect(html).toContain('href="/en-US/shop"');
     expect(html).toMatch(/<section[^>]*data-typography-scope="app"/);
     expect(alwaysShown(html)).not.toMatch(/\. /);
@@ -49,7 +49,7 @@ describe("Profile → Points (PRD-loyalty-points slice 02)", () => {
     const empty = renderToStaticMarkup(
       <PointsCard balance={{ available: 0, pending: 0 }} pending={[]} termsHref="/en-US/points" shopHref="/en-US/shop" />,
     );
-    expect(text(empty)).toContain("Points0 pointsMoney off shop orders");
+    expect(text(layer(empty, "points-hero"))).toContain("0 pointsMoney off shop orders");
     expect(empty).not.toContain("Worth");
     expect(empty).not.toContain("On their way");
   });
