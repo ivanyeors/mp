@@ -49,8 +49,6 @@ const XrayCrossSectionStrip = dynamic(
 
 type ReadjustDraft = { base: string; size: PillowSizeKey; placements: PillowPlacementRow[] };
 
-export const readjustDraftKey = (customerId: string) => `readjust:${customerId}`;
-
 function pillowBase(size: PillowSizeKey, placements: PillowPlacement[]): string {
     return JSON.stringify({ size, placements: pillowPlacementsToRows(placements) });
 }
@@ -68,6 +66,7 @@ function countChanges(before: PillowPlacement[], after: PillowPlacement[], label
 
 export function ReadjustDialog({
     customerId,
+    draftKey,
     pillow,
     open,
     onOpenChange,
@@ -76,6 +75,7 @@ export function ReadjustDialog({
     onCatalog,
 }: {
     customerId: string;
+    draftKey: string;
     pillow: CustomerPillowView;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -86,7 +86,6 @@ export function ReadjustDialog({
     const initial = useMemo(() => rowsToPillowPlacements(pillow.placements), [pillow.placements]);
     const savedSize: PillowSizeKey = pillow.size ?? "M";
     const base = useMemo(() => pillowBase(savedSize, initial), [savedSize, initial]);
-    const draftKey = readjustDraftKey(customerId);
     const [kept, setKept] = useState(() => readDraft<ReadjustDraft>(draftKey));
     const keptFits = kept !== null && kept.data.base === base;
     const [placements, setPlacements] = useState<PillowPlacement[]>(() =>
