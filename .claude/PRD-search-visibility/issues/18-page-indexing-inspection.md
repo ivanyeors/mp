@@ -24,7 +24,8 @@ Asked for by the owner, 2026-11-27: stop exporting Search Console's Page indexin
 
 - [x] Request shape, refusal message and classification covered by `lib/seo-metrics/__tests__/inspect-urls.test.ts`
 - [x] The first-seen date is kept while an issue persists, restarts when the issue changes, and clears when fixed
-- [x] One failing page does not lose the others' results; repeated refusals stop the run after 5 requests
+- [x] One failing page does not lose the others' results or its own last answer
+- [x] A page Google refuses is recorded and goes to the back of the queue, so pages that fail every time never hold up the rest; the list says how many could not be checked
 - [x] A page not checked for 14 days (removed from the site) drops off the list
 - [ ] (OPS) Migration applied, and the cron response shows `urlInspections.inspected > 0`
 

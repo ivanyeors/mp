@@ -28,7 +28,7 @@ import {
   type KeyTotals,
 } from "@/lib/seo-metrics/queries";
 import { createSupabaseSeoMetricsStore, GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
-import { buildIndexingReport, FRESH_DAYS } from "@/lib/seo-metrics/inspect-urls";
+import { buildIndexingReport, FRESH_DAYS, type IndexingReportRow } from "@/lib/seo-metrics/inspect-urls";
 import { parseReport, REPORT_LABELS, siteMismatchWarning } from "@/lib/seo-metrics/csv-import";
 import { getSiteOrigin } from "@/lib/site-url";
 
@@ -297,11 +297,13 @@ export async function getPageIndexing() {
   await assertAdmin("analytics");
   const today = new Date().toISOString().slice(0, 10);
   const admin = supabaseAdmin();
-  const rows = await fetchAllPages<Parameters<typeof buildIndexingReport>[0][number]>((a, b) =>
+  const rows = await fetchAllPages<IndexingReportRow>((a, b) =>
     admin
       .from("seo_url_inspections")
-      .select("url, in_sitemap, issue, issue_since, last_crawl_time, inspection_link, verdict, inspected_at")
-      .gte("inspected_at", addDays(today, -FRESH_DAYS))
+      .select(
+        "url, in_sitemap, issue, issue_since, last_crawl_time, inspection_link, verdict, inspected_at, attempted_at, error",
+      )
+      .gte("attempted_at", addDays(today, -FRESH_DAYS))
       .order("url", { ascending: true })
       .range(a, b),
   );

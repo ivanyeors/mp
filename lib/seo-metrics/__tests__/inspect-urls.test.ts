@@ -29,6 +29,9 @@ function memoryStore(seed: StoredInspection[] = []) {
     async upsert(batch) {
       for (const row of batch) rows.set(row.url, row);
     },
+    async recordFailures(batch) {
+      for (const row of batch) rows.set(row.url, { issue: null, issue_since: null, ...rows.get(row.url), ...row });
+    },
   };
   return { store, rows };
 }
@@ -141,11 +144,12 @@ describe("inspectionIssue", () => {
 });
 
 describe("planInspections", () => {
-  const stored = (url: string, inspected_at: string): StoredInspection => ({
+  const stored = (url: string, attempted_at: string, error: string | null = null): StoredInspection => ({
     url,
     issue: null,
     issue_since: null,
-    inspected_at,
+    attempted_at,
+    error,
   });
 
   it("takes never-checked pages first, then the longest unchecked, up to the limit", () => {
@@ -160,6 +164,22 @@ describe("planInspections", () => {
       3,
     );
     expect(plan.map((t) => t.url)).toEqual(["https://x/new", "https://x/newer", "https://x/old"]);
+  });
+
+  it("leaves a page Google refused last time until after every other page, however long ago that was", () => {
+    const plan = planInspections(
+      [
+        { url: "https://x/refused", inSitemap: false },
+        { url: "https://x/recent", inSitemap: true },
+        { url: "https://x/new", inSitemap: true },
+      ],
+      [
+        stored("https://x/refused", "2026-11-01T02:00:00Z", "Search Console 400: bad"),
+        stored("https://x/recent", "2026-11-26T02:00:00Z"),
+      ],
+      10,
+    );
+    expect(plan.map((t) => t.url)).toEqual(["https://x/new", "https://x/recent", "https://x/refused"]);
   });
 
   it("checks a URL once, as a sitemap page when any source says so", () => {
@@ -210,7 +230,8 @@ describe("runUrlInspections", () => {
       url,
       issue,
       issue_since: earlier,
-      inspected_at: earlier,
+      attempted_at: earlier,
+      error: null,
     });
     const { store, rows } = memoryStore([
       seed("https://x/a", "Not found (404)"),
@@ -243,26 +264,64 @@ describe("runUrlInspections", () => {
     });
 
     expect(summary).toMatchObject({ ok: false, inspected: 2, failed: 1, error: "Search Console 500: boom" });
-    expect([...rows.keys()].sort()).toEqual(["https://x/a", "https://x/c"]);
+    expect(rows.get("https://x/a")).toMatchObject({ verdict: "PASS", error: null });
+    expect(rows.get("https://x/c")).toMatchObject({ verdict: "PASS", error: null });
+    expect(rows.get("https://x/b")).toMatchObject({ attempted_at: NOW, error: "Search Console 500: boom" });
+    expect(rows.get("https://x/b")).not.toHaveProperty("verdict");
   });
 
-  it("gives up after repeated refusals instead of asking for every page", async () => {
-    const many = Array.from({ length: 40 }, (_, i) => ({ url: `https://x/${i}`, inSitemap: true }));
-    const { store } = memoryStore();
-    const { client, asked } = fakeInspector(
-      Object.fromEntries(many.map((t) => [t.url, new Error("Search Console 403: no permission")])),
-    );
+  it("keeps the last answer for a page whose check fails this time", async () => {
+    const earlier = "2026-11-10T02:00:00.000Z";
+    const { store, rows } = memoryStore([
+      { url: "https://x/b", issue: "Not found (404)", issue_since: earlier, attempted_at: earlier, error: null },
+    ]);
+    const { client } = fakeInspector({ "https://x/b": new Error("Search Console 500: boom") });
 
-    const summary = await runUrlInspections(store, client, {
-      targets: many,
-      property: SITE,
-      now: NOW,
-      deadline: Infinity,
-      concurrency: 1,
+    await runUrlInspections(store, client, { targets, property: SITE, now: NOW, deadline: Infinity });
+
+    expect(rows.get("https://x/b")).toMatchObject({
+      issue: "Not found (404)",
+      issue_since: earlier,
+      attempted_at: NOW,
+      error: "Search Console 500: boom",
     });
+  });
 
-    expect(asked).toHaveLength(5);
-    expect(summary).toMatchObject({ ok: false, inspected: 0, failed: 5, remaining: 35 });
+  it("is not blocked by pages Google refuses every time: the rest are checked on every run, and first", async () => {
+    const refused = Array.from({ length: 6 }, (_, i) => ({ url: `https://x/bad-${i}`, inSitemap: false }));
+    const good = [
+      { url: "https://x/good-1", inSitemap: true },
+      { url: "https://x/good-2", inSitemap: true },
+    ];
+    const { store, rows } = memoryStore();
+    const { client, asked } = fakeInspector(
+      Object.fromEntries(refused.map((t) => [t.url, new Error("Search Console 400: Invalid inspection URL")])),
+    );
+    const run = (now: string) =>
+      runUrlInspections(store, client, {
+        targets: [...refused, ...good],
+        property: SITE,
+        now,
+        deadline: Infinity,
+        concurrency: 1,
+      });
+
+    expect(await run("2026-11-27T02:00:00.000Z")).toMatchObject({ ok: false, inspected: 2, failed: 6 });
+    for (const now of ["2026-11-28T02:00:00.000Z", "2026-11-29T02:00:00.000Z"]) {
+      asked.length = 0;
+      expect(await run(now)).toMatchObject({ inspected: 2, failed: 6 });
+      expect(asked.slice(0, 2)).toEqual(["https://x/good-1", "https://x/good-2"]);
+      expect(rows.get("https://x/good-1")).toMatchObject({ verdict: "PASS", inspected_at: now });
+    }
+  });
+
+  it("spends a short run on the pages that can be checked, not on one Google refused", async () => {
+    const { store } = memoryStore([
+      { url: "https://x/a", issue: null, issue_since: null, attempted_at: "2026-11-01T02:00:00Z", error: "refused" },
+    ]);
+    const { client, asked } = fakeInspector({});
+    await runUrlInspections(store, client, { targets, property: SITE, now: NOW, limit: 2, deadline: Infinity });
+    expect(asked.sort()).toEqual(["https://x/b", "https://x/c"]);
   });
 
   it("stops at the time limit and leaves the rest for the next run", async () => {
@@ -284,6 +343,8 @@ describe("buildIndexingReport", () => {
     inspection_link: null,
     verdict: issue ? "NEUTRAL" : "PASS",
     inspected_at,
+    attempted_at: inspected_at,
+    error: null,
   });
 
   it("groups pages by issue, biggest group first, and counts what was checked", () => {
@@ -312,5 +373,17 @@ describe("buildIndexingReport", () => {
     );
     expect(report.checked).toBe(1);
     expect(report.groups).toEqual([]);
+  });
+
+  it("counts a page Google refused as not checked, never as checked or indexed", () => {
+    const report = buildIndexingReport(
+      [
+        row("https://x/ok", null),
+        { ...row("https://x/refused", null), verdict: null, inspected_at: null, error: "Search Console 400: bad" },
+        { ...row("https://x/was-fine", null, "2026-11-20T02:00:00.000Z"), attempted_at: NOW, error: "Search Console 500" },
+      ],
+      "2026-11-27",
+    );
+    expect(report).toMatchObject({ checked: 2, indexed: 2, unchecked: 2 });
   });
 });

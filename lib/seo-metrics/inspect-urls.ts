@@ -13,7 +13,6 @@ import { GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
 export const INSPECT_LIMIT_PER_RUN = 300;
 export const INSPECT_BUDGET_MS = 60_000;
 export const INSPECT_CONCURRENCY = 4;
-export const INSPECT_GIVE_UP_AFTER_FAILURES = 5;
 export const FRESH_DAYS = 14;
 export const IMPRESSION_PAGE_DAYS = 90;
 
@@ -35,13 +34,22 @@ export type UrlInspectionRow = {
   issue_since: string | null;
   inspection_link: string | null;
   inspected_at: string;
+  attempted_at: string;
+  error: null;
 };
 
-export type StoredInspection = Pick<UrlInspectionRow, "url" | "issue" | "issue_since" | "inspected_at">;
+export type FailedInspection = Pick<UrlInspectionRow, "url" | "property" | "in_sitemap" | "attempted_at"> & {
+  error: string;
+};
+
+export type StoredInspection = Pick<UrlInspectionRow, "url" | "issue" | "issue_since" | "attempted_at"> & {
+  error: string | null;
+};
 
 export type UrlInspectionStore = {
   existing(): Promise<StoredInspection[]>;
   upsert(rows: UrlInspectionRow[]): Promise<void>;
+  recordFailures(rows: FailedInspection[]): Promise<void>;
 };
 
 const EXPECTED_OFF_SITEMAP_STATES = ["page with redirect", "alternate page with proper canonical tag"];
@@ -80,9 +88,10 @@ export function planInspections(
     const seen = byUrl.get(target.url);
     byUrl.set(target.url, { url: target.url, inSitemap: target.inSitemap || (seen?.inSitemap ?? false) });
   }
-  const inspectedAt = new Map(existing.map((row) => [row.url, row.inspected_at]));
+  const stored = new Map(existing.map((row) => [row.url, row]));
+  const turn = (url: string) => `${stored.get(url)?.error ? 1 : 0}${stored.get(url)?.attempted_at ?? ""}`;
   return [...byUrl.values()]
-    .sort((a, b) => (inspectedAt.get(a.url) ?? "").localeCompare(inspectedAt.get(b.url) ?? ""))
+    .sort((a, b) => turn(a.url).localeCompare(turn(b.url)))
     .slice(0, limit);
 }
 
@@ -110,6 +119,8 @@ export function toInspectionRow(
     issue_since: issue ? (previous?.issue === issue ? (previous.issue_since ?? opts.now) : opts.now) : null,
     inspection_link: result.inspectionResultLink ?? null,
     inspected_at: opts.now,
+    attempted_at: opts.now,
+    error: null,
   };
 }
 
@@ -141,24 +152,31 @@ export async function runUrlInspections(
   const queue = planInspections(opts.targets, existing, opts.limit ?? INSPECT_LIMIT_PER_RUN);
 
   const rows: UrlInspectionRow[] = [];
-  let failed = 0;
-  let error: string | undefined;
+  const failures: FailedInspection[] = [];
 
   async function worker() {
-    while (queue.length > 0 && Date.now() < deadline && failed < INSPECT_GIVE_UP_AFTER_FAILURES) {
+    while (queue.length > 0 && Date.now() < deadline) {
       const target = queue.shift()!;
       try {
         const result = await client.inspectUrl(target.url);
         rows.push(toInspectionRow(target, result, previous.get(target.url), opts));
       } catch (e) {
-        failed += 1;
-        error ??= e instanceof Error ? e.message : "URL inspection failed";
+        failures.push({
+          url: target.url,
+          property: opts.property,
+          in_sitemap: target.inSitemap,
+          attempted_at: opts.now,
+          error: e instanceof Error ? e.message : "URL inspection failed",
+        });
       }
     }
   }
 
   await Promise.all(Array.from({ length: opts.concurrency ?? INSPECT_CONCURRENCY }, worker));
   await store.upsert(rows);
+  await store.recordFailures(failures);
+  const failed = failures.length;
+  const error = failures[0]?.error;
 
   return {
     ok: failed === 0,
@@ -180,7 +198,7 @@ export function createSupabaseUrlInspectionStore(admin: SupabaseClient): UrlInsp
       for (let from = 0; ; from += PAGE) {
         const { data, error } = await admin
           .from("seo_url_inspections")
-          .select("url, issue, issue_since, inspected_at")
+          .select("url, issue, issue_since, attempted_at, error")
           .order("url", { ascending: true })
           .range(from, from + PAGE - 1);
         if (error) throw new Error(`seo_url_inspections read: ${error.message}`);
@@ -195,6 +213,11 @@ export function createSupabaseUrlInspectionStore(admin: SupabaseClient): UrlInsp
           .upsert(rows.slice(i, i + PAGE), { onConflict: "url" });
         if (error) throw new Error(`seo_url_inspections upsert: ${error.message}`);
       }
+    },
+    async recordFailures(rows) {
+      if (rows.length === 0) return;
+      const { error } = await admin.from("seo_url_inspections").upsert(rows, { onConflict: "url" });
+      if (error) throw new Error(`seo_url_inspections failures: ${error.message}`);
     },
   };
 }
@@ -246,15 +269,24 @@ export type IndexingIssue = Pick<
 export type IndexingReport = {
   checked: number;
   indexed: number;
+  unchecked: number;
   lastChecked: string | null;
   groups: { issue: string; pages: IndexingIssue[] }[];
 };
 
-export function buildIndexingReport(
-  rows: (IndexingIssue & Pick<UrlInspectionRow, "verdict" | "inspected_at">)[],
-  today: string,
-): IndexingReport {
-  const fresh = rows.filter((row) => row.inspected_at.slice(0, 10) >= addDays(today, -FRESH_DAYS));
+export type IndexingReportRow = IndexingIssue & {
+  verdict: string | null;
+  inspected_at: string | null;
+  attempted_at: string;
+  error: string | null;
+};
+
+export function buildIndexingReport(rows: IndexingReportRow[], today: string): IndexingReport {
+  const since = addDays(today, -FRESH_DAYS);
+  const fresh = rows.filter(
+    (row): row is IndexingReportRow & { inspected_at: string } =>
+      row.inspected_at !== null && row.inspected_at.slice(0, 10) >= since,
+  );
   const groups = new Map<string, IndexingIssue[]>();
   for (const row of fresh) {
     if (!row.issue) continue;
@@ -272,6 +304,7 @@ export function buildIndexingReport(
   return {
     checked: fresh.length,
     indexed: fresh.filter((row) => row.verdict === "PASS").length,
+    unchecked: rows.filter((row) => row.error !== null && row.attempted_at.slice(0, 10) >= since).length,
     lastChecked: fresh.map((row) => row.inspected_at).sort().at(-1) ?? null,
     groups: [...groups.entries()]
       .map(([issue, pages]) => ({ issue, pages: pages.sort((a, b) => a.url.localeCompare(b.url)) }))

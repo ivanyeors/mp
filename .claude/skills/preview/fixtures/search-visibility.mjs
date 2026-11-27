@@ -40,6 +40,8 @@ export default function searchVisibility({ scenario, now }) {
     last_crawl_time: ago(2),
     inspection_link: "https://search.google.com/search-console/inspect",
     inspected_at: ago(0),
+    attempted_at: ago(0),
+    error: null,
     ...extra,
   });
 
@@ -69,6 +71,13 @@ export default function searchVisibility({ scenario, now }) {
         row("/en-US/shop/ear-comfort-pad", "Discovered - currently not indexed", { last_crawl_time: null }),
         row("/products/customised-pillow?variant=41200001", "Not found (404)", { in_sitemap: false, issue_since: ago(7) }),
         row("/blogs/news/best-pillow-for-neck-pain", "Not found (404)", { in_sitemap: false, issue_since: ago(7) }),
+        row("/en-US/shop/%E0%A4%A", null, {
+          verdict: null,
+          coverage_state: null,
+          inspected_at: null,
+          last_crawl_time: null,
+          error: "Search Console 400: Invalid inspection URL",
+        }),
         row("/en-US/shop/slope-mattress", "Structured data: Product snippets: Missing field 'price'", {
           verdict: "PASS",
           coverage_state: "Submitted and indexed",

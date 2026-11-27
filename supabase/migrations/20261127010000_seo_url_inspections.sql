@@ -11,6 +11,11 @@
 -- other than indexed; for a page outside the sitemap a redirect, an alternate
 -- with a proper canonical, or a noindex is deliberate and is not an issue.
 -- issue_since is when the current issue was first seen, kept while it persists.
+--
+-- attempted_at is the last time the URL was asked about and decides whose turn
+-- is next; inspected_at is the last time Google answered. When a request
+-- fails, only attempted_at and error change, so the last answer is kept and
+-- the URL goes to the back of the queue instead of blocking it.
 
 create table if not exists seo_url_inspections (
   url text primary key,
@@ -27,7 +32,9 @@ create table if not exists seo_url_inspections (
   issue text,
   issue_since timestamptz,
   inspection_link text,
-  inspected_at timestamptz not null default now()
+  inspected_at timestamptz,
+  attempted_at timestamptz not null default now(),
+  error text
 );
 
 create index if not exists idx_seo_url_inspections_issue

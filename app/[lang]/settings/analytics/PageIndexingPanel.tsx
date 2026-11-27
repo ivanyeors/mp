@@ -33,7 +33,7 @@ export function PageIndexingPanel({ report }: { report: IndexingReport }) {
   const [copied, setCopied] = useState(false);
   const withIssues = report.groups.reduce((n, group) => n + group.pages.length, 0);
 
-  if (report.checked === 0) {
+  if (report.checked === 0 && report.unchecked === 0) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground max-md:p-4">
         No pages checked yet. Once the Search Console service account can read the property, the daily job asks Google
@@ -130,6 +130,12 @@ export function PageIndexingPanel({ report }: { report: IndexingReport }) {
       )}
 
       <div className="text-xs text-muted-foreground">
+        {report.unchecked > 0 ? (
+          <span className="text-amber-700 dark:text-amber-400">
+            {int.format(report.unchecked)} {report.unchecked === 1 ? "page" : "pages"} could not be checked: the
+            request to Google failed.{" "}
+          </span>
+        ) : null}
         {formatDay(report.lastChecked) ? `Last checked ${formatDay(report.lastChecked)}. ` : null}
         Checked daily: every page in the sitemap, and every other page Google showed in search in the last 90 days. A
         page outside the sitemap that redirects or is marked noindex is left out as intended. After a fix ships, the
