@@ -8,14 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
+import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { keepSendingStatus } from "@/lib/email-campaigns/keep-sending";
+import { nextBatchLine } from "@/lib/email-campaigns/progress";
+import { readCampaignProgress, type ProgressAnswer } from "@/lib/email-campaigns/progress-server";
 import { CAMPAIGN_AUDIENCE_LABEL } from "@/lib/email-campaigns/rules";
 import { RESULT_WINDOW_DAYS, formatSgd } from "@/lib/email-campaigns/results";
 import { readSendingStatus, type SendingStatus } from "@/lib/email-campaigns/sender";
 import { campaignSenderSetup } from "@/lib/email-campaigns/setup";
 import { listCampaigns, type CampaignListItem } from "@/lib/email-campaigns/store";
-import { formatAdminDateTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -39,6 +41,26 @@ function KeepSendingBadge({ item }: { item: CampaignListItem }) {
     );
 }
 
+function ProgressSummary({ name, answer }: { name: string; answer: ProgressAnswer | undefined }) {
+    if (!answer) return <span className="text-sm text-muted-foreground">—</span>;
+    if ("error" in answer) {
+        return <span className="block text-xs text-muted-foreground">Could not count who is left: {answer.error}</span>;
+    }
+    const n = (v: number) => v.toLocaleString("en-SG");
+    return (
+        <span className="block min-w-44 space-y-1.5">
+            <span className="flex items-baseline justify-between gap-3 text-xs tabular-nums">
+                <span className="text-foreground">
+                    {n(answer.sent)} of {n(answer.total)} sent
+                </span>
+                <span className="text-muted-foreground">{answer.percent}%</span>
+            </span>
+            <Progress value={answer.percent} aria-label={`${name}: ${n(answer.sent)} of ${n(answer.total)} sent`} />
+            <span className="block text-xs text-muted-foreground">{nextBatchLine(answer)}</span>
+        </span>
+    );
+}
+
 export default async function EmailCampaignsPage({ params }: { params: Promise<{ lang: string }> }) {
     const { lang } = await params;
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
@@ -54,6 +76,10 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
     ]);
     if (listed instanceof Error) error = listed.message;
     else items = listed;
+    const progress = await readCampaignProgress(supabaseAdmin(), items, {
+        now: new Date(),
+        dailyLimit: status?.allowance?.limits.daily ?? null,
+    });
 
     return (
         <div className="space-y-6">
@@ -127,6 +153,11 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                             </span>
                                         ) : null}
                                     </span>
+                                    {item.campaign.lockedAt ? (
+                                        <span className="mt-2 block">
+                                            <ProgressSummary name={item.campaign.name} answer={progress.get(item.campaign.id)} />
+                                        </span>
+                                    ) : null}
                                 </MobileListRow>
                             );
                         })}
@@ -147,7 +178,7 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                         <TableHead className="hidden text-right sm:table-cell">Bounced</TableHead>
                                         <TableHead className="hidden text-right sm:table-cell">Spam</TableHead>
                                         <TableHead className="hidden text-right lg:table-cell">Sign-in clicks</TableHead>
-                                        <TableHead className="hidden lg:table-cell">Last sent</TableHead>
+                                        <TableHead className="min-w-52">Progress</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -194,8 +225,8 @@ export default async function EmailCampaignsPage({ params }: { params: Promise<{
                                                 <TableCell className="hidden text-right tabular-nums lg:table-cell">
                                                     {item.stats.linkClicks}
                                                 </TableCell>
-                                                <TableCell className="hidden text-sm lg:table-cell">
-                                                    {item.stats.lastSentAt ? formatAdminDateTime(item.stats.lastSentAt) : "—"}
+                                                <TableCell>
+                                                    <ProgressSummary name={item.campaign.name} answer={progress.get(item.campaign.id)} />
                                                 </TableCell>
                                             </TableRow>
                                         );

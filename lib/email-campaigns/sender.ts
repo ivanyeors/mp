@@ -516,7 +516,7 @@ export interface CampaignExclusionSource {
   ids: () => AsyncIterable<string[]>;
 }
 
-async function readExclusions(sources: readonly CampaignExclusionSource[]): Promise<SegmentExclusion[]> {
+export async function readExclusions(sources: readonly CampaignExclusionSource[]): Promise<SegmentExclusion[]> {
   return Promise.all(
     sources.map(async (x) => {
       const customerIds = new Set<string>();

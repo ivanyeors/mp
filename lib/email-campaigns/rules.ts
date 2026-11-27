@@ -409,6 +409,30 @@ export function planCampaignWave(
   };
 }
 
+export interface StillToSend {
+  readyNow: number;
+  resting: number;
+  restingUntil: string | null;
+}
+
+export function stillToSend(
+  audience: CampaignAudience,
+  candidates: readonly CampaignCandidate[],
+  { now = new Date(), holdout = false, includeUnengaged = false }: { now?: Date; holdout?: boolean; includeUnengaged?: boolean } = {},
+): StillToSend {
+  const left: StillToSend = { readyNow: 0, resting: 0, restingUntil: null };
+  for (const c of candidates) {
+    if (holdout && inHoldout(c.holdoutBucket)) continue;
+    const blocker = composedCampaignBlocker(audience, c, { now, includeUnengaged });
+    if (blocker === null) left.readyNow++;
+    if (blocker !== "resting") continue;
+    left.resting++;
+    const until = restUntil(c.recentMarketing, now);
+    if (until && (!left.restingUntil || until < left.restingUntil)) left.restingUntil = until;
+  }
+  return left;
+}
+
 export interface SegmentExclusion {
   segmentId: string;
   name: string;
