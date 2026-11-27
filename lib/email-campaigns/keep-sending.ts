@@ -105,6 +105,19 @@ export function singaporeDate(at: Date): string {
   return new Date(at.getTime() + 8 * 3600_000).toISOString().slice(0, 10);
 }
 
+const DAY_MS = 24 * 3600_000;
+const SINGAPORE_OFFSET_MS = 8 * 3600_000;
+export const KEPT_RAMP_DAYS = 2;
+
+export function keptRampUntil(stats: readonly Pick<CampaignWaveStats, "handed" | "lastSentAt">[], nowMs: number): string | null {
+  const delivered = stats.filter((s) => s.handed > 0 && s.lastSentAt);
+  if (delivered.length !== 1) return null;
+  const sent = Date.parse(delivered[0].lastSentAt!);
+  const singaporeDayStart = Math.floor((sent + SINGAPORE_OFFSET_MS) / DAY_MS) * DAY_MS - SINGAPORE_OFFSET_MS;
+  const until = singaporeDayStart + KEPT_RAMP_DAYS * DAY_MS;
+  return Number.isFinite(until) && nowMs < until ? new Date(until).toISOString() : null;
+}
+
 const KEPT_WAVE = /^daily-(\d{4}-\d{2}-\d{2})$/;
 
 export const keptWaveLabel = (at: Date): string => `daily-${singaporeDate(at)}`;

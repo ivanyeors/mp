@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { keptRampUntil } from "./keep-sending";
 import { campaignProgress, type CampaignProgress } from "./progress";
 import { excludeSegmentMembers, stillToSend } from "./rules";
 import { leftOutSegments, segmentAudience } from "./segment-sources";
-import { rampUntil } from "./send-flow";
 import { readExclusions } from "./sender";
 import { readCampaignCandidates, readWaveStats, type CampaignListItem } from "./store";
 
@@ -30,7 +30,7 @@ export async function readCampaignProgress(
         });
         return [
           campaign.id,
-          campaignProgress({ sent: stats.handed, left, keepSending: campaign.keepSending, rampUntil: rampUntil(waves.own, now.getTime()), dailyLimit, now }),
+          campaignProgress({ sent: stats.handed, left, keepSending: campaign.keepSending, rampUntil: keptRampUntil(waves.own, now.getTime()), dailyLimit, now }),
         ];
       } catch (err) {
         return [campaign.id, { error: err instanceof Error ? err.message : String(err) }];

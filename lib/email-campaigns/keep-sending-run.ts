@@ -3,13 +3,15 @@ import { formatAdminDateTime } from "@/lib/format/admin-date";
 import {
   KEEP_SENDING_RESERVE,
   campaignSegmentIds,
+  keptRampUntil,
   keptWaveLabel,
   keptWaveSize,
   segmentChange,
   type LiveSegment,
 } from "./keep-sending";
 import type { Campaign } from "./rules";
-import { CHECK_LABEL, isEmailCheck, rampUntil } from "./send-flow";
+import { keptRunAtOrAfter } from "./progress";
+import { CHECK_LABEL, isEmailCheck } from "./send-flow";
 import {
   BATCH_SIZE,
   planWave,
@@ -85,9 +87,9 @@ export async function runKeptSending(deps: KeptSendingDeps): Promise<KeptSending
         await pause(changed);
         continue;
       }
-      const ramp = rampUntil((await readWaveStats(setup.admin, campaign.id)).own, now.getTime());
+      const ramp = keptRampUntil((await readWaveStats(setup.admin, campaign.id)).own, now.getTime());
       if (ramp) {
-        out.held = `it waits until ${formatAdminDateTime(ramp)} for the first wave's bounces and spam reports`;
+        out.held = `it waits until ${formatAdminDateTime(keptRunAtOrAfter(Date.parse(ramp)).toISOString())} for the first wave's bounces and spam reports`;
         continue;
       }
 

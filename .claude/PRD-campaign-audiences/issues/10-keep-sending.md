@@ -60,8 +60,11 @@ page lists that Wave.
   - **It pauses a campaign** whose Segments changed, or whose email fails a check (a link that
     died, a product taken off the shop, points turned off): those need a person. The day goes on
     for the others.
-  - **It waits** out the 48 hours after a campaign's first wave (`rampUntil`), as a person is
-    told to, so the first wave's bounces are in before more go.
+  - **It waits** two days after a campaign's first wave (`keptRampUntil`), so the first wave's
+    bounces are in before more go. **Changed 2026-11-27:** it counts Singapore days, not 48 hours
+    to the second, so the 10:00 run on the second day always sends. Measured in hours, a first
+    wave sent after 10:00 missed that run by the difference and waited a third day. A person
+    sending by hand is still told to wait the 48 hours (`rampUntil`).
   - It sends to anyone in the Audience who has not had it, so people the first wave left waiting
     for room get it too, a cap a day.
 - **Visible:** the campaign list marks *Keeps sending* and *Paused*; the Sending card says how

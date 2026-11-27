@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { KEEP_SENDING_OFF, type KeepSending } from "../keep-sending";
+import { KEEP_SENDING_OFF, keptRampUntil, type KeepSending } from "../keep-sending";
 import { campaignProgress, keptRunAtOrAfter, keptRunCron, nextBatchLine } from "../progress";
 import { stillToSend, type CampaignCandidate, type StillToSend } from "../rules";
-import { RAMP_WAIT_MS } from "../send-flow";
 
 const KEEPS: KeepSending = { ...KEEP_SENDING_OFF, on: true, dailyCap: 100 };
 const PAUSED: KeepSending = { ...KEEPS, pausedAt: "2026-11-26T03:00:00Z", pausedReason: "spam" };
@@ -25,13 +24,13 @@ describe("the daily run time", () => {
 });
 
 describe("campaignProgress", () => {
-  const firstWave = "2026-11-25T04:18:22Z";
-  const rampUntil = new Date(Date.parse(firstWave) + RAMP_WAIT_MS).toISOString();
+  const firstWave = [{ handed: 98, lastSentAt: "2026-11-25T04:18:22Z" }];
 
-  it("waits past the 10:00 run that falls inside the 48 hours after the first wave", () => {
-    const p = campaignProgress({ sent: 98, left: ready(565), keepSending: KEEPS, rampUntil, dailyLimit: 100, now: new Date("2026-11-27T01:00:00Z") });
+  it("names the 10:00 run on the second day after a first wave, whatever hour that wave went", () => {
+    const now = new Date("2026-11-26T01:00:00Z");
+    const p = campaignProgress({ sent: 98, left: ready(565), keepSending: KEEPS, rampUntil: keptRampUntil(firstWave, now.getTime()), dailyLimit: 100, now });
     expect(p).toMatchObject({ sent: 98, total: 663, left: 565, percent: 14 });
-    expect(p.next).toEqual({ kind: "batch", at: "2026-11-28T02:00:00.000Z", upTo: 70 });
+    expect(p.next).toEqual({ kind: "batch", at: "2026-11-27T02:00:00.000Z", upTo: 70 });
   });
 
   it("sends at the next 10:00 once nothing holds it", () => {
