@@ -2,7 +2,7 @@ import Stripe from "stripe";
 
 let _stripe: Stripe | null = null;
 
-const STRIPE_API_VERSION = "2026-09-30.endive";
+const STRIPE_API_VERSION = "2026-11-18.endive";
 
 export function getStripe(): Stripe {
   if (!_stripe) {
