@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const SECRET = "whsec_test_signing_secret_Zq7x";
+const SECRET = "whsec_" + "0".repeat(24) + "Zq7x";
 
 vi.mock("@/lib/stripe/client", () => ({ getStripe: () => new Stripe("sk_test_signature_failure") }));
 vi.mock("@/lib/supabase/server", () => ({

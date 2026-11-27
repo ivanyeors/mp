@@ -18,3 +18,8 @@ c10f42d2cdd1c82a2fe4baa7c14798ce546ce40b:app/api/staff-orders/__tests__/routes.t
 # test, flagged as a generic API key. Replaced with a low-entropy value in the
 # next commit; the original stays listed for the same reason as above.
 2744451a5976192b40002cec742ad62d6abad488:lib/seo/__tests__/indexnow-key-file.test.ts:generic-api-key:10
+
+# PR #494: a made-up webhook signing secret in the signature-failure route
+# test, flagged as a generic API key. Replaced with a low-entropy value in the
+# next commit; the original stays listed for the same reason as above.
+dbf113b38af7f761c3fe9f3fdebd279a17ba1796:app/api/stripe/webhook/__tests__/signature-failure.test.ts:generic-api-key:4
