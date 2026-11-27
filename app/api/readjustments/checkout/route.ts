@@ -23,6 +23,7 @@ import {
 } from "@/lib/readjustment/request";
 import { getPublicOrigin } from "@/lib/site-url";
 import { getStripe } from "@/lib/stripe/client";
+import { errorTextWithoutStripeRequestId } from "@/lib/stripe/error-text";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -220,7 +221,7 @@ export async function POST(req: Request) {
   } catch (e) {
     await abandon(order.id);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Could not start payment" },
+      { error: errorTextWithoutStripeRequestId(e, "Could not start payment") },
       { status: 502 },
     );
   }

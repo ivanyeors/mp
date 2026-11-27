@@ -254,8 +254,8 @@ export async function POST(req: Request) {
     const stripe = getStripe();
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Webhook signature verification failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error("[stripe/webhook] signature verification failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 });
   }
 
   const admin = supabaseAdmin();
