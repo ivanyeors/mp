@@ -3,8 +3,11 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
-import { ArrowLeft, ArrowRight, Info, X } from "lucide-react";
+import {
+  MbolsterLearnMoreSheet,
+  MbolsterLearnMoreSlideIn,
+} from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
+import { ArrowLeft, ArrowRight, Clock, Info, ShieldCheck, Truck, UserCheck, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -22,7 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +80,15 @@ import {
   type AddonOption,
 } from "@/components/configurator/addon-cards";
 import { CoBrandBanner } from "@/components/configurator/co-brand-banner";
+import {
+  BuyFlowBarTotal,
+  BuyFlowChoice,
+  BuyFlowInfoRow,
+  BuyFlowNote,
+  BuyFlowSection,
+  BuyFlowSummary,
+  BuyFlowSummaryRow,
+} from "@/components/configurator/buy-flow";
 import { keepOfferedAddons } from "@/lib/results/addons";
 import {
   holdCtaLabel,
@@ -298,6 +309,7 @@ export function MbolsterConfigClient({
   const [compartmentSlot, setCompartmentSlot] = React.useState<HTMLElement | null>(null);
   const [mobileActionsSlot, setMobileActionsSlot] = React.useState<HTMLDivElement | null>(null);
   const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
+  const [learnMoreOpen, setLearnMoreOpen] = React.useState(false);
   const [restoringHoldCancel, setRestoringHoldCancel] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
 
@@ -1247,8 +1259,29 @@ export function MbolsterConfigClient({
             : paired.pillow.ballpark + bolsterBallpark + (shippingAmount ?? 0)
           : bolsterBallpark - codeDiscount + (shippingAmount ?? 0);
 
+    const money = (amount: number) => `${shopCurrency} ${amount.toFixed(2)}`;
+    const heightShown = displayHeight(state.heightUnit, state.heightCm);
+    const selectedCaseName =
+      (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)?.name ?? null;
+    const chosenAddons = addons.filter((a) => selectedAddons.has(a.item_id));
+    const totalLabel = shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)";
+    const totalText = oneTotal != null ? money(oneTotal) : "Not available";
+    const previewTitle = (
+      <div className="space-y-2">
+        <h2 className="text-3xl font-semibold leading-tight tracking-tight md:text-4xl">Your Custom Mbolster</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {paired
+            ? "Choose a case and any add-ons. It ships with your Mpillow, on the same card authorisation. Your details and a review of both come next, before you pay."
+            : "Choose a case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
+        </p>
+      </div>
+    );
+
     return (
-      <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-clip bg-background">
+      <div
+        data-typography-scope="app"
+        className="relative min-h-dvh min-w-0 max-w-full overflow-x-clip bg-background"
+      >
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
         <div
           key={state.step}
@@ -1263,6 +1296,15 @@ export function MbolsterConfigClient({
           onOpenChange={setExitDialogOpen}
           description="This will clear your session and return home."
           onConfirmExit={exitConfirmed}
+        />
+        <MbolsterLearnMoreSheet
+          open={learnMoreOpen}
+          onOpenChange={setLearnMoreOpen}
+          faq={
+            info.faqItems.length > 0
+              ? { title: info.faqTitle ?? "FAQs", items: info.faqItems }
+              : null
+          }
         />
         <header
           className={cn(
@@ -1280,7 +1322,6 @@ export function MbolsterConfigClient({
             >
               <ArrowLeft className="size-4" />
             </Button>
-            <div role="heading" aria-level={2} className="text-sm font-semibold tracking-tight leading-tight">Your Custom Mbolster</div>
             {isMobile ? (
               <div className="size-8" aria-hidden />
             ) : (
@@ -1304,9 +1345,12 @@ export function MbolsterConfigClient({
             paired ? "min-h-[calc(100dvh-100px)]" : "min-h-[calc(100dvh-56px)]",
           )}
         >
+          <div className="min-w-0">
+          <div className="px-3 pb-5 pt-6 md:px-5 lg:hidden">{previewTitle}</div>
           <div
+            data-buy-flow-stage=""
             className={cn(
-              "relative lg:sticky lg:overflow-hidden",
+              "dark relative bg-card text-foreground max-lg:mx-3 max-lg:rounded-3xl md:max-lg:mx-5 lg:sticky lg:overflow-hidden lg:bg-background",
               paired ? "lg:top-[100px] lg:h-[calc(100vh-100px)]" : "lg:top-[56px] lg:h-[calc(100vh-56px)]",
             )}
           >
@@ -1334,7 +1378,7 @@ export function MbolsterConfigClient({
             <div className="relative z-10 flex flex-col p-4 max-md:px-3 lg:absolute lg:inset-0 lg:overflow-y-auto lg:overscroll-contain">
             <div className="my-auto flex w-full flex-col items-center gap-4 md:gap-6">
               <div
-                className="relative w-full max-w-[500px] lg:w-[min(75vmin,500px)]"
+                className="relative -my-6 w-full max-w-[500px] md:-my-8 lg:w-[min(75vmin,500px)]"
                 style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
               >
                 {(() => {
@@ -1389,6 +1433,7 @@ export function MbolsterConfigClient({
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
                     controlsSlot={staffAssist ? compartmentSlot : undefined}
+                    dockOnPhone
                     className="absolute inset-0"
                   />
                 )}
@@ -1398,7 +1443,7 @@ export function MbolsterConfigClient({
                   </div>
                 )}
               </div>
-              {staffAssist && xrayVisible && !isMobile && (
+              {staffAssist && xrayVisible && (
                 <XraySectionDock
                   dived="compartment"
                   onSlot={setCompartmentSlot}
@@ -1473,13 +1518,10 @@ export function MbolsterConfigClient({
                   onItemsChange={setAssistItems}
                   onColorOverridesChange={setAssistColorOverrides}
                 />
-              ) : !shopRecommendation ? (
-                <p className="max-w-xs text-center text-xs text-white/80">
-                  Fillings are chosen by our team after review.
-                </p>
               ) : null}
             </div>
             </div>
+          </div>
           </div>
 
           <div
@@ -1490,24 +1532,66 @@ export function MbolsterConfigClient({
           >
             <div
               className={cn(
-                "flex-1 space-y-8 overflow-y-auto",
+                "flex-1 space-y-10 overflow-y-auto max-lg:pt-8",
                 configuratorPreviewPadClassName,
               )}
             >
               {partner ? <CoBrandBanner partner={partner} /> : null}
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {paired ? "Customize your Mbolster" : "Customize finish"}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {paired
-                    ? "Choose a case and any add-ons. It ships with your Mpillow, on the same card authorisation. Your details and a review of both come next, before you pay."
-                    : "Choose a case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
-                </p>
-              </div>
+              <div className="max-lg:hidden">{previewTitle}</div>
+
+              <BuyFlowSection id="length" lead="Length." rest="Sized to your height.">
+                {shopRecommendation && suggestedLength ? (
+                  <BuyFlowChoice
+                    title={<span className="capitalize">{suggestedLength}</span>}
+                    detail={
+                      heightShown
+                        ? `Recommended for ${heightShown} ${state.heightUnit}`
+                        : "Recommended for your height"
+                    }
+                    trailing={shopBasePrice > 0 ? money(shopBasePrice) : null}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {shopLoading
+                        ? "Loading options…"
+                        : "No recommendation yet. Go back and generate results."}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void fetchBolsterRecommendation()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                )}
+                <BuyFlowInfoRow onClick={() => setState((s) => ({ ...s, step: "height" }))}>
+                  Not your height? Change it and we size your Mbolster again.
+                </BuyFlowInfoRow>
+              </BuyFlowSection>
+
+              <BuyFlowSection
+                id="filling"
+                lead="Filling."
+                rest={staffAssist ? "Set the mix on the x-ray." : "Chosen for you by our team."}
+              >
+                <BuyFlowNote icon={<UserCheck className="size-4" aria-hidden />}>
+                  <p>
+                    {staffAssist
+                      ? "Add or remove fillings on the Mbolster x-ray. The cross-section shows how the mix fits."
+                      : paired
+                        ? "Fillings are chosen by our team after review."
+                        : "Fillings are chosen by our team after review. You are not charged until you accept the final build."}
+                  </p>
+                </BuyFlowNote>
+                <BuyFlowInfoRow onClick={() => setLearnMoreOpen(true)}>
+                  Learn how an Mbolster is sized and filled.
+                </BuyFlowInfoRow>
+              </BuyFlowSection>
 
               {shopRecommendation ? (
-                <div className="space-y-2">
+                <BuyFlowSection id="case" lead="Case." rest="Pick your favourite.">
                   {fieldErrors.case && (
                     <p className="text-sm text-destructive">
                       {fieldErrors.case}
@@ -1529,30 +1613,14 @@ export function MbolsterConfigClient({
                     preferencesOnly
                     caseOnly
                     hideNav
+                    hideCaseTitle
+                    caseSwatches
                   />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {shopLoading
-                      ? "Loading options…"
-                      : "No recommendation yet. Go back and generate results."}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void fetchBolsterRecommendation()}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              )}
+                </BuyFlowSection>
+              ) : null}
 
               {addons.length > 0 && !partnerAssisted && (
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">
-                    Add-ons for your Mbolster (optional)
-                  </Label>
+                <BuyFlowSection id="addons" lead="Add-ons." rest="Optional extras for your Mbolster.">
                   <div className="space-y-2">
                     {addons.map((a) => (
                       <AddonOptionButton
@@ -1573,7 +1641,7 @@ export function MbolsterConfigClient({
                   {!staffAssist && addons.some((a) => selectedAddons.has(a.item_id)) ? (
                     <AddonReviewNotice chargedAfterReview />
                   ) : null}
-                </div>
+                </BuyFlowSection>
               )}
 
               {staffAssist ? (
@@ -1583,13 +1651,11 @@ export function MbolsterConfigClient({
                 />
               ) : null}
 
-              {paired ? (
-                <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-                  Ships with your Mpillow in one delivery — you choose where on the next step.
-                </p>
-              ) : (
+              {paired ? null : (
               <>
-              <PreviewContactFields
+              <BuyFlowSection id="details" lead="Your details." rest="How we reach you about your build.">
+                <PreviewContactFields
+                  hideTitle
                   discoverySourceOptions={discoverySourceOptions}
                   fieldErrors={fieldErrors}
                   values={{
@@ -1618,8 +1684,11 @@ export function MbolsterConfigClient({
                     if (patch.marketingEmail !== undefined) setMarketingEmail(patch.marketingEmail);
                   }}
                 />
+              </BuyFlowSection>
 
+              <BuyFlowSection id="delivery" lead="Delivery." rest="Where should it go?">
               <HoldShippingFields
+                hideTitle
                 options={shippingOptions}
                 loading={shippingLoading}
                 goodsSubtotal={goodsSubtotal}
@@ -1636,9 +1705,90 @@ export function MbolsterConfigClient({
                 }}
                 recipientPlaceholder="Name"
               />
-
+              </BuyFlowSection>
               </>
               )}
+
+              <BuyFlowSection
+                id="summary"
+                lead={paired ? "Your Mpillow and Mbolster." : "Your new Mbolster."}
+                rest="Everything look good?"
+              >
+                <BuyFlowSummary>
+                  <BuyFlowSummaryRow
+                    label="Length"
+                    value={<span className="capitalize">{suggestedLength ?? "Not sized yet"}</span>}
+                  />
+                  <BuyFlowSummaryRow label="Case" value={selectedCaseName ?? "Not chosen yet"} />
+                  <BuyFlowSummaryRow label="Filling" value="Chosen by our team" />
+                  <div className="space-y-2.5 border-t pt-3">
+                    {paired ? null : (
+                      <BuyFlowSummaryRow
+                        label="Mbolster"
+                        value={shopBasePrice > 0 ? money(shopBasePrice) : "Not available"}
+                      />
+                    )}
+                    {paired
+                      ? null
+                      : chosenAddons.map((a) => (
+                          <BuyFlowSummaryRow key={a.item_id} label={a.name} value={money(a.msrp)} />
+                        ))}
+                    {paired
+                      ? null
+                      : (serviceLines ?? []).map((l) => (
+                          <BuyFlowSummaryRow key={l.key} label={l.label} value={money(l.msrp)} />
+                        ))}
+                    {paired
+                ? pairedPillowRows(paired.pillow).map((row) => (
+                    <div key={row.key} className="flex justify-between gap-4 text-sm">
+                      <span className="min-w-0 text-muted-foreground">{row.label}</span>
+                      <span className="shrink-0 whitespace-nowrap tabular-nums">
+                        {row.amount != null
+                          ? `${paired.pillow.currency} ${row.amount.toFixed(2)}`
+                          : "Not available"}
+                      </span>
+                    </div>
+                  ))
+                : null}
+                    {paired ? (
+                      <BuyFlowSummaryRow
+                        label="Mbolster (ships with it)"
+                        value={bolsterBallpark != null ? money(bolsterBallpark) : "Not available"}
+                      />
+                    ) : null}
+                    {!paired && codeStatus.state === "discount" && (codeDiscount > 0 || codeFreeShipping) && bolsterBallpark != null ? (
+                      <BuyFlowSummaryRow
+                        tone="saving"
+                        label={`Discount (${codeStatus.code})`}
+                        value={codeDiscount > 0 ? `−${money(codeDiscount)}` : "Free shipping"}
+                      />
+                    ) : null}
+                    {paired ? null : (
+                      <HoldShippingTotalRow
+                        option={selectedShippingOption}
+                        goodsSubtotal={goodsSubtotal}
+                        freeShipping={codeFreeShipping}
+                      />
+                    )}
+                  </div>
+                  <BuyFlowSummaryRow tone="total" label={totalLabel} value={totalText} />
+                </BuyFlowSummary>
+                {waitingCopy ? (
+                  <BuyFlowNote icon={<Clock className="size-4" aria-hidden />}>
+                    <p className="font-medium text-foreground">{waitingCopy.title}</p>
+                    <p>{waitingCopy.body}</p>
+                  </BuyFlowNote>
+                ) : null}
+                {paired ? (
+                  <BuyFlowNote icon={<Truck className="size-4" aria-hidden />}>
+                    <p>Ships with your Mpillow in one delivery — you choose where on the next step.</p>
+                  </BuyFlowNote>
+                ) : (
+                  <BuyFlowNote icon={<ShieldCheck className="size-4" aria-hidden />}>
+                    <p>You are not charged until you accept the final build.</p>
+                  </BuyFlowNote>
+                )}
+              </BuyFlowSection>
 
               {paired ? null : (
               <div className="text-center">
@@ -1654,69 +1804,16 @@ export function MbolsterConfigClient({
               )}
             </div>
 
-            {waitingCopy ? (
-              <div className="border-t bg-muted/30 px-5 py-4 text-sm">
-                <p className="font-medium">{waitingCopy.title}</p>
-                <p className="mt-1 text-muted-foreground">{waitingCopy.body}</p>
-              </div>
-            ) : null}
-
             <div
               className={cn(
                 "border-t bg-background px-5 py-4",
+                paired ? null : "max-md:border-t-0 max-md:pt-0",
                 configuratorMobileCloseClearanceClassName,
               )}
             >
-              {(serviceLines ?? []).map((l) => (
-                <div key={l.key} className="mb-1 flex justify-between gap-4 text-sm">
-                  <span className="min-w-0 text-muted-foreground">{l.label}</span>
-                  <span className="shrink-0 whitespace-nowrap tabular-nums">
-                    {shopCurrency} {l.msrp.toFixed(2)}
-                  </span>
-                </div>
-              ))}
-              {paired
-                ? pairedPillowRows(paired.pillow).map((row) => (
-                    <div key={row.key} className="mb-1 flex justify-between gap-4 text-sm">
-                      <span className="min-w-0 text-muted-foreground">{row.label}</span>
-                      <span className="shrink-0 whitespace-nowrap tabular-nums">
-                        {row.amount != null
-                          ? `${paired.pillow.currency} ${row.amount.toFixed(2)}`
-                          : "Not available"}
-                      </span>
-                    </div>
-                  ))
-                : null}
-              {paired ? (
-                <div className="mb-1 flex justify-between text-sm">
-                  <span className="text-muted-foreground">Mbolster (ships with it)</span>
-                  <span className="tabular-nums">
-                    {bolsterBallpark != null ? `${shopCurrency} ${bolsterBallpark.toFixed(2)}` : "Not available"}
-                  </span>
-                </div>
-              ) : null}
-              {!paired && codeStatus.state === "discount" && (codeDiscount > 0 || codeFreeShipping) && bolsterBallpark != null ? (
-                <div className="mb-1 flex justify-between gap-4 text-sm text-emerald-700 dark:text-emerald-400">
-                  <span className="min-w-0">Discount ({codeStatus.code})</span>
-                  <span className="shrink-0 whitespace-nowrap tabular-nums">
-                    {codeDiscount > 0 ? `−${shopCurrency} ${codeDiscount.toFixed(2)}` : "Free shipping"}
-                  </span>
-                </div>
-              ) : null}
-              {paired ? null : (
-                <HoldShippingTotalRow
-                  option={selectedShippingOption}
-                  goodsSubtotal={goodsSubtotal}
-                  freeShipping={codeFreeShipping}
-                />
-              )}
-              <div className="mb-3 flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {shippingAmount == null ? "Ballpark (before shipping/tax)" : "Total (before tax)"}
-                </span>
-                <span className="font-medium tabular-nums">
-                  {oneTotal != null ? `${shopCurrency} ${oneTotal.toFixed(2)}` : "Not available"}
-                </span>
+              <div className="mb-3 flex items-baseline justify-between gap-4 max-md:hidden">
+                <span className="text-sm text-muted-foreground">{totalLabel}</span>
+                <span className="text-lg font-semibold tabular-nums">{totalText}</span>
               </div>
               {paired ? (
                 <>
@@ -1725,7 +1822,8 @@ export function MbolsterConfigClient({
                   slot={mobileActionsSlot}
                   className="flex gap-3"
                 >
-                  <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:flex-none">
+                  <BuyFlowBarTotal label="Ballpark for both" amount={totalText} className="md:hidden" />
+                  <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:hidden">
                     <ArrowLeft className="size-4" />
                     Back
                   </Button>
@@ -1754,7 +1852,12 @@ export function MbolsterConfigClient({
                 slot={mobileActionsSlot}
                 className="flex gap-3"
               >
-                <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:flex-none">
+                <BuyFlowBarTotal
+                  label={shippingAmount == null ? "Before shipping/tax" : "Total, before tax"}
+                  amount={totalText}
+                  className="md:hidden"
+                />
+                <Button variant="outline" onClick={backFromPreview} className="flex-1 max-md:hidden">
                   <ArrowLeft className="size-4" />
                   Back
                 </Button>
