@@ -26,6 +26,8 @@ import {
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
+import { runUrlInspectionsFromEnv } from "@/lib/seo-metrics/inspect-urls";
+import sitemap from "@/app/sitemap";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
 import { pollPlacesReviews } from "@/lib/reviews/places-poll";
@@ -396,6 +398,7 @@ export async function GET(req: Request) {
     gscIngest = await runGscIngestFromEnv(admin);
   } catch (e) {
     gscIngest = { ok: false, error: e instanceof Error ? e.message : "gsc ingest failed" };
+    console.error("results-sla: Search Console import failed:", gscIngest.error);
   }
 
   let preOrderRestock:
@@ -467,6 +470,16 @@ export async function GET(req: Request) {
     socialInbox = { ok: false, error: e instanceof Error ? e.message : "social inbox maintenance failed" };
   }
 
+  let urlInspections: Awaited<ReturnType<typeof runUrlInspectionsFromEnv>> | { ok: false; error: string };
+  try {
+    urlInspections = await runUrlInspectionsFromEnv(admin, (await sitemap()).map((entry) => entry.url));
+  } catch (e) {
+    urlInspections = { ok: false, error: e instanceof Error ? e.message : "url inspections failed" };
+  }
+  if ("error" in urlInspections && urlInspections.error) {
+    console.error("results-sla: Search Console page inspection failed:", urlInspections.error);
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
@@ -474,6 +487,7 @@ export async function GET(req: Request) {
     catchup,
     gaSync,
     gscIngest,
+    urlInspections,
     preOrderRestock,
     googleReviews,
     placesReviews,

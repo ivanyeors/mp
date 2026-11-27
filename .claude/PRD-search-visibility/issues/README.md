@@ -29,6 +29,7 @@ Two tracks run in parallel:
 | 15 | Bing Webmaster Tools + IndexNow | AFK + OPS | none | 37 |
 | 16 | Earned mentions playbook | OPS | 05 | 38 |
 | 17 | Blog hygiene quick wins | AFK (+ HITL) | none | 26, 27 |
+| 18 | Page indexing issues from the URL Inspection API | AFK + OPS | 01 | owner request, 2026-11-27 |
 
 ## Dependency graph
 
