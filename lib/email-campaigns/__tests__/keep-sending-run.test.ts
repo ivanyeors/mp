@@ -185,6 +185,17 @@ describe("one Wave a day (slice 10)", () => {
     expect(run.campaigns[0].held).toMatch(/^it waits until .* for the first wave's bounces and spam reports$/);
   });
 
+  it("sends on the second day after a first wave that went out after 10:00, not the third", async () => {
+    world.sends = [firstWave(CAMPAIGN, id(1), { sent_at: "2026-11-25T04:18:22Z" })];
+    const at = (iso: string) => runKeptSending(deps([campaign()], {}, setup({ now: () => new Date(iso) })));
+    const nextDay = await at("2026-11-26T02:00:00Z");
+    expect(nextDay.sent).toBe(0);
+    expect(nextDay.campaigns[0].held).toBe("it waits until 11/27/2026, 10:00:00 AM for the first wave's bounces and spam reports");
+    const secondDay = await at("2026-11-27T02:00:00Z");
+    expect(secondDay.campaigns[0].held).toBeNull();
+    expect(secondDay.sent).toBe(3);
+  });
+
   it("sends nothing for a campaign not kept sending, or paused", async () => {
     const run = await runKeptSending(
       deps([campaign({ keepSending: KEEP_SENDING_OFF }), campaign({ id: OTHER, keepSending: keep({ pausedAt: "2026-10-30T00:00:00Z" }) })]),

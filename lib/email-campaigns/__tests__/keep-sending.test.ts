@@ -8,6 +8,7 @@ import {
   keepSendingBlocker,
   keepSendingFromRow,
   keepSendingStatus,
+  keptRampUntil,
   keptToday,
   keptWaveLabel,
   keptWaveSize,
@@ -153,5 +154,24 @@ describe("the day's Wave", () => {
         at,
       ),
     ).toBe(5);
+  });
+});
+
+describe("the wait after a first wave", () => {
+  const first = (lastSentAt: string) => ({ handed: 98, lastSentAt });
+  const at = (iso: string) => Date.parse(iso);
+
+  it("ends as the second Singapore day after it starts, so the 10:00 run that day sends", () => {
+    for (const sent of ["2026-11-24T16:00:00Z", "2026-11-25T01:59:00Z", "2026-11-25T04:18:22Z", "2026-11-25T15:59:59Z"]) {
+      expect(keptRampUntil([first(sent)], at("2026-11-26T02:00:00Z"))).toBe("2026-11-26T16:00:00.000Z");
+      expect(keptRampUntil([first(sent)], at("2026-11-27T02:00:00Z"))).toBeNull();
+    }
+  });
+
+  it("is over once a second wave has gone, and never starts without a first", () => {
+    const sent = "2026-11-25T04:18:22Z";
+    expect(keptRampUntil([first(sent), first(sent)], at("2026-11-25T05:00:00Z"))).toBeNull();
+    expect(keptRampUntil([], at("2026-11-25T05:00:00Z"))).toBeNull();
+    expect(keptRampUntil([{ handed: 0, lastSentAt: null }], at("2026-11-25T05:00:00Z"))).toBeNull();
   });
 });
