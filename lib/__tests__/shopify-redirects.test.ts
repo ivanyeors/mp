@@ -174,7 +174,7 @@ describe("every destination exists", () => {
 
 describe("addresses Search Console reported after the switch", () => {
   const REPORTED: [old: string, to: string][] = [
-    ["/products/basic-mpillow", "/en-US/mp-config"],
+    ["/products/basic-mpillow", "/en-US/mp-basic"],
     ["/products/cervical-neck-support", "/en-US/shop/cervical-neck-support"],
     ["/products/linen-natural-case", "/en-US/shop/natural-white-linen-pillow-case"],
     ["/products/singapore-batik-covers", "/en-US/shop/deep-blue-batik-cover"],
@@ -192,7 +192,8 @@ describe("addresses Search Console reported after the switch", () => {
   it.each([
     ["/products/ultra-hygienic-bolster?variant=42864571515058&country=SG&currency=SGD&utm_source=google", "/en-US/mbolster-config?utm_source=google"],
     ["/products/singapore-batik-covers?pr_prod_strat=copurchase&pr_rec_pid=1&pr_seq=uniform", "/en-US/shop/deep-blue-batik-cover"],
-    ["/collections/all/products/basic-mpillow?variant=1&utm_source=gsc&utm_medium=organic", "/en-US/mp-config?utm_source=gsc&utm_medium=organic"],
+    ["/collections/all/products/basic-mpillow?variant=1&utm_source=gsc&utm_medium=organic", "/en-US/mp-basic?utm_source=gsc&utm_medium=organic"],
+    ["/products/mpillow-cover-sheet?variant=45543774355634&country=SG&currency=SGD", "/en-US/shop/satin-white-cover"],
   ])("drops Shopify's parameters from %s and keeps the campaign's", async (old, to) => {
     const res = await hit(`${WWW}${old}`, WWW);
     expect(res.status).toBe(301);
@@ -201,7 +202,6 @@ describe("addresses Search Console reported after the switch", () => {
 
   it("leaves the shop as the landing for what the owner sent there, and for unknown products", () => {
     for (const old of [
-      "/products/mpillow-cover-sheet",
       "/products/bolster-case-and-protector",
       "/products/mpillow-vacuum-storage-bag-travel-smart-sleep-better-anywhere",
       "/products/mpillow-gift-voucher",
