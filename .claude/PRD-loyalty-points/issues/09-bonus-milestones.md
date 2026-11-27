@@ -95,8 +95,10 @@ never throws.
 
 - **Profile, once live.** The Points card shows the bar (`components/account/milestone-bar.tsx`):
   - an equal stretch per milestone, filled by the points earned, with pending shown lighter;
-  - each bonus above its milestone, and its points below;
-  - the sentence to the next milestone.
+  - the next bonus named above the bar, each milestone's points below it, and
+    "N of M points earned from orders" under that;
+  - the whole ladder, each milestone with its bonus, one tap away (redesigned 2026-11-27: the
+    card leads with the balance, then the next bonus, and keeps the rules under "How points work").
 - **Profile, before the launch.** The "Coming soon" card shows the ladder empty.
 - **The terms page** gains a *Bonus milestones* section with the live ladder and rules t to v.
   The terms are now dated 23 October 2026. Points are not launched, so no 30 days' notice is owed.
