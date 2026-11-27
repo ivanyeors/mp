@@ -71,8 +71,11 @@ labelled and used to check the screening itself (evals).
   trash keeps it 30 days). Keep edit access to very few people, never share it by link, and keep
   it out of folders the whole company can read.
 - The photos use sg@mpillow.com's Workspace storage.
-- If the Google app is External and in Testing, its refresh tokens expire after 7 days and the
-  moves stop; the daily alert says so. It should be Internal.
+- If the Google app is External with publishing status Testing, its refresh tokens expire after
+  7 days and the moves stop; the daily alert says so. It must be Internal, or External and In
+  production. Customers' "Continue with Google" (Supabase Auth's Google provider) may use a client
+  in the same Google Cloud project, and Internal would lock out every customer without an
+  mpillow.com account, so check that before switching.
 - A submit reads up to two photos from Drive before posting to Telegram (10 s each at most). A
   photo Drive can't serve is left out, with a line in the message.
 - A released photo reaches Drive's trash by the next daily run, not at once.
@@ -81,8 +84,10 @@ labelled and used to check the screening itself (evals).
 
 ## Setting it up
 
-1. On the OAuth consent screen of the project that holds `GOOGLE_OAUTH_CLIENT_ID`, check the user
-   type is Internal, and that the Drive API is enabled.
+1. In the Google Cloud project that holds `GOOGLE_OAUTH_CLIENT_ID`, check the Drive API is enabled
+   and the app is Internal, or External with publishing status In production. Leave it External
+   if Supabase Auth's Google client (customer sign-in) is in the same project: the number before
+   the first `-` in both client ids is the project number.
 2. Mint a refresh token for sg@mpillow.com the same way as the Media library's
    (`.claude/PRD-media-asset-library/OPS-CHECKLIST.md` section 2), with one scope:
    - `https://www.googleapis.com/auth/drive.file` (recommended: the app sees only the files it
