@@ -7,6 +7,7 @@ import { withLocale } from "@/lib/i18n/routing";
 import { BlogFilters } from "@/components/blog/blog-filters";
 import { buildPageMetadata, localeUrl, resolveMetaDescription } from "@/lib/seo";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
+import { BLOG_CATEGORIES, blogCategory, blogLabelsInUse, matchesBlogLabel } from "@/lib/blog-categories";
 
 const BLOG_DESCRIPTION =
     "Read our latest articles on sleeping positions, neck support and choosing the right pillow in Singapore.";
@@ -108,7 +109,7 @@ export default async function BlogHubPage(props: Props) {
         );
     }
     if (activeLabel) {
-        filteredPosts = filteredPosts.filter((p) => p.labels?.includes(activeLabel));
+        filteredPosts = filteredPosts.filter((p) => matchesBlogLabel(p, activeLabel));
     }
 
     const isActiveFilter = q !== "" || activeLabel !== "";
@@ -137,28 +138,11 @@ export default async function BlogHubPage(props: Props) {
         const featuredPosts = allPosts.slice(0, featuredCount);
         const remainingPosts = allPosts.slice(featuredCount);
 
-        const PREDEFINED_CATEGORIES = [
-            "Sleep Health",
-            "Mpillow Journey",
-            "Ergonomics",
-            "Neck Pain",
-            "Pillow Guide"
-        ];
-
         const sections: Record<string, BlogPost[]> = {};
-        PREDEFINED_CATEGORIES.forEach(cat => { sections[cat] = []; });
+        BLOG_CATEGORIES.forEach(cat => { sections[cat] = []; });
 
         remainingPosts.forEach((post) => {
-            if (!post.labels || post.labels.length === 0) {
-                sections["Sleep Health"].push(post);
-                return;
-            }
-            const matchedCategory = post.labels.find(l => PREDEFINED_CATEGORIES.includes(l));
-            if (matchedCategory) {
-                sections[matchedCategory].push(post);
-            } else {
-                sections["Sleep Health"].push(post);
-            }
+            sections[blogCategory(post)].push(post);
         });
 
         return (
@@ -172,7 +156,7 @@ export default async function BlogHubPage(props: Props) {
                     </div>
                 </section>
 
-                {PREDEFINED_CATEGORIES.map((labelTitle) => {
+                {BLOG_CATEGORIES.map((labelTitle) => {
                     const categoryPosts = sections[labelTitle];
                     if (!categoryPosts || categoryPosts.length === 0) return null;
 
@@ -227,13 +211,7 @@ export default async function BlogHubPage(props: Props) {
                 </p>
             </section>
 
-            <BlogFilters availableLabels={[
-                "Sleep Health",
-                "Mpillow Journey",
-                "Ergonomics",
-                "Neck Pain",
-                "Pillow Guide"
-            ]} />
+            <BlogFilters availableLabels={blogLabelsInUse(allPosts)} />
 
             {allPosts.length === 0 ? (
                 <p className="text-center text-muted-foreground text-lg py-20">No blog posts yet. Check back soon!</p>
