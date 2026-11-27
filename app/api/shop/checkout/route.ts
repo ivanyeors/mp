@@ -26,6 +26,7 @@ import { readShippingSettings } from "@/lib/shipping/settings";
 import { usesPostalCode } from "@/lib/shipping/countries";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
+import { errorTextWithoutStripeRequestId } from "@/lib/stripe/error-text";
 import { resolvePaymentUi } from "@/lib/stripe/payment-ui";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
 import {
@@ -768,7 +769,7 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     await abandonPendingOrder(admin, orderRow.id, { reserved: pointsSpent > 0 });
-    const message = err instanceof Error ? err.message : "Failed to create payment session";
+    const message = errorTextWithoutStripeRequestId(err, "Failed to create payment session");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 

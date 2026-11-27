@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
+import { errorTextWithoutStripeRequestId } from "@/lib/stripe/error-text";
 import { transitionResult } from "@/lib/result-lifecycle";
 import {
   captureHold,
@@ -382,7 +383,7 @@ export async function POST(
       }
     } catch (e) {
       await releaseClaim();
-      const message = e instanceof Error ? e.message : "Capture failed";
+      const message = errorTextWithoutStripeRequestId(e, "Capture failed");
       return NextResponse.json({ error: message }, { status: 502 });
     }
   }

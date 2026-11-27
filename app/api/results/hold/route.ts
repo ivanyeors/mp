@@ -74,6 +74,7 @@ import {
 } from "@/lib/configurator/pre-order-persist";
 import { getAdminContext } from "@/lib/auth/admin";
 import { getPublicOrigin } from "@/lib/site-url";
+import { errorTextWithoutStripeRequestId } from "@/lib/stripe/error-text";
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
@@ -895,7 +896,7 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error("Hold checkout failed", e);
       return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Failed to create authorization hold" },
+        { error: errorTextWithoutStripeRequestId(e, "Failed to create authorization hold") },
         { status: 500 },
       );
     }

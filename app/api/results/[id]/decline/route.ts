@@ -12,6 +12,7 @@ import { getDefaultFromAddress } from "@/lib/email/transport";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { cascadeEnding, companionLockReason, loadEndingPlan } from "@/lib/results/pair-ending";
 import { getPublicOrigin } from "@/lib/site-url";
+import { errorTextWithoutStripeRequestId } from "@/lib/stripe/error-text";
 import { sendTelegram } from "@/lib/telegram/notify";
 
 export const runtime = "nodejs";
@@ -81,7 +82,7 @@ export async function POST(
     try {
       await releaseHold(row.payment_intent_id);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to release hold";
+      const message = errorTextWithoutStripeRequestId(e, "Failed to release hold");
       return NextResponse.json({ error: message }, { status: 502 });
     }
   }
