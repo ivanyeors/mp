@@ -171,3 +171,58 @@ describe("every destination exists", () => {
     }
   });
 });
+
+describe("addresses Search Console reported after the switch", () => {
+  const REPORTED: [old: string, to: string][] = [
+    ["/products/basic-mpillow", "/en-US/mp-basic"],
+    ["/products/cervical-neck-support", "/en-US/shop/cervical-neck-support"],
+    ["/products/linen-natural-case", "/en-US/shop/natural-white-linen-pillow-case"],
+    ["/products/singapore-batik-covers", "/en-US/shop/deep-blue-batik-cover"],
+    ["/products/ultra-hygienic-bolster", "/en-US/mbolster-config"],
+  ];
+  const handle = (old: string) => old.slice("/products/".length);
+
+  it.each(REPORTED)("%s goes to %s", (old, to) => {
+    expect(shopifyRedirect(old)).toEqual({ status: 301, to });
+    expect(shopifyRedirect(`/collections/all/products/${handle(old)}`)).toEqual({ status: 301, to });
+    expect(shopifyRedirect(`${old.toUpperCase()}/`)).toEqual({ status: 301, to });
+    expect(shopifyRedirect(`/Collections/Pillows/Products/${handle(old).toUpperCase()}/`)).toEqual({ status: 301, to });
+  });
+
+  it.each([
+    ["/products/ultra-hygienic-bolster?variant=42864571515058&country=SG&currency=SGD&utm_source=google", "/en-US/mbolster-config?utm_source=google"],
+    ["/products/singapore-batik-covers?pr_prod_strat=copurchase&pr_rec_pid=1&pr_seq=uniform", "/en-US/shop/deep-blue-batik-cover"],
+    ["/collections/all/products/basic-mpillow?variant=1&utm_source=gsc&utm_medium=organic", "/en-US/mp-basic?utm_source=gsc&utm_medium=organic"],
+    ["/products/mpillow-cover-sheet?variant=45543774355634&country=SG&currency=SGD", "/en-US/shop/satin-white-cover"],
+  ])("drops Shopify's parameters from %s and keeps the campaign's", async (old, to) => {
+    const res = await hit(`${WWW}${old}`, WWW);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe(`${WWW}${to}`);
+  });
+
+  it("leaves the shop as the landing for what the owner sent there, and for unknown products", () => {
+    for (const old of [
+      "/products/bolster-case-and-protector",
+      "/products/mpillow-vacuum-storage-bag-travel-smart-sleep-better-anywhere",
+      "/products/mpillow-gift-voucher",
+      "/products/translucent-waterproof-bag",
+      "/products/services",
+    ]) {
+      expect([old, shopifyRedirect(old)]).toEqual([old, { status: 301, to: "/en-US/shop" }]);
+    }
+  });
+
+  it("adds only addresses the approved map leaves undecided", () => {
+    for (const [old] of REPORTED) {
+      expect([old, MAP.some((r) => r.old === old)]).toEqual([old, false]);
+    }
+  });
+
+  it("keeps the moved table in alphabetical order", () => {
+    const source = readFileSync("lib/shopify-redirects.ts", "utf8");
+    const start = source.indexOf("const MOVED");
+    const keys = [...source.slice(start, source.indexOf("};", start)).matchAll(/^ {2}"([^"]+)":/gm)].map((m) => m[1]);
+    expect(keys.length).toBeGreaterThan(80);
+    expect(keys).toEqual([...keys].sort());
+  });
+});

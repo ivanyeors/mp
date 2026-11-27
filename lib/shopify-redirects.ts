@@ -83,15 +83,21 @@ const MOVED: Readonly<Record<string, string>> = {
   "/policies/terms-of-service": "/en-US/terms-of-service",
   "/products/3d-soft-fillings": "/en-US/mp-config",
   "/products/basic-ergonomic-pillow": "/en-US/mp-config",
+  "/products/basic-mpillow": "/en-US/mp-basic",
   "/products/bolsters": "/en-US/mbolster-config",
+  "/products/cervical-neck-support": "/en-US/shop/cervical-neck-support",
   "/products/cooling-fibre-mpillow-ergonomic-pillow-for-shoulder-neck-pain": "/en-US/mp-config",
   "/products/ear-comfort-pad": "/en-US/shop/ear-comfort-pad",
   "/products/fibrecool-case": "/en-US/shop/fibrecool-pillow-case",
   "/products/linen-case": "/en-US/shop/natural-white-linen-pillow-case",
+  "/products/linen-natural-case": "/en-US/shop/natural-white-linen-pillow-case",
   "/products/measurement-readjustment-services": "/en-US/appointments?type=customisation",
+  "/products/mpillow-cover-sheet": "/en-US/shop/satin-white-cover",
   "/products/mpillow-slope-mattress-gentle-elevation-for-better-sleep-relief": "/en-US/shop/slope-mattress",
   "/products/neck-support-insert": "/en-US/shop/cervical-neck-support",
+  "/products/singapore-batik-covers": "/en-US/shop/deep-blue-batik-cover",
   "/products/terrywaterproof-inner-protector": "/en-US/shop/waterproof-inner-pillow-protector",
+  "/products/ultra-hygienic-bolster": "/en-US/mbolster-config",
 };
 
 const KEPT_PARAM = /^(utm_[a-z_]+|gclid|gbraid|wbraid|fbclid|msclkid|ttclid)$/i;
