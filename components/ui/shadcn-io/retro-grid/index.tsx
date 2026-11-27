@@ -82,35 +82,11 @@ function rowStyle(row: RetroGridRow): CSSProperties {
 
 const SPEED_STYLE: Record<RetroGridSpeed, CSSProperties> = {
   slow: {},
-  steady: { "--retro-grid-duration": "2s" } as CSSProperties,
   fast: { "--retro-grid-duration": "0.4s" } as CSSProperties,
   reverse: { "--retro-grid-duration": "0.4s", "--retro-grid-direction": "reverse" } as CSSProperties,
 };
 
-export type RetroGridSpeed = "slow" | "steady" | "fast" | "reverse";
-
-export function retroGridStillSvg(width: number, height: number, pixelRatio: number): string {
-  const centreX = width / 2;
-  const centreY = height / 2;
-  const rows = RETRO_GRID_ROWS.flatMap(({ far, rgb }) =>
-    [-1, 1].map(
-      (side) =>
-        `<path d="M0 ${(centreY + side * centreY * far.fromHorizon).toFixed(2)}H${width}" stroke="rgb(${rgb.join(",")})" stroke-opacity="${far.alpha.toFixed(3)}"/>`,
-    ),
-  );
-  const fan = Array.from({ length: FAN_LINES_PER_SIDE * 2 + 1 }, (_, index) => {
-    const x = (index - FAN_LINES_PER_SIDE) * CELL * pixelRatio;
-    return `M${centreX - x} 0L${centreX + x} ${height}`;
-  }).join("");
-  const stops = FAN_STOPS.map(
-    (stop) => `<stop offset="${stop.offset}" stop-color="rgb(${stop.rgb.join(",")})" stop-opacity="${stop.alpha}"/>`,
-  ).join("");
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" stroke-width="${pixelRatio}">` +
-    `<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${height}">${stops}</linearGradient></defs>` +
-    `<path d="${fan}" stroke="url(#g)"/>${rows.join("")}</svg>`
-  );
-}
+export type RetroGridSpeed = "slow" | "fast" | "reverse";
 
 export interface RetroGridProps {
   className?: string;

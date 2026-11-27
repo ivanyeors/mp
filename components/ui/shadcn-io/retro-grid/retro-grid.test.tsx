@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { RETRO_GRID_BRAND_STOPS, RETRO_GRID_ROWS, RetroGrid, retroGridBrandAt, retroGridStillSvg } from "./index";
+import { RETRO_GRID_BRAND_STOPS, RETRO_GRID_ROWS, RetroGrid, retroGridBrandAt } from "./index";
 
 const PERSPECTIVE = 200;
 
@@ -60,35 +60,5 @@ describe("RetroGrid markup", () => {
     expect(html).not.toContain("--retro-grid-duration");
     expect(renderToStaticMarkup(<RetroGrid speed="fast" />)).toContain("--retro-grid-duration:0.4s");
     expect(renderToStaticMarkup(<RetroGrid speed="reverse" />)).toContain("--retro-grid-direction:reverse");
-  });
-
-  it("moves at a steady pace for the loading screen: visibly, but slower than a step transition", () => {
-    expect(renderToStaticMarkup(<RetroGrid speed="steady" />)).toContain("--retro-grid-duration:2s");
-  });
-});
-
-describe("RetroGrid still frame", () => {
-  const width = 1290;
-  const height = 2796;
-  const svg = retroGridStillSvg(width, height, 3);
-  const rowYs = [...svg.matchAll(/d="M0 ([\d.]+)H1290"/g)].map((m) => Number(m[1]));
-
-  it("draws each row where the animation starts it, mirrored about the middle of the screen", () => {
-    expect(rowYs).toHaveLength(RETRO_GRID_ROWS.length * 2);
-    for (const row of RETRO_GRID_ROWS) {
-      const offset = (height / 2) * row.far.fromHorizon;
-      expect(rowYs.some((y) => Math.abs(y - (height / 2 - offset)) < 0.01)).toBe(true);
-      expect(rowYs.some((y) => Math.abs(y - (height / 2 + offset)) < 0.01)).toBe(true);
-    }
-  });
-
-  it("runs the converging lines through the middle of the screen, one cell apart at the edge", () => {
-    expect(svg).toContain(`M${width / 2} 0L${width / 2} ${height}`);
-    expect(svg).toContain(`M${width / 2 - 240} 0L${width / 2 + 240} ${height}`);
-  });
-
-  it("uses the same brand gradient and a line one CSS pixel thick", () => {
-    expect(svg).toContain('stop-color="rgb(18,152,255)"');
-    expect(svg).toContain('stroke-width="3"');
   });
 });

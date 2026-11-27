@@ -359,32 +359,6 @@ body.dock-hidden .app-dock {
       background: rgba(59, 130, 246, 0.85);
     }
   }
-
-  /* First-load screen (components/mpillow-loading.tsx): the glow behind the logo
-     swells and fades while the page's data is on its way. */
-  @keyframes mp-loading-glow {
-    0%,
-    100% {
-      opacity: 0.75;
-      transform: scale(0.94);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.08);
-    }
-  }
-
-  .mp-loading-glow {
-    opacity: 0.75;
-    transform: scale(0.94);
-    animation: mp-loading-glow 1.8s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .mp-loading-glow {
-      animation: none;
-    }
-  }
 }
 
 /* Thin, minimal scrollbars (WebKit + Firefox) */
