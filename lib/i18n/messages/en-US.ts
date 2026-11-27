@@ -10,6 +10,7 @@ export const enUS: Messages = {
     learnHow: "Learn how",
     fromPricePrefix: "From",
     shopNow: "Shop now",
+    loading: "Loading",
   },
   header: {
     customiseLabel: "Customise",

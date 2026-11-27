@@ -8,6 +8,7 @@ export type Messages = {
     learnHow: string;
     fromPricePrefix: string;
     shopNow: string;
+    loading: string;
   };
   header: {
     customiseLabel: string;

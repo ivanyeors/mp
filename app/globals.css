@@ -359,6 +359,28 @@ body.dock-hidden .app-dock {
       background: rgba(59, 130, 246, 0.85);
     }
   }
+
+  /* First-load screen (components/mpillow-loading.tsx): the logo tile breathes
+     while the page's data is on its way. */
+  @keyframes mp-loading-breathe {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.06);
+    }
+  }
+
+  .mp-loading-tile {
+    animation: mp-loading-breathe 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mp-loading-tile {
+      animation: none;
+    }
+  }
 }
 
 /* Thin, minimal scrollbars (WebKit + Firefox) */
