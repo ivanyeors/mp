@@ -1,8 +1,12 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-
 import { ImageResponse } from "next/og";
 
+import {
+  LOADING_BUBBLE_GAP_PX,
+  LOADING_BUBBLE_GRADIENT,
+  LOADING_BUBBLE_OPACITY_AT_REST,
+  LOADING_BUBBLE_PX,
+  LOADING_BUBBLES,
+} from "@/components/mpillow-loading";
 import { APPLE_SPLASH_BACKGROUND, APPLE_SPLASH_IMAGES } from "@/lib/apple-splash";
 
 export const dynamic = "force-static";
@@ -12,17 +16,12 @@ export function generateStaticParams() {
   return APPLE_SPLASH_IMAGES.map(({ file }) => ({ file }));
 }
 
-const TILE_PX = 96;
-const TILE_RADIUS_PX = 22;
-const LOGO_PX = 72;
-
 export async function GET(_request: Request, { params }: { params: Promise<{ file: string }> }) {
   const { file } = await params;
   const image = APPLE_SPLASH_IMAGES.find((candidate) => candidate.file === file);
   if (!image) return new Response("Not found", { status: 404 });
 
-  const logo = await readFile(path.join(process.cwd(), "public", "icon-512.png"));
-  const px = (cssPx: number) => cssPx * image.ratio;
+  const bubble = LOADING_BUBBLE_PX * image.ratio;
 
   return new ImageResponse(
     (
@@ -33,31 +32,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fil
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          gap: LOADING_BUBBLE_GAP_PX * image.ratio,
           background: APPLE_SPLASH_BACKGROUND[image.scheme],
         }}
       >
-        <div
-          style={{
-            width: px(TILE_PX),
-            height: px(TILE_PX),
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: px(TILE_RADIUS_PX),
-            border: `${px(1)}px solid rgba(0, 23, 54, 0.1)`,
-            boxShadow: `0 ${px(8)}px ${px(24)}px ${px(-12)}px rgba(0, 23, 54, 0.45)`,
-            background: "#ffffff",
-          }}
-        >
+        {Array.from({ length: LOADING_BUBBLES }, (_, index) => (
           <div
+            key={index}
             style={{
-              width: px(LOGO_PX),
-              height: px(LOGO_PX),
-              backgroundImage: `url(data:image/png;base64,${logo.toString("base64")})`,
-              backgroundSize: "100% 100%",
+              width: bubble,
+              height: bubble,
+              borderRadius: bubble / 2,
+              opacity: LOADING_BUBBLE_OPACITY_AT_REST,
+              backgroundImage: LOADING_BUBBLE_GRADIENT,
             }}
           />
-        </div>
+        ))}
       </div>
     ),
     { width: image.widthPx, height: image.heightPx },
