@@ -26,6 +26,7 @@ import { RegisterSW } from "@/components/register-sw";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
+import { APPLE_SPLASH_IMAGES } from "@/lib/apple-splash";
 import { getSiteOrigin } from "@/lib/site-url";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo/metadata";
 import { getPublishedSlideInRows } from "@/lib/slide-in-pages/store";
@@ -58,6 +59,7 @@ export const metadata: Metadata = {
     capable: true,
     title: "Mpillow",
     statusBarStyle: "black-translucent",
+    startupImage: APPLE_SPLASH_IMAGES.map(({ url, media }) => ({ url, media })),
   },
   formatDetection: {
     telephone: false,

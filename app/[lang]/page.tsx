@@ -1,6 +1,7 @@
 import { loadLandingPageData } from "@/lib/landing-page-data";
 import { getLandingSections } from "@/lib/landing-sections";
 import { LandingSectionsList } from "@/components/sections/landing/landing-sections-list";
+import { LoadingUntilReady } from "@/components/mpillow-loading";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { PAGE_META } from "@/lib/seo/page-meta";
@@ -32,27 +33,34 @@ export async function generateMetadata({
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
-  const m = getMessages(locale);
-
-  const [{ images, prices, landingRatings }, sections] = await Promise.all([
-    loadLandingPageData(),
-    getLandingSections(),
-  ]);
 
   return (
     <div className="relative min-h-screen min-w-0 max-w-full bg-background">
       <SiteJsonLd lang={locale} />
 
       <main className="relative min-w-0 max-w-full overflow-x-hidden">
-        <LandingSectionsList
-          sections={sections}
-          messages={m}
-          locale={locale}
-          images={images}
-          prices={prices}
-          landingRatings={landingRatings}
-        />
+        <LoadingUntilReady label={getMessages(locale).common.loading}>
+          <HomeSections locale={locale} />
+        </LoadingUntilReady>
       </main>
     </div>
+  );
+}
+
+async function HomeSections({ locale }: { locale: Locale }) {
+  const [{ images, prices, landingRatings }, sections] = await Promise.all([
+    loadLandingPageData(),
+    getLandingSections(),
+  ]);
+
+  return (
+    <LandingSectionsList
+      sections={sections}
+      messages={getMessages(locale)}
+      locale={locale}
+      images={images}
+      prices={prices}
+      landingRatings={landingRatings}
+    />
   );
 }

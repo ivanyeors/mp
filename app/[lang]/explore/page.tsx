@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 
 import { ExploreExperience } from "@/components/explore/explore-experience";
+import { LoadingUntilReady } from "@/components/mpillow-loading";
 import { getAuthUser } from "@/lib/auth/user";
 import { EXPLORE_LAUNCH_AT } from "@/lib/explore/launch";
 import { skyAt } from "@/lib/explore/sky";
 import { NO_FLOWERS, readExploreFlowers, readExploreViewer } from "@/lib/explore/viewer";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { getMessages } from "@/lib/i18n/messages";
 import { readPointsSettings } from "@/lib/points/server";
 import { POINTS_DEFAULTS, pointsLive } from "@/lib/points/settings";
 import { readWelcomeSteps, welcomeOffer } from "@/lib/points/welcome";
@@ -19,13 +21,23 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 
 const SINGAPORE = { lat: 1.35, lon: 103.82 };
 
-export default async function ExplorePage({
-  params,
-  searchParams,
-}: {
+type ExplorePageProps = {
   params: Promise<{ lang: string }>;
   searchParams: Promise<{ claim?: string; flower?: string; hour?: string; rain?: string; bloom?: string; launched?: string }>;
-}) {
+};
+
+export default async function ExplorePage(props: ExplorePageProps) {
+  const { lang } = await props.params;
+  const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+
+  return (
+    <LoadingUntilReady label={getMessages(locale).common.loading}>
+      <Explore {...props} />
+    </LoadingUntilReady>
+  );
+}
+
+async function Explore({ params, searchParams }: ExplorePageProps) {
   const { lang } = await params;
   const { claim, flower, hour, rain, bloom, launched } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;

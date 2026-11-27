@@ -359,6 +359,43 @@ body.dock-hidden .app-dock {
       background: rgba(59, 130, 246, 0.85);
     }
   }
+
+  /* First-load screen (components/mpillow-loading.tsx): three gradient bubbles
+     rise and swell one after another while the page's data is on its way. */
+  @keyframes mp-loading-bubble {
+    0%,
+    60%,
+    100% {
+      transform: translateY(0) scale(1);
+      opacity: 0.55;
+    }
+    30% {
+      transform: translateY(-10px) scale(1.3);
+      opacity: 1;
+    }
+  }
+
+  @keyframes mp-loading-bubble-still {
+    0%,
+    60%,
+    100% {
+      opacity: 0.55;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
+
+  .mp-loading-bubble {
+    opacity: 0.55;
+    animation: mp-loading-bubble 1.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mp-loading-bubble {
+      animation-name: mp-loading-bubble-still;
+    }
+  }
 }
 
 /* Thin, minimal scrollbars (WebKit + Firefox) */
