@@ -153,6 +153,13 @@ const OneLine = Extension.create({
   },
 });
 
+const UnnestableListItem = ListItem.extend({
+  content: "paragraph",
+  addKeyboardShortcuts() {
+    return { ...this.parent?.(), Tab: () => false };
+  },
+});
+
 export function richTextExtensions({ marks, variables, placeholder, singleLine, variableMenu }: RichTextSchemaOptions): Extensions {
   const lists = marks.bullets && !singleLine;
   const out: Extensions = [
@@ -179,7 +186,7 @@ export function richTextExtensions({ marks, variables, placeholder, singleLine, 
       }),
     );
   }
-  if (lists) out.push(BulletList, ListItem.extend({ content: "paragraph" }));
+  if (lists) out.push(BulletList, UnnestableListItem);
   if (placeholder) out.push(Placeholder.configure({ placeholder, showOnlyWhenEditable: true }));
   if (singleLine) out.push(OneLine);
   return out;

@@ -7,6 +7,7 @@ const CLIENT_ROOT_DIRS = ["app", "components", "lib", "hooks"];
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs"];
 const SERVICE_ROLE_MODULE = "lib/supabase/server.ts";
 const BROWSER_SAFE_ENV = /^(NEXT_PUBLIC_\w+|NODE_ENV)$/;
+const SERVER_ONLY_PACKAGE = "@anthropic-ai/sdk";
 
 const KNOWN_CLIENT_TO_SERVICE_ROLE: string[] = [
   "app/[lang]/mbolster-config/mbolster-config-client.tsx -> lib/discovery-source/index.ts -> lib/supabase/server.ts",
@@ -15,9 +16,6 @@ const KNOWN_CLIENT_TO_SERVICE_ROLE: string[] = [
   "app/[lang]/mp-config/mp-config-client.tsx -> lib/discovery-source/index.ts -> lib/supabase/server.ts",
   "app/[lang]/mp-config/mp-config-client.tsx -> lib/rules-engine/persist.ts -> lib/supabase/server.ts",
   "app/[lang]/mp-config/mp-config-client.tsx -> lib/site-settings.ts -> lib/supabase/server.ts",
-  "app/[lang]/settings/customers/[id]/customer-detail-client.tsx -> lib/settings/api-configs.ts -> lib/supabase/server.ts",
-  "app/[lang]/settings/customers/[id]/customer-journey.tsx -> lib/settings/api-configs.ts -> lib/supabase/server.ts",
-  "app/[lang]/settings/customers/[id]/journey-composer.tsx -> lib/settings/api-configs.ts -> lib/supabase/server.ts",
   "app/[lang]/settings/faq/faq-client.tsx -> lib/faq/index.ts -> lib/supabase/server.ts",
   "app/[lang]/settings/faq/faq-client.tsx -> lib/faq/seed.ts -> lib/supabase/server.ts",
   "app/[lang]/settings/faq/faq-client.tsx -> lib/page-faq/index.ts -> lib/supabase/server.ts",
@@ -36,6 +34,7 @@ const KNOWN_CLIENT_TO_SERVICE_ROLE: string[] = [
 type ParsedModule = {
   directive: "use client" | "use server" | null;
   imports: string[];
+  importsServerOnlyPackage: boolean;
   readsServerEnv: boolean;
 };
 
@@ -153,7 +152,8 @@ function parse(rel: string): ParsedModule {
   const imports = [
     ...new Set(specifiers.map((s) => resolveSpecifier(rel, s)).filter((r): r is string => r !== null)),
   ];
-  const result: ParsedModule = { directive: directiveOf(source), imports, readsServerEnv };
+  const importsServerOnlyPackage = specifiers.some((s) => s === SERVER_ONLY_PACKAGE || s.startsWith(`${SERVER_ONLY_PACKAGE}/`));
+  const result: ParsedModule = { directive: directiveOf(source), imports, importsServerOnlyPackage, readsServerEnv };
   parsed.set(rel, result);
   return result;
 }
@@ -248,7 +248,10 @@ const routeKeyFor = (chain: string[]) =>
 const found = new Map<string, string[]>();
 const clientsReachingServiceRole = new Set<string>();
 const serverEnvChains = new Map<string, string[]>();
+const serverOnlyPackageChains: string[][] = [];
 for (const client of clientFiles) {
+  const toPackage = parse(client).importsServerOnlyPackage ? [client] : shortestChainTo(client, (rel) => parse(rel).importsServerOnlyPackage);
+  if (toPackage) serverOnlyPackageChains.push([...toPackage, SERVER_ONLY_PACKAGE]);
   for (const chain of chainsCrossingIntoServiceRole(client)) {
     found.set(routeKeyFor(chain), chain);
     clientsReachingServiceRole.add(client);
@@ -272,6 +275,13 @@ if (newViolations.length > 0) {
     "Fix: move the call behind a server action (\"use server\") or a route handler and call that from the client,",
     "or split the pure helper the client needs into its own module that does not import the server code.",
     "Use `import type` when the client only needs a type: type-only imports are erased.",
+  );
+}
+if (serverOnlyPackageChains.length > 0) {
+  problems.push(
+    `${serverOnlyPackageChains.length} "use client" file(s) reach ${SERVER_ONLY_PACKAGE}, which ships the SDK to every visitor of that page, each with its shortest chain:`,
+    ...serverOnlyPackageChains.map((chain) => `  ${chain.join("\n    -> ")}`),
+    "Fix: split what the client needs (constants, labels, types) into a module that does not import the SDK.",
   );
 }
 if (staleEntries.length > 0) {

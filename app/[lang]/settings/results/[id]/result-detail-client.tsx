@@ -27,7 +27,6 @@ import { confirmSaveWithBolsterFit, confirmSaveWithOverCells } from "@/component
 import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
-import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
 import { EAR_PAD, fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
 import { useElementWidth } from "@/hooks/use-element-width";
@@ -48,6 +47,10 @@ const XrayCrossSectionStrip = dynamic(
 const BolsterCrossSection = dynamic(
   () => import("@/components/spatial/xray-cross-section").then((m) => m.BolsterCrossSection),
   { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
+);
+const InsertOrderList = dynamic(
+  () => import("@/components/spatial/insert-order-list").then((m) => m.InsertOrderList),
+  { ssr: false, loading: () => <Skeleton className="h-24 w-full rounded-lg" /> },
 );
 import {
   isSpatiallyAuthored,
