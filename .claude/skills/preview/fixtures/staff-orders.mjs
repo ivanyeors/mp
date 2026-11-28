@@ -198,6 +198,11 @@ export default function staffOrders({ now }) {
         { id: STONE_COVER_M, name: "Stone Grey", size: "M", category: "cover", subtype: null, price_family: null, is_active: true },
         { id: SLATE_BOLSTER_CASE_M, name: "Slate", size: "M", category: "bolster_case", subtype: null, price_family: null, is_active: true },
       ],
+      // Case colours, so a picked Mbolster case tints the bolster and shows its swatch.
+      item_overlay_mappings: [
+        { item_id: 85, color: "#c19a6b" },
+        { item_id: SLATE_BOLSTER_CASE_M, color: "#64748b" },
+      ],
       item_prices: [
         { item_id: STONE_COVER_M, cost_price: 16, msrp: 58, currency: "SGD" },
         { item_id: SLATE_BOLSTER_CASE_M, cost_price: 12, msrp: 40, currency: "SGD" },

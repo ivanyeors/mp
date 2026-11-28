@@ -47,6 +47,7 @@ type Props = {
   codeContext: CheckoutCodeContext | null;
   onCodeStatus: (status: CheckoutCodeStatus) => void;
   formatAmount: (amount: number) => string;
+  hideTitle?: boolean;
 };
 
 export function previewContactFieldChecks(
@@ -90,6 +91,7 @@ export function PreviewContactFields({
   codeContext,
   onCodeStatus,
   formatAmount,
+  hideTitle = false,
 }: Props) {
   const showOther = values.discoverySource === OTHER_DISCOVERY_SOURCE_ID;
 
@@ -101,7 +103,7 @@ export function PreviewContactFields({
   return (
     <div className="space-y-5" data-preview-contact="">
       <div className="space-y-3">
-        <Label className="text-base font-semibold">Contact</Label>
+        {hideTitle ? null : <Label className="text-base font-semibold">Contact</Label>}
         <div className="space-y-2">
           <Label htmlFor="hold-email">Email</Label>
           <Input

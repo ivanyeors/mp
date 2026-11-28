@@ -24,39 +24,30 @@ import {
   type CrossSectionColumn,
   type Cut,
 } from "@/lib/spatial-fillings/cross-section";
-import type { BolsterFit, FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
+import type { FitStatus, PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingItemsToSunburst, fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { draftSoftBody, HELD_EASE_MS, padWellOf, SOFT_BODY_DEFAULTS, type SoftBodySettings } from "@/lib/spatial-fillings/soft-body-settings";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { cn } from "@/lib/utils";
-import { pouchPath, puffOf, puffyPath, rollPath, shellPolygon, smoothClosedPath, wellDip, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
+import { pouchPath, puffOf, rollPath, shellPolygon, smoothClosedPath, wellDip, type PouchShaping, type ShellPolygon, type ShellTransform, type SlabBox } from "./slab-shape";
 import { useSoftCut, type SoftCutInput } from "./soft-cut";
 import { landingText, SNAP_WORDS } from "./drag-badge";
 import { badgeFontFor, buzz, HeldGhost, pastThreshold, pickUp, stepHold, svgScale, useHeldGhost, type HeldGhostHandle } from "./held-pouch";
 import { clearXrayDraft, placementsSignature, publishXrayDraft, useXrayDraft, type XrayDraft } from "./xray-link";
 import { XRAY_INTERIOR_VAR, XRAY_PIECE_EDGE_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
-export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
-
 type CutLayout = {
   width: number;
-  height: number;
   maxShellH: number;
-  padTop: number;
-  padBottom: number;
   cutPadTop: number;
   cutPadBottom: number;
-  maxFont: number;
   labelFont: number;
-  valueFont: number;
   labelDy: number;
-  valueDy: number;
-  statusDy: number | null;
   pieceFont: number;
   minPieceFont: number;
 };
-const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, maxShellH: 200, padTop: 22, padBottom: 30, cutPadTop: 8, cutPadBottom: 18, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null, pieceFont: 10, minPieceFont: 7 };
-const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, maxShellH: 170, padTop: 26, padBottom: 54, cutPadTop: 10, cutPadBottom: 24, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49, pieceFont: 13, minPieceFont: 9 };
+const LAYOUT: CutLayout = { width: 664, maxShellH: 200, cutPadTop: 8, cutPadBottom: 18, labelFont: 11, labelDy: 13, pieceFont: 10, minPieceFont: 7 };
+const COMPACT_LAYOUT: CutLayout = { width: 380, maxShellH: 170, cutPadTop: 10, cutPadBottom: 24, labelFont: 15, labelDy: 17, pieceFont: 13, minPieceFont: 9 };
 
 const PAD_X = 8;
 const SHELL_MARGIN = 3;
@@ -1310,113 +1301,4 @@ export function CutReadout({ tone, children }: { tone: keyof typeof READOUT_TONE
       {children}
     </p>
   );
-}
-
-export function BolsterCrossSectionSvg({
-  fit,
-  itemSubtypes,
-  compact = false,
-}: {
-  fit: BolsterFit;
-  itemSubtypes: ReadonlyMap<number, string | null>;
-  compact?: boolean;
-}) {
-  const uid = useId();
-  const L = compact ? COMPACT_LAYOUT : LAYOUT;
-  const { width, height, padTop, padBottom } = L;
-  const hatchId = `${uid}-bhatch`;
-  const thickest = fit.pieces.reduce<BolsterFit["pieces"][number] | null>(
-    (best, p) => (best === null || p.settledThicknessMm > best.settledThicknessMm ? p : best),
-    null,
-  );
-  const tallest = Math.max(fit.diameterMm, thickest?.settledThicknessMm ?? 0, 1);
-  const plotH = height - padTop - padBottom;
-  const ky = plotH / (tallest * 1.12);
-  const r = (fit.diameterMm * ky) / 2;
-  const cx = width / 2;
-  const cy = padTop + plotH / 2;
-  const slabH = thickest ? thickest.settledThicknessMm * ky : 0;
-  const slabW = Math.max(r * 1.4, 1);
-  const status = thickest?.thicknessStatus ?? "ok";
-  const visual = thickest ? fillingVisual(itemSubtypes.get(thickest.itemId) ?? null) : null;
-  const slabBoxEndOn = { x: cx - slabW / 2, y: cy - slabH / 2, w: slabW, h: Math.max(slabH, 1) };
-  const puff = thickest ? puffOf(thickest.settledThicknessMm, thickest.thicknessMm) : 1;
-  const body = puffyPath(slabBoxEndOn, puff);
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMid meet"
-      className="h-auto w-full"
-      aria-label="Mbolster cross-section, end-on"
-      data-xray-cross-section="bolster"
-    >
-      <defs>
-        <pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <path d="M0 0 L0 6" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
-        </pattern>
-      </defs>
-      <circle cx={cx} cy={cy} r={r} fill={XRAY_INTERIOR_VAR} stroke={fit.status === "over" ? AMBER : XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-      {thickest && visual && (
-        <g data-slab-status={status} data-item-subtype={itemSubtypes.get(thickest.itemId) ?? ""}>
-          <path
-            d={body}
-            fill={`var(${visual.cssVar}, ${visual.defaultColor})`}
-            fillOpacity={0.92}
-            stroke="rgba(255,255,255,0.9)"
-            strokeWidth={1.5}
-            vectorEffect="non-scaling-stroke"
-          />
-          {status !== "ok" && <path d={body} fill={`url(#${hatchId})`} />}
-        </g>
-      )}
-      <text x={r1(cx + r + 6)} y={r1(cy - r + 4)} fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
-        Ø {Math.round(fit.diameterMm)} mm
-      </text>
-      <text x={cx} y={padTop + plotH + L.labelDy} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none">
-        end-on · {fit.length}
-      </text>
-      <text x={cx} y={padTop + plotH + L.valueDy} textAnchor="middle" fontSize={L.valueFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
-        {fit.pieces.length === 0
-          ? "empty"
-          : `${thickest ? `${Math.round(thickest.settledThicknessMm)} mm thick` : ""} · ${Math.round(fit.usedMm)} / ${Math.round(fit.lengthMm)} mm along${L.statusDy === null ? (fit.status === "compressed" ? " · compressed" : fit.status === "over" ? " · cannot fit" : "") : ""}`}
-      </text>
-      {L.statusDy !== null && fit.pieces.length > 0 && fit.status !== "ok" && (
-        <text x={cx} y={padTop + plotH + L.statusDy} textAnchor="middle" fontSize={L.valueFont} fill={XRAY_SHELL_VAR} className="select-none">
-          {fit.status === "compressed" ? "compressed" : "cannot fit"}
-        </text>
-      )}
-    </svg>
-  );
-}
-
-export function BolsterCrossSection({
-  fit,
-  itemSubtypes,
-  colorOverrides = [],
-  themed = true,
-  collapsible = true,
-  className,
-}: {
-  fit: BolsterFit;
-  itemSubtypes: ReadonlyMap<number, string | null>;
-  colorOverrides?: ColorOverrideRow[];
-  themed?: boolean;
-  collapsible?: boolean;
-  className?: string;
-}) {
-  const isMobile = useIsMobile();
-  const body = (
-    <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel="bolster">
-      <BolsterCrossSectionSvg fit={fit} itemSubtypes={itemSubtypes} compact={isMobile} />
-    </div>
-  );
-  if (collapsible && isMobile) {
-    return (
-      <CrossSectionDisclosure label="Cross-section" className={className}>
-        {body}
-      </CrossSectionDisclosure>
-    );
-  }
-  return <div className={className}>{body}</div>;
 }

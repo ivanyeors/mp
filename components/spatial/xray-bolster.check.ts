@@ -42,7 +42,8 @@ assert.match(renderer, /<FitNote\s+status=\{fit\.status\}\s+message=\{bolsterFit
 assert.match(renderer, /fillingItemsToSunburst\(items \?\? \[\]\)/, "add picker groups fillings family → variant, as the pillow's does");
 assert.match(renderer, /<SunburstMenu[\s\S]*?onSelect=\{\(leaf\) => addItem\(Number\(leaf\.id\)\)\}/, "a picked leaf adds that Item");
 assert.doesNotMatch(renderer, /<Select\b/, "no dropdown picker");
-assert.match(renderer, /const slotted = Boolean\(controlsSlot\) && !isMobile;/, "a host slot docks the controls on desktop only");
+assert.match(renderer, /const slotted = Boolean\(controlsSlot\) && \(dockOnPhone \|\| !isMobile\);/, "a host slot docks the controls on desktop, and on a phone only when the host asks");
+assert.match(renderer, /dockOnPhone = false,/, "hosts that do not ask keep the on-capsule phone controls");
 assert.match(renderer, /slotted &&\s+createPortal\(\s*<div data-xray-dive-dock/, "slotted controls take the dock's (md:dock:) sizes");
 assert.match(renderer, /status=\{squeeze\.status\}/, "a squeezed pouch draws dashed");
 assert.doesNotMatch(renderer, /MAX_BOLSTER|placements\.length >= \d/, "the cap is physical and derived — never a slot number (ADR 0008 amendment)");
@@ -63,9 +64,11 @@ assert.match(client, /\{xrayVisible && \(\s*<XrayBolster/, "x-ray mounts behind 
 assert.match(client, /items=\{staffAssist \? assistItems : undefined\}/, "guests get no item picker (read-only renderer)");
 assert.match(client, /onPlacementsChange=\{staffAssist \? setAssistPlacements : undefined\}/, "guests get no placement editing (read-only renderer)");
 assert.equal(client.match(/<XrayBolster\b/g)?.length, 1, "single x-ray mount point");
+assert.match(client, /controlsSlot=\{staffAssist \? compartmentSlot : undefined\}\s+dockOnPhone/, "on a phone the chips dock under the capsule, so a long mix never covers it");
+assert.match(client, /\{staffAssist && xrayVisible && \(\s*<XraySectionDock/, "the dock the chips move into is mounted at every width");
 assert.match(client, /fit=\{staffAssist \? assistBolsterFit : guestBolsterFit\}/, "the x-ray reads the host's fit");
 assert.match(client, /if \(staffAssist && !confirmSaveWithBolsterFit\(assistBolsterFit, "Hold"\)\) return;/, "a mix the bolster cannot fit confirms the hold, never blocks it");
-assert.match(client, /<BolsterCrossSection\s+fit=\{staffAssist \? assistBolsterFit : guestBolsterFit\}/, "the end-on cross-section is mounted for Staff and guest");
+assert.doesNotMatch(client, /CrossSection/, "the bolster x-ray shows no cross-section, for Staff or guest");
 assert.match(client, /bolsterCapsulePath\(suggestedLength \?\? DEFAULT_BOLSTER_LENGTH\)/, "silhouette follows the recommended length");
 assert.match(client, /xrayVisible && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
 assert.match(client, /\{staffAssist && suggestedLength \? \(\s*<StaffAssistBolsterPanel/, "assist panel gated to Staff");

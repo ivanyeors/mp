@@ -194,6 +194,7 @@ export function HoldShippingFields({
   errors,
   savedAddresses,
   recipientPlaceholder,
+  hideTitle = false,
 }: {
   options: HoldShippingOption[];
   loading?: boolean;
@@ -210,6 +211,7 @@ export function HoldShippingFields({
     onValueChange: (id: string) => void;
   };
   recipientPlaceholder: string;
+  hideTitle?: boolean;
 }) {
   const country = address.country || "SG";
   const countryOptions = useDeliveryCountries(country);
@@ -222,7 +224,7 @@ export function HoldShippingFields({
 
   return (
     <div className="space-y-3">
-      <Label className="text-base font-semibold">Shipping</Label>
+      {hideTitle ? null : <Label className="text-base font-semibold">Shipping</Label>}
       <div className="space-y-2">
         <Label htmlFor="hold-country">Ship to</Label>
         <CountryPicker

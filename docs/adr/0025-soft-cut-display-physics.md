@@ -158,4 +158,5 @@ drawn as a third shape:
   the fit's millimetres and is its own decision.
 - Pouch volumes are fallbacks until measured; the "Pouch volume" knob (default × 1.30) covers the
   difference and should come down as real measurements land.
-- The Bolster cut is unchanged.
+- The Bolster cut is unchanged. *(Removed 2026-11-28, owner: the Mbolster x-ray has no
+  cross-section on any surface; its fit reads from the capsule ring, the gauge and the refusal.)*

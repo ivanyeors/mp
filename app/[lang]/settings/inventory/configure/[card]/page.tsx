@@ -95,10 +95,6 @@ const XrayCrossSection = dynamic(
   () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
   { ssr: false, loading: () => <EditorSkeleton className="h-40" /> },
 );
-const BolsterCrossSection = dynamic(
-  () => import("@/components/spatial/xray-cross-section").then((m) => m.BolsterCrossSection),
-  { ssr: false, loading: () => <EditorSkeleton className="h-40" /> },
-);
 const XrayPackList = dynamic(
   () => import("@/components/spatial/xray-pack-list").then((m) => m.XrayPackList),
   { ssr: false, loading: () => <EditorSkeleton className="h-24" /> },
@@ -2301,7 +2297,6 @@ function FillingConfigPanel({
                 fit={bolsterFit}
                 controlsSlot={wideWorkbench ? controlsSlot : null}
               />
-              <BolsterCrossSection fit={bolsterFit} itemSubtypes={gridItemSubtypes} colorOverrides={colorOverrides} />
             </Section>
           )}
           <div className="space-y-3">

@@ -358,6 +358,8 @@ export interface CustomizationStepComponentsProps {
   preferencesOnly?: boolean;
   caseOnly?: boolean;
   hideNav?: boolean;
+  hideCaseTitle?: boolean;
+  caseSwatches?: boolean;
   continueLabel?: string;
   coverPreview?: {
     checked: boolean;
@@ -373,6 +375,7 @@ function ComponentOptionButton({
   isSelected,
   onSelect,
   allowSoldOut = false,
+  swatch = null,
 }: {
   name: string;
   subtype?: string;
@@ -380,6 +383,7 @@ function ComponentOptionButton({
   isSelected: boolean;
   onSelect: () => void;
   allowSoldOut?: boolean;
+  swatch?: string | null;
 }) {
   const isSoldOut = stockAvailable <= 0;
   const disabled = isSoldOut && !allowSoldOut;
@@ -395,9 +399,19 @@ function ComponentOptionButton({
         disabled && "opacity-50 cursor-not-allowed hover:border-border",
       )}
     >
-      <div className="text-left">
-        <p className="font-medium text-sm">{name}</p>
-        {subtype && <p className="text-xs text-muted-foreground">{subtype}</p>}
+      <div className="flex min-w-0 items-center gap-3 text-left">
+        {swatch ? (
+          <span
+            aria-hidden
+            data-case-swatch=""
+            className="size-6 shrink-0 rounded-full border border-foreground/20"
+            style={{ backgroundColor: swatch }}
+          />
+        ) : null}
+        <div className="min-w-0">
+          <p className="font-medium text-sm">{name}</p>
+          {subtype && <p className="text-xs text-muted-foreground">{subtype}</p>}
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {isSoldOut ? (
@@ -431,6 +445,8 @@ export function CustomizationStepComponents({
   preferencesOnly = false,
   caseOnly = false,
   hideNav = false,
+  hideCaseTitle = false,
+  caseSwatches = false,
   continueLabel = "Review & Add to Cart",
   coverPreview,
 }: CustomizationStepComponentsProps) {
@@ -474,7 +490,7 @@ export function CustomizationStepComponents({
       )}
 
       <div className="space-y-3">
-        <Label className="text-base font-semibold">Case Style</Label>
+        {hideCaseTitle ? null : <Label className="text-base font-semibold">Case Style</Label>}
         {components.cases.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No cases available for this size. Check inventory for active case items matching the recommended size.
@@ -490,6 +506,7 @@ export function CustomizationStepComponents({
                 isSelected={selectedCase === caseItem.item_id}
                 onSelect={() => onSelectCase(caseItem.item_id)}
                 allowSoldOut={preferencesOnly}
+                swatch={caseSwatches ? (caseItem.overlay?.color ?? null) : null}
               />
             ))}
           </div>

@@ -51,6 +51,7 @@ export function XrayBolster({
   items,
   onPlacementsChange,
   controlsSlot,
+  dockOnPhone = false,
   className,
 }: {
   placements: BolsterPlacement[];
@@ -62,6 +63,7 @@ export function XrayBolster({
   items?: FillingItem[];
   onPlacementsChange?: (next: BolsterPlacement[]) => void;
   controlsSlot?: HTMLElement | null;
+  dockOnPhone?: boolean;
   className?: string;
 }) {
   const uid = useId();
@@ -69,7 +71,8 @@ export function XrayBolster({
   const [picking, setPicking] = useState(false);
   const editable = Boolean(items && onPlacementsChange);
   const isMobile = useIsMobile();
-  const slotted = Boolean(controlsSlot) && !isMobile;
+  const slotted = Boolean(controlsSlot) && (dockOnPhone || !isMobile);
+  const wideDock = slotted && !isMobile;
   const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
   const capsule = bolsterCapsulePath(length);
   const fit = useMemo(() => fitProp ?? fitBolster(placements, length, { dims: itemDims }), [fitProp, placements, length, itemDims]);
@@ -260,7 +263,7 @@ export function XrayBolster({
             size={isMobile ? 280 : slotted ? SLOTTED_BLOOM_PX : 220}
             ringWidth={isMobile ? 48 : slotted ? 56 : 40}
             holeRadius={isMobile ? 26 : slotted ? 24 : 18}
-            largeLabels={slotted}
+            largeLabels={wideDock}
             centerIcon={Plus}
             ariaLabel="Add filling to bolster"
             onOpenChange={(o) => {

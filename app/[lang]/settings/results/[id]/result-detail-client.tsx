@@ -44,10 +44,6 @@ const XrayCrossSectionStrip = dynamic(
   () => import("@/components/spatial/xray-cross-section-strip").then((m) => m.XrayCrossSectionStrip),
   { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
 );
-const BolsterCrossSection = dynamic(
-  () => import("@/components/spatial/xray-cross-section").then((m) => m.BolsterCrossSection),
-  { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
-);
 const InsertOrderList = dynamic(
   () => import("@/components/spatial/insert-order-list").then((m) => m.InsertOrderList),
   { ssr: false, loading: () => <Skeleton className="h-24 w-full rounded-lg" /> },
@@ -1259,9 +1255,7 @@ export default function ResultDetailPage({
         colorOverrides={colorOverrides}
         softBody={softBody}
       />
-    ) : (
-      <BolsterCrossSection fit={bolsterFit} itemSubtypes={pickerItemSubtypes} colorOverrides={colorOverrides} />
-    );
+    ) : null;
 
     const dock =
       editable && isPillow && wideWorkbench ? (
