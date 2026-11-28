@@ -92,8 +92,8 @@ const openTab = async (name: string) => {
 };
 const card = (id: string) => document.querySelector<HTMLElement>(`li[data-block-id="${id}"]`)!;
 const beside = (id: string) => card(id).querySelector("[data-block-warnings]")?.textContent ?? null;
-const step = (key: string) => document.querySelector<HTMLElement>(`ul[aria-label="Left to do"] > li[data-step-detail="${key}"]`);
-const chip = (key: string) => document.querySelector<HTMLElement>(`ol[aria-label="Before you send"] > li[data-step="${key}"]`)!;
+const step = (key: string) => document.querySelector<HTMLElement>(`ul[aria-label="Left to do"] > li[data-send-step-detail="${key}"]`);
+const chip = (key: string) => document.querySelector<HTMLElement>(`ol[aria-label="Before you send"] > li[data-send-step="${key}"]`)!;
 const toggle = (within: ParentNode, text: string | RegExp) =>
   [...within.querySelectorAll<HTMLButtonElement>("button[aria-expanded]")].find((b) => {
     const t = b.textContent?.trim() ?? "";

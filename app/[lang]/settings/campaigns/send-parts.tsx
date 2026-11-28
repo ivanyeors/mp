@@ -289,7 +289,7 @@ export function StepStrip({
             <div className="flex flex-wrap items-center gap-2 max-md:gap-1.5">
                 <ol className="flex flex-wrap gap-2 max-md:gap-1.5" aria-label="Before you send">
                     {steps.map((step, i) => (
-                        <li key={step.key} data-step={step.key}>
+                        <li key={step.key} data-send-step={step.key}>
                             <Tip
                                 className={cn(
                                     "inline-flex items-center gap-1.5 rounded-full border py-1 pl-2 pr-3 text-xs font-medium hover:bg-muted/60 max-md:size-11 max-md:justify-center max-md:p-0",
@@ -330,7 +330,7 @@ export function StepStrip({
                     {left.map((step) => (
                         <li
                             key={step.key}
-                            data-step-detail={step.key}
+                            data-send-step-detail={step.key}
                             className={cn(
                                 "flex items-start gap-2.5 text-sm",
                                 step.state === "fail" && "rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5",
