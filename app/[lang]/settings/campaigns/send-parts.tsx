@@ -185,7 +185,7 @@ const COUNTED: readonly CheckState[] = ["fail", "waiting", "override", "pass", "
 
 const MINI_ROWS = 3;
 
-function Toggle({ open, controls, onToggle, closed }: { open: boolean; controls: string; onToggle: () => void; closed: string }) {
+function Toggle({ open, controls, onToggle, closed }: { open: boolean; controls: string; onToggle: () => void; closed: ReactNode }) {
     return (
         <Button
             variant="ghost"
@@ -286,21 +286,21 @@ export function StepStrip({
     const id = useId();
     return (
         <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-                <ol className="flex flex-wrap gap-2" aria-label="Before you send">
+            <div className="flex flex-wrap items-center gap-2 max-md:gap-1.5">
+                <ol className="flex flex-wrap gap-2 max-md:gap-1.5" aria-label="Before you send">
                     {steps.map((step, i) => (
                         <li key={step.key} data-step={step.key}>
                             <Tip
                                 className={cn(
-                                    "inline-flex items-center gap-1.5 rounded-full border py-1 pl-2 pr-3 text-xs font-medium hover:bg-muted/60 max-md:min-h-11",
+                                    "inline-flex items-center gap-1.5 rounded-full border py-1 pl-2 pr-3 text-xs font-medium hover:bg-muted/60 max-md:size-11 max-md:justify-center max-md:p-0",
                                     step.state === "fail" && "border-destructive/40 bg-destructive/5",
                                     step.state === "waiting" && "border-dashed",
                                 )}
                                 trigger={
                                     <>
-                                        <StatusIcon state={step.done ? "pass" : step.state} className="mt-0" />
+                                        <StatusIcon state={step.done ? "pass" : step.state} className="mt-0 max-md:h-5 max-md:w-5" />
                                         <span className="sr-only">Step {i + 1}: </span>
-                                        <span>{step.label}</span>
+                                        <span className="max-md:sr-only">{step.label}</span>
                                     </>
                                 }
                             >
@@ -312,7 +312,18 @@ export function StepStrip({
                         </li>
                     ))}
                 </ol>
-                {left.length ? <Toggle open={open} controls={id} onToggle={() => setOpen((o) => !o)} closed={`${left.length} left to do`} /> : null}
+                {left.length ? (
+                    <Toggle
+                        open={open}
+                        controls={id}
+                        onToggle={() => setOpen((o) => !o)}
+                        closed={
+                            <>
+                                {left.length} left<span className="max-md:hidden"> to do</span>
+                            </>
+                        }
+                    />
+                ) : null}
             </div>
             {open && left.length ? (
                 <ul id={id} className="space-y-2" aria-label="Left to do">
@@ -353,16 +364,20 @@ export function StepStrip({
 
 export function AllowanceMeters({ allowance }: { allowance: SendAllowance }) {
     return (
-        <div className="space-y-3">
-            {allowanceMeters(allowance).map((m) => (
-                <div key={m.label} className="space-y-1.5">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-sm">
-                        <span className="shrink-0 font-medium">{m.label}</span>
-                        <span className="tabular-nums text-muted-foreground">{m.text}</span>
+        <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+                {allowanceMeters(allowance).map((m) => (
+                    <div key={m.label} className="flex min-w-0 flex-col justify-between gap-1.5">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-2 text-sm">
+                            <span className="font-medium">{m.label}</span>
+                            <span className="text-xs tabular-nums text-muted-foreground">
+                                {m.used.toLocaleString("en-SG")} of {m.limit.toLocaleString("en-SG")}
+                            </span>
+                        </div>
+                        <Progress value={m.percent} aria-label={`${m.label}: ${m.text}`} />
                     </div>
-                    <Progress value={m.percent} aria-label={`${m.label}: ${m.text}`} />
-                </div>
-            ))}
+                ))}
+            </div>
             <p className={allowance.remaining === 0 ? "text-sm text-destructive" : "text-xs text-muted-foreground"}>
                 {allowanceSummary(allowance)}
             </p>
