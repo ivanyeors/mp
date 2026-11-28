@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, ChevronRight, CircleDashed, Info, Link2, XCircle } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, Info, Link2, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import type { SendAllowance } from "@/lib/customer-migration/campaign-ledger";
@@ -155,69 +156,117 @@ function TallyBar({ tally }: { tally: CheckBoard["tally"] }) {
     );
 }
 
-export function CheckBoardView({
-    board,
-    summary = true,
-    foldPassed = true,
-}: {
-    board: CheckBoard;
-    summary?: boolean;
-    foldPassed?: boolean;
-}) {
+function MiniRow({ row, showArea }: { row: BoardRow; showArea: boolean }) {
+    return (
+        <li data-check={row.key} className={cn("flex", row.nested && branchLine)}>
+            <Tip
+                className={cn(
+                    "-mx-1.5 flex min-w-0 flex-1 items-start gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted/60 max-md:min-h-11 max-md:py-2.5",
+                    row.state === "fail" && "bg-destructive/5",
+                )}
+                trigger={
+                    <>
+                        <StatusIcon state={row.state} />
+                        <span className="min-w-0 flex-1 truncate underline decoration-muted-foreground/40 decoration-dotted underline-offset-4">{row.title}</span>
+                        {showArea ? <span className="mt-0.5 hidden shrink-0 text-[11px] text-muted-foreground sm:inline">{CHECK_AREA_LABEL[row.area]}</span> : null}
+                    </>
+                }
+            >
+                <p className="font-medium text-foreground">{row.title}</p>
+                <p className="break-words text-muted-foreground">{row.detail}</p>
+                {row.fix ? <p className="break-words text-foreground">{row.fix}</p> : null}
+                {row.state === "waiting" ? null : <Links row={row} />}
+            </Tip>
+        </li>
+    );
+}
+
+const COUNTED: readonly CheckState[] = ["fail", "waiting", "override", "pass", "advice"];
+
+const MINI_ROWS = 3;
+
+function Toggle({ open, controls, onToggle, closed }: { open: boolean; controls: string; onToggle: () => void; closed: string }) {
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            aria-expanded={open}
+            aria-controls={controls}
+            onClick={onToggle}
+            className="-my-1 h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground"
+        >
+            {open ? "Less" : closed}
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} aria-hidden />
+        </Button>
+    );
+}
+
+export function CheckBoardView({ board, headline = board.headline }: { board: CheckBoard; headline?: string }) {
+    const [open, setOpen] = useState(false);
+    const id = useId();
     const areas = new Set([...board.attention, ...board.passed.flatMap((g) => g.rows)].map((r) => r.area));
     const many = areas.size > 1;
     const lead: CheckState = board.tally.fail || board.tally.waiting ? "fail" : board.tally.override ? "override" : "pass";
-    const passedCount = board.tally.pass;
-    const groups = (
-        <div className="space-y-3">
-            {board.passed.map((g) => (
-                <div key={g.area} className="space-y-0.5">
-                    {many ? <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{g.label}</p> : null}
-                    <ul className="space-y-0.5">
-                        {g.rows.map((r) => (
-                            <PassedRow key={r.key} row={r} />
-                        ))}
-                    </ul>
-                </div>
-            ))}
-        </div>
-    );
+    const shown = open ? board.attention : board.attention.slice(0, MINI_ROWS);
+    const more = board.attention.length - shown.length;
+    const areaAt = (r: BoardRow, i: number) => many && r.area !== shown[i - 1]?.area;
     return (
-        <div className="space-y-4">
-            {summary ? (
-                <div className="space-y-2" role="status">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                        <p className="flex items-center gap-2 text-sm font-medium">
-                            <StatusIcon state={lead} className="mt-0" />
-                            {board.headline}
+        <div className="space-y-3">
+            <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                    <StatusIcon state={lead} className="mt-0" />
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5" role="status">
+                        <p className="text-sm font-medium">{headline}</p>
+                        <p className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                            <span className="sr-only">{boardTally(board.tally)}</span>
+                            {COUNTED.filter((s) => board.tally[s] > 0).map((s) => (
+                                <span key={s} className="inline-flex items-center gap-0.5" aria-hidden>
+                                    <StatusIcon state={s} className="mt-0 h-3.5 w-3.5" />
+                                    {board.tally[s]}
+                                </span>
+                            ))}
                         </p>
-                        <p className="text-xs tabular-nums text-muted-foreground">{boardTally(board.tally)}</p>
                     </div>
-                    <TallyBar tally={board.tally} />
+                    <Toggle open={open} controls={id} onToggle={() => setOpen((o) => !o)} closed="Details" />
                 </div>
-            ) : null}
-            {board.attention.length ? (
-                <ul className="space-y-2" aria-label="Needs a look">
-                    {board.attention.map((r, i) => (
-                        <AttentionRow key={`${r.state}:${r.key}`} row={r} showArea={many && r.area !== board.attention[i - 1]?.area} />
-                    ))}
-                </ul>
-            ) : null}
-            {passedCount === 0 ? null : foldPassed ? (
-                <details className="group">
-                    <summary className="-mx-1.5 flex cursor-pointer list-none items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:bg-press max-md:min-h-11 [&::-webkit-details-marker]:hidden">
-                        <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" aria-hidden />
-                        <span>
-                            {passedCount === 1 ? "1 check passed" : `${passedCount} checks passed`}
-                        </span>
-                        <span className="ml-auto text-xs group-open:hidden">Show</span>
-                        <span className="ml-auto hidden text-xs group-open:inline">Hide</span>
-                    </summary>
-                    <div className="pt-2">{groups}</div>
-                </details>
-            ) : (
-                groups
-            )}
+                <TallyBar tally={board.tally} />
+            </div>
+            <div id={id} className="space-y-3">
+                {shown.length ? (
+                    <ul className={open ? "space-y-2" : "space-y-0.5"} aria-label="Needs a look">
+                        {shown.map((r, i) =>
+                            open ? (
+                                <AttentionRow key={`${r.state}:${r.key}`} row={r} showArea={areaAt(r, i)} />
+                            ) : (
+                                <MiniRow key={`${r.state}:${r.key}`} row={r} showArea={areaAt(r, i)} />
+                            ),
+                        )}
+                    </ul>
+                ) : null}
+                {more > 0 ? (
+                    <button
+                        type="button"
+                        onClick={() => setOpen(true)}
+                        className="relative -mt-2 pl-6 text-xs text-muted-foreground underline underline-offset-2 after:absolute after:-inset-y-3.5 after:inset-x-0 after:content-[''] hover:text-foreground active:opacity-60"
+                    >
+                        +{more} more
+                    </button>
+                ) : null}
+                {open && board.passed.length ? (
+                    <div className="space-y-3">
+                        {board.passed.map((g) => (
+                            <div key={g.area} className="space-y-0.5">
+                                {many ? <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{g.label}</p> : null}
+                                <ul className="space-y-0.5">
+                                    {g.rows.map((r) => (
+                                        <PassedRow key={r.key} row={r} />
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
+            </div>
         </div>
     );
 }
@@ -232,37 +281,42 @@ export function StepStrip({
     onShowReady: () => void;
 }) {
     const rank: Record<CheckState, number> = { fail: 0, waiting: 1, override: 2, advice: 3, pass: 4 };
-    const open = steps.filter((s) => s.state !== "pass").sort((a, b) => rank[a.state] - rank[b.state]);
+    const left = steps.filter((s) => s.state !== "pass").sort((a, b) => rank[a.state] - rank[b.state]);
+    const [open, setOpen] = useState(false);
+    const id = useId();
     return (
         <div className="space-y-3">
-            <ol className="flex flex-wrap gap-2" aria-label="Before you send">
-                {steps.map((step, i) => (
-                    <li key={step.key} data-step={step.key}>
-                        <Tip
-                            className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full border py-1 pl-2 pr-3 text-xs font-medium hover:bg-muted/60 max-md:min-h-11",
-                                step.state === "fail" && "border-destructive/40 bg-destructive/5",
-                                step.state === "waiting" && "border-dashed",
-                            )}
-                            trigger={
-                                <>
-                                    <StatusIcon state={step.done ? "pass" : step.state} className="mt-0" />
-                                    <span className="sr-only">Step {i + 1}: </span>
-                                    <span>{step.label}</span>
-                                </>
-                            }
-                        >
-                            <p className="font-medium text-foreground">{step.label}</p>
-                            <p className="break-words text-muted-foreground">{step.detail}</p>
-                            {step.needs ? <Links row={{ needs: step.needs, feeds: null }} /> : null}
-                            {step.fromReady ? <Links row={{ needs: "From Ready to send?", feeds: null }} /> : null}
-                        </Tip>
-                    </li>
-                ))}
-            </ol>
-            {open.length ? (
-                <ul className="space-y-2" aria-label="Left to do">
-                    {open.map((step) => (
+            <div className="flex flex-wrap items-center gap-2">
+                <ol className="flex flex-wrap gap-2" aria-label="Before you send">
+                    {steps.map((step, i) => (
+                        <li key={step.key} data-step={step.key}>
+                            <Tip
+                                className={cn(
+                                    "inline-flex items-center gap-1.5 rounded-full border py-1 pl-2 pr-3 text-xs font-medium hover:bg-muted/60 max-md:min-h-11",
+                                    step.state === "fail" && "border-destructive/40 bg-destructive/5",
+                                    step.state === "waiting" && "border-dashed",
+                                )}
+                                trigger={
+                                    <>
+                                        <StatusIcon state={step.done ? "pass" : step.state} className="mt-0" />
+                                        <span className="sr-only">Step {i + 1}: </span>
+                                        <span>{step.label}</span>
+                                    </>
+                                }
+                            >
+                                <p className="font-medium text-foreground">{step.label}</p>
+                                <p className="break-words text-muted-foreground">{step.detail}</p>
+                                {step.needs ? <Links row={{ needs: step.needs, feeds: null }} /> : null}
+                                {step.fromReady ? <Links row={{ needs: "From Ready to send?", feeds: null }} /> : null}
+                            </Tip>
+                        </li>
+                    ))}
+                </ol>
+                {left.length ? <Toggle open={open} controls={id} onToggle={() => setOpen((o) => !o)} closed={`${left.length} left to do`} /> : null}
+            </div>
+            {open && left.length ? (
+                <ul id={id} className="space-y-2" aria-label="Left to do">
+                    {left.map((step) => (
                         <li
                             key={step.key}
                             data-step-detail={step.key}

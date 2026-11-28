@@ -1711,7 +1711,6 @@ export function CampaignEditor({
                                             Check again
                                         </Button>
                                     </div>
-                                    <CardDescription>A wave goes only when every check passes.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     {checks ? (

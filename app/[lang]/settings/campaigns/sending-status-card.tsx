@@ -60,20 +60,15 @@ export function SendingStatusCard({
                         Run every check
                     </Button>
                 </div>
-                <CardDescription>
-                    {!status
-                        ? "The sending setup could not be read."
-                        : failing === 0
-                          ? "Ready to send."
-                          : `${failing} thing${failing === 1 ? "" : "s"} to set up before sending.`}
-                </CardDescription>
+                {status ? null : <CardDescription>The sending setup could not be read.</CardDescription>}
             </CardHeader>
             {status ? (
-                <CardContent className="grid gap-6 md:grid-cols-2">
-                    <div className="min-w-0">
-                        <CheckBoardView board={checkBoard(rows)} summary={false} foldPassed={false} />
-                    </div>
-                    <div className="min-w-0 space-y-4">
+                <CardContent className="space-y-5">
+                    <CheckBoardView
+                        board={checkBoard(rows)}
+                        headline={failing === 0 ? "Ready to send" : `${failing} thing${failing === 1 ? "" : "s"} to set up before sending`}
+                    />
+                    <div className="grid gap-5 md:grid-cols-2">
                         {status.allowance ? (
                             <AllowanceMeters allowance={status.allowance} />
                         ) : (
@@ -81,29 +76,31 @@ export function SendingStatusCard({
                                 The send limit could not be counted{status.allowanceError ? `: ${status.allowanceError}` : ""}.
                             </p>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Rest period. </span>
-                            {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
-                        </p>
-                        {keptSending > 0 || (status.keptToday ?? 0) > 0 ? (
+                        <div className="space-y-3">
                             <p className="text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground">Kept sending. </span>
-                                {keptSending === 0
-                                    ? "No campaign keeps sending now"
-                                    : `${keptSending} campaign${keptSending === 1 ? " keeps" : "s keep"} sending at ${KEEP_SENDING_TIME} each day`}
-                                {status.keptToday === null
-                                    ? "; today's could not be counted."
-                                    : `; ${status.keptToday === 0 ? "none" : status.keptToday} sent today.`}{" "}
-                                They leave {KEEP_SENDING_RESERVE} of the day for tests and your own waves.
+                                <span className="font-medium text-foreground">Rest period. </span>
+                                {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
                             </p>
-                        ) : null}
-                        {full ? (
-                            <div className="space-y-3 rounded-lg border p-3">
-                                <p className="text-sm font-medium">Every check, with the live site</p>
-                                <CheckBoardView board={checkBoard(full)} />
-                            </div>
-                        ) : null}
+                            {keptSending > 0 || (status.keptToday ?? 0) > 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                    <span className="font-medium text-foreground">Kept sending. </span>
+                                    {keptSending === 0
+                                        ? "No campaign keeps sending now"
+                                        : `${keptSending} campaign${keptSending === 1 ? " keeps" : "s keep"} sending at ${KEEP_SENDING_TIME} each day`}
+                                    {status.keptToday === null
+                                        ? "; today's could not be counted."
+                                        : `; ${status.keptToday === 0 ? "none" : status.keptToday} sent today.`}{" "}
+                                    They leave {KEEP_SENDING_RESERVE} of the day for tests and your own waves.
+                                </p>
+                            ) : null}
+                        </div>
                     </div>
+                    {full ? (
+                        <div className="space-y-3 rounded-lg border p-3">
+                            <p className="text-sm font-medium">Every check, with the live site</p>
+                            <CheckBoardView board={checkBoard(full)} />
+                        </div>
+                    ) : null}
                 </CardContent>
             ) : null}
         </Card>

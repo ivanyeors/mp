@@ -94,6 +94,14 @@ const card = (id: string) => document.querySelector<HTMLElement>(`li[data-block-
 const beside = (id: string) => card(id).querySelector("[data-block-warnings]")?.textContent ?? null;
 const step = (key: string) => document.querySelector<HTMLElement>(`ul[aria-label="Left to do"] > li[data-step-detail="${key}"]`);
 const chip = (key: string) => document.querySelector<HTMLElement>(`ol[aria-label="Before you send"] > li[data-step="${key}"]`)!;
+const toggle = (within: ParentNode, text: string | RegExp) =>
+  [...within.querySelectorAll<HTMLButtonElement>("button[aria-expanded]")].find((b) => {
+    const t = b.textContent?.trim() ?? "";
+    return typeof text === "string" ? t === text : text.test(t);
+  })!;
+const board = () => document.querySelector<HTMLElement>("#ready-to-send")!;
+const listed = () => [...board().querySelectorAll<HTMLElement>('[aria-label="Needs a look"] > li')].map((li) => li.dataset.check);
+const checked = () => until(() => board()?.querySelector('[aria-label="Needs a look"] li[data-check="links"]'));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -112,6 +120,9 @@ describe("The email, in the Send card", () => {
     const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
     mount();
     await openTab("Send");
+    await checked();
+    expect(step("email")).toBeNull();
+    await click(toggle(document, /^2 left to do$/));
     const email = await until(() => (step("email")?.textContent?.includes(DEAD) ? step("email") : null));
     expect(email.textContent).toContain("1 thing to fix before it can go:");
     expect(email.textContent).toContain(NO_PREVIEW);
@@ -146,7 +157,7 @@ describe("The email, in the Send card", () => {
     });
     mount();
     await openTab("Send");
-    await until(() => step("email")?.textContent?.includes(DEAD));
+    await checked();
     await click(button("Check who it goes to")!);
     const send = await until(() => button("Send to 3 people"));
     expect(send.disabled).toBe(true);
@@ -156,30 +167,59 @@ describe("The email, in the Send card", () => {
   it("lists the advice in Ready to send? as Recommended, never as a cross", async () => {
     mount();
     await openTab("Send");
-    const row = await until(() => [...document.querySelectorAll("li")].find((li) => li.textContent?.startsWith("Preview line")));
-    expect(row.textContent).toContain(NO_PREVIEW);
-    expect(row.querySelector("svg")?.getAttribute("aria-label")).toBe("Recommended");
-    const dead = [...document.querySelectorAll("li")].find((li) => li.textContent?.startsWith("Every link answers"))!;
+    await checked();
+    const row = () => [...board().querySelectorAll("li")].find((li) => li.textContent?.startsWith("Preview line"))!;
+    expect(row().querySelector("svg")?.getAttribute("aria-label")).toBe("Recommended");
+    expect(row().textContent).not.toContain(NO_PREVIEW);
+    await click(toggle(board(), "Details"));
+    expect(row().textContent).toContain(NO_PREVIEW);
+    const dead = [...board().querySelectorAll("li")].find((li) => li.textContent?.startsWith("Every link answers"))!;
     expect(dead.querySelector("svg")?.getAttribute("aria-label")).toBe("Not yet");
   });
 
-  it("puts what holds the wave first, and folds away what passed, each a tap from its words", async () => {
+  it("starts minimised: one line, then only what needs a look, its words a tap away", async () => {
     mount();
     await openTab("Send");
-    const board = await until(() => document.querySelector<HTMLElement>("#ready-to-send"));
-    await until(() => board.querySelector('[aria-label="Needs a look"] li[data-check="links"]'));
-    expect([...board.querySelectorAll<HTMLElement>('[aria-label="Needs a look"] > li')].map((li) => li.dataset.check)).toEqual(["links", "preview_line"]);
-    expect(board.textContent).toContain("1 check holds the wave");
-    expect(board.textContent).toContain("1 to fix · 8 passed · 1 recommended");
-    const folded = board.querySelector("details")!;
-    expect(folded.open).toBe(false);
-    expect(folded.querySelector("summary")?.textContent).toContain("8 checks passed");
-    const secret = folded.querySelector<HTMLElement>('li[data-check="unsubscribe_secret"]')!;
+    await checked();
+    expect(listed()).toEqual(["links", "preview_line"]);
+    expect(board().textContent).toContain("1 check holds the wave");
+    expect(board().textContent).toContain("1 to fix · 8 passed · 1 recommended");
+    expect(board().querySelector('li[data-check="unsubscribe_secret"]')).toBeNull();
+    expect(board().textContent).not.toContain(DEAD);
+    await click(board().querySelector<HTMLButtonElement>('li[data-check="links"] button')!);
+    await until(() => document.body.textContent?.includes(DEAD));
+  });
+
+  it("opens every check with Details, each drawn under the one it needs, and closes again", async () => {
+    mount();
+    await openTab("Send");
+    await checked();
+    await click(toggle(board(), "Details"));
+    expect(board().textContent).toContain(DEAD);
+    const secret = board().querySelector<HTMLElement>('li[data-check="unsubscribe_secret"]')!;
     expect(secret.className).toContain("ml-6");
     expect(secret.textContent).toContain("Needs one-click unsubscribe");
     expect(document.body.textContent).not.toContain("unsubscribe_secret ok");
     await click(secret.querySelector("button")!);
     await until(() => document.body.textContent?.includes("unsubscribe_secret ok"));
+    await click(toggle(board(), "Less"));
+    expect(board().querySelector('li[data-check="unsubscribe_secret"]')).toBeNull();
+  });
+
+  it("names at most three when minimised, and +N more opens the rest", async () => {
+    const no = (key: string) => ({ key, ok: false, detail: `${key} failed` });
+    actions.checkCampaignReadiness.mockResolvedValue({
+      ...READINESS,
+      checks: [no("transport"), no("from"), no("domain"), no("reply_to"), no("site"), ok("unsubscribe_route"), ok("unsubscribe_secret"), ok("pause"), links, ok("send_limit")],
+    });
+    mount();
+    await openTab("Send");
+    await until(() => board()?.querySelector('[aria-label="Needs a look"] li[data-check="transport"]'));
+    expect(listed()).toEqual(["transport", "from", "domain"]);
+    expect(board().querySelector('li[data-check="domain"] svg')?.getAttribute("aria-label")).toBe("Waiting");
+    const more = [...board().querySelectorAll("button")].find((b) => b.textContent === "+4 more")!;
+    await click(more);
+    expect(listed()).toEqual(["transport", "from", "domain", "reply_to", "site", "links", "preview_line"]);
   });
 });
 

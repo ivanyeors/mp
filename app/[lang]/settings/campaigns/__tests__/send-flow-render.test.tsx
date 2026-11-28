@@ -51,13 +51,13 @@ const text = (html: string) =>
     .replace(/\s+/g, " ");
 
 describe("the Sending card", () => {
-  it("shows Resend connected, the sender, reports, and today's and this month's room", () => {
+  it("starts minimised to one line when all is set up, with today's and this month's room", () => {
     const html = text(renderToStaticMarkup(<SendingStatusCard status={status()} origin="https://custom.mpillow.com" />));
-    expect(html).toContain("Ready to send.");
-    expect(html).toContain("Resend connected");
-    expect(html).toContain("Sending from Mpillow <hello@hello.mpillow.com>");
-    expect(html).toContain("Replies go to support@mpillow.com");
-    expect(html).toContain("Bounce and spam reports on");
+    expect(html).toContain("Ready to send");
+    expect(html).toContain("5 passed");
+    expect(html).toContain("Details");
+    expect(html).not.toContain("Resend connected");
+    expect(html).not.toContain("Sending from");
     expect(html).toContain("Today 38 of 100 sent · 62 left");
     expect(html).toContain("This month 140 of 3,000 sent · 2,860 left");
     expect(html).toContain("62 emails can go now.");
@@ -76,13 +76,12 @@ describe("the Sending card", () => {
         />,
       ),
     );
-    expect(html).toContain("2 things to set up before sending.");
+    expect(html).toContain("2 things to set up before sending");
     expect(html).toContain("Resend not connected");
-    expect(html).toContain("Add CAMPAIGN_RESEND_API_KEY, marked Sensitive, in Vercel");
     expect(html).toContain("Bounce and spam reports off");
-    expect(html).toContain("The pause rule relies on this");
+    expect(html).not.toContain("Add CAMPAIGN_RESEND_API_KEY");
+    expect(html).not.toContain("Sending from");
     expect(html).toContain("Today's 100 are used: room again from Tue, 27 Oct, 3:40 pm.");
-    expect(html.indexOf("Resend not connected")).toBeLessThan(html.indexOf("Sending from"));
   });
 
   it("says so when the setup could not be read", () => {
