@@ -49,6 +49,164 @@ export const CHECK_LABEL: Record<string, string> = {
 
 export const isEmailCheck = (c: PreflightCheck | ContentCheck): c is ContentCheck => "issues" in c;
 
+const CHECK_NEEDS: Record<string, { on: readonly string[]; waits: boolean }> = {
+  domain: { on: ["transport", "from"], waits: true },
+  unsubscribe_secret: { on: ["unsubscribe_route"], waits: true },
+  pause: { on: ["reports"], waits: false },
+};
+
+const NEED_NAME: Record<string, string> = {
+  transport: "Resend",
+  from: "the sending address",
+  unsubscribe_route: "one-click unsubscribe",
+  reports: "bounce and spam reports",
+  domain: "the sending domain",
+  unsubscribe_secret: "signed unsubscribe links",
+  pause: "the pause rule",
+  reply_to: "a reply inbox",
+  send_limit: "room in the plan",
+};
+
+const TEST_NEEDS = ["transport", "from", "domain", "reply_to", "send_limit"] as const;
+
+const andList = (words: readonly string[]) =>
+  words.length < 2 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export type CheckState = "pass" | "fail" | "waiting" | "override" | "advice";
+
+export type CheckArea = "setup" | "unsubscribe" | "pace" | "email" | "audience";
+
+export const CHECK_AREA_LABEL: Record<CheckArea, string> = {
+  setup: "Sending setup",
+  unsubscribe: "Unsubscribe",
+  pace: "Sending pace",
+  email: "The email",
+  audience: "Who it goes to",
+};
+
+export interface BoardCheck {
+  key: string;
+  ok: boolean;
+  detail: string;
+  title?: string;
+  fix?: string | null;
+  issues?: unknown;
+}
+
+export interface BoardRow {
+  key: string;
+  state: CheckState;
+  area: CheckArea;
+  title: string;
+  detail: string;
+  fix: string | null;
+  needs: string | null;
+  feeds: string | null;
+  nested: boolean;
+}
+
+export interface CheckBoard {
+  attention: BoardRow[];
+  passed: { area: CheckArea; label: string; rows: BoardRow[] }[];
+  tally: Record<CheckState, number>;
+  headline: string;
+}
+
+function areaOf(c: BoardCheck): CheckArea {
+  if (c.key.startsWith("fit_")) return "audience";
+  if ("issues" in c) return "email";
+  if (c.key.startsWith("unsubscribe_")) return "unsubscribe";
+  if (c.key === "pause" || c.key === "send_limit") return "pace";
+  return "setup";
+}
+
+function nest(rows: readonly BoardRow[]): BoardRow[] {
+  const at = new Map(rows.map((r, i) => [r.key, i]));
+  return rows
+    .map((r, i) => {
+      const parents = (CHECK_NEEDS[r.key]?.on ?? []).filter((p) => at.has(p));
+      const order = parents.length ? Math.max(...parents.map((p) => at.get(p)!)) + 0.5 : i;
+      return { row: { ...r, nested: parents.length > 0 }, order, i };
+    })
+    .sort((a, b) => a.order - b.order || a.i - b.i)
+    .map((x) => x.row);
+}
+
+export function checkBoard(
+  checks: readonly BoardCheck[],
+  { advice = [], override = null }: { advice?: readonly BoardCheck[]; override?: boolean | null } = {},
+): CheckBoard {
+  const byKey = new Map(checks.map((c) => [c.key, c]));
+  const row = (c: BoardCheck, advisory: boolean): BoardRow => {
+    const need = CHECK_NEEDS[c.key];
+    const failingParents = need?.waits ? need.on.filter((p) => byKey.has(p) && !byKey.get(p)!.ok) : [];
+    const state: CheckState = advisory
+      ? "advice"
+      : c.ok
+        ? "pass"
+        : failingParents.length
+          ? "waiting"
+          : c.key === "pause" && override === true
+            ? "override"
+            : "fail";
+    const names = (keys: readonly string[]) => andList(keys.map((k) => NEED_NAME[k] ?? CHECK_LABEL[k] ?? k));
+    const unlisted = Object.entries(CHECK_NEEDS)
+      .filter(([k, n]) => n.on.includes(c.key) && !byKey.has(k))
+      .map(([k]) => k);
+    const fix =
+      state === "override"
+        ? "Sending anyway, as you ticked in the Send card."
+        : state === "fail" && c.key === "pause" && override === false
+          ? "Once you have looked into them, you can tick “send anyway” in the Send card."
+          : state === "fail"
+            ? (c.fix ?? null)
+            : null;
+    return {
+      key: c.key,
+      state,
+      area: areaOf(c),
+      title: c.title ?? CHECK_LABEL[c.key] ?? c.key,
+      detail:
+        state === "waiting"
+          ? `Checked once ${names(failingParents)} ${failingParents.length === 1 ? "passes" : "pass"}.`
+          : c.detail,
+      fix,
+      needs: need && !advisory ? `${need.waits ? "Needs" : "Relies on"} ${names(need.on)}` : null,
+      feeds: unlisted.length ? `${capital(names(unlisted))} ${unlisted.length === 1 ? "relies" : "rely"} on this` : null,
+      nested: false,
+    };
+  };
+  const rows = checks.map((c) => row(c, false));
+  const tips = advice.map((c) => row(c, true));
+  const tally: Record<CheckState, number> = { pass: 0, fail: 0, waiting: 0, override: 0, advice: tips.length };
+  for (const r of rows) tally[r.state] += 1;
+  const passed = (Object.keys(CHECK_AREA_LABEL) as CheckArea[])
+    .map((area) => ({ area, label: CHECK_AREA_LABEL[area], rows: nest(rows.filter((r) => r.state === "pass" && r.area === area)) }))
+    .filter((g) => g.rows.length > 0);
+  const toFix = tally.fail + tally.waiting;
+  const headline = !checks.length
+    ? "No checks yet."
+    : toFix
+      ? `${plural(toFix, "check")} ${toFix === 1 ? "holds" : "hold"} the wave`
+      : tally.override
+        ? "Every check passes or is overridden"
+        : "Every check passes";
+  return { attention: [...nest(rows.filter((r) => r.state !== "pass")), ...tips], passed, tally, headline };
+}
+
+export function boardTally(t: Record<CheckState, number>): string {
+  return [
+    t.fail ? `${n(t.fail)} to fix` : null,
+    t.waiting ? `${n(t.waiting)} waiting` : null,
+    t.override ? `${n(t.override)} overridden` : null,
+    `${n(t.pass)} passed`,
+    t.advice ? `${n(t.advice)} recommended` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function roomAgainText(allowance: Pick<SendAllowance, "roomAt" | "binding">): string {
   if (allowance.roomAt) return `room again from ${formatAdminWeekdayTime(allowance.roomAt)}`;
   return allowance.binding === "daily" ? "room again tomorrow" : "room again once the oldest send is 31 days old";
@@ -164,7 +322,10 @@ export interface SendStep {
   label: string;
   done: boolean;
   advisory: boolean;
+  state: CheckState;
   detail: string;
+  needs: string | null;
+  fromReady: boolean;
   items?: SendStepItem[];
 }
 
@@ -187,24 +348,36 @@ export function sendSteps(p: {
       : [{ text: c.detail, blockId: null, advisory }];
   const fixes = unfixed.flatMap((c) => listed(c, false));
   const items = [...fixes, ...(p.advice ?? []).flatMap((c) => listed(c, true))];
+  const testWaits = p.lastTest ? [] : TEST_NEEDS.filter((k) => all.some((c) => c.key === k && !c.ok));
+  const named = (keys: readonly string[]) => andList(keys.map((k) => NEED_NAME[k] ?? k));
+  const step = (s: Omit<SendStep, "state" | "needs" | "fromReady"> & { needs?: string | null; fromReady?: boolean; waiting?: boolean }): SendStep => {
+    const { waiting = false, needs = null, fromReady = false, ...rest } = s;
+    const state: CheckState = s.done ? (s.items?.length ? "advice" : "pass") : waiting ? "waiting" : s.advisory ? "advice" : "fail";
+    return { ...rest, state, needs, fromReady };
+  };
   return [
-    {
+    step({
       key: "saved",
       label: "Saved",
       done: !p.dirty,
       advisory: false,
       detail: p.dirty ? "Save your changes before sending." : p.locked ? "Sending has started, so the email is fixed." : "The email is saved.",
-    },
-    {
+    }),
+    step({
       key: "test",
       label: "Test sent",
       done: Boolean(p.lastTest),
       advisory: true,
+      waiting: testWaits.length > 0,
+      needs: `Needs ${named(TEST_NEEDS)}`,
       detail: p.lastTest
         ? `Sent to ${plural(p.lastTest.sent, "address", "addresses")} at ${formatAdminWeekdayTime(p.lastTest.at)}. Check the inbox and the spam folder.`
-        : "Recommended: send yourself a test and read it on your phone first.",
-    },
-    {
+        : testWaits.length
+          ? `A test can go once ${named(testWaits)} ${testWaits.length === 1 ? "passes" : "pass"}.`
+          : "Recommended: send yourself a test and read it on your phone first.",
+    }),
+    step({
+      fromReady: true,
       key: "email",
       label: "The email",
       done: p.checks !== null && unfixed.length === 0,
@@ -220,8 +393,9 @@ export function sendSteps(p: {
                 ? "Nothing in it holds the wave."
                 : "Its links, images, size and words are all fine.",
       ...(p.checks !== null && items.length ? { items } : {}),
-    },
-    {
+    }),
+    step({
+      fromReady: true,
       key: "checks",
       label: "Every check passes",
       done: p.checks !== null && blocking.length === 0,
@@ -231,9 +405,10 @@ export function sendSteps(p: {
           ? "Checking…"
           : blocking.length === 0
             ? "Resend, the sending address and its domain, replies, unsubscribe and the pause rule are all fine."
-            : `${blocking.map((c) => CHECK_LABEL[c.key] ?? c.key).join(", ")}: see Ready to send? above.`,
-    },
-    {
+            : `${blocking.map((c) => CHECK_LABEL[c.key] ?? c.key).join(", ")}.`,
+    }),
+    step({
+      fromReady: true,
       key: "room",
       label: p.allowance && p.allowance.remaining > 0 ? `${plural(p.allowance.remaining, "email")} can go today` : "Room to send today",
       done: Boolean(p.allowance && p.allowance.remaining > 0),
@@ -243,7 +418,7 @@ export function sendSteps(p: {
         : p.allowance.remaining > 0
           ? `${n(p.allowance.used.daily)} of ${n(p.allowance.limits.daily)} sent in the last 24 hours, tests included.`
           : allowanceSummary(p.allowance),
-    },
+    }),
   ];
 }
 

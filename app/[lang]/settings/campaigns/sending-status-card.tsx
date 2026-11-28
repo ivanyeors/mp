@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
-import { sendingRows } from "@/lib/email-campaigns/send-flow";
+import { checkBoard, sendingRows } from "@/lib/email-campaigns/send-flow";
 import { REST_PERIOD_TEXT } from "@/lib/email-campaigns/rules";
 import { KEEP_SENDING_RESERVE, KEEP_SENDING_TIME } from "@/lib/email-campaigns/keep-sending";
 import type { SendingStatus } from "@/lib/email-campaigns/sender";
 import { checkCampaignReadiness } from "./actions";
-import { AllowanceMeters, CheckList, StatusIcon } from "./send-parts";
+import { AllowanceMeters, CheckBoardView } from "./send-parts";
 
 export function SendingStatusCard({
     status,
@@ -53,6 +53,15 @@ export function SendingStatusCard({
                                 Resend&apos;s free plan sends 100 emails a day and 3,000 a month, tests
                                 included. A wave never goes past what is left; the rest go in the next one.
                             </p>
+                            <p>
+                                <span className="font-medium">Rest period. </span>
+                                {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
+                            </p>
+                            <p>
+                                <span className="font-medium">Kept sending. </span>
+                                A campaign that keeps sending goes at {KEEP_SENDING_TIME} each day and leaves{" "}
+                                {KEEP_SENDING_RESERVE} of the day for tests and your own waves.
+                            </p>
                         </InfoTip>
                     </div>
                     <Button variant="outline" size="sm" onClick={runAll} disabled={checking}>
@@ -60,61 +69,36 @@ export function SendingStatusCard({
                         Run every check
                     </Button>
                 </div>
-                <CardDescription>
-                    {!status
-                        ? "The sending setup could not be read."
-                        : failing === 0
-                          ? "Ready to send."
-                          : `${failing} thing${failing === 1 ? "" : "s"} to set up before sending.`}
-                </CardDescription>
+                {status ? null : <CardDescription>The sending setup could not be read.</CardDescription>}
             </CardHeader>
             {status ? (
-                <CardContent className="grid gap-6 md:grid-cols-2">
-                    <ul className="min-w-0 space-y-3">
-                        {rows.map((r) => (
-                            <li key={r.key} className="flex items-start gap-2 text-sm">
-                                <StatusIcon ok={r.ok} />
-                                <span className="min-w-0">
-                                    <span className="block break-words font-medium">{r.title}</span>
-                                    <span className="block break-words text-xs text-muted-foreground">{r.detail}</span>
-                                    {r.fix ? <span className="mt-1 block break-words text-xs">{r.fix}</span> : null}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                    <div className="min-w-0 space-y-4">
-                        {status.allowance ? (
-                            <AllowanceMeters allowance={status.allowance} />
-                        ) : (
-                            <p role="alert" className="text-sm text-destructive">
-                                The send limit could not be counted{status.allowanceError ? `: ${status.allowanceError}` : ""}.
-                            </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">Rest period. </span>
-                            {REST_PERIOD_TEXT} Someone resting is skipped, not failed, and a later wave reaches them.
+                <CardContent className="space-y-5">
+                    <CheckBoardView
+                        board={checkBoard(rows)}
+                        headline={failing === 0 ? "Ready to send" : `${failing} thing${failing === 1 ? "" : "s"} to set up before sending`}
+                    />
+                    {status.allowance ? (
+                        <AllowanceMeters allowance={status.allowance} />
+                    ) : (
+                        <p role="alert" className="text-sm text-destructive">
+                            The send limit could not be counted{status.allowanceError ? `: ${status.allowanceError}` : ""}.
                         </p>
-                        {keptSending > 0 || (status.keptToday ?? 0) > 0 ? (
-                            <p className="text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground">Kept sending. </span>
-                                {keptSending === 0
-                                    ? "No campaign keeps sending now"
-                                    : `${keptSending} campaign${keptSending === 1 ? " keeps" : "s keep"} sending at ${KEEP_SENDING_TIME} each day`}
-                                {status.keptToday === null
-                                    ? "; today's could not be counted."
-                                    : `; ${status.keptToday === 0 ? "none" : status.keptToday} sent today.`}{" "}
-                                They leave {KEEP_SENDING_RESERVE} of the day for tests and your own waves.
-                            </p>
-                        ) : null}
-                        {full ? (
-                            <div className="space-y-2 rounded-lg border p-3" role="status">
-                                <p className="text-sm font-medium">
-                                    {full.every((c) => c.ok) ? "Every check passes." : "Every check, with the live site:"}
-                                </p>
-                                <CheckList checks={full} />
-                            </div>
-                        ) : null}
-                    </div>
+                    )}
+                    {keptSending > 0 || (status.keptToday ?? 0) > 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">Kept sending: </span>
+                            {keptSending === 0 ? "none now" : `${keptSending} campaign${keptSending === 1 ? "" : "s"} at ${KEEP_SENDING_TIME}`}
+                            {status.keptToday === null
+                                ? " · today's not counted"
+                                : ` · ${status.keptToday === 0 ? "none" : status.keptToday} sent today`}
+                        </p>
+                    ) : null}
+                    {full ? (
+                        <div className="space-y-3 rounded-lg border p-3">
+                            <p className="text-sm font-medium">Every check, with the live site</p>
+                            <CheckBoardView board={checkBoard(full)} />
+                        </div>
+                    ) : null}
                 </CardContent>
             ) : null}
         </Card>

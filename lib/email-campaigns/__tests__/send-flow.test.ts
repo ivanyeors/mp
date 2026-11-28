@@ -4,6 +4,8 @@ import { formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import {
   allowanceMeters,
   allowanceSummary,
+  boardTally,
+  checkBoard,
   defaultWaveSize,
   nextStepAfterWave,
   rampUntil,
@@ -116,7 +118,7 @@ describe("sendSteps", () => {
       { key: "send_limit", ok: false, detail: "z" },
     ];
     expect(sendSteps({ ...base, checks, allowance: used }).find((s) => s.key === "checks")!.detail).toBe(
-      "One-click unsubscribe works, Bounces and spam reports are low: see Ready to send? above.",
+      "One-click unsubscribe works, Bounces and spam reports are low.",
     );
     const resumed = sendSteps({ ...base, checks: checks.slice(1), allowance: used, resume: true });
     expect(resumed.find((s) => s.key === "checks")!.done).toBe(true);
@@ -149,8 +151,12 @@ describe("sendSteps", () => {
       label: "The email",
       done: true,
       advisory: false,
+      state: "pass",
       detail: "Its links, images, size and words are all fine.",
+      needs: null,
+      fromReady: true,
     });
+    expect(fixed.state).toBe("advice");
     expect(sendSteps({ ...base, checks: null }).find((s) => s.key === "email")).toMatchObject({ done: false, detail: "Checking…" });
   });
 
@@ -158,6 +164,84 @@ describe("sendSteps", () => {
     const steps = sendSteps({ ...base, dirty: true, lastTest: { sent: 2, at: ROOM_AT } });
     expect(steps[0]).toMatchObject({ done: false, detail: "Save your changes before sending." });
     expect(steps[1]).toMatchObject({ done: true, detail: `Sent to 2 addresses at ${formatAdminWeekdayTime(ROOM_AT)}. Check the inbox and the spam folder.` });
+  });
+
+  it("waits the test on what a test send needs, and only that", () => {
+    const failing = (key: string) => ({ key, ok: false, detail: "no" });
+    const test = (checks: { key: string; ok: boolean; detail: string }[], lastTest: { sent: number; at: string } | null = null) =>
+      sendSteps({ ...base, checks, lastTest }).find((s) => s.key === "test")!;
+    expect(test([failing("transport"), failing("domain")])).toMatchObject({
+      state: "waiting",
+      detail: "A test can go once Resend and the sending domain pass.",
+      needs: "Needs Resend, the sending address, the sending domain, a reply inbox and room in the plan",
+    });
+    expect(test([failing("unsubscribe_route"), failing("pause")])).toMatchObject({ state: "advice", done: false });
+    expect(test([failing("transport")], { sent: 1, at: ROOM_AT })).toMatchObject({ state: "pass", done: true });
+    expect(sendSteps(base).filter((s) => s.fromReady).map((s) => s.key)).toEqual(["email", "checks", "room"]);
+  });
+});
+
+describe("checkBoard", () => {
+  const ok = (key: string) => ({ key, ok: true, detail: `${key} ok` });
+  const no = (key: string, detail = `${key} failed`) => ({ key, ok: false, detail });
+  const setup = ["transport", "from", "domain", "reply_to", "site", "unsubscribe_route", "unsubscribe_secret", "pause", "send_limit"];
+  const states = (b: ReturnType<typeof checkBoard>) => Object.fromEntries(b.attention.map((r) => [r.key, r.state]));
+
+  it("waits a check on the one it needs, rather than crossing both", () => {
+    const board = checkBoard(setup.map((k) => (k === "transport" ? no(k) : k === "domain" ? no(k, "not checked: Resend and the sending address are not both set up") : ok(k))));
+    expect(states(board)).toEqual({ transport: "fail", domain: "waiting" });
+    const domain = board.attention.find((r) => r.key === "domain")!;
+    expect(domain).toMatchObject({ detail: "Checked once Resend passes.", needs: "Needs Resend and the sending address", nested: true });
+    expect(board.headline).toBe("2 checks hold the wave");
+    expect(boardTally(board.tally)).toBe("1 to fix · 1 waiting · 7 passed");
+  });
+
+  it("crosses the domain itself when what it needs passes", () => {
+    const board = checkBoard(setup.map((k) => (k === "domain" ? no(k, "Resend has not verified mail.mpillow.com") : ok(k))));
+    expect(states(board)).toEqual({ domain: "fail" });
+    expect(board.attention[0]).toMatchObject({ detail: "Resend has not verified mail.mpillow.com", nested: false });
+  });
+
+  it("draws each check under the one it needs, by area, in the passed list", () => {
+    const board = checkBoard(["unsubscribe_secret", "transport", "domain", "from", "unsubscribe_route"].map(ok));
+    expect(board.passed.map((g) => [g.label, g.rows.map((r) => `${r.nested ? "  " : ""}${r.key}`)])).toEqual([
+      ["Sending setup", ["transport", "from", "  domain"]],
+      ["Unsubscribe", ["unsubscribe_route", "  unsubscribe_secret"]],
+    ]);
+    expect(board.headline).toBe("Every check passes");
+  });
+
+  it("says what the pause rule relies on, from either side", () => {
+    const ready = checkBoard([ok("pause")]);
+    expect(ready.passed[0].rows[0].needs).toBe("Relies on bounce and spam reports");
+    const sending = checkBoard([ok("transport"), ok("reports")]);
+    expect(sending.passed[0].rows.find((r) => r.key === "reports")!.feeds).toBe("The pause rule relies on this");
+    expect(sending.passed[0].rows.find((r) => r.key === "transport")!.feeds).toBe("The sending domain relies on this");
+  });
+
+  it("shows a paused wave Staff chose to send anyway as overridden, and how to do that before", () => {
+    const pause = no("pause", "the last wave (w1) 3 of 70 bounced (4.3%, over 2%); look into who bounced or complained before sending more");
+    expect(checkBoard([pause], { override: false }).attention[0]).toMatchObject({
+      state: "fail",
+      fix: "Once you have looked into them, you can tick “send anyway” in the Send card.",
+    });
+    const sent = checkBoard([pause], { override: true });
+    expect(sent.attention[0]).toMatchObject({ state: "override", fix: "Sending anyway, as you ticked in the Send card." });
+    expect(sent.headline).toBe("Every check passes or is overridden");
+    expect(checkBoard([pause]).attention[0]).toMatchObject({ state: "fail", fix: null });
+  });
+
+  it("lists advice after what holds the wave, and keeps a Sending row's own words and fix", () => {
+    const board = checkBoard(
+      [{ key: "transport", ok: false, detail: "not set", title: "Resend not connected", fix: "Add CAMPAIGN_RESEND_API_KEY" }, ok("from")],
+      { advice: [{ key: "image_words", ok: false, detail: "Recommended: more words", issues: [] }] },
+    );
+    expect(board.attention.map((r) => [r.key, r.state, r.title, r.fix])).toEqual([
+      ["transport", "fail", "Resend not connected", "Add CAMPAIGN_RESEND_API_KEY"],
+      ["image_words", "advice", "Words beside the images", null],
+    ]);
+    expect(board.attention[1].area).toBe("email");
+    expect(boardTally(board.tally)).toBe("1 to fix · 1 passed · 1 recommended");
   });
 });
 
