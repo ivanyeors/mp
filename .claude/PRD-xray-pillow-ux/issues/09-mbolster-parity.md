@@ -8,6 +8,8 @@ Tracker: #209 · Parent: #200
 **Labels:** `enhancement`, `needs-triage`, `P2`, `area:storefront`, `area:admin`
 **Status:** built (PR #213) — `bolsterStage` / true-scale `layoutBolsterPlacements`, `settleBolster` + `fitBolster` (tested), ring, gauge and refusal in `xray-bolster.tsx`, `BolsterCrossSection` (end-on) on `/mbolster-config`, Configure and Result, the save confirm on all three, ADR 0008 amended. The registry's bolster numbers are still the fallbacks: Ivan's measurements land in `BOLSTER_DIMENSIONS`.
 
+**Amended 2026-11-28 (owner):** the end-on cross-section is removed from every Mbolster x-ray (`/mbolster-config`, Configure and Result) and `BolsterCrossSection` is deleted. The ring, gauge, refusal and save confirm stay. `xray-bolster.check.ts` and `surface-parity.check.ts` now assert it is absent.
+
 ## Goal
 
 The bolster speaks the same fit language as the pillow: pouches to scale along the capsule, a fit status instead of an unbounded slot list, and a cut that shows the stack.

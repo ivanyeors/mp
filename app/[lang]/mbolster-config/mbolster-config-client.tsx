@@ -123,7 +123,6 @@ import { overlayFrame } from "@/lib/product-builder/overlays";
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
 import { XraySectionDock } from "@/components/spatial/xray-section-dock";
-import { BolsterCrossSection } from "@/components/spatial/xray-cross-section";
 import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import { fitBolster } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
@@ -1450,15 +1449,6 @@ export function MbolsterConfigClient({
                   className="flex w-full max-w-[500px] border-border/60 bg-background/70 shadow-xl backdrop-blur-xl lg:w-[min(75vmin,500px)]"
                 />
               )}
-              {xrayVisible && (
-                <BolsterCrossSection
-                  fit={staffAssist ? assistBolsterFit : guestBolsterFit}
-                  itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
-                  colorOverrides={assistColorOverrides.length ? assistColorOverrides : (shopColorOverrides ?? [])}
-                  themed={false}
-                  className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
-                />
-              )}
               {(() => {
                 const mixLines = guestXray
                   ? []
@@ -1579,7 +1569,7 @@ export function MbolsterConfigClient({
                 <BuyFlowNote icon={<UserCheck className="size-4" aria-hidden />}>
                   <p>
                     {staffAssist
-                      ? "Add or remove fillings on the Mbolster x-ray. The cross-section shows how the mix fits."
+                      ? "Add or remove fillings on the Mbolster x-ray. It warns you when the mix does not fit."
                       : paired
                         ? "Fillings are chosen by our team after review."
                         : "Fillings are chosen by our team after review. You are not charged until you accept the final build."}

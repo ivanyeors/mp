@@ -140,6 +140,7 @@ assert.ok(!/<rect/.test(crossSection), "slabs are rounded paths, not rects");
 assert.ok(crossSection.includes("<pattern"), "compressed slabs are hatched with an SVG pattern");
 assert.ok(crossSection.includes("var(${visual.cssVar}, ${visual.defaultColor})"), "slabs take the pouches' family colour variables");
 assert.ok(crossSection.includes("Collapsible"), "phones get the collapsed disclosure");
+assert.ok(!/bolster/i.test(crossSection), "the cross-section is the pillow's alone: the Mbolster x-ray has none");
 
 const BOLSTER_SURFACES = {
   "mbolster configurator": "app/[lang]/mbolster-config/mbolster-config-client.tsx",
@@ -148,7 +149,7 @@ const BOLSTER_SURFACES = {
 } as const;
 for (const [surface, path] of Object.entries(BOLSTER_SURFACES)) {
   const src = readFileSync(path, "utf8");
-  assert.ok(src.includes("<BolsterCrossSection"), `${surface} mounts the end-on cross-section`);
+  assert.ok(!src.includes("BolsterCrossSection"), `${surface} shows no cross-section beside the bolster x-ray`);
   assert.ok(src.includes("confirmSaveWithBolsterFit("), `${surface} confirms a save/hold the bolster cannot fit`);
 }
 const adr8 = readFileSync("docs/adr/0008-spatial-filling-placements.md", "utf8");

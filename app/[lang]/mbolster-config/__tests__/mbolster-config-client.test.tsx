@@ -30,7 +30,6 @@ vi.mock("@/components/ui/particles", () => ({ Particles: () => null }));
 vi.mock("@/components/ui/shadcn-io/dot-pattern", () => ({ DotPattern: () => null }));
 vi.mock("@/components/spatial/xray-bolster", () => ({ XrayBolster: () => null }));
 vi.mock("@/components/spatial/xray-section-dock", () => ({ XraySectionDock: () => null }));
-vi.mock("@/components/spatial/xray-cross-section", () => ({ BolsterCrossSection: () => null }));
 vi.mock("@/components/configurator/config-image-upload", () => ({ ConfigImageUpload: () => null }));
 
 const panelRenders = vi.hoisted(() => [] as { length: string; template: number | null; slots: number[] }[]);

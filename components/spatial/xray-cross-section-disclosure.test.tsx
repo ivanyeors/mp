@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { BolsterCrossSection, XrayCrossSection } from "./xray-cross-section";
+import { XrayCrossSection } from "./xray-cross-section";
 import { XrayCrossSectionStrip } from "./xray-cross-section-strip";
 import { DEFAULT_CUT } from "@/lib/spatial-fillings/cross-section";
-import { fitBolster, fitPillow } from "@/lib/spatial-fillings/fit";
+import { fitPillow } from "@/lib/spatial-fillings/fit";
 
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => true }));
 
@@ -23,11 +23,6 @@ describe("phone cross-section disclosure", () => {
 
   it("the strip's three cuts start open with no defaultOpen prop", () => {
     const d = disclosure(renderToStaticMarkup(<XrayCrossSectionStrip fit={fit} itemSubtypes={subtypes} />));
-    expect(d).toEqual({ state: "open", drawsCut: true });
-  });
-
-  it("the Mbolster end-on cut starts open", () => {
-    const d = disclosure(renderToStaticMarkup(<BolsterCrossSection fit={fitBolster([], "medium")} itemSubtypes={subtypes} />));
     expect(d).toEqual({ state: "open", drawsCut: true });
   });
 });

@@ -68,7 +68,7 @@ assert.match(client, /controlsSlot=\{staffAssist \? compartmentSlot : undefined\
 assert.match(client, /\{staffAssist && xrayVisible && \(\s*<XraySectionDock/, "the dock the chips move into is mounted at every width");
 assert.match(client, /fit=\{staffAssist \? assistBolsterFit : guestBolsterFit\}/, "the x-ray reads the host's fit");
 assert.match(client, /if \(staffAssist && !confirmSaveWithBolsterFit\(assistBolsterFit, "Hold"\)\) return;/, "a mix the bolster cannot fit confirms the hold, never blocks it");
-assert.match(client, /<BolsterCrossSection\s+fit=\{staffAssist \? assistBolsterFit : guestBolsterFit\}/, "the end-on cross-section is mounted for Staff and guest");
+assert.doesNotMatch(client, /CrossSection/, "the bolster x-ray shows no cross-section, for Staff or guest");
 assert.match(client, /bolsterCapsulePath\(suggestedLength \?\? DEFAULT_BOLSTER_LENGTH\)/, "silhouette follows the recommended length");
 assert.match(client, /xrayVisible && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
 assert.match(client, /\{staffAssist && suggestedLength \? \(\s*<StaffAssistBolsterPanel/, "assist panel gated to Staff");
