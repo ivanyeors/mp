@@ -28,10 +28,13 @@ import {
   type KeyTotals,
 } from "@/lib/seo-metrics/queries";
 import { createSupabaseSeoMetricsStore, GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
+import { buildIndexingReport, FRESH_DAYS, type IndexingReportRow } from "@/lib/seo-metrics/inspect-urls";
 import { parseReport, REPORT_LABELS, siteMismatchWarning } from "@/lib/seo-metrics/csv-import";
 import { getSiteOrigin } from "@/lib/site-url";
 
 // ponytail: do not `export type { X }` from "use server" — see actions.ts
+
+const STALE_AFTER_DAYS = 5;
 
 const RANGE_DAYS = { "28d": 28, "3m": 91, "6m": 182, "12m": 364, "16m": 486 } as const;
 
@@ -70,6 +73,7 @@ export async function getSearchVisibility(input: {
     granularity,
     hasData: rows.length > 0,
     lastDate: rows.length ? rows[rows.length - 1].date : null,
+    stale: rows.length > 0 && rows[rows.length - 1].date < addDays(today, -STALE_AFTER_DAYS),
     totals,
     previousTotals,
     deltas: compareTotals(totals, previousTotals),
@@ -287,6 +291,23 @@ export async function getSearchQueries(input: { range: string }) {
     queryMovers: buildMovers(queries, previousQueries),
     pageMovers: buildMovers(pages, previousPages),
   };
+}
+
+export async function getPageIndexing() {
+  await assertAdmin("analytics");
+  const today = new Date().toISOString().slice(0, 10);
+  const admin = supabaseAdmin();
+  const rows = await fetchAllPages<IndexingReportRow>((a, b) =>
+    admin
+      .from("seo_url_inspections")
+      .select(
+        "url, in_sitemap, issue, issue_since, last_crawl_time, inspection_link, verdict, inspected_at, attempted_at, error",
+      )
+      .gte("attempted_at", addDays(today, -FRESH_DAYS))
+      .order("url", { ascending: true })
+      .range(a, b),
+  );
+  return buildIndexingReport(rows, today);
 }
 
 export async function addTargetQuery(raw: string): Promise<{ ok: true } | { ok: false; error: string }> {

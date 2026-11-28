@@ -2,6 +2,7 @@ import { JWT } from "google-auth-library";
 
 const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 const ENDPOINT = "https://searchconsole.googleapis.com/webmasters/v3/sites";
+const INSPECT_ENDPOINT = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect";
 
 export const GSC_ROW_LIMIT = 25_000;
 
@@ -44,12 +45,36 @@ export type GscClient = {
   queryAll(query: GscQuery): Promise<GscRow[]>;
 };
 
+export type GscInspection = {
+  inspectionResultLink?: string;
+  indexStatusResult?: {
+    verdict?: string;
+    coverageState?: string;
+    robotsTxtState?: string;
+    indexingState?: string;
+    pageFetchState?: string;
+    lastCrawlTime?: string;
+    googleCanonical?: string;
+    userCanonical?: string;
+  };
+  richResultsResult?: {
+    detectedItems?: {
+      richResultType?: string;
+      items?: { issues?: { issueMessage?: string; severity?: string }[] }[];
+    }[];
+  };
+};
+
+export type GscInspector = {
+  inspectUrl(url: string): Promise<GscInspection>;
+};
+
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 export function createGscClient(
   config: GscConfig,
   opts: { fetchImpl?: FetchLike; getToken?: () => Promise<string> } = {},
-): GscClient {
+): GscClient & GscInspector {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const jwt = opts.getToken
     ? null
@@ -64,18 +89,9 @@ export function createGscClient(
 
   const url = `${ENDPOINT}/${encodeURIComponent(config.siteUrl)}/searchAnalytics/query`;
 
-  async function page(query: GscQuery, startRow: number): Promise<GscRow[]> {
-    const body = JSON.stringify({
-      startDate: query.startDate,
-      endDate: query.endDate,
-      dimensions: query.dimensions,
-      type: "web",
-      dataState: "all",
-      rowLimit: GSC_ROW_LIMIT,
-      startRow,
-    });
+  async function send<T>(endpoint: string, body: string): Promise<T> {
     for (let attempt = 0; ; attempt++) {
-      const res = await fetchImpl(url, {
+      const res = await fetchImpl(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${await getToken()}`,
@@ -83,10 +99,7 @@ export function createGscClient(
         },
         body,
       });
-      if (res.ok) {
-        const json = (await res.json()) as { rows?: GscRow[] };
-        return json.rows ?? [];
-      }
+      if (res.ok) return (await res.json()) as T;
       if ((res.status === 429 || res.status >= 500) && attempt < 3) {
         await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
         continue;
@@ -94,6 +107,22 @@ export function createGscClient(
       const text = await res.text().catch(() => "");
       throw new Error(`Search Console ${res.status}: ${text.slice(0, 300)}`);
     }
+  }
+
+  async function page(query: GscQuery, startRow: number): Promise<GscRow[]> {
+    const json = await send<{ rows?: GscRow[] }>(
+      url,
+      JSON.stringify({
+        startDate: query.startDate,
+        endDate: query.endDate,
+        dimensions: query.dimensions,
+        type: "web",
+        dataState: "all",
+        rowLimit: GSC_ROW_LIMIT,
+        startRow,
+      }),
+    );
+    return json.rows ?? [];
   }
 
   return {
@@ -104,6 +133,13 @@ export function createGscClient(
         rows.push(...batch);
         if (batch.length < GSC_ROW_LIMIT) return rows;
       }
+    },
+    async inspectUrl(inspectionUrl) {
+      const json = await send<{ inspectionResult?: GscInspection }>(
+        INSPECT_ENDPOINT,
+        JSON.stringify({ inspectionUrl, siteUrl: config.siteUrl }),
+      );
+      return json.inspectionResult ?? {};
     },
   };
 }

@@ -52,6 +52,11 @@ In that project, go to **APIs & Services → Library** and enable:
    Switching to another property later needs only the env change: days stored from the old
    property count as missing for the new one, so the import reloads them.
 
+8. Page indexing (slice 18) uses the same account and needs `pnpm db:push` once more (adds
+   `seo_url_inspections`). The same cron response then carries `urlInspections`: expect
+   `inspected > 0`. If it shows a `403` while `gscIngest` is fine, change the service account's
+   permission on the property from Restricted to **Full**.
+
 Later, for slice 08: add the same service-account email in GA4 → Admin → Property access management → **Viewer**.
 
 ---
@@ -93,7 +98,7 @@ Useful first prompts:
 
 ### Search Console from chat
 
-There is no official Google MCP for Search Console. Instead of a community server holding your Google credentials, use the data from part A: it lands in Supabase `seo_daily_metrics`, which Claude can query through the Supabase connector (e.g. *"top 20 queries by clicks last 28 days from seo_daily_metrics, position = sum(position_sum)/sum(impressions)"*).
+There is no official Google MCP for Search Console. Instead of a community server holding your Google credentials, use the data from part A: it lands in Supabase `seo_daily_metrics`, which Claude can query through the Supabase connector (e.g. *"top 20 queries by clicks last 28 days from seo_daily_metrics, position = sum(position_sum)/sum(impressions)"*). Page indexing issues are in `seo_url_inspections` (*"list every row where issue is not null, grouped by issue"*), which is what a Claude session reads before fixing them in this repo.
 
 ### Revoking
 

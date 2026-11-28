@@ -22,6 +22,7 @@ import {
   getCrawlerActivity,
   getSeoAnnotations,
   getAiAnswers,
+  getPageIndexing,
   getSearchQueries,
   getSearchVisibility,
   importAiReports,
@@ -30,6 +31,7 @@ import {
 } from "./seo-actions";
 import { InfoTip } from "@/components/ui/info-tip";
 import { MobileList, MobileListRow } from "@/components/settings/mobile-list";
+import { PageIndexingPanel } from "./PageIndexingPanel";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
 const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.ChannelMixVisx), { ssr: false });
@@ -37,6 +39,7 @@ const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.Ch
 type Visibility = Awaited<ReturnType<typeof getSearchVisibility>>;
 type Mix = Awaited<ReturnType<typeof getChannelMix>>;
 type Crawlers = Awaited<ReturnType<typeof getCrawlerActivity>>;
+type Indexing = Awaited<ReturnType<typeof getPageIndexing>>;
 
 const PURPOSE_LABELS = {
   training: "Model training",
@@ -954,6 +957,8 @@ export function SearchVisibilityCard() {
   const refreshAi = useCallback(() => setAiVersion((v) => v + 1), []);
   const [crawlers, setCrawlers] = useState<Crawlers | null>(null);
   const [crawlersError, setCrawlersError] = useState<string | null>(null);
+  const [indexing, setIndexing] = useState<Indexing | null>(null);
+  const [indexingError, setIndexingError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestKey = `${range}|${granularity}`;
   const [settledKey, setSettledKey] = useState<string | null>(null);
@@ -1008,6 +1013,15 @@ export function SearchVisibilityCard() {
       .catch((e) => {
         if (!cancelled) setCrawlersError(e instanceof Error ? e.message : "Failed to load");
       });
+    getPageIndexing()
+      .then((report) => {
+        if (cancelled) return;
+        setIndexing(report);
+        setIndexingError(null);
+      })
+      .catch((e) => {
+        if (!cancelled) setIndexingError(e instanceof Error ? e.message : "Failed to load");
+      });
     getChannelMix({ range, granularity })
       .then((m) => {
         if (cancelled) return;
@@ -1044,7 +1058,20 @@ export function SearchVisibilityCard() {
             first-party visits by channel.
           </InfoTip>
         </div>
-        {data?.lastDate ? <CardDescription>Latest data: {data.lastDate}.</CardDescription> : null}
+        {data?.lastDate ? (
+          <CardDescription>
+            Latest data: {data.lastDate}.
+            {data.stale ? (
+              <span className="mt-1 flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span>
+                  The daily Search Console import has brought nothing newer. Check that the service account can read
+                  the property set in <code className="rounded bg-muted px-1">GOOGLE_SEARCH_CONSOLE_SITE_URL</code>.
+                </span>
+              </span>
+            ) : null}
+          </CardDescription>
+        ) : null}
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
           <Tabs value={range} onValueChange={setRange} className="w-full sm:min-w-0 sm:flex-1">
             <TabsList className="w-full sm:w-fit">
@@ -1088,6 +1115,22 @@ export function SearchVisibilityCard() {
             {queries?.hasData ? <QueriesPanel queries={queries} onChange={refreshQueries} /> : null}
           </div>
         )}
+
+        <section className="space-y-3 border-t pt-6 max-md:pt-4">
+          <div>
+            <h3 className="text-sm font-medium">Page indexing</h3>
+            <div className="text-xs text-muted-foreground">
+              Pages Google has not indexed, or indexed with an error, pulled from Search Console page by page.
+            </div>
+          </div>
+          {indexingError ? (
+            <p className="text-sm text-destructive">{indexingError}</p>
+          ) : indexing ? (
+            <PageIndexingPanel report={indexing} />
+          ) : (
+            <Skeleton className="h-[160px]" />
+          )}
+        </section>
 
         <section className="space-y-3 border-t pt-6 max-md:pt-4">
           <div>
