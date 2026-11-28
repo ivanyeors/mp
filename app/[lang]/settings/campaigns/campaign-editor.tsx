@@ -103,7 +103,7 @@ import { PREVIEW_AS_LABEL, withSampleValues, type PreviewAs } from "@/lib/email-
 import type { CampaignStats } from "@/lib/email-campaigns/store";
 import type { CampaignResults } from "@/lib/email-campaigns/results";
 import type { CampaignReadiness } from "@/lib/email-campaigns/sender";
-import { defaultWaveSize, fitSummary, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
+import { checkBoard, defaultWaveSize, fitSummary, isEmailCheck, languageSummary, nextStepAfterWave, rampUntil, sendSteps, waitingSummary } from "@/lib/email-campaigns/send-flow";
 import type { CampaignWaveStats } from "@/lib/customer-migration/campaign-ledger";
 import { formatAdminDateMY, formatAdminWeekdayTime } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
@@ -136,7 +136,7 @@ import { EmailPreview, type PreviewDevice, type PreviewScheme } from "./email-pr
 import { Field } from "./field";
 import { draftOf, keptDraft, keptDraftKey, keptOf, type EditorDraft, type KeptDraft } from "./kept-draft";
 import { SendConfirmDialog, sendButtonLabel, type SendConfirmation } from "./send-confirm-dialog";
-import { CheckList, StatusIcon } from "./send-parts";
+import { CheckBoardView, StepStrip } from "./send-parts";
 import { StarterThumbnail } from "./starter-thumbnail";
 import { WaveTable } from "./wave-table";
 import { KeepSendingCard } from "./keep-sending-card";
@@ -1691,19 +1691,34 @@ export function CampaignEditor({
                                 </CardContent>
                             </Card>
 
-                            <Card>
+                            <Card id="ready-to-send" className="scroll-mt-24">
                                 <CardHeader>
                                     <div className="flex items-center justify-between gap-2">
-                                        <CardTitle className="text-base">Ready to send?</CardTitle>
+                                        <div className="flex items-center gap-1.5">
+                                            <CardTitle className="text-base">Ready to send?</CardTitle>
+                                            <InfoTip label="About these checks">
+                                                <p>A wave goes only when every check passes. Recommended ones never hold it.</p>
+                                                <p>
+                                                    An indented check needs the one above it: the sending domain is asked once Resend
+                                                    and the sending address pass, and signed unsubscribe links once one-click
+                                                    unsubscribe works. A test needs only Resend, the sending address and its domain, a
+                                                    reply inbox and room in the plan.
+                                                </p>
+                                            </InfoTip>
+                                        </div>
                                         <Button variant="ghost" size="sm" onClick={runChecks} disabled={checking}>
                                             {checking ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                                             Check again
                                         </Button>
                                     </div>
-                                    <CardDescription>Nothing is sent, not even a test, until these pass.</CardDescription>
+                                    <CardDescription>A wave goes only when every check passes.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {checks ? <CheckList checks={checks} advice={advice} /> : <Loader2 className="h-4 w-4 animate-spin" />}
+                                    {checks ? (
+                                        <CheckBoardView board={checkBoard(checks, { advice, override: pauseFailing ? resume : null })} />
+                                    ) : (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
@@ -1735,36 +1750,31 @@ export function CampaignEditor({
                                 ) : null}
                             </CardHeader>
                             <CardContent className="flex flex-col gap-5">
-                                <ol className="grid gap-3 sm:grid-cols-2" aria-label="Before you send">
-                                    {sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice, allowance, resume }).map((step) => (
-                                        <li key={step.key} className={cn("flex items-start gap-2 text-sm", step.items && "sm:col-span-2")}>
-                                            <StatusIcon ok={step.done} advisory={step.advisory} />
-                                            <span className="min-w-0">
-                                                <span className="block font-medium">{step.label}</span>
-                                                <span className="block break-words text-xs text-muted-foreground">{step.detail}</span>
-                                                {step.items ? (
-                                                    <ul className="mt-1 space-y-0.5 text-xs">
-                                                        {step.items.map((item, i) => (
-                                                            <li key={`${i}:${item.text}`} className={cn("break-words", item.advisory ? "text-muted-foreground" : "text-destructive")}>
-                                                                {item.blockId ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        className="text-left underline underline-offset-2 hover:no-underline"
-                                                                        onClick={() => goToBlock(item.blockId!, item.language)}
-                                                                    >
-                                                                        {item.text}
-                                                                    </button>
-                                                                ) : (
-                                                                    item.text
-                                                                )}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                ) : null}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ol>
+                                <StepStrip
+                                    steps={sendSteps({ dirty: dirty && !locked, locked, lastTest, checks, advice, allowance, resume })}
+                                    onShowReady={() => document.getElementById("ready-to-send")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                                    renderItems={(step) =>
+                                        step.items ? (
+                                            <ul className="mt-1 space-y-0.5 text-xs">
+                                                {step.items.map((item, i) => (
+                                                    <li key={`${i}:${item.text}`} className={cn("break-words", item.advisory ? "text-muted-foreground" : "text-destructive")}>
+                                                        {item.blockId ? (
+                                                            <button
+                                                                type="button"
+                                                                className="text-left underline underline-offset-2 hover:no-underline"
+                                                                onClick={() => goToBlock(item.blockId!, item.language)}
+                                                            >
+                                                                {item.text}
+                                                            </button>
+                                                        ) : (
+                                                            item.text
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : null
+                                    }
+                                />
 
                                 {rampEnds && !sending ? (
                                     <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm" suppressHydrationWarning>

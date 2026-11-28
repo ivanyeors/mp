@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
 import type { PreflightCheck } from "@/lib/customer-migration/wave-sender";
-import { sendingRows } from "@/lib/email-campaigns/send-flow";
+import { checkBoard, sendingRows } from "@/lib/email-campaigns/send-flow";
 import { REST_PERIOD_TEXT } from "@/lib/email-campaigns/rules";
 import { KEEP_SENDING_RESERVE, KEEP_SENDING_TIME } from "@/lib/email-campaigns/keep-sending";
 import type { SendingStatus } from "@/lib/email-campaigns/sender";
 import { checkCampaignReadiness } from "./actions";
-import { AllowanceMeters, CheckList, StatusIcon } from "./send-parts";
+import { AllowanceMeters, CheckBoardView } from "./send-parts";
 
 export function SendingStatusCard({
     status,
@@ -70,18 +70,9 @@ export function SendingStatusCard({
             </CardHeader>
             {status ? (
                 <CardContent className="grid gap-6 md:grid-cols-2">
-                    <ul className="min-w-0 space-y-3">
-                        {rows.map((r) => (
-                            <li key={r.key} className="flex items-start gap-2 text-sm">
-                                <StatusIcon ok={r.ok} />
-                                <span className="min-w-0">
-                                    <span className="block break-words font-medium">{r.title}</span>
-                                    <span className="block break-words text-xs text-muted-foreground">{r.detail}</span>
-                                    {r.fix ? <span className="mt-1 block break-words text-xs">{r.fix}</span> : null}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    <div className="min-w-0">
+                        <CheckBoardView board={checkBoard(rows)} summary={false} foldPassed={false} />
+                    </div>
                     <div className="min-w-0 space-y-4">
                         {status.allowance ? (
                             <AllowanceMeters allowance={status.allowance} />
@@ -107,11 +98,9 @@ export function SendingStatusCard({
                             </p>
                         ) : null}
                         {full ? (
-                            <div className="space-y-2 rounded-lg border p-3" role="status">
-                                <p className="text-sm font-medium">
-                                    {full.every((c) => c.ok) ? "Every check passes." : "Every check, with the live site:"}
-                                </p>
-                                <CheckList checks={full} />
+                            <div className="space-y-3 rounded-lg border p-3">
+                                <p className="text-sm font-medium">Every check, with the live site</p>
+                                <CheckBoardView board={checkBoard(full)} />
                             </div>
                         ) : null}
                     </div>

@@ -80,7 +80,9 @@ describe("the Sending card", () => {
     expect(html).toContain("Resend not connected");
     expect(html).toContain("Add CAMPAIGN_RESEND_API_KEY, marked Sensitive, in Vercel");
     expect(html).toContain("Bounce and spam reports off");
+    expect(html).toContain("The pause rule relies on this");
     expect(html).toContain("Today's 100 are used: room again from Tue, 27 Oct, 3:40 pm.");
+    expect(html.indexOf("Resend not connected")).toBeLessThan(html.indexOf("Sending from"));
   });
 
   it("says so when the setup could not be read", () => {

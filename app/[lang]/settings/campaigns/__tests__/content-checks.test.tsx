@@ -92,8 +92,8 @@ const openTab = async (name: string) => {
 };
 const card = (id: string) => document.querySelector<HTMLElement>(`li[data-block-id="${id}"]`)!;
 const beside = (id: string) => card(id).querySelector("[data-block-warnings]")?.textContent ?? null;
-const step = (label: string) =>
-  [...document.querySelectorAll<HTMLElement>('ol[aria-label="Before you send"] > li')].find((li) => li.querySelector("span span")?.textContent === label)!;
+const step = (key: string) => document.querySelector<HTMLElement>(`ul[aria-label="Left to do"] > li[data-step-detail="${key}"]`);
+const chip = (key: string) => document.querySelector<HTMLElement>(`ol[aria-label="Before you send"] > li[data-step="${key}"]`)!;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -112,11 +112,13 @@ describe("The email, in the Send card", () => {
     const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
     mount();
     await openTab("Send");
-    const email = await until(() => (step("The email")?.textContent?.includes(DEAD) ? step("The email") : null));
+    const email = await until(() => (step("email")?.textContent?.includes(DEAD) ? step("email") : null));
     expect(email.textContent).toContain("1 thing to fix before it can go:");
     expect(email.textContent).toContain(NO_PREVIEW);
     expect([...email.querySelectorAll("button")].map((b) => b.textContent)).toEqual([DEAD]);
-    expect(step("Every check passes").textContent).toContain("are all fine");
+    expect(step("checks")).toBeNull();
+    expect(chip("checks").querySelector("svg")?.getAttribute("aria-label")).toBe("Done");
+    expect(chip("email").querySelector("svg")?.getAttribute("aria-label")).toBe("Not yet");
 
     await click(button(DEAD)!);
     await settle(20);
@@ -144,7 +146,7 @@ describe("The email, in the Send card", () => {
     });
     mount();
     await openTab("Send");
-    await until(() => step("The email")?.textContent?.includes(DEAD));
+    await until(() => step("email")?.textContent?.includes(DEAD));
     await click(button("Check who it goes to")!);
     const send = await until(() => button("Send to 3 people"));
     expect(send.disabled).toBe(true);
@@ -159,6 +161,25 @@ describe("The email, in the Send card", () => {
     expect(row.querySelector("svg")?.getAttribute("aria-label")).toBe("Recommended");
     const dead = [...document.querySelectorAll("li")].find((li) => li.textContent?.startsWith("Every link answers"))!;
     expect(dead.querySelector("svg")?.getAttribute("aria-label")).toBe("Not yet");
+  });
+
+  it("puts what holds the wave first, and folds away what passed, each a tap from its words", async () => {
+    mount();
+    await openTab("Send");
+    const board = await until(() => document.querySelector<HTMLElement>("#ready-to-send"));
+    await until(() => board.querySelector('[aria-label="Needs a look"] li[data-check="links"]'));
+    expect([...board.querySelectorAll<HTMLElement>('[aria-label="Needs a look"] > li')].map((li) => li.dataset.check)).toEqual(["links", "preview_line"]);
+    expect(board.textContent).toContain("1 check holds the wave");
+    expect(board.textContent).toContain("1 to fix · 8 passed · 1 recommended");
+    const folded = board.querySelector("details")!;
+    expect(folded.open).toBe(false);
+    expect(folded.querySelector("summary")?.textContent).toContain("8 checks passed");
+    const secret = folded.querySelector<HTMLElement>('li[data-check="unsubscribe_secret"]')!;
+    expect(secret.className).toContain("ml-6");
+    expect(secret.textContent).toContain("Needs one-click unsubscribe");
+    expect(document.body.textContent).not.toContain("unsubscribe_secret ok");
+    await click(secret.querySelector("button")!);
+    await until(() => document.body.textContent?.includes("unsubscribe_secret ok"));
   });
 });
 
