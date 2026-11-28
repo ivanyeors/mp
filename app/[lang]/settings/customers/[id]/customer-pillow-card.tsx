@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BedDouble, Eye, EyeOff, Link2, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,10 @@ import { customerFacingPillow, type CustomerPillowResult, type CustomerPillowVie
 import type { FittingAnswersView } from "@/lib/fitting-import/view";
 import { PillowSheetButton } from "@/components/customer-pillow/pillow-sheet-button";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import { ReadjustDialog, readjustDraftKey } from "./customer-pillow-readjust";
+
+const ReadjustDialog = dynamic(() => import("./customer-pillow-readjust").then((m) => m.ReadjustDialog), { ssr: false });
+
+const readjustDraftKey = (customerId: string) => `readjust:${customerId}`;
 
 const NO_TEMPLATE = "none";
 
@@ -143,6 +147,7 @@ export function CustomerPillowCard({
                 <ReadjustDialog
                     key={`readjust-${session}`}
                     customerId={customerId}
+                    draftKey={draftKey}
                     pillow={pillow}
                     open
                     onOpenChange={(next) => setOpen(next ? "readjust" : null)}

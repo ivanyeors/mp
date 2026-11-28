@@ -13,12 +13,19 @@
 // points off a S$120 Slope Mattress, S$10.88 shipping, S$110.88 paid), for the
 // confirmation page's separate Discount and Points used lines:
 // /shop/checkout/confirmation?order_number=MP2003&session_id=cs_preview_points
+//
+// Scenarios, for the Profile's Points card (/account):
+//  - `--scenario points-bonus-only`: Jamie holds a Welcome bonus and Flower
+//    points and has earned nothing from orders, so the balance is 1,004 while
+//    the milestone bar is empty.
+//  - `--scenario points-soon`: the launch is 30 days away, so the Profile
+//    shows the "Coming soon" card with the empty ladder.
 
 export const POINTS_CUSTOMER = "00000000-0000-4000-8000-0000000000c7";
 const JAMIE = "cust-preview-owner";
 const POINTS_ORDER = "0f0f0f0f-0000-4000-8000-000000002003";
 
-export default function points({ now }) {
+export default function points({ scenario, now }) {
   const ago = (days) => new Date(now.getTime() - days * 86_400_000).toISOString();
   const entry = (id, customer_id, kind, points, days, extra = {}) => ({
     id,
@@ -34,16 +41,23 @@ export default function points({ now }) {
     ...extra,
   });
 
+  const bonusOnly = scenario === "points-bonus-only";
+  const jamie = bonusOnly
+    ? [entry("pts-j-1", JAMIE, "welcome_bonus", 1000, 3, { welcome_step: 1 }), entry("pts-j-2", JAMIE, "explore_flower", 4, 2)]
+    : [
+        entry("pts-j-1", JAMIE, "earn", 1170, 40, { order_id: "pts-order-j1" }),
+        entry("pts-j-2", JAMIE, "milestone_bonus", 100, 40, { milestone: 1, note: "Milestone 1: 1,000 points earned from orders" }),
+        entry("pts-j-3", JAMIE, "spend", -500, 20, { order_id: "pts-order-j2" }),
+        entry("pts-j-4", JAMIE, "earn", 600, 6, { order_id: "pts-order-j2" }),
+      ];
+
   const ledger = [
     // ADR 0030 (2026-11-08): Mei was imported from Shopify, and given points for what she spent there.
     entry("pts-m-0", POINTS_CUSTOMER, "past_purchases", 458, 58, {
       note: "S$458.00 spent on the old shop",
       created_by_profile_id: "00000000-0000-4000-8000-0000000000a5",
     }),
-    entry("pts-j-1", JAMIE, "earn", 1170, 40, { order_id: "pts-order-j1" }),
-    entry("pts-j-2", JAMIE, "milestone_bonus", 100, 40, { milestone: 1, note: "Milestone 1: 1,000 points earned from orders" }),
-    entry("pts-j-3", JAMIE, "spend", -500, 20, { order_id: "pts-order-j2" }),
-    entry("pts-j-4", JAMIE, "earn", 600, 6, { order_id: "pts-order-j2" }),
+    ...jamie,
     entry("pts-m-1", POINTS_CUSTOMER, "claim_bonus", 1000, 55),
     entry("pts-m-2", POINTS_CUSTOMER, "earn", 870, 30, { order_id: "pts-order-m1" }),
     entry("pts-m-3", POINTS_CUSTOMER, "adjust", 300, 12, { note: "Goodwill: late delivery" }),
@@ -53,7 +67,9 @@ export default function points({ now }) {
   ];
 
   const candidates = [
-    { order_id: "pts-order-j3", customer_id: JAMIE, order_number: "MP-20417", paid_at: ago(9), delivered_at: ago(5), base: 180, points: 540, release_at: ago(5 - 30) },
+    ...(bonusOnly
+      ? []
+      : [{ order_id: "pts-order-j3", customer_id: JAMIE, order_number: "MP-20417", paid_at: ago(9), delivered_at: ago(5), base: 180, points: 540, release_at: ago(5 - 30) }]),
     { order_id: "pts-order-m3", customer_id: POINTS_CUSTOMER, order_number: "MP-20431", paid_at: ago(2), delivered_at: null, base: 89, points: 267, release_at: null },
   ];
 
@@ -65,7 +81,7 @@ export default function points({ now }) {
     tables: {
       site_settings: [
         { key: "points_enabled", value: "true" },
-        { key: "points_launch_at", value: ago(60) },
+        { key: "points_launch_at", value: ago(scenario === "points-soon" ? -30 : 60) },
         { key: "points_earn_per_dollar", value: "1" },
         { key: "points_min_redeem", value: "500" },
         { key: "points_max_share", value: "0.5" },

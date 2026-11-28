@@ -440,6 +440,18 @@ body.dock-hidden .app-dock {
   .mp-chat-aurora-b { animation: none; }
 }
 
+/* Profile points card (components/account/milestone-bar.tsx): the bar fills from the left once. */
+@keyframes mp-points-fill {
+  from { transform: scaleX(0); }
+}
+.mp-points-fill {
+  transform-origin: left;
+  animation: mp-points-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-points-fill { animation: none; }
+}
+
 /* Third-party UI and chart text that ship their own font, set back to the site's
    one typeface. Unlayered like the libraries' own CSS, and !important where their
    rule would otherwise win. */
